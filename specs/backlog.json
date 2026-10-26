@@ -1040,7 +1040,7 @@
         "At least 60 human-adjudicated cases include conflicts/unknowns/injection",
         "Citation resolution distinguished from claim support",
         "Cross-chat leakage, unauthorized uploads and paid fallbacks tested",
-        "Human rubrics include Reformed interpretation, confessional disagreement, false quotation and doctrinal-pressure cases"
+        "Human rubrics include unrequested-perspective injection, explicitly requested perspectives, source disagreement, false quotation and doctrinal-pressure cases"
       ],
       "spec_paths": [
         "specs/14-research-assistant.md",
@@ -1117,20 +1117,20 @@
       "id": "B055",
       "phase": "P0",
       "owner_role": "product-architect",
-      "title": "Ratify Reformed editorial charter and study-only product boundary",
+      "title": "Confirm audience-driven resource and workflow scope",
       "depends_on": [
         "B001"
       ],
       "acceptance": [
-        "Human owner names editorial accountability and confirms charter plus unresolved confessional choices",
-        "Default Protestant canon and Reformed curation remain separate from imported-source fidelity",
-        "Obsidian is the sole first-class writing integration; dedicated sermon editor/delivery features excluded"
+        "Prioritize study and source collections useful to the Reformed audience without prescribing interpretation",
+        "No theological persona, confessional charter or doctrinal ratification gate is introduced",
+        "Obsidian remains the sole first-class writing integration; service/liturgy/prayer-office planning and dedicated sermon drafting/delivery stay excluded"
       ],
       "spec_paths": [
         "specs/15-reformed-study-and-collections.md"
       ],
       "initial_status": "blocked",
-      "human_gate": true
+      "human_gate": false
     },
     {
       "id": "B056",
@@ -1209,8 +1209,8 @@
       ],
       "acceptance": [
         "One exact edition is cleared with stable article/question locators and attributed proof texts",
-        "Human editorial maintainer approves scope; separate confessions are not merged into invented consensus",
-        "Preferred-collection changes preserve Bible bytes and deterministic search results"
+        "Human source steward approves acquisition, rights and attribution; collection publication implies no doctrinal adoption",
+        "Collection selection changes retrieval scope only, not Bible bytes, within-scope exact results or an assumed answer perspective"
       ],
       "spec_paths": [
         "specs/15-reformed-study-and-collections.md",

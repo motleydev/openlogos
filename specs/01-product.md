@@ -6,7 +6,7 @@ Study Scripture faithfully, gather sources, and carry the work into Obsidian or 
 
 The inspiration is Logos's useful workflows, alongside AndBible, Ezra Bible App, STEP and SWORD—not a binary-compatible clone. Evaluate publicly visible behavior and appropriately licensed source. No Logos assets, proprietary library dumps, DRM removal, or copied branding are required.
 
-The primary audience studies and prepares to teach/preach from a Reformed perspective. The default Bible scope is the 66-book Protestant canon. See specs/15-reformed-study-and-collections.md for the editorial charter and the boundary between source evidence and interpretation. Sermon drafting takes place elsewhere; first-party notes support study, not a dedicated sermon editor.
+The primary audience studies and prepares to teach/preach from a Reformed perspective. The default Bible scope is the 66-book Protestant canon. See specs/15-reformed-study-and-collections.md for audience-driven resource priorities and the boundary between source evidence and interpretation. The app does not prescribe interpretations or inject a theological perspective into research. Sermon drafting takes place elsewhere; first-party notes support study, not a dedicated sermon editor.
 
 ## First-release workflows
 
@@ -48,7 +48,7 @@ User studies: five to eight readers, including at least one screen-reader user a
 
 ## Deliberately deferred
 
-Dedicated sermon editor, delivery/teleprompter mode, slides, sermon generation, subscription marketplace, social network, collaboration editing, audio production, automatic reading streaks, complete Logos import parity, universal OCR, unreviewed theology ontology, autonomous whole-Bible translation, and remote always-on mobile seeding are outside the MVP.
+Service/liturgy design, scheduled prayer-office workflows (including Sunday Mass or Afternoon Prayer planning), dedicated sermon editor, delivery/teleprompter mode, slides, sermon generation, subscription marketplace, social network, collaboration editing, audio production, automatic reading streaks, complete Logos import parity, universal OCR, unreviewed theology ontology, autonomous whole-Bible translation, and remote always-on mobile seeding are outside the MVP.
 
 German texts and interface are a high-priority follow-on; rights to modern Luther/Elberfelder revisions must be checked per edition. Imported works retain their own canon/versification metadata for accurate scholarship; the default reader/search canon is Protestant and launch coverage is explicit.
 

@@ -1,4 +1,4 @@
-# Validation report — revision 3
+# Validation report — revision 4
 
 Date: 26 October 2026. Passed using Python 3.12 and jsonschema 4.25.1.
 
@@ -15,4 +15,6 @@ Not implemented or tested: the app, Nix flake/modules, native rendering, handwri
 
 All example content is synthetic. No Bible corpus, provider credentials or private notes are included.
 
-Revision 3 adds a screenshot/design audit, Reformed editorial scope, collection/handoff requirements and corresponding task dependencies. The existing validator checks their task/spec/source references and DAG. New collection/export/editorial entities are prose contracts, not implemented protocols or additional validated JSON schemas. The audit is not a runtime, security, theological or accessibility certification.
+Revision 3 adds a screenshot/design audit, audience-driven resource scope, collection/handoff requirements and corresponding task dependencies. The existing validator checks their task/spec/source references and DAG. Collection/export entities remain prose contracts, not implemented protocols or additional validated JSON schemas. The audit is not a runtime, security, theological or accessibility certification.
+
+Revision 4 removes the proposed theological persona/editorial-profile contract and doctrinal ratification gate. Source selection, the actual user question and evidence govern research. This is a specification correction, not a tested model-behavior change.

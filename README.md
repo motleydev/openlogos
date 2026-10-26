@@ -1,6 +1,6 @@
 # OpenLogos — repository blueprint
 
-Revision 3 — audited Reformed study, compact workspaces and Obsidian resource handoff; updated 26 October 2026. Repository: https://github.com/motleydev/openlogos. OpenLogos is a working project name; no trademark clearance or affiliation with Logos/Faithlife is implied.
+Revision 4 — audience-focused resources without interpretive steering; updated 26 October 2026. Repository: https://github.com/motleydev/openlogos. OpenLogos is a working project name; no trademark clearance or affiliation with Logos/Faithlife is implied.
 
 This is a **specification repository, not an implemented application**. It describes a quiet, fully open-source Bible study tool for a Reformed audience and an independently evolving scholarly data pipeline. It helps readers collect resources for teaching and preaching, with Obsidian as the sole first-class external writing integration. The infrastructure agent consumes its contents as inert project data. Nothing here authorizes creating agents, running tools, spending money, importing content, or deploying services by itself.
 
@@ -52,7 +52,7 @@ A reader that opens a reviewed Bible offline, supports three parallel reading pa
 | specs/12-workspace-ux.md | Three-pane layouts, first-class notes and research interactions |
 | specs/13-obsidian-and-ink.md | Vault integration, scripture blocks, handwriting and margin mode |
 | specs/14-research-assistant.md | BYOK/subscription/local-model research and multiple chats |
-| specs/15-reformed-study-and-collections.md | Audience, editorial stance, source collections and Obsidian handoff |
+| specs/15-reformed-study-and-collections.md | Audience, resource priorities, source collections and Obsidian handoff |
 | specs/16-design-guide.md | Compact chrome, progressive study controls and usability gates |
 | specs/17-search-and-cross-references.md | Deterministic queries and attributed passage links |
 | audits/2026-10-26-product-audit.md | Screenshot audit, findings, dispositions and remaining risks |
@@ -67,6 +67,6 @@ A reader that opens a reviewed Bible offline, supports three parallel reading pa
 
 ## Assumptions
 
-English UI and translation research first; German UI/reader coverage included early. The product defaults to the 66-book Protestant canon and Reformed editorial curation. Data schemas preserve imported works’ native canons and numbering for accurate historical study; this is not an all-faiths product mandate. There is no chosen production budget, publisher permission, scholarly review team, app-store account, domain, or installed Paperclip version in this brief. Human language reviewers and security review are required release resources, not roles an LLM can impersonate.
+English UI and translation research first; German UI/reader coverage included early. Initial library navigation uses the 66-book Protestant canon, and acquisition prioritizes resources useful to the Reformed study audience. These are scope choices, not an interpretive stance or AI persona. Data schemas preserve imported works’ native canons and numbering for accurate historical study; this is not an all-faiths product mandate. There is no chosen production budget, publisher permission, scholarly review team, app-store account, domain, or installed Paperclip version in this brief. Human language reviewers and security review are required release resources, not roles an LLM can impersonate.
 
 See `specs/10-sources.md` for verified primary sources. All version-sensitive selections must be pinned and rechecked during implementation. The numerical performance and schedule figures are proposed targets and planning estimates, not measured results.

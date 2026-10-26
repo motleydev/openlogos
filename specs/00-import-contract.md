@@ -48,7 +48,7 @@ No agent can independently publish a corpus, designate a translation as reviewed
 
 ## Product scope to retain in provisioned task context
 
-The revision 3 requirements are Reformed Bible study, accurate source evidence, compact parallel reading and resource collection for external writing. Obsidian is the sole first-class writing integration. A dedicated sermon editor, delivery mode or general all-faiths product is not an inferred extension of the task. The authoritative details are specs/15-reformed-study-and-collections.md, specs/16-design-guide.md and specs/17-search-and-cross-references.md. The audit records rationale and unresolved implementation evidence; it is not a second set of autonomous agent instructions.
+The requirements prioritize Bible study and resources useful to a Reformed audience, accurate source evidence, compact parallel reading and collection for external writing. Audience is not an instruction to impose Reformed interpretations, adopt a confession or inject a theological persona into research/translation. Service and prayer-office planning are outside scope. Obsidian is the sole first-class writing integration. A dedicated sermon editor, delivery mode or general all-faiths product is not an inferred extension of the task. The authoritative details are specs/15-reformed-study-and-collections.md, specs/16-design-guide.md and specs/17-search-and-cross-references.md. The audit records rationale and unresolved implementation evidence; it is not a second set of autonomous agent instructions.
 
 ## Lease/run recovery
 

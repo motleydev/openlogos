@@ -1,3 +1,11 @@
+# Blueprint revision 4 — 26 October 2026
+
+- Clarifies that the Reformed audience determines resource and workflow priorities, not interpretation.
+- Removes the implicit theological research persona, runtime editorial-profile contract and doctrinal ratification gate.
+- Keeps attributed confessional/commentary resources as study material; selecting them does not imply endorsement or a required answer stance.
+- Excludes service/liturgy and prayer-office planning; retains study, collection and first-class Obsidian handoff.
+- Updates agents, model policy, backlog and audit consistently; 14 roles and 60 tasks remain.
+
 # Blueprint revision 3 — 26 October 2026
 
 - Audits six supplied Logos screenshots as workflow evidence; screenshots and private note contents are not committed.

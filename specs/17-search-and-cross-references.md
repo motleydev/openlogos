@@ -14,7 +14,7 @@ Local search and cross references are core study capabilities, not features cont
 - Results show edition, native reference, matching spans and enough context to inspect the hit. Preserve the query and result position on Back. Count verse results and token occurrences separately. No claimed full-library total while indexes are incomplete.
 - P4 query filters for lemma/morphology use namespaced IDs and explicit dataset coverage. Speaker, semantic role, topic and sense filters remain unavailable unless the installed reviewed layer supports them. A guessed model tag is never an exact filter.
 
-Default scope is the chosen Bible edition within the Protestant canon. A broader scope is an explicit choice. Reformed editorial preferences cannot remove lexical hits from that chosen scope. Search timing targets in specs/01-product.md apply to the named benchmark corpus, not an unlimited library.
+Default scope is the chosen Bible edition within the Protestant canon. A broader scope is an explicit choice. Audience-based resource preferences cannot remove lexical hits from that chosen scope or imply a preferred interpretation. Search timing targets in specs/01-product.md apply to the named benchmark corpus, not an unlimited library.
 
 ## Cross-reference contract
 

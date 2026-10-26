@@ -46,6 +46,6 @@ Determine the release license after reviewing the base-text/annotation dependenc
 
 The project may ultimately publish a useful draft, a reviewed translation, or only research tooling. None is represented as divinely authoritative, unbiased, or more accurate merely because it was generated from original-language inputs.
 
-## Editorial frame and source fidelity
+## Source fidelity without audience-based interpretation
 
-The product's Reformed editorial identity is explicit, while source-language fidelity remains the translation evaluation criterion. A generated reading cannot earn a higher fidelity score simply because it supports a preferred doctrine. Confessional arguments belong in attributed commentary and review notes; they cannot silently add words, erase ambiguity or override the recorded textual evidence. Include deliberate doctrinal-pressure cases in the blind human review.
+The audience's resource preferences are not translation instructions. Translation generation and evaluation use the documented source editions, textual policy, evidence and language criteria, without an implicit Reformed persona or doctrinal target. Confessional arguments may be cited as attributed commentary when relevant; they cannot silently add words, erase ambiguity or override textual evidence. Include pressure to force a preferred doctrine into the blind human evaluation, and reject that distortion regardless of which tradition it would favor.
