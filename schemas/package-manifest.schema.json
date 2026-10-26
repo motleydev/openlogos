@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:package-manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "fixture_only": {
+      "type": "boolean"
+    },
+    "package_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "minimum_reader_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "editions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "media_type": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "size_bytes",
+          "media_type"
+        ]
+      }
+    },
+    "rights_record_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "attribution_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "previous_manifest_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "signature": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": [
+                "Ed25519"
+              ]
+            },
+            "key_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value_base64": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "algorithm",
+            "key_id",
+            "value_base64"
+          ]
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "fixture_only",
+    "package_id",
+    "revision",
+    "minimum_reader_version",
+    "editions",
+    "artifacts",
+    "rights_record_ids",
+    "attribution_path",
+    "previous_manifest_sha256",
+    "signature"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "fixture_only": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "signature": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ]
+}

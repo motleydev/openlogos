@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:research-provider-policy",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "checked_on": {
+      "type": "string"
+    },
+    "preferred_order": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "local_only_override": {
+      "type": "string"
+    },
+    "credentials_in_exports": {
+      "type": "boolean"
+    },
+    "automatic_paid_fallback": {
+      "type": "boolean"
+    },
+    "automatic_provider_switch": {
+      "type": "boolean"
+    },
+    "default_context": {
+      "type": "string"
+    },
+    "vault_upload_default": {
+      "type": "boolean"
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "auth": {
+                "type": "string"
+              },
+              "runtime": {
+                "type": "string"
+              },
+              "gates": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "source_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "auth",
+              "runtime",
+              "gates",
+              "source_ids"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "auth": {
+                "type": "string"
+              },
+              "runtime": {
+                "type": "string"
+              },
+              "gates": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "source_ids": {
+                "type": "array",
+                "items": {}
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "auth",
+              "runtime",
+              "gates",
+              "source_ids"
+            ]
+          }
+        ]
+      }
+    },
+    "capability_probe": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "initial_tools": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_by_default": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "release_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimum_cases": {
+          "type": "integer"
+        },
+        "human_gold_required": {
+          "type": "boolean"
+        },
+        "blocking_failures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "minimum_cases",
+        "human_gold_required",
+        "blocking_failures"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "checked_on",
+    "preferred_order",
+    "local_only_override",
+    "credentials_in_exports",
+    "automatic_paid_fallback",
+    "automatic_provider_switch",
+    "default_context",
+    "vault_upload_default",
+    "routes",
+    "capability_probe",
+    "initial_tools",
+    "forbidden_by_default",
+    "release_evaluation"
+  ]
+}

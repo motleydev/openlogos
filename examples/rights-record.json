@@ -1,0 +1,22 @@
+{
+  "id": "fixture:rights:1",
+  "artifact_sha256": "b53b8c28198ee34906b9babffe8028938772e9bf6d8811ff47bb61509da6e3f0",
+  "edition_id": "fixture:edition-a",
+  "status": "unknown",
+  "license_identifier": "UNREVIEWED-FIXTURE",
+  "evidence_url": null,
+  "license_artifact_sha256": null,
+  "jurisdictions": [],
+  "attribution": "Synthetic metadata for schema testing only.",
+  "permissions": {
+    "local_read": "unknown",
+    "redistribute": "unknown",
+    "modify": "unknown",
+    "public_index": "unknown",
+    "model_prompt": "unknown",
+    "model_train": "unknown",
+    "translation_evaluate": "unknown"
+  },
+  "reviewer": null,
+  "reviewed_at": null
+}

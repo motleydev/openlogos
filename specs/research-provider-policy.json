@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.0",
+  "kind": "product_provider_preferences_not_runtime_authorization",
+  "checked_on": "2026-10-26",
+  "preferred_order": [
+    "supported_user_subscription",
+    "user_api_key",
+    "user_selected_local_endpoint"
+  ],
+  "local_only_override": "When selected, prohibit all external inference, search and embeddings regardless of preference order.",
+  "credentials_in_exports": false,
+  "automatic_paid_fallback": false,
+  "automatic_provider_switch": false,
+  "default_context": "explicitly_selected_library_sources",
+  "vault_upload_default": false,
+  "routes": [
+    {
+      "id": "openai_plan",
+      "status": "preferred_feasibility_candidate",
+      "auth": "documented_SIWC_consent",
+      "runtime": "direct_documented_route_or_codex_app_server_companion",
+      "gates": [
+        "Platform/host eligibility and current preview conditions",
+        "Actual authorized completed inference, not just model catalog",
+        "Streaming/cancellation/history/renewal and source-rights tests"
+      ],
+      "source_ids": [
+        "S23",
+        "S24",
+        "S25",
+        "S35"
+      ]
+    },
+    {
+      "id": "claude_subscription",
+      "status": "conditional_disabled_until_compatibility_review",
+      "auth": "official_user_authentication_only",
+      "runtime": "unmodified_supported_Claude_Code_integration",
+      "gates": [
+        "Resolve product-integration and Agent SDK documentation discrepancy",
+        "Confirm chosen deployment/distribution terms",
+        "Isolate autoloaded config without relying on bare-mode subscription support"
+      ],
+      "source_ids": [
+        "S32",
+        "S33",
+        "S34"
+      ]
+    },
+    {
+      "id": "api_byok",
+      "status": "planned",
+      "auth": "user_owned_provider_api_key",
+      "runtime": "native_secure_storage_or_personal_companion",
+      "gates": [
+        "Per-user secret isolation",
+        "Capability and cost controls",
+        "No static-web key persistence"
+      ],
+      "source_ids": []
+    },
+    {
+      "id": "local_endpoint",
+      "status": "planned",
+      "auth": "user_configured_local_credentials_if_required",
+      "runtime": "explicit_local_or_private_mesh_endpoint",
+      "gates": [
+        "Model/weights/license and quality checks",
+        "No unexpected external traffic",
+        "Private endpoint SSRF and TLS controls"
+      ],
+      "source_ids": []
+    }
+  ],
+  "capability_probe": [
+    "streaming",
+    "tools",
+    "structured_output",
+    "image_input",
+    "context_limits",
+    "web_search",
+    "cancellation",
+    "resumption",
+    "usage_reporting"
+  ],
+  "initial_tools": [
+    "resolve_reference",
+    "get_passage",
+    "search_selected_corpus",
+    "inspect_evidence",
+    "query_reviewed_linguistics",
+    "get_selected_note"
+  ],
+  "forbidden_by_default": [
+    "shell",
+    "arbitrary_filesystem",
+    "secret_read",
+    "library_publish",
+    "unscoped_vault_index",
+    "background_corpus_translation"
+  ],
+  "release_evaluation": {
+    "minimum_cases": 60,
+    "human_gold_required": true,
+    "blocking_failures": [
+      "fabricated_citations",
+      "incorrect_exact_quotes",
+      "cross_chat_leakage",
+      "unauthorized_upload",
+      "silent_billable_fallback"
+    ]
+  }
+}

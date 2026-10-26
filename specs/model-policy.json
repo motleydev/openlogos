@@ -1,0 +1,157 @@
+{
+  "schema_version": "1.0",
+  "kind": "model_routing_policy_data",
+  "binding_state": "unresolved_until_infrastructure_probe",
+  "total_monthly_budget": null,
+  "currency": null,
+  "default_max_parallel_coding_runs": 2,
+  "independent_review_slots": 1,
+  "no_budget_behavior": "Keep all agents paused until the operator has configured an explicit budget or a verified existing budget applies.",
+  "bindings": {
+    "economy": null,
+    "standard": null,
+    "frontier": null,
+    "vision": null,
+    "private_local": null
+  },
+  "adapter_candidates": [
+    "codex_local",
+    "claude_local"
+  ],
+  "binding_contract": [
+    "Record exact provider/model/version, adapter type/version, context/output limits, reasoning options, tool/vision support, data retention settings and measured cost.",
+    "Inspect installed support; never send a model alias or reasoning flag merely because this document names a capability tier.",
+    "Use existing subscriptions only when their actual adapter/account terms permit; API spend and subscription quota are separate ledgers.",
+    "No hosted model required in the distributed reader; private input defaults to a locally approved backend or no inference."
+  ],
+  "model_tiers": [
+    {
+      "id": "economy",
+      "use": [
+        "Metadata formatting",
+        "Documentation edits",
+        "Candidate citation triage",
+        "Schema-constrained extraction after benchmark"
+      ],
+      "not_for": [
+        "Textual adjudication",
+        "Crypto/auth architecture",
+        "Final source clearance"
+      ]
+    },
+    {
+      "id": "standard",
+      "use": [
+        "Routine scoped coding",
+        "UI implementation",
+        "Nix/CI maintenance",
+        "Parser integration",
+        "Test implementation"
+      ],
+      "not_for": [
+        "Unreviewed high-impact design decisions"
+      ]
+    },
+    {
+      "id": "frontier",
+      "use": [
+        "Architecture and difficult debugging",
+        "Threat-model review",
+        "Philological proposal preparation",
+        "Translation experiment critique"
+      ],
+      "not_for": [
+        "Replacing qualified human review",
+        "Bulk work already solved deterministically"
+      ]
+    },
+    {
+      "id": "vision",
+      "use": [
+        "Layout/OCR diagnostic proposals"
+      ],
+      "not_for": [
+        "Authoritative replacement of source scans"
+      ]
+    },
+    {
+      "id": "private_local",
+      "use": [
+        "Opt-in offline inference after quality and license checks"
+      ],
+      "not_for": [
+        "Claiming privacy without host isolation",
+        "Automatic promotion of low-quality results"
+      ]
+    }
+  ],
+  "routing_rules": [
+    "Use parsers, SQLite queries, hashes, existing mappings and conventional OCR before LLM inference.",
+    "Use standard for routine implementation; escalate to frontier after two substantive failed attempts, architectural ambiguity or a high-risk security/data-integrity change.",
+    "Use frontier for disputed philology proposals, then human adjudication; never downgrade required review to meet a budget.",
+    "Use a different context and preferably a different model family for critical review, but count it as independent machine critique, not independent truth.",
+    "Batch safe extraction with strict per-record provenance and size caps. Malformed structured output retries once with validation feedback, then goes to manual queue.",
+    "Cache by exact input hash, model/prompt/config and rights policy version; invalidate if any changes. No cross-user private prompt caching.",
+    "Use low variance for extraction where supported; do not assume temperature or seed controls exist. Preserve outputs because deterministic reproduction is not guaranteed.",
+    "On rate limits or exhausted budget, checkpoint and pause; no silent provider switch or budget increase.",
+    "This file controls development agents only. Reader-user research follows research-provider-policy.json; no reuse of project credentials or agent budget for users.",
+    "Use standard/vision for bounded interaction review and source formatting; frontier may prepare difficult theological/philological proposals. Qualified source/language review remains required; the target audience does not establish a doctrinal approval criterion. No model tier may alter source evidence to satisfy doctrinal preference; do not expand active agent count for this workflow."
+  ],
+  "context_policy": {
+    "default_input_soft_limit_tokens": 24000,
+    "default_output_soft_limit_tokens": 6000,
+    "include": [
+      "Assigned issue",
+      "Relevant spec sections",
+      "Touched interfaces/files",
+      "Evidence or test failures",
+      "Latest concise checkpoint"
+    ],
+    "exclude": [
+      "Entire corpus",
+      "Unrelated full chat logs",
+      "Credentials",
+      "Private notes without authorization"
+    ],
+    "summary_format": [
+      "Goal and current state",
+      "Changed paths",
+      "Checks run",
+      "Evidence/uncertainty",
+      "Next action"
+    ]
+  },
+  "evaluation": {
+    "pilot_tasks": 24,
+    "design": "Four held-out tasks in each of six categories: UI selection/RTL, reference identity, Nix build/restore, hostile parser inputs, provenance/rights triage, citation/linguistic analysis. Technical fixtures are independently checked; scholarly labels require humans.",
+    "metrics": [
+      "Acceptance pass rate",
+      "Severe-error count",
+      "Accepted-task total cost including retries/review",
+      "Latency",
+      "Human correction minutes",
+      "Schema compliance"
+    ],
+    "selection": "Choose the least expensive tested binding meeting the category quality gate. A critical safety/fidelity failure excludes the binding from that task class until corrected.",
+    "recheck_triggers": [
+      "Model/provider version change",
+      "Prompt/adapter change",
+      "Regression or unexpected cost increase"
+    ],
+    "cost_formula": "accepted_task_cost = (generation + retries + machine review + tool compute cost) / accepted_tasks; report human review time separately"
+  },
+  "budget_policy": {
+    "allocation": "Agent budget_weight values sum to 100; paused agents spend zero. Reallocation is explicit, not automatic. Corpus inference budget is separate from development-agent budget.",
+    "warning_fraction": 0.8,
+    "stop_fraction": 1.0,
+    "implementation_note": "Enforce through installed Paperclip budget controls where available, plus wrapper-level task limits. These are proposed thresholds, not claimed universal API field names.",
+    "per_task_cap": "Set from measured pilot and total budget; no unlimited fallback.",
+    "report": [
+      "Spend by accepted task and role",
+      "Retry fraction",
+      "Human review backlog",
+      "Corpus inference cost per source class"
+    ]
+  },
+  "product_runtime_policy_path": "specs/research-provider-policy.json"
+}

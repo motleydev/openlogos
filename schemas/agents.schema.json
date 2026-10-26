@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:agents",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "kind": {
+      "const": "agent_descriptions_not_runtime_instructions"
+    },
+    "shared_policy_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "external_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "instruction_template": {
+            "type": "string",
+            "minLength": 1
+          },
+          "activation_phase": {
+            "type": "string",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3",
+              "P4",
+              "P5"
+            ]
+          },
+          "initial_state": {
+            "type": "string",
+            "enum": [
+              "paused"
+            ]
+          },
+          "default_model_tier": {
+            "type": "string",
+            "enum": [
+              "economy",
+              "standard",
+              "frontier"
+            ]
+          },
+          "budget_weight": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "work_scope": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "reviewer_roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "boundaries": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "run_policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "trigger": {
+                "type": "string",
+                "enum": [
+                  "ready_issue_or_explicit_request"
+                ]
+              },
+              "interval_heartbeat": {
+                "const": false
+              },
+              "max_concurrent_runs": {
+                "const": 1
+              },
+              "max_failed_attempts_before_escalation": {
+                "const": 2
+              }
+            },
+            "required": [
+              "trigger",
+              "interval_heartbeat",
+              "max_concurrent_runs",
+              "max_failed_attempts_before_escalation"
+            ]
+          },
+          "reuse_existing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "external_id",
+          "name",
+          "description",
+          "instruction_template",
+          "activation_phase",
+          "initial_state",
+          "default_model_tier",
+          "budget_weight",
+          "work_scope",
+          "reviewer_roles",
+          "outputs",
+          "boundaries",
+          "run_policy",
+          "reuse_existing"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "shared_policy_path",
+    "agents"
+  ]
+}

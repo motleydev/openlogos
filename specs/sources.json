@@ -1,0 +1,394 @@
+{
+  "schema_version": "1.0",
+  "checked_on": "2026-10-26",
+  "notice": "Research inventory, not a cleared corpus. All production artifacts require exact version, hash and rights review.",
+  "sources": [
+    {
+      "id": "S01",
+      "title": "Paperclip adapter and agent configuration",
+      "url": "https://github.com/paperclipai/paperclip/blob/master/docs/adapters/overview.md",
+      "secondary_url": "https://github.com/paperclipai/paperclip/blob/master/docs/guides/board-operator/managing-agents.md",
+      "finding": "Adapters bridge orchestration and runtimes; installed schemas and model support must be inspected. Agent budget/run policy varies by version.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S02",
+      "title": "ESV publisher permissions",
+      "url": "https://www.crossway.org/permissions/",
+      "secondary_url": "https://api.esv.org/",
+      "finding": "Copyrighted translation with specific quotation/digital terms; ordinary access does not grant the proposed open-corpus or AI translation workflow. Default exclusion; request explicit written scope if needed.",
+      "status": "restricted",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S03",
+      "title": "ESV API terms",
+      "url": "https://api.esv.org/",
+      "secondary_url": null,
+      "finding": "API imposes storage/display/redistribution limits and other conditions. A freely obtainable API is not an offline open-text license.",
+      "status": "restricted",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S04",
+      "title": "World English Bible",
+      "url": "https://ebible.org/eng-web/webfaq.htm",
+      "secondary_url": "https://ebible.org/study/content/texts/engwebp/about.html",
+      "finding": "Publisher identifies the text as public domain; preserve edition and text integrity. Changed text must not be represented as the unchanged World English Bible.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S05",
+      "title": "STEPBible Data",
+      "url": "https://github.com/STEPBible/STEPBible-Data/blob/master/README.md",
+      "secondary_url": null,
+      "finding": "Repository states CC BY 4.0 with attribution/change recording. Inspect each chosen file and its upstream dependencies; useful for tagged texts, lexical data and mappings.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S06",
+      "title": "SBL Greek New Testament",
+      "url": "https://github.com/Faithlife/SBLGNT",
+      "secondary_url": "https://www.sblgnt.com/",
+      "finding": "Current upstream describes CC BY 4.0. Pin exact text edition; critical editorial choices are not interchangeable with other Greek editions.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S07",
+      "title": "Open Scriptures Hebrew Bible",
+      "url": "https://github.com/openscriptures/morphhb",
+      "secondary_url": "https://github.com/openscriptures/morphhb/blob/master/LICENSE.md",
+      "finding": "WLC underlying text is public domain; morphology/lemma layer is CC BY 4.0. Preserve upstream token IDs and normalization cautions.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S08",
+      "title": "unfoldingWord source-language resources",
+      "url": "https://unfoldingword.org/for-translators/content/",
+      "secondary_url": null,
+      "finding": "UHB/UGNT and related grammars/lexicons are open-licensed candidates, generally CC BY-SA 4.0 on the referenced page. Check the exact work/version and trademark terms before adaptation.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S09",
+      "title": "OpenBible cross references",
+      "url": "https://openbible.info/labs/cross-references/",
+      "secondary_url": null,
+      "finding": "Roughly 340,000 links, primarily derived from Treasury of Scripture Knowledge, with additional sources/votes. Page links a CC BY license; ESV quotations on the site are separate. Import reference links/attribution only after recording the exact linked license. Votes are not accuracy scores.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S10",
+      "title": "Perseus canonical Greek literature",
+      "url": "https://github.com/PerseusDL/canonical-greekLit",
+      "secondary_url": null,
+      "finding": "Repository default CC BY-SA 4.0 unless indicated otherwise, with varying object rights and unverified headers. Check each TEI edition/translation and preserve attribution.",
+      "status": "per_item_review",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S11",
+      "title": "CCEL and Early Church Fathers",
+      "url": "https://www.ccel.org/about/copyright.html",
+      "secondary_url": "https://ccel.org/s/schaff/ecf/index.html",
+      "finding": "Ancient/patristic discovery source. Many underlying books are US public domain, but site content/editions and permission statements are mixed. Do not blanket-import; seek a clearly licensed artifact or separate public-domain transcription.",
+      "status": "per_item_review",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S12",
+      "title": "CrossWire SWORD and module rights",
+      "url": "https://www.crosswire.org/sword/about/license.jsp",
+      "secondary_url": "https://wiki.crosswire.org/Copyright",
+      "finding": "Engine is GPL; each text module has its own rights. Distribution permission to CrossWire does not automatically authorize this project to redistribute everything.",
+      "status": "per_item_review",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S13",
+      "title": "Tailscale network layers",
+      "url": "https://tailscale.com/docs/concepts/control-data-planes",
+      "secondary_url": "https://tailscale.com/security",
+      "finding": "WireGuard data transport is distinct from coordination/identity/relay behavior. Mesh access is not app authorization or anonymity.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S14",
+      "title": "Headscale DERP self-hosting",
+      "url": "https://headscale.net/stable/ref/derp/",
+      "secondary_url": null,
+      "finding": "Supports embedded/custom DERP; public-relay map exclusion must be explicit and connectivity tested. Self-hosting can create its own availability bottleneck.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S15",
+      "title": "Keycloak OIDC",
+      "url": "https://www.keycloak.org/securing-apps/oidc-layers",
+      "secondary_url": null,
+      "finding": "Reference for self-hosted OIDC and supported flows; use authorization code plus PKCE and carefully scoped redirects.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S16",
+      "title": "SQLite browser and Expo storage",
+      "url": "https://sqlite.org/wasm/doc/tip/persistence.md",
+      "secondary_url": "https://docs.expo.dev/versions/latest/sdk/sqlite/",
+      "finding": "Browser VFS/worker support and cross-origin isolation requirements vary. Test chosen storage adapter and Safari rather than assuming native parity.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S17",
+      "title": "W3C Web Annotation Data Model",
+      "url": "https://www.w3.org/TR/annotation-model/",
+      "secondary_url": null,
+      "finding": "TextQuote and TextPosition selectors provide useful interoperable anchor conventions; immutable edition context and reanchoring policy remain project requirements.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S18",
+      "title": "MorphGNT SBLGNT",
+      "url": "https://github.com/morphgnt/sblgnt/blob/master/README.md",
+      "secondary_url": null,
+      "finding": "Morphological analysis uses CC BY-SA 3.0; README references an older SBLGNT EULA whereas current SBLGNT upstream is CC BY 4.0. Resolve edition/version provenance and layered obligations, not one blanket license.",
+      "status": "per_item_review",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S19",
+      "title": "NixOS Android tooling",
+      "url": "https://wiki.nixos.org/wiki/Android",
+      "secondary_url": null,
+      "finding": "androidenv supports composing SDK inputs. Exact SDK/NDK/license/build configuration remains an implementation verification task.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S20",
+      "title": "AndBible",
+      "url": "https://github.com/AndBible/and-bible",
+      "secondary_url": "https://docs.andbible.org/en/latest/faq.html",
+      "finding": "GPL-3.0-or-later offline Android study app. Study panes, note/export and module workflows; no license-blind copying into differently licensed clients.",
+      "status": "inspiration",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S21",
+      "title": "Ezra Bible App",
+      "url": "https://github.com/ezra-bible-app/ezra-bible-app",
+      "secondary_url": null,
+      "finding": "SWORD-based cross-platform topical study with a GPL-2.0 repository label. Inspect exact licensing before reuse; useful workflow inspiration for tags and notes.",
+      "status": "inspiration",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S22",
+      "title": "Calibre",
+      "url": "https://github.com/kovidgoyal/calibre",
+      "secondary_url": null,
+      "finding": "Open-source ebook management/conversion reference. Useful for library ownership/export concepts; dependency and copied-code licenses require separate review.",
+      "status": "inspiration",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S23",
+      "title": "OpenAI ChatGPT plan usage for OSS",
+      "url": "https://developers.openai.com/siwc/token-sharing-open-source",
+      "secondary_url": null,
+      "finding": "Official optional authorization path for eligible open-source/locally hosted apps; platform and deployment conditions require verification.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S24",
+      "title": "Codex app-server plan usage",
+      "url": "https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server",
+      "secondary_url": null,
+      "finding": "Documented app-server integration exists; catalog listing alone does not prove model entitlement.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S25",
+      "title": "OpenAI plan-usage preview limitations",
+      "url": "https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations",
+      "secondary_url": null,
+      "finding": "The preview has distinct request/tool/history restrictions; adapter conformance must be tested rather than assuming ordinary API parity.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S26",
+      "title": "Obsidian Vault API",
+      "url": "https://github.com/obsidianmd/obsidian-developer-docs/blob/main/en/Plugins/Vault.md",
+      "secondary_url": null,
+      "finding": "Vault API includes read and guarded process-style updates; use it for plugin file operations.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S27",
+      "title": "Obsidian mobile development",
+      "url": "https://docs.obsidian.md/Plugins/Getting%20started/Mobile%20development",
+      "secondary_url": null,
+      "finding": "Node/Electron APIs are unavailable on mobile; platform support must be explicit.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S28",
+      "title": "Obsidian native block links",
+      "url": "https://obsidian.md/help/links",
+      "secondary_url": null,
+      "finding": "Native block IDs and #^ references target actual note blocks; materialized scripture can use the same mechanism.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S29",
+      "title": "perfect-freehand",
+      "url": "https://github.com/steveruizok/perfect-freehand",
+      "secondary_url": null,
+      "finding": "MIT stroke geometry library; it is not a complete handwritten-note editor.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S30",
+      "title": "Excalidraw source and license",
+      "url": "https://github.com/excalidraw/excalidraw/blob/master/LICENSE",
+      "secondary_url": null,
+      "finding": "MIT editor candidate; validate the selected package, assets and platform behavior.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S31",
+      "title": "tldraw licensing",
+      "url": "https://tldraw.dev/faq",
+      "secondary_url": null,
+      "finding": "Current SDK is source-available/commercially licensed; excluded from the fully open-source default.",
+      "status": "restricted",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S32",
+      "title": "Claude Code product integration terms",
+      "url": "https://code.claude.com/docs/en/legal-and-compliance",
+      "secondary_url": null,
+      "finding": "Current terms describe conditional integration of unmodified Claude Code with end-user authentication; review exact deployment obligations.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S33",
+      "title": "Claude Agent SDK authentication statement",
+      "url": "https://platform.claude.com/docs/en/agent-sdk/overview",
+      "secondary_url": null,
+      "finding": "SDK page still restricts third-party subscription login without approval; reconcile with the product-integration page before enabling the selected route.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S34",
+      "title": "Claude Code headless mode",
+      "url": "https://code.claude.com/docs/en/headless",
+      "secondary_url": null,
+      "finding": "Programmatic mode exists; bare mode does not use subscription OAuth. Configuration isolation must be designed for the chosen auth mode.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S35",
+      "title": "OpenAI self-hosted VM plan usage",
+      "url": "https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms",
+      "secondary_url": null,
+      "finding": "Documented personal VM path has credential/host-ID/refresh and current revocation-attribution limitations; do not generalize to a shared commercial relay.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S36",
+      "title": "Android Ink API",
+      "url": "https://developer.android.com/develop/ui/views/touch-and-input/stylus-input/about-ink-api",
+      "secondary_url": null,
+      "finding": "Official low-latency ink API candidate for a native adapter; verify exact library version/license and portable data conversion in the spike.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S37",
+      "title": "Westminster Confession, OPC edition",
+      "url": "https://opc.org/wcf.html",
+      "secondary_url": null,
+      "finding": "Primary confessional reference; chapter 1 supports distinguishing Scripture and subordinate confession. Exact edition, proof texts and rights still require acquisition review.",
+      "status": "editorial_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S38",
+      "title": "Three Forms of Unity reference",
+      "url": "https://www.crcna.org/welcome/beliefs?language=en",
+      "secondary_url": "https://www.frcna.org/our-beliefs",
+      "finding": "Primary church descriptions identify Belgic Confession, Heidelberg Catechism and Canons of Dort. No adoption of those churches’ other policies is implied. Search retrieval succeeded; the direct CRC page returned 403 during this audit.",
+      "status": "editorial_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S39",
+      "title": "1689 London Baptist Confession, RBNet",
+      "url": "https://reformedbaptistnetwork.com/1689lbcf/",
+      "secondary_url": null,
+      "finding": "Primary Reformed Baptist confessional reference; offered as a possible identified collection, not silently selected as the project confession.",
+      "status": "editorial_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S40",
+      "title": "WCAG 2.2",
+      "url": "https://www.w3.org/TR/WCAG22/",
+      "secondary_url": null,
+      "finding": "Normative web accessibility requirements; product target sizes and chrome budgets are separate design proposals.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S41",
+      "title": "Obsidian workspace and ribbon",
+      "url": "https://obsidian.md/help/workspace",
+      "secondary_url": "https://obsidian.md/help/User%2Binterface/Ribbon",
+      "finding": "Documented collapsible workspace elements and hideable ribbon inform independent compact-workspace prototypes.",
+      "status": "design_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S42",
+      "title": "Zed workspace actions",
+      "url": "https://zed.dev/docs/all-actions",
+      "secondary_url": null,
+      "finding": "Documented dock toggles and editor zoom offer relevant focus/restore interaction patterns; no copied implementation.",
+      "status": "design_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S43",
+      "title": "Zotero collections and tags",
+      "url": "https://www.zotero.org/support/collections_and_tags",
+      "secondary_url": null,
+      "finding": "Documented nonduplicating collection membership informs source gathering. Zotero integration is not in scope.",
+      "status": "design_reference",
+      "pinned_artifact": null
+    }
+  ]
+}

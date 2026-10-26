@@ -1,0 +1,1 @@
+Invented example text created for this blueprint; fixture only. This manifest is unsigned and is not an installable approved corpus package.

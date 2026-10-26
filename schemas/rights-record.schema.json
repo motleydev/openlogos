@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:rights-record",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "edition_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "approved",
+        "denied"
+      ]
+    },
+    "license_identifier": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "license_artifact_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "jurisdictions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "attribution": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "local_read": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "unknown"
+          ]
+        },
+        "redistribute": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "unknown"
+          ]
+        },
+        "modify": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "unknown"
+          ]
+        },
+        "public_index": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "unknown"
+          ]
+        },
+        "model_prompt": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "unknown"
+          ]
+        },
+        "model_train": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "unknown"
+          ]
+        },
+        "translation_evaluate": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "local_read",
+        "redistribute",
+        "modify",
+        "public_index",
+        "model_prompt",
+        "model_train",
+        "translation_evaluate"
+      ]
+    },
+    "reviewer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reviewed_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "artifact_sha256",
+    "edition_id",
+    "status",
+    "license_identifier",
+    "evidence_url",
+    "license_artifact_sha256",
+    "jurisdictions",
+    "attribution",
+    "permissions",
+    "reviewer",
+    "reviewed_at"
+  ]
+}
