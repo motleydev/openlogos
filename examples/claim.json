@@ -1,0 +1,31 @@
+{
+  "id": "fixture:claim:1",
+  "fixture_only": true,
+  "relation": "span_aligns_with",
+  "subject_ids": [
+    "fixture:edition-a:segment-1:tokens-1-2"
+  ],
+  "object_ids": [
+    "fixture:edition-b:segment-1:token-1"
+  ],
+  "scope": "Invented many-to-one alignment; no historical or biblical assertion.",
+  "evidence": [
+    {
+      "artifact_sha256": "b53b8c28198ee34906b9babffe8028938772e9bf6d8811ff47bb61509da6e3f0",
+      "locator": "sample-content.txt, line 1",
+      "source_record_id": "fixture:source:1"
+    }
+  ],
+  "producer": {
+    "kind": "deterministic",
+    "id": "fixture-generator",
+    "version": "1",
+    "run_id": "fixture-run",
+    "prompt_sha256": null
+  },
+  "review_state": "proposed",
+  "confidence": null,
+  "review_event_ids": [],
+  "supersedes": null,
+  "rationale": "Demonstrates data structure only; never publish as scholarly content."
+}

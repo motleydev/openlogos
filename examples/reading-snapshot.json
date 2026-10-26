@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "fixture_only": true,
+  "id": "fixture:snapshot:1",
+  "workspace_id": "fixture:workspace:1",
+  "coordinate_space_id": "fixture:coordinates:1",
+  "width": 1000,
+  "height": 700,
+  "background": {
+    "path": "snapshot-fixture.svg",
+    "sha256": "5f709aaa18d67b02e1964a142e57b524011f2111509b9a7f1c105fb1ad289a69",
+    "media_type": "image/svg+xml"
+  },
+  "capture_scope": "visible_composite",
+  "includes_private_notes": false,
+  "includes_chats": false,
+  "source_spans": [
+    {
+      "edition_id": "fixture:edition-1",
+      "revision": "0",
+      "reference": "fixture:passage:1"
+    }
+  ],
+  "immutable": true
+}

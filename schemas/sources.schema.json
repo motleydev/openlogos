@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:sources",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "checked_on": {
+      "type": "string"
+    },
+    "notice": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "secondary_url": {
+                "type": "string"
+              },
+              "finding": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "pinned_artifact": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "url",
+              "secondary_url",
+              "finding",
+              "status",
+              "pinned_artifact"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "secondary_url": {
+                "type": "null"
+              },
+              "finding": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "pinned_artifact": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "url",
+              "secondary_url",
+              "finding",
+              "status",
+              "pinned_artifact"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "checked_on",
+    "notice",
+    "sources"
+  ]
+}

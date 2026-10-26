@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:model-policy",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "binding_state": {
+      "type": "string"
+    },
+    "total_monthly_budget": {
+      "type": "null"
+    },
+    "currency": {
+      "type": "null"
+    },
+    "default_max_parallel_coding_runs": {
+      "type": "integer"
+    },
+    "independent_review_slots": {
+      "type": "integer"
+    },
+    "no_budget_behavior": {
+      "type": "string"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "economy": {
+          "type": "null"
+        },
+        "standard": {
+          "type": "null"
+        },
+        "frontier": {
+          "type": "null"
+        },
+        "vision": {
+          "type": "null"
+        },
+        "private_local": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "economy",
+        "standard",
+        "frontier",
+        "vision",
+        "private_local"
+      ]
+    },
+    "adapter_candidates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "binding_contract": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "model_tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "use": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "not_for": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "use",
+          "not_for"
+        ]
+      }
+    },
+    "routing_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_input_soft_limit_tokens": {
+          "type": "integer"
+        },
+        "default_output_soft_limit_tokens": {
+          "type": "integer"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summary_format": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "default_input_soft_limit_tokens",
+        "default_output_soft_limit_tokens",
+        "include",
+        "exclude",
+        "summary_format"
+      ]
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pilot_tasks": {
+          "type": "integer"
+        },
+        "design": {
+          "type": "string"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "selection": {
+          "type": "string"
+        },
+        "recheck_triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cost_formula": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pilot_tasks",
+        "design",
+        "metrics",
+        "selection",
+        "recheck_triggers",
+        "cost_formula"
+      ]
+    },
+    "budget_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "warning_fraction": {
+          "type": "number"
+        },
+        "stop_fraction": {
+          "type": "number"
+        },
+        "implementation_note": {
+          "type": "string"
+        },
+        "per_task_cap": {
+          "type": "string"
+        },
+        "report": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "allocation",
+        "warning_fraction",
+        "stop_fraction",
+        "implementation_note",
+        "per_task_cap",
+        "report"
+      ]
+    },
+    "product_runtime_policy_path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "binding_state",
+    "total_monthly_budget",
+    "currency",
+    "default_max_parallel_coding_runs",
+    "independent_review_slots",
+    "no_budget_behavior",
+    "bindings",
+    "adapter_candidates",
+    "binding_contract",
+    "model_tiers",
+    "routing_rules",
+    "context_policy",
+    "evaluation",
+    "budget_policy",
+    "product_runtime_policy_path"
+  ]
+}

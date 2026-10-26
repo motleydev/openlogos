@@ -1,0 +1,1088 @@
+{
+  "schema_version": "1.0",
+  "kind": "proposed_issues_not_executable_jobs",
+  "tasks": [
+    {
+      "id": "B001",
+      "phase": "P0",
+      "owner_role": "infrastructure",
+      "title": "Validate blueprint and map installed Paperclip",
+      "depends_on": [],
+      "acceptance": [
+        "Unknown fields and broken references rejected",
+        "Installed versions and adapter/model capabilities recorded",
+        "Idempotent dry-run produces no duplicate agents"
+      ],
+      "spec_paths": [
+        "specs/00-import-contract.md"
+      ],
+      "initial_status": "ready_for_scaffold",
+      "human_gate": false
+    },
+    {
+      "id": "B002",
+      "phase": "P0",
+      "owner_role": "infrastructure",
+      "title": "Create actual Nix skeleton and isolated worktrees",
+      "depends_on": [
+        "B001"
+      ],
+      "acceptance": [
+        "Real flake.lock and language lockfiles committed",
+        "Fresh Linux development shell passes minimal checks",
+        "Mac/Xcode exception and signing prerequisites documented"
+      ],
+      "spec_paths": [
+        "specs/06-nix-operations.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B003",
+      "phase": "P0",
+      "owner_role": "source-steward",
+      "title": "Select and clear a tiny initial corpus",
+      "depends_on": [
+        "B001"
+      ],
+      "acceptance": [
+        "Three Bible/source-language editions with explicit coverage and one ancient edition have exact artifact/rights records",
+        "No ESV or unknown-rights bytes in fixture imports",
+        "Human source steward signs acquisition decisions or substitutes source"
+      ],
+      "spec_paths": [
+        "specs/10-sources.md",
+        "specs/08-quality-governance.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B004",
+      "phase": "P0",
+      "owner_role": "reader-design",
+      "title": "Specify and prototype reading interactions",
+      "depends_on": [
+        "B001"
+      ],
+      "acceptance": [
+        "Three-pane, first-class notes and responsive workspace designs include independent pin/link groups",
+        "RTL/large type/screen reader behavior specified",
+        "No account/store/AI prerequisite in flows"
+      ],
+      "spec_paths": [
+        "specs/01-product.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B005",
+      "phase": "P0",
+      "owner_role": "client-engineer",
+      "title": "Spike native selection and browser persistence",
+      "depends_on": [
+        "B002",
+        "B004"
+      ],
+      "acceptance": [
+        "Selection across verse boundaries and Hebrew combining marks tested on iOS and Android",
+        "Web OPFS/IndexedDB and Safari fallback documented",
+        "Renderer/stack decision includes measured evidence",
+        "Three-pane plus notes-dock selection/focus/performance tested at suitable widths"
+      ],
+      "spec_paths": [
+        "specs/01-product.md",
+        "specs/02-architecture.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B006",
+      "phase": "P0",
+      "owner_role": "data-engineer",
+      "title": "Freeze v1 identity, anchors and package interfaces",
+      "depends_on": [
+        "B002"
+      ],
+      "acceptance": [
+        "Many-to-many/unknown verse mappings represented",
+        "Unicode offset and edition revision fixtures pass",
+        "JSON Schema and migration version policy established"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B007",
+      "phase": "P0",
+      "owner_role": "qa-release",
+      "title": "Benchmark model bindings and initial quality fixtures",
+      "depends_on": [
+        "B001",
+        "B002"
+      ],
+      "acceptance": [
+        "24-task pilot and per-category pass/cost report produced",
+        "Human scholarly-label requirements visible",
+        "Provider binding registry contains exact tested IDs; budget gates configured"
+      ],
+      "spec_paths": [
+        "specs/model-policy.json"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B008",
+      "phase": "P0",
+      "owner_role": "product-architect",
+      "title": "Close feasibility gate and authorize reader scope",
+      "depends_on": [
+        "B003",
+        "B005",
+        "B006",
+        "B007"
+      ],
+      "acceptance": [
+        "Chosen stack and deferred features recorded",
+        "Unresolved source/renderer issues have replacements or explicit blockers",
+        "Reader backlog limited to validated contracts"
+      ],
+      "spec_paths": [
+        "specs/09-roadmap.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B009",
+      "phase": "P1",
+      "owner_role": "data-engineer",
+      "title": "Import three approved text editions with declared coverage",
+      "depends_on": [
+        "B008"
+      ],
+      "acceptance": [
+        "Pinned text fidelity and verse/paragraph/poetry metadata checked",
+        "License/attribution bundled per layer",
+        "Malformed or mismatched reference fixture rejected"
+      ],
+      "spec_paths": [
+        "specs/04-ingestion.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B010",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Build offline reading and navigation",
+      "depends_on": [
+        "B009"
+      ],
+      "acceptance": [
+        "Cold start and chapter jump measured",
+        "Airplane-mode reading and restart work without identity",
+        "Hebrew/Greek, footnotes and poetry retain exact text"
+      ],
+      "spec_paths": [
+        "specs/01-product.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B011",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Implement parallel passage navigation",
+      "depends_on": [
+        "B010"
+      ],
+      "acceptance": [
+        "Three reading panes independently pin/link by reference mapping without scroll feedback loops",
+        "Split/merged/missing verses and Psalm numbering fixtures pass",
+        "Phone stacked/toggle UX preserves location"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B012",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Implement private highlights and notes",
+      "depends_on": [
+        "B010",
+        "B006"
+      ],
+      "acceptance": [
+        "Arbitrary ranges and cross-verse selection survive restart",
+        "Revision changes preserve original anchors and flag ambiguity",
+        "Undo and accessible non-color labels work"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B013",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Implement export, backup and reimport",
+      "depends_on": [
+        "B012"
+      ],
+      "acceptance": [
+        "Markdown and versioned JSON exports work fully offline",
+        "All anchors/tags/revisions survive round-trip",
+        "Import preview handles duplicates and never silently overwrites notes"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B014",
+      "phase": "P1",
+      "owner_role": "qa-release",
+      "title": "Reader acceptance and accessibility gate",
+      "depends_on": [
+        "B011",
+        "B013",
+        "B037",
+        "B041"
+      ],
+      "acceptance": [
+        "Named-device release-build performance report completed",
+        "VoiceOver/TalkBack/keyboard tests recorded",
+        "Human user study completes critical flows without lost data"
+      ],
+      "spec_paths": [
+        "specs/01-product.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B015",
+      "phase": "P1",
+      "owner_role": "docs-community",
+      "title": "Document local ownership and recovery",
+      "depends_on": [
+        "B013"
+      ],
+      "acceptance": [
+        "Guides tested against real app behavior",
+        "Browser eviction/origin limitations explained",
+        "Recovery and no-account flows documented"
+      ],
+      "spec_paths": [
+        "specs/02-architecture.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B016",
+      "phase": "P2",
+      "owner_role": "ingestion-engineer",
+      "title": "Add ancient-work import and local discovery catalog",
+      "depends_on": [
+        "B009",
+        "B003"
+      ],
+      "acceptance": [
+        "One approved ancient edition readable with bibliographic evidence",
+        "Catalog search/filter and offline snapshot work",
+        "Explicit citation links retain unresolved cases"
+      ],
+      "spec_paths": [
+        "specs/04-ingestion.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B017",
+      "phase": "P2",
+      "owner_role": "data-engineer",
+      "title": "Build signed package format and safe install",
+      "depends_on": [
+        "B006",
+        "B009"
+      ],
+      "acceptance": [
+        "Hashes/signatures and trust-root policy enforced",
+        "Archive traversal/bomb/duplicate entry tests pass",
+        "Atomic install and unsupported-version rejection preserve old library"
+      ],
+      "spec_paths": [
+        "specs/05-sharing-security.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B018",
+      "phase": "P2",
+      "owner_role": "client-engineer",
+      "title": "Add package file exchange",
+      "depends_on": [
+        "B017",
+        "B014"
+      ],
+      "acceptance": [
+        "Import/export through OS file UI works offline",
+        "Rights preview excludes private annotations",
+        "Unsigned/untrusted inputs have explicit handling"
+      ],
+      "spec_paths": [
+        "specs/05-sharing-security.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B019",
+      "phase": "P2",
+      "owner_role": "sync-security",
+      "title": "Prototype authenticated foreground LAN exchange",
+      "depends_on": [
+        "B017"
+      ],
+      "acceptance": [
+        "Pairing channel reviewed and tested on native platforms",
+        "Disconnect/resume verifies missing chunks only",
+        "No unsolicited discovery or note disclosure"
+      ],
+      "spec_paths": [
+        "specs/05-sharing-security.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B020",
+      "phase": "P2",
+      "owner_role": "qa-release",
+      "title": "Portable library release gate",
+      "depends_on": [
+        "B016",
+        "B018",
+        "B019"
+      ],
+      "acceptance": [
+        "Native/platform capability matrix records actual limits",
+        "Malformed/unauthorized/replayed transfer tests pass",
+        "Human reviewer approves protocol before release"
+      ],
+      "spec_paths": [
+        "specs/05-sharing-security.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B021",
+      "phase": "P3",
+      "owner_role": "sync-security",
+      "title": "Define vault identity and encrypted sync protocol",
+      "depends_on": [
+        "B006"
+      ],
+      "acceptance": [
+        "Maintained crypto library selected with compatibility/security review",
+        "Enrollment/revocation/recovery and causal conflict contract specified",
+        "No model-designed cryptographic primitives"
+      ],
+      "spec_paths": [
+        "specs/05-sharing-security.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B022",
+      "phase": "P3",
+      "owner_role": "infrastructure",
+      "title": "Build personal hub and OIDC NixOS profile",
+      "depends_on": [
+        "B002",
+        "B021"
+      ],
+      "acceptance": [
+        "Fresh VM deploy uses operator-hosted identity and static web",
+        "Strict issuer/audience/PKCE/redirect tests pass",
+        "Bootstrap avoids circular VPN enrollment dependency"
+      ],
+      "spec_paths": [
+        "specs/06-nix-operations.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B023",
+      "phase": "P3",
+      "owner_role": "sync-security",
+      "title": "Implement encrypted multi-device note sync",
+      "depends_on": [
+        "B012",
+        "B013",
+        "B021",
+        "B022"
+      ],
+      "acceptance": [
+        "Concurrent edits preserved and duplicate/out-of-order operations converge",
+        "Server cannot read note bodies; auth isolation tests pass",
+        "Lost device and recovery-export cases pass"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md",
+        "specs/05-sharing-security.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B024",
+      "phase": "P3",
+      "owner_role": "infrastructure",
+      "title": "Verify mesh and WireGuard host profiles",
+      "depends_on": [
+        "B022"
+      ],
+      "acceptance": [
+        "Tailscale, Headscale/private DERP and direct WireGuard tested separately",
+        "No-public-relay mode verified without claiming offline remote discovery",
+        "TLS/DNS/recovery runbooks tested"
+      ],
+      "spec_paths": [
+        "specs/05-sharing-security.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B025",
+      "phase": "P3",
+      "owner_role": "qa-release",
+      "title": "Self-host and security release gate",
+      "depends_on": [
+        "B023",
+        "B024",
+        "B020"
+      ],
+      "acceptance": [
+        "Fresh-host restore reproduces expected hashes/counts",
+        "Independent human security review findings addressed",
+        "Offline reading/export remain available during hub outage"
+      ],
+      "spec_paths": [
+        "specs/08-quality-governance.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B026",
+      "phase": "P4",
+      "owner_role": "data-engineer",
+      "title": "Import source-language morphology and lexical layers",
+      "depends_on": [
+        "B003",
+        "B006"
+      ],
+      "acceptance": [
+        "Selected OSHB/SBL/STEP versions and layered rights pinned",
+        "Greek/Hebrew/Aramaic and conflicting analyses represented",
+        "No Strong-only inferred English alignment"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md",
+        "specs/10-sources.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B027",
+      "phase": "P4",
+      "owner_role": "language-scholar",
+      "title": "Establish human-adjudicated scholarly evaluation sets",
+      "depends_on": [
+        "B026"
+      ],
+      "acceptance": [
+        "Diverse positive/negative/unknown gold examples reviewed by qualified humans",
+        "Agreement and unresolved cases recorded",
+        "Development and held-out sets separated by source"
+      ],
+      "spec_paths": [
+        "specs/04-ingestion.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B028",
+      "phase": "P4",
+      "owner_role": "ingestion-engineer",
+      "title": "Implement durable ingestion and incremental backfill",
+      "depends_on": [
+        "B016",
+        "B006"
+      ],
+      "acceptance": [
+        "Idempotency/lease/retry/dead-letter behavior tested",
+        "Source/version changes invalidate only dependent outputs",
+        "Worker lacks publishing credentials and network by default"
+      ],
+      "spec_paths": [
+        "specs/04-ingestion.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B029",
+      "phase": "P4",
+      "owner_role": "ingestion-engineer",
+      "title": "Add sandboxed PDF/OCR and evidence review",
+      "depends_on": [
+        "B028",
+        "B027"
+      ],
+      "acceptance": [
+        "Page boxes/text/source hashes preserved",
+        "Language/layout OCR pilot reports errors and review workload",
+        "Embedded instructions/XXE/archive bombs cannot execute"
+      ],
+      "spec_paths": [
+        "specs/04-ingestion.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B030",
+      "phase": "P4",
+      "owner_role": "language-scholar",
+      "title": "Propose citations, alignments and heritage claims",
+      "depends_on": [
+        "B026",
+        "B027",
+        "B028"
+      ],
+      "acceptance": [
+        "Claim types and evidence distinguish ancestry/alignment/theme",
+        "Uncertainty and disputed readings survive publication pipeline",
+        "Explicit-reference precision/recall measured on held-out corpus"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B031",
+      "phase": "P4",
+      "owner_role": "client-engineer",
+      "title": "Build word-study and heritage evidence views",
+      "depends_on": [
+        "B030",
+        "B011"
+      ],
+      "acceptance": [
+        "Occurrence → analyses → contextual senses navigation works",
+        "Edition history separate from inferred word correspondences",
+        "Missing knowledge has explicit unknown state"
+      ],
+      "spec_paths": [
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B032",
+      "phase": "P4",
+      "owner_role": "qa-release",
+      "title": "Scholarly overlay publication gate",
+      "depends_on": [
+        "B029",
+        "B030",
+        "B031"
+      ],
+      "acceptance": [
+        "Human reviewer approves published scope with quality report",
+        "Review events and source licenses bundled",
+        "Retraction and rollback preserve user annotations"
+      ],
+      "spec_paths": [
+        "specs/08-quality-governance.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B033",
+      "phase": "P5",
+      "owner_role": "source-steward",
+      "title": "Clear translation inputs and early-witness editions",
+      "depends_on": [
+        "B026"
+      ],
+      "acceptance": [
+        "Book-specific base-text policy and exact early-version candidates reviewed",
+        "ESV excluded unless applicable written permission recorded",
+        "Share-alike and derivative output policy reviewed"
+      ],
+      "spec_paths": [
+        "specs/07-translation-lab.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B034",
+      "phase": "P5",
+      "owner_role": "translation-research",
+      "title": "Run 20-passage technical translation spike",
+      "depends_on": [
+        "B027",
+        "B033",
+        "B007"
+      ],
+      "acceptance": [
+        "Structured drafts link source tokens and witnesses",
+        "Machine critique remains separate from human decisions",
+        "Cost and severe-error report completed"
+      ],
+      "spec_paths": [
+        "specs/07-translation-lab.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B035",
+      "phase": "P5",
+      "owner_role": "translation-research",
+      "title": "Run blind human-reviewed translation pilot",
+      "depends_on": [
+        "B034"
+      ],
+      "acceptance": [
+        "100–150-verse diverse pilot and held-out evaluation completed",
+        "Source-language and English reviews recorded",
+        "Critical errors block reviewed status per passage"
+      ],
+      "spec_paths": [
+        "specs/07-translation-lab.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B036",
+      "phase": "P5",
+      "owner_role": "qa-release",
+      "title": "Review research publication decision",
+      "depends_on": [
+        "B035"
+      ],
+      "acceptance": [
+        "Human panel approves exact release scope/license/status",
+        "Limitations, provider reproducibility and contamination caveats disclosed",
+        "Reader never swaps default Bible for a generated draft"
+      ],
+      "spec_paths": [
+        "specs/07-translation-lab.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B037",
+      "phase": "P1",
+      "owner_role": "product-architect",
+      "title": "Ratify code/content governance before public release",
+      "depends_on": [
+        "B008"
+      ],
+      "acceptance": [
+        "Owner chooses explicit first-party licenses and contribution process",
+        "Upstream compatibility and iOS distribution concerns resolved",
+        "No proprietary feature gate or service dependency introduced"
+      ],
+      "spec_paths": [
+        "specs/08-quality-governance.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B038",
+      "phase": "P0",
+      "owner_role": "research-engineer",
+      "title": "Probe supported subscription and BYOK routes",
+      "depends_on": [
+        "B001",
+        "B002"
+      ],
+      "acceptance": [
+        "Official OpenAI OSS plan-usage route tested when available and eligibility recorded",
+        "Claude documentation discrepancy and runtime mode resolved or adapter remains disabled",
+        "No token extraction, silent paid fallback or blanket model-list entitlement claim"
+      ],
+      "spec_paths": [
+        "specs/14-research-assistant.md",
+        "specs/research-provider-policy.json"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B039",
+      "phase": "P0",
+      "owner_role": "client-engineer",
+      "title": "Compare open ink engines and stylus input",
+      "depends_on": [
+        "B005"
+      ],
+      "acceptance": [
+        "perfect-freehand and Excalidraw evaluated against portable data and licensing needs",
+        "Real stylus latency/palm behavior measured on target platforms",
+        "Native adapter export limitations documented"
+      ],
+      "spec_paths": [
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B040",
+      "phase": "P1",
+      "owner_role": "data-engineer",
+      "title": "Implement workspace and note-authority contracts",
+      "depends_on": [
+        "B006"
+      ],
+      "acceptance": [
+        "Pane IDs/link groups/layout migrations defined",
+        "App versus vault body authority and conflict state explicit",
+        "No credential fields in portable state"
+      ],
+      "spec_paths": [
+        "specs/12-workspace-ux.md",
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B041",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Deliver saved three-pane workspaces and notes view",
+      "depends_on": [
+        "B011",
+        "B012",
+        "B040"
+      ],
+      "acceptance": [
+        "Three parallel texts and Bible/Bible/notes preset persist across restart",
+        "Pane linking/pinning, keyboard focus and narrow-screen tabs preserve state",
+        "Notes autosave/history and multiple passage anchors work"
+      ],
+      "spec_paths": [
+        "specs/12-workspace-ux.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B042",
+      "phase": "P2",
+      "owner_role": "obsidian-integration",
+      "title": "Define and implement scoped vault access",
+      "depends_on": [
+        "B013",
+        "B040"
+      ],
+      "acceptance": [
+        "Vault API and companion/platform adapters have explicit capabilities",
+        "Stable IDs survive rename and change detection",
+        "Unmanaged files/settings untouched"
+      ],
+      "spec_paths": [
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B043",
+      "phase": "P2",
+      "owner_role": "obsidian-integration",
+      "title": "Build scripture block plugin",
+      "depends_on": [
+        "B042",
+        "B017"
+      ],
+      "acceptance": [
+        "Native #^ block links and ! embeds work offline without plugin after materialization",
+        "Dynamic fence Reading view and Live Preview support tested separately",
+        "Edition pins, multi-verse blocks and license attribution preserved"
+      ],
+      "spec_paths": [
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B044",
+      "phase": "P2",
+      "owner_role": "obsidian-integration",
+      "title": "Add conflict-safe vault-backed note editing",
+      "depends_on": [
+        "B042",
+        "B012"
+      ],
+      "acceptance": [
+        "Concurrent external edits retain both bodies",
+        "Managed-region writes preserve user formatting/frontmatter",
+        "No watcher loops or competing vault sync engine"
+      ],
+      "spec_paths": [
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B045",
+      "phase": "P2",
+      "owner_role": "qa-release",
+      "title": "Validate Obsidian integration release",
+      "depends_on": [
+        "B043",
+        "B044"
+      ],
+      "acceptance": [
+        "Desktop/mobile matrix and actual-vault conflict/rename tests pass",
+        "Exports remain readable without Obsidian/plugin",
+        "Human release review confirms scope and source-rights behavior"
+      ],
+      "spec_paths": [
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B046",
+      "phase": "P2",
+      "owner_role": "client-engineer",
+      "title": "Implement portable handwriting notes",
+      "depends_on": [
+        "B039",
+        "B012",
+        "B040"
+      ],
+      "acceptance": [
+        "Pen/highlighter/stroke eraser/lasso/undo and pan/zoom work",
+        "Neutral strokes and brush versions persist with previews",
+        "Interruption recovers acknowledged strokes"
+      ],
+      "spec_paths": [
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B047",
+      "phase": "P2",
+      "owner_role": "client-engineer",
+      "title": "Implement immutable margin snapshots",
+      "depends_on": [
+        "B041",
+        "B046"
+      ],
+      "acceptance": [
+        "Capture preview selects panes/scope/private-content inclusion",
+        "Orientation/font changes do not relocate ink",
+        "Editable bundle and PDF/PNG exports preserve source provenance"
+      ],
+      "spec_paths": [
+        "specs/12-workspace-ux.md",
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B048",
+      "phase": "P2",
+      "owner_role": "qa-release",
+      "title": "Validate handwriting and margin-mode release",
+      "depends_on": [
+        "B047"
+      ],
+      "acceptance": [
+        "Cross-platform zoom/coordinate and export/reimport tests pass",
+        "Real-device stylus and acknowledgement-recovery metrics reported",
+        "No private-note capture or cloud OCR without explicit selection"
+      ],
+      "spec_paths": [
+        "specs/13-obsidian-and-ink.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B049",
+      "phase": "P2",
+      "owner_role": "research-engineer",
+      "title": "Implement provider adapters and scoped retrieval tools",
+      "depends_on": [
+        "B038",
+        "B009",
+        "B006"
+      ],
+      "acceptance": [
+        "Supported subscription path capability tested or clearly unavailable",
+        "BYOK/local adapters isolate credentials and enforce context scope",
+        "Read-only MCP/retrieval tools reject scope widening"
+      ],
+      "spec_paths": [
+        "specs/14-research-assistant.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B050",
+      "phase": "P2",
+      "owner_role": "research-engineer",
+      "title": "Implement multiple research chats and grounded answers",
+      "depends_on": [
+        "B049",
+        "B041"
+      ],
+      "acceptance": [
+        "App-owned threads branch/archive/export/resume without provider storage dependency",
+        "Answers use resolvable evidence and verified quotation spans",
+        "Provider switch previews history transfer and cancellation preserves partial state"
+      ],
+      "spec_paths": [
+        "specs/14-research-assistant.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B051",
+      "phase": "P2",
+      "owner_role": "research-engineer",
+      "title": "Evaluate search/research grounding and privacy",
+      "depends_on": [
+        "B050"
+      ],
+      "acceptance": [
+        "At least 60 human-adjudicated cases include conflicts/unknowns/injection",
+        "Citation resolution distinguished from claim support",
+        "Cross-chat leakage, unauthorized uploads and paid fallbacks tested"
+      ],
+      "spec_paths": [
+        "specs/14-research-assistant.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B052",
+      "phase": "P2",
+      "owner_role": "qa-release",
+      "title": "Validate research workspace release",
+      "depends_on": [
+        "B051"
+      ],
+      "acceptance": [
+        "Blocking citation/quotation/privacy failures resolved",
+        "Source rights and provider deployment conditions reviewed",
+        "Human security review covers tools and credential access"
+      ],
+      "spec_paths": [
+        "specs/14-research-assistant.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B053",
+      "phase": "P3",
+      "owner_role": "infrastructure",
+      "title": "Package private research/vault companion with Nix",
+      "depends_on": [
+        "B049",
+        "B024",
+        "B042"
+      ],
+      "acceptance": [
+        "Per-user state and credentials isolated",
+        "Private mesh HTTPS and local/remote host auth flows tested",
+        "Optional proprietary runtimes excluded from core build and unmodified"
+      ],
+      "spec_paths": [
+        "specs/06-nix-operations.md",
+        "specs/14-research-assistant.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B054",
+      "phase": "P3",
+      "owner_role": "qa-release",
+      "title": "Validate companion trust and encrypted rich-note sync",
+      "depends_on": [
+        "B053",
+        "B023",
+        "B048",
+        "B052"
+      ],
+      "acceptance": [
+        "Chat/ink attachment encryption and resumable sync tested",
+        "Companion plaintext inference boundary explained and enforced",
+        "Revocation, account change, offline recovery and per-user isolation pass"
+      ],
+      "spec_paths": [
+        "specs/05-sharing-security.md",
+        "specs/14-research-assistant.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    }
+  ]
+}

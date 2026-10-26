@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:ink-document",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "fixture_only": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "coordinate_space_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "strokes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tool": {
+            "type": "string",
+            "enum": [
+              "pen",
+              "highlighter"
+            ]
+          },
+          "brush_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "pressure": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "elapsed_ms": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "x",
+                "y",
+                "pressure",
+                "elapsed_ms"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "tool",
+          "brush_version",
+          "width",
+          "color",
+          "opacity",
+          "points"
+        ]
+      }
+    },
+    "deleted_stroke_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "viewport_transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "translate_x": {
+          "type": "number"
+        },
+        "translate_y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "scale",
+        "translate_x",
+        "translate_y"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "fixture_only",
+    "id",
+    "snapshot_id",
+    "coordinate_space_id",
+    "strokes",
+    "deleted_stroke_ids",
+    "viewport_transform"
+  ]
+}

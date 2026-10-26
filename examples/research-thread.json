@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "fixture_only": true,
+  "id": "fixture:thread:1",
+  "title": "Synthetic retrieval example",
+  "provider_account_ref": null,
+  "model_ref": null,
+  "selected_source_ids": [
+    "fixture:source:1"
+  ],
+  "includes_private_notes": false,
+  "messages": [
+    {
+      "id": "m1",
+      "parent_id": null,
+      "role": "user",
+      "text": "Show the synthetic sample.",
+      "status": "complete",
+      "evidence_ids": []
+    },
+    {
+      "id": "m2",
+      "parent_id": "m1",
+      "role": "assistant",
+      "text": "This is an invented sample sentence, not a biblical quotation.",
+      "status": "complete",
+      "evidence_ids": [
+        "e1"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "source_id": "fixture:source:1",
+      "artifact_sha256": "b53b8c28198ee34906b9babffe8028938772e9bf6d8811ff47bb61509da6e3f0",
+      "locator": "sample-content.txt, line 1",
+      "retrieved_text": "This is an invented sample sentence, not a biblical quotation."
+    }
+  ]
+}

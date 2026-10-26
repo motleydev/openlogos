@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:reading-snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "fixture_only": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "coordinate_space_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "width": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "height": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "background": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "media_type"
+      ]
+    },
+    "capture_scope": {
+      "type": "string",
+      "enum": [
+        "single_pane",
+        "visible_composite",
+        "bounded_passage"
+      ]
+    },
+    "includes_private_notes": {
+      "type": "boolean"
+    },
+    "includes_chats": {
+      "type": "boolean"
+    },
+    "source_spans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "edition_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "edition_id",
+          "revision",
+          "reference"
+        ]
+      }
+    },
+    "immutable": {
+      "const": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "fixture_only",
+    "id",
+    "workspace_id",
+    "coordinate_space_id",
+    "width",
+    "height",
+    "background",
+    "capture_scope",
+    "includes_private_notes",
+    "includes_chats",
+    "source_spans",
+    "immutable"
+  ]
+}
