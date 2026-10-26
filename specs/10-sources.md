@@ -312,3 +312,21 @@ Status: `implementation_reference`.
 Official low-latency ink API candidate for a native adapter; verify exact library version/license and portable data conversion in the spike.
 
 Status: `implementation_reference`.
+
+## Revision 3 editorial and design references
+
+**S37 — Westminster Confession, OPC edition.** Primary confessional reference; chapter 1 supports distinguishing Scripture and subordinate confession. Exact edition, proof texts and rights still require acquisition review. Source: https://opc.org/wcf.html
+
+**S38 — Three Forms of Unity reference.** Primary church descriptions identify Belgic Confession, Heidelberg Catechism and Canons of Dort. No adoption of those churches’ other policies is implied. Search retrieval succeeded; the direct CRC page returned 403 during this audit. Source: https://www.crcna.org/welcome/beliefs?language=en Additional reference: https://www.frcna.org/our-beliefs
+
+**S39 — 1689 London Baptist Confession, RBNet.** Primary Reformed Baptist confessional reference; offered as a possible identified collection, not silently selected as the project confession. Source: https://reformedbaptistnetwork.com/1689lbcf/
+
+**S40 — WCAG 2.2.** Normative web accessibility requirements; product target sizes and chrome budgets are separate design proposals. Source: https://www.w3.org/TR/WCAG22/
+
+**S41 — Obsidian workspace and ribbon.** Documented collapsible workspace elements and hideable ribbon inform independent compact-workspace prototypes. Source: https://obsidian.md/help/workspace Additional reference: https://obsidian.md/help/User%2Binterface/Ribbon
+
+**S42 — Zed workspace actions.** Documented dock toggles and editor zoom offer relevant focus/restore interaction patterns; no copied implementation. Source: https://zed.dev/docs/all-actions
+
+**S43 — Zotero collections and tags.** Documented nonduplicating collection membership informs source gathering. Zotero integration is not in scope. Source: https://www.zotero.org/support/collections_and_tags
+
+These pages establish reference context, not permission to import their text. Screenshots are private user-provided workflow references and are not committed or used as corpus sources. The product interaction choices in specs/16-design-guide.md are our proposals; no usability or accessibility claim about a competitor is inferred from six screenshots.

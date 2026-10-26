@@ -25,3 +25,12 @@ The project owner chooses product scope and public licenses. A source steward ma
 - Ink: compare perfect-freehand plus a small editor with Excalidraw and optional native adapters; retain neutral editable data.
 - Subscription inference: test the documented OpenAI OSS route first; resolve the Claude CLI/SDK documentation discrepancy for the chosen integration mode. No token extraction or unofficial endpoint adapter.
 - Companion trust: separate ciphertext-only sync from user-approved plaintext inference; verify multi-user credential isolation and host deployment restrictions.
+
+## Revision 3 decisions and remaining blockers
+
+- Product direction is decided: Reformed study and resource collection, drafting elsewhere, Obsidian as the sole first-class writing integration. A particular confession and disputed denominational positions have not been chosen.
+- B055 names the human editorial maintainer and ratifies the detailed charter. Technical scaffolding can use synthetic fixtures before content approval.
+- B004 compares compact UI alternatives, including no permanent rail, shared controls and transient drawers. No final visual identity or measured usability is asserted.
+- B042/B060 establish the actual desktop/mobile Obsidian transport and preservation behavior. File transfer is acceptable when direct access is unavailable; an untested universal vault bridge is not.
+- First-party licensing remains unresolved. This public specification repository does not yet contain an adopted LICENSE. B037 must settle the code/documentation terms before reuse/public code release; public visibility alone is not an open-source license.
+- A reviewed cross-reference artifact, original-language alignment coverage, and confessional edition permissions remain acquisition/review work. No copied screenshot content supplies these datasets.

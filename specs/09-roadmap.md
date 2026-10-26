@@ -11,8 +11,8 @@ Human project owner, source/language reviewers and security reviewer remain expl
 | Phase | Outcome | Exit criteria |
 |---|---|---|
 | P0: feasibility | Nix skeleton, rendering/storage/rights spikes, import mapping | Selection/RTL on real devices, exact-text fixtures, verified source candidates, model benchmark |
-| P1: reader | Offline mobile/web reader and portable annotations | Three reviewed text editions with declared coverage, three-pane layouts, first-class notes, export/import, no login/network dependency |
-| P2: personal study | Portable library plus optional Obsidian, ink/margin mode and multi-chat research tracks | Separate library, vault, ink and research release gates; no private-content leakage |
+| P1: reader | Offline mobile/web reader and portable annotations | Three reviewed text editions, compact three-pane workspaces, study notes/collections, local search/cross references, bounded Obsidian block/handoff path, export/import and no login/network dependency |
+| P2: personal study | Foreground LAN exchange, fuller vault editing, ink/margin mode and multi-chat research tracks | Separate library, vault, ink and research release gates; no private-content leakage |
 | P3: personal hosting | OIDC, optional encrypted sync, mesh and research-companion profiles | Fresh NixOS install, no-public-service mode, restore/recovery and security review |
 | P4: enrichment | Lexical studies, citations, heritage and PDF review/backfill | Evidence-first UI, scoped gold sets, no fabricated genealogy, incremental reruns |
 | P5: translation research | Human-reviewed pilot and transparent evaluation | Approved inputs, blind fidelity review, no unpermissioned modern text pipeline |
@@ -40,8 +40,14 @@ A failure of native text selection reopens the UI stack decision before building
 
 The target repo exists with real lockfiles, minimal licensed fixtures, schema/tests/CI skeleton, isolated agent worktrees, installed-version Paperclip mapping and a dependency-aware initial backlog. P0 tasks are ready, later agents are paused, no unapproved large corpus has been fetched, and a short report names which checks actually ran. Production deployment and content publication have not been implied by successful scaffolding.
 
-## Revision 2 scope and sequencing
+## Capacity for expanded personal study
 
-The earlier effort ranges describe the original base reader/library and do not include the expanded personal-study scope. Re-estimate after P0 provider/ink/vault spikes. Tentatively reserve an additional 6–12 engineering weeks across Obsidian, handwriting/margin mode and research, with substantial uncertainty from cross-platform integration and provider access. This is not a delivery commitment. Each P2 feature has its own gate so a provider limitation does not block ink or vault support.
+The earlier effort ranges describe the original base reader/library and do not estimate the revised release scope. Re-estimate after provider/ink/vault spikes. Obsidian handoff, handwriting/margin mode and research each introduce platform-specific work and need separate estimates. Each later feature has its own gate so a provider limitation does not block ink or vault support.
 
-Three-pane layout contracts and basic notes are P1 requirements. Subscription/provider feasibility and ink engine selection begin in P0. Obsidian/ink/research engineering runs on demand with the existing two-writer concurrency cap; adding role records does not create more simultaneous workers. P3 extends these features with optional private-host operation and encrypted attachment/chat synchronization.
+Three-pane layout contracts, study notes/collections and the bounded Obsidian handoff are P1 requirements. Subscription/provider feasibility and ink engine selection can begin in P0 as non-blocking spikes. Obsidian/ink/research engineering runs on demand with the existing two-writer concurrency cap; adding role records does not create more simultaneous workers. P3 extends these features with optional private-host operation and encrypted attachment/chat synchronization.
+
+## Revision 3 sequencing corrections
+
+P1 includes one ancient work/local catalog (B016), signed package install/file exchange (B017/B018), deterministic search (B056), basic attributed cross references (B057), collections (B058), and a bounded Obsidian path (B042/B043/B060). This resolves the earlier mismatch between the product's first-release promise and its P2 task labels. LAN transfer and advanced enrichment remain later. B043 P1 covers materialized blocks; B044/B045 P2 cover fuller editing and dynamic rendering.
+
+B055 ratifies the Reformed editorial charter in P0; B059 introduces an edition-cleared confessional resource collection in P2. A separate sermon editor/delivery mode is excluded. No additional agent or concurrency slot is added. Earlier calendar estimates are superseded for this revised P1 scope: re-estimate after platform/vault and renderer spikes before making a release-date commitment. Each core track remains independently testable, while the complete P1 product gate requires them all.

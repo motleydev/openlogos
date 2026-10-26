@@ -94,7 +94,8 @@
     "Cache by exact input hash, model/prompt/config and rights policy version; invalidate if any changes. No cross-user private prompt caching.",
     "Use low variance for extraction where supported; do not assume temperature or seed controls exist. Preserve outputs because deterministic reproduction is not guaranteed.",
     "On rate limits or exhausted budget, checkpoint and pause; no silent provider switch or budget increase.",
-    "This file controls development agents only. Reader-user research follows research-provider-policy.json; no reuse of project credentials or agent budget for users."
+    "This file controls development agents only. Reader-user research follows research-provider-policy.json; no reuse of project credentials or agent budget for users.",
+    "Use standard/vision for bounded interaction review and source formatting; frontier may prepare difficult theological/philological proposals. Human Reformed editorial and language review remains required. No model tier may alter source evidence to satisfy doctrinal preference; do not expand active agent count for this workflow."
   ],
   "context_policy": {
     "default_input_soft_limit_tokens": 24000,

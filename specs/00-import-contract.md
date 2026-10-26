@@ -46,6 +46,10 @@ Agents work on one leased issue and one isolated worktree per run. They read the
 
 No agent can independently publish a corpus, designate a translation as reviewed, bypass rights policy, spend beyond its cap, or authorize a security-sensitive release. Ordinary reversible implementation within assigned scope proceeds without repeated permission questions. Human release gates apply only at the stated boundaries.
 
+## Product scope to retain in provisioned task context
+
+The revision 3 requirements are Reformed Bible study, accurate source evidence, compact parallel reading and resource collection for external writing. Obsidian is the sole first-class writing integration. A dedicated sermon editor, delivery mode or general all-faiths product is not an inferred extension of the task. The authoritative details are specs/15-reformed-study-and-collections.md, specs/16-design-guide.md and specs/17-search-and-cross-references.md. The audit records rationale and unresolved implementation evidence; it is not a second set of autonomous agent instructions.
+
 ## Lease/run recovery
 
 Paperclip's database and supported APIs remain authoritative for its own run state. Use one concurrent run per agent and one writer per issue/worktree. Persist a checkpoint before ending a run. A retry encountering an existing environment lease waits for supported cleanup and reports the owning run; it does not delete lease records or start duplicate writers. Recovery uses installed-version documentation and a bounded operator workflow. This policy is an implementation requirement, not a claim that all lease controls are native Paperclip fields.

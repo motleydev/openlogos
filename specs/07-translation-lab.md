@@ -45,3 +45,7 @@ Each draft records source hashes, model/provider or local weights and license, p
 Determine the release license after reviewing the base-text/annotation dependencies, share-alike obligations and rights in human editing. Do not assert exclusive copyright in unedited AI output or promise global public-domain status. Keep reusable source layers distinct; license reviewed human contributions explicitly and preserve upstream attribution.
 
 The project may ultimately publish a useful draft, a reviewed translation, or only research tooling. None is represented as divinely authoritative, unbiased, or more accurate merely because it was generated from original-language inputs.
+
+## Editorial frame and source fidelity
+
+The product's Reformed editorial identity is explicit, while source-language fidelity remains the translation evaluation criterion. A generated reading cannot earn a higher fidelity score simply because it supports a preferred doctrine. Confessional arguments belong in attributed commentary and review notes; they cannot silently add words, erase ambiguity or override the recorded textual evidence. Include deliberate doctrinal-pressure cases in the blind human review.

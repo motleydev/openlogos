@@ -2,7 +2,7 @@
 
 ## Ownership and scope
 
-The built-in notes feature remains complete without Obsidian. Obsidian is an optional external application; the integration plugin, interchange formats and our adapters are open source. There is no requirement for Obsidian Sync or an Obsidian account. Vault files remain ordinary Markdown and attachments readable by other tools.
+The built-in notes feature remains complete without Obsidian. Obsidian is the sole first-class external writing integration, while remaining optional to install. The maintained plugin, interchange formats and our adapters are open source. P1 includes scripture block references and collection handoff; P2 adds fuller bidirectional vault editing. No other dedicated writing-app adapters are planned. There is no requirement for Obsidian Sync or an Obsidian account. Vault files remain ordinary Markdown and attachments readable by other tools.
 
 Two explicitly selected note modes:
 
@@ -62,3 +62,9 @@ A `ReadingSnapshot` contains immutable rendered page images or a vector/PDF repr
 Share/export previews include the exact frozen content, notes and attribution. Snapshotting copyrighted material does not grant redistribution rights. Offer portable editable bundle plus PDF/PNG export; a flattened export alone is not a backup. On-device capture remains distinct from remote LLM image upload. Deleting a source package does not silently remove private snapshots or their provenance, subject to the user's chosen retention policy.
 
 Concurrent ink edits use append-only stroke operations and tombstones with conflict-safe merge rules. Two users are not promised live collaborative drawing. Local notes sync includes ink/snapshot attachments encrypted, chunked and resumable; size quotas and attachment availability are visible. Obsidian sync/export is outside the app's E2EE boundary and follows the vault's own protection settings.
+
+## Collection handoff and external writing protection
+
+The canonical handoff workflow is defined in specs/15-reformed-study-and-collections.md. Use a selected app-managed resource folder and stable per-item block IDs. The user's manuscript stays a user-managed note that links to or embeds these resources. Never replace it with a generated collection document. Re-export reconciles by item ID and last-export hash, detects edited or deleted blocks and preserves unmanaged content. Repeated handoff is idempotent; a rejected/conflicting update leaves both versions available.
+
+P1 can use plugin-mediated local package/file exchange to avoid pretending every mobile app can access the same vault directory. Materialized native blocks must function in Reading view and Live Preview without the plugin after creation. Dynamic scripture fences and full app-side vault editing are separate P2 capabilities. Record direct and fallback support per platform instead of advertising untested filesystem parity.

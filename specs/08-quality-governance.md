@@ -46,3 +46,9 @@ Tests include negative cases: no alignment, unknown license, unavailable source,
 ## Revision 2 release gates
 
 Three-pane workspace tests are part of the reader gate. Obsidian/vault release requires conflict, rename, offline embed and non-destructive file tests. Ink release requires coordinate stability across devices, acknowledged-stroke recovery and editable export. Research release requires grounded citation tests, context isolation, provider-scope/terms validation and human security review of companion credentials/tool access. Provider account permissions do not authorize corpus use beyond its rights record. Research output can become a personal note after user acceptance, but cannot self-publish into scholarly overlays.
+
+## Revision 3 editorial and handoff gates
+
+The maintained product is Reformed in audience and editorial direction. A named human Reformed editorial maintainer ratifies curated interpretive policy and collections; source/language reviewers separately adjudicate textual and linguistic claims. One person may hold multiple responsibilities with relevant competence, but model output cannot provide human sign-off. Reformed curation never alters exact-search counts or manufactures source evidence.
+
+The reader gate now includes deterministic search, a declared attributable cross-reference layer, source collections and the bounded Obsidian handoff. B060 tests real vault behavior and protection of external writing. Broader bidirectional editing remains separately gated by B045. The audit records design proposals and missing implementations explicitly; no screenshot-based performance, accessibility or scholarly accuracy certification is claimed.

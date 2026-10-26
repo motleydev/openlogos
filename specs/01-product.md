@@ -2,9 +2,11 @@
 
 ## Product promise
 
-Open the book and read. Study tools appear when requested. No store, app subscriptions, promoted books, advertisements, engagement feed, compulsory account, or mandatory AI. Full source, build instructions, data formats and exports remain public. Users can replace hosted services and leave with their notes.
+Study Scripture faithfully, gather sources, and carry the work into Obsidian or a portable export. Open the book and read. Study tools appear when requested. No store, app subscriptions, promoted books, advertisements, engagement feed, compulsory account, or mandatory AI. Full source, build instructions, data formats and exports remain public. Users can replace hosted services and leave with their notes.
 
 The inspiration is Logos's useful workflows, alongside AndBible, Ezra Bible App, STEP and SWORD—not a binary-compatible clone. Evaluate publicly visible behavior and appropriately licensed source. No Logos assets, proprietary library dumps, DRM removal, or copied branding are required.
+
+The primary audience studies and prepares to teach/preach from a Reformed perspective. The default Bible scope is the 66-book Protestant canon. See specs/15-reformed-study-and-collections.md for the editorial charter and the boundary between source evidence and interpretation. Sermon drafting takes place elsewhere; first-party notes support study, not a dedicated sermon editor.
 
 ## First-release workflows
 
@@ -13,7 +15,11 @@ The inspiration is Logos's useful workflows, alongside AndBible, Ezra Bible App,
 | Read | Open at last location offline; book/chapter navigation; paragraph/poetry layout; footnotes on demand |
 | Compare | Three independently linkable/pinnable reading panes on suitable screens; saved layouts; preserved tabs/stacked views on phones |
 | Highlight | Exact arbitrary text ranges including across verses; multiple colors with accessible labels; undo |
-| Note | Full notes view and dockable notes pane; Markdown, tags, multi-passage links, offline search, revisions and optional Obsidian backing |
+| Note | Study notes and optional dock/full view; Markdown, tags, multi-passage links, offline search and revisions; no persistent note editor required while reading |
+| Find | Offline reference/word/phrase/Boolean search with visible edition and range scope |
+| Connect | Attributed cross references with honest coverage and previews that preserve the reading position |
+| Collect | Ordered source items and observations with exact provenance; capture without leaving the passage |
+| Obsidian handoff | P1 tested plugin, genuine scripture blocks and collection transfer; preserve external writing |
 | Leave | Export Markdown plus versioned JSON with anchors, tags, timestamps and revision history; reimport without loss |
 | Discover | Search a bundled/local catalog by author, era, language, genre, tradition and rights; preview metadata before download |
 | Ancient reading | One vetted ancient work with provenance, divisions, translator/edition metadata and linked references |
@@ -42,10 +48,12 @@ User studies: five to eight readers, including at least one screen-reader user a
 
 ## Deliberately deferred
 
-Sermon generation, subscription marketplace, social network, collaboration editing, audio production, automatic reading streaks, complete Logos import parity, universal OCR, unreviewed theology ontology, autonomous whole-Bible translation, and remote always-on mobile seeding are outside the MVP.
+Dedicated sermon editor, delivery/teleprompter mode, slides, sermon generation, subscription marketplace, social network, collaboration editing, audio production, automatic reading streaks, complete Logos import parity, universal OCR, unreviewed theology ontology, autonomous whole-Bible translation, and remote always-on mobile seeding are outside the MVP.
 
-German texts and interface are a high-priority follow-on; rights to modern Luther/Elberfelder revisions must be checked per edition. Schema includes Catholic, Orthodox and other canons from the beginning; launch corpus coverage is declared explicitly.
+German texts and interface are a high-priority follow-on; rights to modern Luther/Elberfelder revisions must be checked per edition. Imported works retain their own canon/versification metadata for accurate scholarship; the default reader/search canon is Protestant and launch coverage is explicit.
 
 ## Added planned feature tracks
 
-Three-pane layouts and first-class notes belong to P1. P2 adds optional Obsidian integration, open handwriting tools, fixed-layout margin snapshots and evidence-linked multi-chat research. Provider access prefers a verified supported subscription path; BYOK and local inference remain alternatives. These features are now in scope, while no AI is required for ordinary reading/search. See specs/12-workspace-ux.md through specs/14-research-assistant.md for the detailed contracts.
+Three-pane layouts, study notes/collections, deterministic search, attributed cross references and a bounded first-class Obsidian handoff belong to P1. Obsidian remains optional to install. P2 adds fuller bidirectional vault editing, open handwriting tools, fixed-layout margin snapshots and evidence-linked multi-chat research. Provider access prefers a verified supported subscription path; BYOK and local inference remain alternatives. These features are now in scope, while no AI is required for ordinary reading/search. See specs/12-workspace-ux.md through specs/14-research-assistant.md for the detailed contracts.
+
+The design guide in specs/16-design-guide.md supersedes any assumption that a permanent rail, note list or repeated pane toolbar is desirable. Prototype compact shared controls and focus mode before freezing navigation. Success is source inspection and a reliable resource handoff, not time spent drafting inside the app.

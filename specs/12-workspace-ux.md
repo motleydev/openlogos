@@ -8,7 +8,7 @@ Revision 2 requirement: three parallel reading panes are a core use case, not a 
 |---|---|---|
 | Parallel reading | Translation A / Translation B / Translation C or Greek/Hebrew edition | Notes |
 | Language study | Translation / Original-language text / Lexicon or commentary | Notes or research |
-| Study and write | Bible / Commentary or ancient work / Notes | Research |
+| Study and collect | Bible / Commentary or ancient work / Original-language text | Collection or short observation |
 | Research | Bible / Source evidence / Selected chat | Notes |
 | Margin mode | Frozen composite of selected panes, with ink canvas | Pens and snapshot metadata |
 
@@ -26,7 +26,7 @@ Start with content-derived minimum widths: approximately 300–340 CSS pixels pe
 
 On narrow widths retain all pane state and switch to tabs or a two-plus-one stacked arrangement. Phone users can cycle the same three sources and retain reference linking; they are not promised three illegibly narrow columns. Opening a notes or chat dock can reduce visible panes while preserving their state. Large-type and keyboard users receive the same commands through menus/shortcuts. Focus order follows visible pane order and separators have accessible resize controls.
 
-## Notes as a first-class destination
+## Study notes and collections as first-class destinations
 
 Provide a notes pane plus a full notes view. Users can create passage, selection, topic and unattached notes; tag, search, link and attach snapshots. A note can target several passages/editions without duplicating its body. The notes pane shows a selected note or a list related to the active passage; auto-follow is explicit. Markdown editing, autosave with visible status, undo, revision/conflict history and recoverable deletion are required.
 
@@ -49,3 +49,11 @@ The frozen sheet offers added left/right/bottom margin space, pen/highlighter/er
 Test three distinct texts simultaneously and a Bible/Bible/notes layout, independently pinned/linkable panes, focus restore, missing-edition restoration, narrow-screen adaptation and large text. Include one long Hebrew/Greek passage and one difficult versification mapping. Performance reporting now includes three active reading panes and an open notes dock; the earlier two-Bible fixture is insufficient for the full workspace acceptance gate.
 
 Usability sessions add: compare three renderings, take a linked note without losing place, embed a verse in Obsidian, capture a margin sheet, find a saved research thread and inspect a citation. Report accidental navigation, obscured active-pane state and misplaced ink as defects. Optional features stay out of the default reading path until the user enables them.
+
+## Revision 3: space and resource handoff
+
+No permanent navigation rail or notes browser is required in the default workspace. A compact shared command/passage bar, single-row pane identities and transient Study/Collection drawers preserve reading space. A visible menu, keyboard command launcher and touch controls expose the same actions; hover and shortcuts are enhancements, not the only route. Focus mode collapses surrounding tools and restores their exact state when exited. It never clears selections or closes other panes.
+
+The current collection has a compact destination/count indicator. Capture a source item without opening an editor or replacing a reading pane. Notes remain available as a full destination or an optional pane, and support personal study annotations. They are not a manuscript/sermon-management workflow. Resource collections hand off to Obsidian; users draft in their own writing environment. See specs/15-reformed-study-and-collections.md and specs/16-design-guide.md.
+
+Usability acceptance adds: gather three cited items and one personal observation while maintaining three reading positions, inspect the collected sources, and transfer them to Obsidian without altering the user's writing note. Count mistaken captures, lost context and citation errors, not words drafted in the app.

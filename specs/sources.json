@@ -326,6 +326,69 @@
       "finding": "Official low-latency ink API candidate for a native adapter; verify exact library version/license and portable data conversion in the spike.",
       "status": "implementation_reference",
       "pinned_artifact": null
+    },
+    {
+      "id": "S37",
+      "title": "Westminster Confession, OPC edition",
+      "url": "https://opc.org/wcf.html",
+      "secondary_url": null,
+      "finding": "Primary confessional reference; chapter 1 supports distinguishing Scripture and subordinate confession. Exact edition, proof texts and rights still require acquisition review.",
+      "status": "editorial_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S38",
+      "title": "Three Forms of Unity reference",
+      "url": "https://www.crcna.org/welcome/beliefs?language=en",
+      "secondary_url": "https://www.frcna.org/our-beliefs",
+      "finding": "Primary church descriptions identify Belgic Confession, Heidelberg Catechism and Canons of Dort. No adoption of those churches’ other policies is implied. Search retrieval succeeded; the direct CRC page returned 403 during this audit.",
+      "status": "editorial_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S39",
+      "title": "1689 London Baptist Confession, RBNet",
+      "url": "https://reformedbaptistnetwork.com/1689lbcf/",
+      "secondary_url": null,
+      "finding": "Primary Reformed Baptist confessional reference; offered as a possible identified collection, not silently selected as the project confession.",
+      "status": "editorial_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S40",
+      "title": "WCAG 2.2",
+      "url": "https://www.w3.org/TR/WCAG22/",
+      "secondary_url": null,
+      "finding": "Normative web accessibility requirements; product target sizes and chrome budgets are separate design proposals.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S41",
+      "title": "Obsidian workspace and ribbon",
+      "url": "https://obsidian.md/help/workspace",
+      "secondary_url": "https://obsidian.md/help/User%2Binterface/Ribbon",
+      "finding": "Documented collapsible workspace elements and hideable ribbon inform independent compact-workspace prototypes.",
+      "status": "design_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S42",
+      "title": "Zed workspace actions",
+      "url": "https://zed.dev/docs/all-actions",
+      "secondary_url": null,
+      "finding": "Documented dock toggles and editor zoom offer relevant focus/restore interaction patterns; no copied implementation.",
+      "status": "design_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S43",
+      "title": "Zotero collections and tags",
+      "url": "https://www.zotero.org/support/collections_and_tags",
+      "secondary_url": null,
+      "finding": "Documented nonduplicating collection membership informs source gathering. Zotero integration is not in scope.",
+      "status": "design_reference",
+      "pinned_artifact": null
     }
   ]
 }

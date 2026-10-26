@@ -1,3 +1,14 @@
+# Blueprint revision 3 — 26 October 2026
+
+- Audits six supplied Logos screenshots as workflow evidence; screenshots and private note contents are not committed.
+- Defines a Reformed study/teaching audience and Protestant default canon while retaining accurate imported-source metadata.
+- Centers resource gathering and first-class Obsidian handoff; excludes dedicated sermon drafting/delivery software.
+- Adds compact UI guidance and external interaction references, deterministic search and attributed cross-reference contracts.
+- Adds source collections, stable export receipts and explicit protection of external writing.
+- Moves a bounded Obsidian path and previously misphased first-release promises into P1; fuller vault editing remains P2.
+- Adds human editorial accountability without another agent: 14 inert roles, 60 dependency-linked tasks and 43 source references.
+- Existing structural validation passes; implementation, real-device usability, corpus rights, license adoption and human review remain outstanding.
+
 # Blueprint revision 2 — 26 October 2026
 
 - Makes three parallel reading panes, independent reference-link groups, saved workspaces and a first-class notes view part of P1.

@@ -64,3 +64,7 @@ Every maintained first-party feature is available in source. Optional external i
 ## Revision 2 components
 
 Add a persistent workspace/pane model, notes repository interface (app-managed or vault-backed), optional Obsidian plugin and personal companion, portable ink/snapshot storage, and a research thread/provider adapter layer. Obsidian and provider bridges are independently installable adapters; the core reader stays usable without them. The personal research companion is distinct from the blind encrypted-sync service because inference can require access to user-approved plaintext. Secrets never travel in ordinary annotation sync or public packages. See specs/12-workspace-ux.md through specs/14-research-assistant.md.
+
+## Revision 3 study boundary
+
+Collection assembly and deterministic search are local domain features. The Obsidian plugin shares reference/package contracts and receives selected resources through a tested local path or explicit file transfer. Only the user-selected resource folder/managed blocks are writable by default. The user's external manuscript is never the application's document store. No server or LLM is required for collection assembly or handoff. Obsidian is the sole first-class writing integration; ordinary exports keep other tools usable without additional adapters.
