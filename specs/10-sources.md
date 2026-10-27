@@ -330,3 +330,65 @@ Status: `implementation_reference`.
 **S43 — Zotero collections and tags.** Documented nonduplicating collection membership informs source gathering. Zotero integration is not in scope. Source: https://www.zotero.org/support/collections_and_tags
 
 These pages establish reference context, not permission to import their text. Screenshots are private user-provided workflow references and are not committed or used as corpus sources. The product interaction choices in specs/16-design-guide.md are our proposals; no usability or accessibility claim about a competitor is inferred from six screenshots.
+
+## Revision 5 stack references
+
+**S44 — UniFFI.** Mozilla's Rust binding generator for Swift, Kotlin and Python; candidate for the core's native bindings, verified in B061. Source: https://mozilla.github.io/uniffi-rs/ Additional reference: https://github.com/mozilla/uniffi-rs
+
+**S45 — Apple TextKit 2.** Text layout system for UIKit/AppKit text views; candidate reading surface measured in B005. Source: https://developer.apple.com/documentation/uikit/textkit
+
+**S46 — Tauri.** Rust desktop shell with a system web view; candidate Windows/Linux host for the web UI. Source: https://tauri.app/ Additional reference: https://github.com/tauri-apps/tauri
+
+## Revision 5 retrieval and pipeline references
+
+Checked 27 October 2026 through the research in reports/Bible corpus search architecture.md. Research findings, not legal clearance.
+
+**S47 — MACULA Greek and Hebrew.** Clear Bible syntax trees, semantic roles, referents, glosses and morphology with token xml:ids. Clear's layers are CC BY 4.0; Louw-Nida domain columns are UBS data used with permission and not openly licensed. Token counts computed: SBLGNT 137,740; Hebrew 475,910 rows. Source: https://github.com/Clear-Bible/macula-greek Additional reference: https://github.com/Clear-Bible/macula-hebrew
+
+**S48 — Text-Fabric data model and search.** Slot/feature/edge corpus model with template search, unit nesting, agreement and quantifiers. Design reference for the linguistic engine and correctness oracle on N1904; no code reuse assumed. Source: https://annotation.github.io/text-fabric/tf/about/datamodel.html Additional reference: https://annotation.github.io/text-fabric/tf/about/searchusage.html
+
+**S49 — sqlite-vec.** SQLite vector extension (Apache-2.0/MIT); stable v0.1.9 after 2026 revival; binary and int8 vectors with brute-force search; ANN indexes only in alpha. iOS/WASM packaging to verify. Source: https://github.com/asg017/sqlite-vec Additional reference: https://github.com/asg017/sqlite-vec/releases
+
+**S50 — roaring-rs.** Pure-Rust compressed bitmaps (Apache-2.0/MIT), compiles to mobile and wasm32; candidate posting-list format for the linguistic engine. Source: https://github.com/RoaringBitmap/roaring-rs Additional reference: https://github.com/RoaringBitmap/CRoaring
+
+**S51 — Versification specification.** Copenhagen Alliance JSON versification mappings and scheme-sniffing rules based on Paratext .vrs files; now maintained at nida-institute/versification. Base scheme is org. Source: https://github.com/Copenhagen-Alliance/versification-specification Additional reference: https://github.com/nida-institute/versification
+
+**S52 — Berean Standard Bible terms.** Public domain since April 2023; altered texts are asked not to use the Berean name. Candidate English base text and translation-research input. Source: https://berean.bible/terms.htm Additional reference: https://berean.bible/
+
+**S53 — usfmtc reference implementation.** USFM Technical Committee reference parser (MIT) for USFM/USX/USJ with versification remapping; CI conformance oracle for the Rust parser. Source: https://pypi.org/project/usfmtc/ Additional reference: https://github.com/usfm-bible/tcdocs
+
+**S54 — Bible Passage Reference Parser.** MIT reference parser with OSIS output and character offsets in many languages; candidate citation extractor for commentaries and prose. Source: https://github.com/openbibleinfo/Bible-Passage-Reference-Parser Additional reference: https://www.openbible.info/labs/reference-parser/
+
+**S55 — Clear Bible alignments.** Token-keyed standoff alignments (data CC BY 4.0, code MIT) as a working Scripture Burrito alignment proposal; schema and translation coverage to verify. Source: https://github.com/Clear-Bible/Alignments Additional reference: https://github.com/Clear-Bible/macula-greek
+
+**S56 — pgvector.** PostgreSQL vector extension (PostgreSQL License) with HNSW/IVFFlat; optional server-tier store for multi-user and large vector sets. Source: https://github.com/pgvector/pgvector Additional reference: https://www.postgresql.org/docs/
+
+**S57 — UBS open access semantic dictionaries.** UBS semantic dictionaries of biblical Greek and Hebrew released openly (reported CC BY-SA 4.0); open substitute for Louw-Nida domain data. Exact repository license to verify. Source: https://translation.bible/open-access-resources/ Additional reference: https://github.com/ubsicap
+
+**S58 — ETCBC BHSA.** Scholarly Hebrew Bible database with versioned releases; CC BY-NC 4.0, so restricted to an optional user-downloaded module. Source: https://github.com/ETCBC/bhsa Additional reference: https://etcbc.github.io/bhsa/
+
+**S59 — SIL Serval.** MIT translation and word-alignment API behind Scripture Forge drafting; drafts land in a separate project and are human-edited and checked before merge. Workflow reference for the translation lab. Source: https://github.com/sillsdev/serval Additional reference: https://scriptureforge.org/
+
+**S60 — Anthropic Citations API.** Returns cited_text with valid pointers into supplied documents; custom-content blocks enable verse-level citation. Not combinable with structured outputs. Source: https://platform.claude.com/docs/en/build-with-claude/citations Additional reference: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+
+**S61 — Patristic biblical-reuse retrieval evaluation.** 2026 gold set of 2,935 expert-verified biblical parallels in patristic Greek/Latin; small adapted encoders outperform generic multilingual models. Krahn et al. document translation bias in distilled Ancient Greek embeddings. Source: https://arxiv.org/abs/2607.24542 Additional reference: https://arxiv.org/abs/2308.13116
+
+**S62 — CTS URN specification.** Canonical Text Services URNs give works hierarchical, edition-independent citation coordinates (work, version, passage); model for non-Bible locator schemes. Source: https://cite-architecture.github.io/ctsurn_spec/
+
+**S63 — FRBR conceptual model.** Work/expression/manifestation separation; links target the work and section, resolving to an installed expression or edition. Source: https://www.loc.gov/cds/downloads/FRBR.PDF
+
+**S64 — SQLite implementation limits.** SQLITE_MAX_ATTACHED defaults to 10 and cannot exceed 125; per-pack files therefore need a merged device-local link index for backlinks. Source: https://www.sqlite.org/limits.html
+
+**S65 — PGlite extensions and storage.** Postgres 18 in WASM (0.5.x, Oct 2026) with Apache AGE and pgvector packages; IndexedDB or OPFS persistence, OPFS unsupported in Safari; single connection. Source: https://pglite.dev/extensions/ Additional reference: https://pglite.dev/docs/filesystems
+
+**S66 — PGlite v0.4 roadmap and native bindings.** Native libpglite for mobile is listed as coming next without a date; the bindings repository is a draft. No shipped iOS/Android runtime. Source: https://electric.ax/blog/2026/03/25/announcing-pglite-v04 Additional reference: https://github.com/electric-sql/pglite-bindings
+
+**S67 — Apache AGE.** openCypher graph extension for PostgreSQL 11-18, Apache-2.0, maintained in 2026; available in PGlite as a 0.0.x package with WASM memory limits. Source: https://github.com/apache/age Additional reference: https://pglite.dev/extensions/age
+
+**S68 — SQL/PGQ reverted from PostgreSQL 19.** SQL/PGQ property-graph queries were committed for PostgreSQL 19 and reverted on 2026-09-07 over design issues; PostgreSQL 20 at the earliest. Source: https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=b1f106c80cbeb18d3a0219994d98a51a6eca8ede Additional reference: https://www.commandprompt.com/blog/two-features-just-left-postgresql-19/
+
+**S69 — LadybugDB.** MIT Kuzu fork, very active (v0.22.0, Oct 2026); Rust crate and official WASM build; Swift binding exists, iOS and Android builds unverified. Source: https://github.com/LadybugDB/ladybug
+
+**S70 — GraphQLite and Grafeo.** GraphQLite adds Cypher and graph algorithms to SQLite files (MIT, C, Rust crate). Grafeo is a young pure-Rust Apache-2.0 multi-language graph engine with a WASM binding. Source: https://github.com/colliery-io/graphqlite Additional reference: https://github.com/GrafeoDB/grafeo
+
+**S71 — Oxigraph.** Rust RDF/SPARQL store, MIT/Apache, active in 2026; suits linked-data export of work locators, not the runtime query path. Source: https://github.com/oxigraph/oxigraph

@@ -49,3 +49,7 @@ The project may ultimately publish a useful draft, a reviewed translation, or on
 ## Source fidelity without audience-based interpretation
 
 The audience's resource preferences are not translation instructions. Translation generation and evaluation use the documented source editions, textual policy, evidence and language criteria, without an implicit Reformed persona or doctrinal target. Confessional arguments may be cited as attributed commentary when relevant; they cannot silently add words, erase ambiguity or override textual evidence. Include pressure to force a preferred doctrine into the blind human evaluation, and reject that distortion regardless of which tradition it would favor.
+
+## Revision 5 pipeline alignment
+
+The proposal lifecycle, deterministic auto-checks, input licensing (public-domain, CC BY and opted-in CC BY-SA only; BSB as working base, renamed when altered) and derived-edition materialization are specified in specs/19-search-and-retrieval.md under "AI layer". AI drafts are a separate layer promoted only by human review, following SIL's production practice [S59]. Drafting uses the same deterministic tools as the reader: lemma search, alignments and a locked key-term glossary.

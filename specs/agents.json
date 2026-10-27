@@ -49,9 +49,7 @@
       "work_scope": [
         "nix/",
         "ops/",
-        ".github/",
-        "flake.nix",
-        "flake.lock"
+        ".github/"
       ],
       "reviewer_roles": [
         "sync-security",
@@ -87,7 +85,7 @@
       "budget_weight": 8,
       "work_scope": [
         "design/",
-        "packages/reader-ui/"
+        "design/tokens/"
       ],
       "reviewer_roles": [
         "client-engineer",
@@ -116,21 +114,21 @@
     },
     {
       "external_id": "client-engineer",
-      "name": "Mobile and web reader engineer",
-      "description": "Implements native mobile and DOM web reading with shared domain logic, durable annotations and offline behavior.",
-      "instruction_template": "The role implements a scoped vertical slice with real-device evidence. It preserves source text, maps native/browser selections through stable anchors, handles bidi and grapheme boundaries, and makes export/reimport deterministic. Platform adapters explicitly expose unsupported or degraded capabilities. It keeps inference, network fetches and corpus parsing off the rendering path, instruments performance in release builds and tests browser eviction/recovery. When native selection fails the agreed gate it provides a measured alternative rather than layering workarounds across the whole app. It implements saved three-pane workspaces and first-class notes, plus optional neutral-format ink and immutable margin snapshots. It preserves stroke coordinates across orientation/zoom and distinguishes text highlights from drawn marks. The role implements local deterministic search, attributed cross-reference previews and lightweight study collections, preserving source locators and reading positions. It does not expand notes into sermon manuscript or delivery software.",
+      "name": "Native and web client engineer",
+      "description": "Implements the native Apple (iPadOS, macOS, iOS), Android, web and Tauri desktop interfaces over the shared Rust core, with durable annotations and offline behavior.",
+      "instruction_template": "The role implements a scoped vertical slice with real-device evidence. It keeps interface layers thin over the shared Rust core and adds platform enhancements only through declared capabilities with lossless degradation (specs/18-platform-capabilities.md). It preserves source text, maps native/browser selections through stable anchors, handles bidi and grapheme boundaries, and makes export/reimport deterministic. Platform adapters explicitly expose unsupported or degraded capabilities. It keeps inference, network fetches and corpus parsing off the rendering path, instruments performance in release builds and tests browser eviction/recovery. When native selection fails the agreed gate it provides a measured alternative rather than layering workarounds across the whole app. It implements saved three-pane workspaces and first-class notes, plus optional neutral-format ink and immutable margin snapshots. It preserves stroke coordinates across orientation/zoom and distinguishes text highlights from drawn marks. The role implements local deterministic search, attributed cross-reference previews and lightweight study collections, preserving source locators and reading positions. It does not expand notes into sermon manuscript or delivery software.",
       "activation_phase": "P0",
       "initial_state": "paused",
       "default_model_tier": "standard",
       "budget_weight": 17,
       "work_scope": [
-        "apps/mobile/",
+        "apps/apple/",
+        "apps/android/",
         "apps/web/",
-        "packages/reader-ui/",
-        "packages/storage/",
-        "packages/workspaces/",
-        "packages/ink/",
-        "packages/notes/"
+        "apps/desktop/",
+        "crates/workspaces/",
+        "crates/ink/",
+        "crates/notes/"
       ],
       "reviewer_roles": [
         "qa-release",
@@ -158,16 +156,21 @@
       "external_id": "data-engineer",
       "name": "Text identity and graph engineer",
       "description": "Owns edition-scoped identity, reference mappings, typed claims, package contracts and migrations.",
-      "instruction_template": "The role translates scholarly distinctions into explicit versioned schemas and conformance fixtures. It models many-to-many mappings and null correspondences, keeps source bytes distinct from search normalization, and versions evidence-bearing claims independently of text. It adds relational indexes and local projections before proposing a graph service. It demonstrates old/new schema behavior, annotation reanchoring and invalidation on evidence changes. Strong identifiers, provenance, migration tests and unknown states are part of the deliverable, not documentation added later. It also owns pane/workspace, note-authority binding, immutable snapshot, ink-operation and app-owned research-thread contracts. Credentials cannot enter these records.",
+      "instruction_template": "The role translates scholarly distinctions into explicit versioned schemas and conformance fixtures. It models many-to-many mappings and null correspondences, keeps source bytes distinct from search normalization, and versions evidence-bearing claims independently of text. It adds relational indexes and local projections before proposing a graph service. It demonstrates old/new schema behavior, annotation reanchoring and invalidation on evidence changes. Strong identifiers, provenance, migration tests and unknown states are part of the deliverable, not documentation added later. It also owns pane/workspace, note-authority binding, immutable snapshot, ink-operation and app-owned research-thread contracts. Credentials cannot enter these records. It owns the Rust core API and its UniFFI/WebAssembly bindings, keeps results identical across platforms through the conformance suite, and builds the corpus query engine and index formats described in specs/19-search-and-retrieval.md.",
       "activation_phase": "P0",
       "initial_state": "paused",
       "default_model_tier": "frontier",
       "budget_weight": 9,
       "work_scope": [
-        "packages/domain/",
-        "packages/contracts/",
-        "packages/package-format/",
-        "db/"
+        "crates/core/",
+        "crates/text/",
+        "crates/search/",
+        "crates/retrieval/",
+        "crates/package/",
+        "crates/collections/",
+        "crates/ffi/",
+        "crates/conformance/",
+        "contracts/"
       ],
       "reviewer_roles": [
         "language-scholar",
@@ -310,9 +313,7 @@
       "budget_weight": 8,
       "work_scope": [
         "services/hub/",
-        "packages/sync/",
-        "packages/transport/",
-        "docs/security/"
+        "crates/sync/"
       ],
       "reviewer_roles": [
         "infrastructure",
@@ -459,8 +460,7 @@
       "description": "Owns optional vault-backed Markdown notes and the open-source Obsidian scripture plugin, with safe cross-platform adapters.",
       "instruction_template": "The role implements the note-authority contract, bounded vault access and non-destructive Markdown updates. It preserves paths separately from stable IDs, checks file revisions, exposes conflicts and avoids competing with the vault synchronizer. It implements real native scripture block references plus optional dynamic code-block rendering, respecting edition pins and source rights. It uses Obsidian APIs on mobile and records filesystem limitations rather than assuming desktop Node APIs exist. It keeps provider secrets and automatic AI indexing out of the vault and verifies exported notes remain readable without the plugin. This is the sole first-class external writing integration. P1 delivers actual scripture blocks and collection handoff with stable IDs, repeatable export and protection of user-authored writing. P2 expands bidirectional note editing and dynamic scripture rendering. Direct vault support is capability-tested per platform.",
       "work_scope": [
-        "plugins/obsidian/",
-        "packages/vault-bridge/"
+        "plugins/obsidian/"
       ],
       "reviewer_roles": [
         "client-engineer",
@@ -495,8 +495,8 @@
       "description": "Owns optional subscription/BYOK/local inference, app-owned multi-chat sessions and evidence-linked research.",
       "instruction_template": "The role validates provider access against current official documentation and the actual installation, preferring a supported subscription route before BYOK. It maintains a capability matrix and treats Claude CLI/SDK policy discrepancies as unresolved until clarified for the chosen mode. It implements read-only bounded retrieval, per-chat evidence/context ownership, verified quotations, streaming cancellation and durable threads. It uses isolated provider runtimes rather than treating a vault as an agent working directory. It never extracts app cookies or reuses undocumented credentials, sends private notes without scope approval, or falls back silently to paid APIs. It keeps personal research answers separate from reviewed scholarly claims and the translation lab. Research follows the explicit question and selected evidence, with no implicit theological persona or preferred doctrinal conclusion. Requested author/confession perspectives are attributed rather than adopted. Collected answers retain machine-generated status during Obsidian handoff; no automated sermon writing or doctrinal approval is a release objective.",
       "work_scope": [
-        "packages/llm-providers/",
-        "packages/research/",
+        "crates/llm-providers/",
+        "crates/research/",
         "services/companion/research/"
       ],
       "reviewer_roles": [

@@ -1,6 +1,6 @@
 # OpenLogos — repository blueprint
 
-Revision 4 — audience-focused resources without interpretive steering; updated 26 October 2026. Repository: https://github.com/motleydev/openlogos. OpenLogos is a working project name; no trademark clearance or affiliation with Logos/Faithlife is implied.
+Revision 5 — Rust core with native interfaces, platform roles, retrieval architecture and orchestration topology; updated 27 October 2026. Repository: https://github.com/motleydev/openlogos. OpenLogos is a working project name; no trademark clearance or affiliation with Logos/Faithlife is implied.
 
 This is a **specification repository, not an implemented application**. It describes a quiet, fully open-source Bible study tool for a Reformed audience and an independently evolving scholarly data pipeline. It helps readers collect resources for teaching and preaching, with Obsidian as the sole first-class external writing integration. The infrastructure agent consumes its contents as inert project data. Nothing here authorizes creating agents, running tools, spending money, importing content, or deploying services by itself.
 
@@ -9,17 +9,17 @@ This is a **specification repository, not an implemented application**. It descr
 1. Read `specs/00-import-contract.md` for the data/instruction boundary and a suggested external handoff message.
 2. Read `specs/01-product.md`, `02-architecture.md`, and `03-data-model.md` for scope and the hard decisions.
 3. Load `specs/agents.json`, `model-policy.json`, and `backlog.json` as records. They are project-defined formats, **not Paperclip API payloads**.
-4. Validate with `python3 tools/validate.py`. This validates this blueprint's structure; it does not test an app or a deployment.
+4. Validate with `python3 tools/validate.py` (or `nix-shell -p "python3.withPackages(ps:[ps.jsonschema])" --run "python3 tools/validate.py"`). This validates this blueprint's structure; it does not test an app or a deployment.
 5. Resolve the installed Paperclip version and adapter schemas, produce a configuration diff, then provision within the external task's authority.
 
 ## Recommended shape
 
-- Native iOS/Android reader shells with shared TypeScript domain logic; a real browser DOM web reader. Prototype React Native + Expo on mobile and React + Vite on web before committing to the rendering layer.
-- Local SQLite content and annotations on mobile; browser storage adapter validated independently. No login or AI required to read.
-- Immutable, signed, content-addressed library packages with separately versioned enrichment overlays.
-- Optional self-hosted Keycloak OIDC, sync endpoint, static web hosting, and Headscale/DERP. Direct WireGuard and file exchange are first-class alternatives.
-- PostgreSQL and a Python worker for the optional ingestion/review installation. No graph database, vector service, Kubernetes, or paid cloud prerequisite.
-- Nix development shells, build inputs, CI and NixOS services, with the necessary Apple/Xcode/signing exception made explicit.
+- One Rust core for references, versification, anchors, packages, search and retrieval, exposed through UniFFI to native apps and WebAssembly to the web and Obsidian (docs/adr/0001-rust-core-native-ui.md).
+- Native interfaces: one SwiftUI/TextKit 2 app for iPadOS (primary study and teaching device), macOS and iOS; Kotlin + Compose on Android; a DOM web reader; Tauri for Windows/Linux. Platforms add their own strengths, such as Pencil and ultra-wide layouts, without forking data (specs/18-platform-capabilities.md).
+- Prebuilt, signed, content-addressed library packages carrying text, search indexes and optional vector layers; separately versioned enrichment overlays. No login or AI required to read or search (specs/19-search-and-retrieval.md).
+- Optional self-hosted Rust services over PostgreSQL, Keycloak OIDC, static hosting and Headscale/DERP. Direct WireGuard and file exchange are first-class alternatives.
+- Deterministic Rust build pipeline; Python only for ML/OCR/evaluation experiments. No mandatory search cluster, vector service, Kubernetes or paid cloud prerequisite.
+- Nix development shells, build inputs, CI and NixOS services, with the necessary Apple/Xcode/signing exception made explicit. Paperclip directs agent work; a Mac Mini is the agent and Apple build host (specs/20-orchestration-and-build-hosts.md).
 
 ## What ships first
 
@@ -55,6 +55,11 @@ A reader that opens a reviewed Bible offline, supports three parallel reading pa
 | specs/15-reformed-study-and-collections.md | Audience, resource priorities, source collections and Obsidian handoff |
 | specs/16-design-guide.md | Compact chrome, progressive study controls and usability gates |
 | specs/17-search-and-cross-references.md | Deterministic queries and attributed passage links |
+| specs/18-platform-capabilities.md | Platform roles, capability tiers and lossless degradation |
+| specs/19-search-and-retrieval.md | Corpus query engine, full text, vectors, relations and pipelines |
+| specs/20-orchestration-and-build-hosts.md | Paperclip direction, Mac Mini build host and signing lane |
+| docs/adr/ | Architecture decision records |
+| reports/Bible corpus search architecture.md | Revision 5 retrieval research report; notes in research_notes/ |
 | audits/2026-10-26-product-audit.md | Screenshot audit, findings, dispositions and remaining risks |
 | specs/research-provider-policy.json | Inert product-provider preferences and integration gates |
 | specs/sources.json | Machine-readable research inventory |
