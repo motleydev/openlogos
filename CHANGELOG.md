@@ -1,3 +1,10 @@
+# Blueprint revision 5.1 — 27 October 2026
+
+- Decides D18-1: a bounded teaching view (large-text preaching mode) is in scope as B069; sermon editor, teleprompter and slides stay excluded (specs/18, 01, 09, 11).
+- Accepts ADR 0002 as the starting point, with storage and relation engines behind core traits so the engine can change later.
+- Defers Paperclip. A Claude Code session on the Mac mini orchestrates with audited subagents, small commits and owner-merged pull requests; records Mac mini status and adopts the sudoku-color sim/ship/shelf pattern (specs/20; B001, B002, B063 adjusted).
+- 69 tasks.
+
 # Blueprint revision 5 — 27 October 2026
 
 - Replaces the TypeScript/React Native baseline with a Rust core and native interfaces: SwiftUI/TextKit 2 for iPadOS, macOS and iOS; Kotlin + Compose; DOM web; Tauri desktop; Obsidian via WebAssembly (docs/adr/0001-rust-core-native-ui.md).

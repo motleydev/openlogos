@@ -1,6 +1,6 @@
 # ADR 0002 — Embedded retrieval stack: SQLite, FTS5, bitmap corpus engine, sqlite-vec, edge tables
 
-Status: proposed for blueprint revision 5 (27 October 2026); owner confirmation and B064/B066 measurements pending. Detailed contract: specs/19-search-and-retrieval.md. Evidence: reports/Bible corpus search architecture.md.
+Status: accepted by the owner on 27 October 2026 as the starting point ("start with SQLite, but don't get stuck"); B064/B066 measurements pending. Detailed contract: specs/19-search-and-retrieval.md. Evidence: reports/Bible corpus search architecture.md.
 
 ## Context
 
@@ -26,3 +26,4 @@ The owner asked for traditional search, advanced linguistic search, vectorized s
 - Model similarity is stored and displayed separately from curated relations; agents receive the same labels.
 - Revisited 27 October 2026 at the owner's request: offline graph engines do exist (PGlite + Apache AGE in browsers, LadybugDB and GraphQLite in-process). None yet has demonstrated iOS, Android and WASM builds from one engine, so SQLite remains the default. The decision is revisited if benchmark R9 fails or if libpglite ships native mobile builds. Traversals are exposed as core functions, so swapping the engine does not change UI or agent callers.
 - Links between works need work-level locators, section maps and a device-local link index, because packs are separate SQLite files and SQLite attaches at most 125 databases (specs/19-search-and-retrieval.md, Cross-resource links).
+- **Don't get stuck.** The core reaches storage and relations only through its own traits (`TextStore`, `TextIndex`, `TokenEngine`, `RelationStore`, `VectorIndex`), with SQLite as the first implementation of each. The conformance suite runs against the traits, pack manifests name the engine and version, and no UI, tool-registry or agent caller sees SQL. A later engine (GraphQLite, LadybugDB, PGlite on the web, or anything R9 justifies) is a second implementation plus a pack migration, not a rewrite.

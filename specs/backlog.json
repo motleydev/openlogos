@@ -6,7 +6,7 @@
       "id": "B001",
       "phase": "P0",
       "owner_role": "infrastructure",
-      "title": "Validate blueprint and map installed Paperclip",
+      "title": "Validate blueprint and record orchestration baseline (Paperclip mapping deferred)",
       "depends_on": [],
       "acceptance": [
         "Unknown fields and broken references rejected",
@@ -24,9 +24,7 @@
       "phase": "P0",
       "owner_role": "infrastructure",
       "title": "Create actual Nix skeleton, Rust workspace and isolated worktrees",
-      "depends_on": [
-        "B001"
-      ],
+      "depends_on": [],
       "acceptance": [
         "Real flake.lock, Cargo.lock and other language lockfiles committed",
         "Fresh Linux .#core/.#web/.#android shells pass minimal checks",
@@ -37,7 +35,7 @@
         "specs/06-nix-operations.md",
         "specs/20-orchestration-and-build-hosts.md"
       ],
-      "initial_status": "blocked",
+      "initial_status": "ready_for_scaffold",
       "human_gate": false
     },
     {
@@ -1206,7 +1204,7 @@
         "Capture passages/excerpts/observations without losing pane positions; retain provenance and rights state",
         "Stable membership IDs, grouping/reorder, duplicate handling, undo and restart recovery tested",
         "Markdown/JSON packet retains source links; unknown/denied quotation rights yield visible metadata-only items",
-        "No sermon manuscript editor, workflow state or delivery mode introduced"
+        "No sermon manuscript editor or workflow state introduced; a collection may carry the teaching role consumed by B069"
       ],
       "spec_paths": [
         "specs/15-reformed-study-and-collections.md"
@@ -1291,7 +1289,7 @@
         "Capability matrix in specs/18-platform-capabilities.md reviewed against real iPad, Mac, iPhone and ultra-wide displays",
         "Workspace layout profiles defined for compact, regular, wide and ultra-wide classes without losing panes",
         "Every platform enhancement has an unsupported-state design and lossless degradation path",
-        "Teaching-view decision D18-1 presented to the owner with options; no delivery mode added without that decision"
+        "Teaching view scope in specs/18 matches decision D18-1 (accepted); no sermon editor, teleprompter or slide feature is introduced"
       ],
       "spec_paths": [
         "specs/18-platform-capabilities.md",
@@ -1307,14 +1305,14 @@
       "owner_role": "infrastructure",
       "title": "Provision Mac Mini agent/build host and signing lane",
       "depends_on": [
-        "B001",
         "B002"
       ],
       "acceptance": [
-        "Paperclip version, adapters and Mac Mini toolchain versions recorded",
-        "Agent run in an isolated worktree builds the Rust core, the Apple app for an iPad simulator and the web reader, and attaches results to its issue",
+        "Mac mini toolchain versions (macOS, Xcode, Rust targets, Android SDK, Nix) recorded in docs/evidence; Paperclip version recorded only if and when it is adopted",
+        "An orchestrated run in an isolated worktree builds the Rust core, the Apple app for an iPad simulator and the web reader, and records test results in the pull request",
         "Agent users cannot read signing material; negative test recorded",
-        "Two concurrent agent runs plus one CI job complete without resource exhaustion"
+        "Two concurrent agent runs plus one CI job complete without resource exhaustion",
+        "scripts/sim.sh and scripts/ship.sh (after the sudoku-color pattern) run an unsigned simulator build and a signed ad hoc build onto the Tailscale shelf from .envrc.local settings"
       ],
       "spec_paths": [
         "specs/20-orchestration-and-build-hosts.md",
@@ -1431,6 +1429,30 @@
       "spec_paths": [
         "specs/19-search-and-retrieval.md",
         "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B069",
+      "phase": "P2",
+      "owner_role": "client-engineer",
+      "title": "Deliver the teaching view (large-text preaching mode)",
+      "depends_on": [
+        "B041",
+        "B058"
+      ],
+      "acceptance": [
+        "A collection with the teaching role opens as an ordered large-type sequence of passages and items on iPad, Mac and iPhone with locked navigation (tap, swipe, keyboard, Pencil, page-turn remote) and a jump list",
+        "Per-device type scale and theme persist; screen stays awake; highlighting and note editing are disabled inside the view",
+        "External display on iPadOS and macOS offers mirror and audience view (current passage and reference only)",
+        "Quick reference lookup returns to the sequence position; a sequence prepared on one device opens unchanged on the others",
+        "No manuscript editor, teleprompter scrolling, slide export or generated content exists; accessibility audit passes at the largest type size"
+      ],
+      "spec_paths": [
+        "specs/18-platform-capabilities.md",
+        "specs/15-reformed-study-and-collections.md",
+        "specs/01-product.md"
       ],
       "initial_status": "blocked",
       "human_gate": false
