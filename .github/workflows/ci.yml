@@ -1,0 +1,38 @@
+# The same checks as `just check` and `just ci`, through the flake, on both platforms the
+# project develops on. Linux-only checks (nix/checks) run on the Ubuntu job and are named
+# and skipped on macOS; Apple and Android builds need SDKs Nix cannot provide and belong to
+# the self-hosted Mac lane in specs/20-orchestration-and-build-hosts.md.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: nix flake check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Dev shell smoke test (toolchain resolves and matches the pin)
+        run: nix develop .#core --command rustc --version
+
+      - name: nix flake check (rustfmt, clippy, tests, wasm, nixfmt, shellcheck, actionlint, justfmt, blueprint)
+        run: nix flake check --print-build-logs
