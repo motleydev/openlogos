@@ -12,6 +12,17 @@ This is a **specification repository, not an implemented application**. It descr
 4. Validate with `python3 tools/validate.py` (or `nix-shell -p "python3.withPackages(ps:[ps.jsonschema])" --run "python3 tools/validate.py"`). This validates this blueprint's structure; it does not test an app or a deployment.
 5. Resolve the installed Paperclip version and adapter schemas, produce a configuration diff, then provision within the external task's authority.
 
+## Getting started
+
+The implementation skeleton (B002) follows the layout in `specs/06-nix-operations.md`: a Rust workspace under `crates/`, platform apps under `apps/`, and Nix shells for every area. One prerequisite replaces a page of setup:
+
+1. Install [Nix](https://nixos.org/download) with flakes enabled, and [direnv](https://direnv.net) (ideally with nix-direnv).
+2. Clone, `cd` in and run `direnv allow`. The default shell is `.#core`; `nix develop .#web`, `.#android`, `.#apple` (macOS only), `.#pipeline` and `.#ops` serve the other areas. The first entry downloads the pinned Rust toolchain.
+3. `just doctor` checks the machine and says how to fix anything missing; `just setup` installs the git hooks.
+4. `just test` runs the workspace tests; `just` lists every workflow; `just ci` is what CI runs in the shell and `just check` (`nix flake check`) runs the same checks hermetically.
+
+`crates/README.md` and `apps/*/README.md` name each area's commands. Xcode and the Android SDK are external prerequisites that the shells verify rather than provide; `apps/apple/README.md` and `apps/android/README.md` say what to install. `docs/evidence/` records the commands that were run on real machines and their results.
+
 ## Recommended shape
 
 - One Rust core for references, versification, anchors, packages, search and retrieval, exposed through UniFFI to native apps and WebAssembly to the web and Obsidian (docs/adr/0001-rust-core-native-ui.md).
