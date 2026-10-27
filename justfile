@@ -4,7 +4,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 # Crates that must build for the browser worker (ADR 0001); B064 adds the ffi crate.
-wasm_crates := "-p openlogos-core -p openlogos-text"
+wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-conformance"
 
 [private]
 default:

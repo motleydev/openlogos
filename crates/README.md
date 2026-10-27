@@ -26,7 +26,7 @@ Inside `nix develop .#core` (or after `direnv allow`):
 ```sh
 just test            # cargo nextest + doc tests, whole workspace
 just lint            # rustfmt, clippy -D warnings, nixfmt, shellcheck, actionlint, blueprint
-just check-wasm      # cargo check --target wasm32-unknown-unknown for core and text
+just check-wasm      # cargo check --target wasm32-unknown-unknown for core, text and conformance
 just ci              # lint + test + check-wasm, as CI runs them in the shell
 just check           # nix flake check: the same checks as hermetic derivations
 cargo test -p openlogos-core          # one crate
