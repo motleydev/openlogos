@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "checked_on": "2026-10-26",
+  "checked_on": "2026-10-27",
   "notice": "Research inventory, not a cleared corpus. All production artifacts require exact version, hash and rights review.",
   "sources": [
     {
@@ -388,6 +388,258 @@
       "secondary_url": null,
       "finding": "Documented nonduplicating collection membership informs source gathering. Zotero integration is not in scope.",
       "status": "design_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S44",
+      "title": "UniFFI",
+      "url": "https://mozilla.github.io/uniffi-rs/",
+      "secondary_url": "https://github.com/mozilla/uniffi-rs",
+      "finding": "Mozilla's Rust binding generator for Swift, Kotlin and Python. Candidate for the core's native bindings; version and async/callback support verified in B061.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S45",
+      "title": "Apple TextKit 2",
+      "url": "https://developer.apple.com/documentation/uikit/textkit",
+      "secondary_url": "https://developer.apple.com/documentation/appkit/textkit",
+      "finding": "Apple's text layout system for UIKit/AppKit text views. Candidate reading surface; cross-verse selection, Hebrew shaping, accessibility and virtualization measured in B005.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S46",
+      "title": "Tauri",
+      "url": "https://tauri.app/",
+      "secondary_url": "https://github.com/tauri-apps/tauri",
+      "finding": "Rust desktop shell with a system web view. Candidate Windows/Linux host for the web UI with the native core; licensing and web-view text behavior checked before adoption.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S47",
+      "title": "MACULA Greek and Hebrew",
+      "url": "https://github.com/Clear-Bible/macula-greek",
+      "secondary_url": "https://github.com/Clear-Bible/macula-hebrew",
+      "finding": "Clear Bible syntax trees, semantic roles, referents, glosses and morphology with token xml:ids. Clear's layers are CC BY 4.0; Louw-Nida domain columns are UBS data used with permission and not openly licensed. Token counts computed: SBLGNT 137,740; Hebrew 475,910 rows.",
+      "status": "acquisition_candidate",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S48",
+      "title": "Text-Fabric data model and search",
+      "url": "https://annotation.github.io/text-fabric/tf/about/datamodel.html",
+      "secondary_url": "https://annotation.github.io/text-fabric/tf/about/searchusage.html",
+      "finding": "Slot/feature/edge corpus model with template search, unit nesting, agreement and quantifiers. Design reference for the linguistic engine and correctness oracle on N1904; no code reuse assumed.",
+      "status": "design_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S49",
+      "title": "sqlite-vec",
+      "url": "https://github.com/asg017/sqlite-vec",
+      "secondary_url": "https://github.com/asg017/sqlite-vec/releases",
+      "finding": "SQLite vector extension (Apache-2.0/MIT); stable v0.1.9 after 2026 revival; binary and int8 vectors with brute-force search; ANN indexes only in alpha. iOS/WASM packaging to verify.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S50",
+      "title": "roaring-rs",
+      "url": "https://github.com/RoaringBitmap/roaring-rs",
+      "secondary_url": "https://github.com/RoaringBitmap/CRoaring",
+      "finding": "Pure-Rust compressed bitmaps (Apache-2.0/MIT), compiles to mobile and wasm32; candidate posting-list format for the linguistic engine.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S51",
+      "title": "Versification specification",
+      "url": "https://github.com/Copenhagen-Alliance/versification-specification",
+      "secondary_url": "https://github.com/nida-institute/versification",
+      "finding": "Copenhagen Alliance JSON versification mappings and scheme-sniffing rules based on Paratext .vrs files; now maintained at nida-institute/versification. Base scheme is org.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S52",
+      "title": "Berean Standard Bible terms",
+      "url": "https://berean.bible/terms.htm",
+      "secondary_url": "https://berean.bible/",
+      "finding": "Public domain since April 2023; altered texts are asked not to use the Berean name. Candidate English base text and translation-research input.",
+      "status": "acquisition_candidate",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S53",
+      "title": "usfmtc reference implementation",
+      "url": "https://pypi.org/project/usfmtc/",
+      "secondary_url": "https://github.com/usfm-bible/tcdocs",
+      "finding": "USFM Technical Committee reference parser (MIT) for USFM/USX/USJ with versification remapping; CI conformance oracle for the Rust parser.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S54",
+      "title": "Bible Passage Reference Parser",
+      "url": "https://github.com/openbibleinfo/Bible-Passage-Reference-Parser",
+      "secondary_url": "https://www.openbible.info/labs/reference-parser/",
+      "finding": "MIT reference parser with OSIS output and character offsets in many languages; candidate citation extractor for commentaries and prose.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S55",
+      "title": "Clear Bible alignments",
+      "url": "https://github.com/Clear-Bible/Alignments",
+      "secondary_url": "https://github.com/Clear-Bible/macula-greek",
+      "finding": "Token-keyed standoff alignments (data CC BY 4.0, code MIT) as a working Scripture Burrito alignment proposal; schema and translation coverage to verify.",
+      "status": "acquisition_candidate",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S56",
+      "title": "pgvector",
+      "url": "https://github.com/pgvector/pgvector",
+      "secondary_url": "https://www.postgresql.org/docs/",
+      "finding": "PostgreSQL vector extension (PostgreSQL License) with HNSW/IVFFlat; optional server-tier store for multi-user and large vector sets.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S57",
+      "title": "UBS open access semantic dictionaries",
+      "url": "https://translation.bible/open-access-resources/",
+      "secondary_url": "https://github.com/ubsicap",
+      "finding": "UBS semantic dictionaries of biblical Greek and Hebrew released openly (reported CC BY-SA 4.0); open substitute for Louw-Nida domain data. Exact repository license to verify.",
+      "status": "acquisition_candidate",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S58",
+      "title": "ETCBC BHSA",
+      "url": "https://github.com/ETCBC/bhsa",
+      "secondary_url": "https://etcbc.github.io/bhsa/",
+      "finding": "Scholarly Hebrew Bible database with versioned releases; CC BY-NC 4.0, so restricted to an optional user-downloaded module.",
+      "status": "restricted",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S59",
+      "title": "SIL Serval",
+      "url": "https://github.com/sillsdev/serval",
+      "secondary_url": "https://scriptureforge.org/",
+      "finding": "MIT translation and word-alignment API behind Scripture Forge drafting; drafts land in a separate project and are human-edited and checked before merge. Workflow reference for the translation lab.",
+      "status": "design_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S60",
+      "title": "Anthropic Citations API",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/citations",
+      "secondary_url": "https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+      "finding": "Returns cited_text with valid pointers into supplied documents; custom-content blocks enable verse-level citation. Not combinable with structured outputs.",
+      "status": "implementation_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S61",
+      "title": "Patristic biblical-reuse retrieval evaluation",
+      "url": "https://arxiv.org/abs/2607.24542",
+      "secondary_url": "https://arxiv.org/abs/2308.13116",
+      "finding": "2026 gold set of 2,935 expert-verified biblical parallels in patristic Greek/Latin; small adapted encoders outperform generic multilingual models. Krahn et al. document translation bias in distilled Ancient Greek embeddings.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S62",
+      "title": "CTS URN specification",
+      "url": "https://cite-architecture.github.io/ctsurn_spec/",
+      "secondary_url": null,
+      "finding": "Canonical Text Services URNs give works hierarchical, edition-independent citation coordinates (work, version, passage); model for non-Bible locator schemes.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S63",
+      "title": "FRBR conceptual model",
+      "url": "https://www.loc.gov/cds/downloads/FRBR.PDF",
+      "secondary_url": null,
+      "finding": "Work/expression/manifestation separation; links target the work and section, resolving to an installed expression or edition.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S64",
+      "title": "SQLite implementation limits",
+      "url": "https://www.sqlite.org/limits.html",
+      "secondary_url": null,
+      "finding": "SQLITE_MAX_ATTACHED defaults to 10 and cannot exceed 125; per-pack files therefore need a merged device-local link index for backlinks.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S65",
+      "title": "PGlite extensions and storage",
+      "url": "https://pglite.dev/extensions/",
+      "secondary_url": "https://pglite.dev/docs/filesystems",
+      "finding": "Postgres 18 in WASM (0.5.x, Oct 2026) with Apache AGE and pgvector packages; IndexedDB or OPFS persistence, OPFS unsupported in Safari; single connection.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S66",
+      "title": "PGlite v0.4 roadmap and native bindings",
+      "url": "https://electric.ax/blog/2026/03/25/announcing-pglite-v04",
+      "secondary_url": "https://github.com/electric-sql/pglite-bindings",
+      "finding": "Native libpglite for mobile is listed as coming next without a date; the bindings repository is a draft. No shipped iOS/Android runtime.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S67",
+      "title": "Apache AGE",
+      "url": "https://github.com/apache/age",
+      "secondary_url": "https://pglite.dev/extensions/age",
+      "finding": "openCypher graph extension for PostgreSQL 11-18, Apache-2.0, maintained in 2026; available in PGlite as a 0.0.x package with WASM memory limits.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S68",
+      "title": "SQL/PGQ reverted from PostgreSQL 19",
+      "url": "https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=b1f106c80cbeb18d3a0219994d98a51a6eca8ede",
+      "secondary_url": "https://www.commandprompt.com/blog/two-features-just-left-postgresql-19/",
+      "finding": "SQL/PGQ property-graph queries were committed for PostgreSQL 19 and reverted on 2026-09-07 over design issues; PostgreSQL 20 at the earliest.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S69",
+      "title": "LadybugDB",
+      "url": "https://github.com/LadybugDB/ladybug",
+      "secondary_url": null,
+      "finding": "MIT Kuzu fork, very active (v0.22.0, Oct 2026); Rust crate and official WASM build; Swift binding exists, iOS and Android builds unverified.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S70",
+      "title": "GraphQLite and Grafeo",
+      "url": "https://github.com/colliery-io/graphqlite",
+      "secondary_url": "https://github.com/GrafeoDB/grafeo",
+      "finding": "GraphQLite adds Cypher and graph algorithms to SQLite files (MIT, C, Rust crate). Grafeo is a young pure-Rust Apache-2.0 multi-language graph engine with a WASM binding.",
+      "status": "research_reference",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S71",
+      "title": "Oxigraph",
+      "url": "https://github.com/oxigraph/oxigraph",
+      "secondary_url": null,
+      "finding": "Rust RDF/SPARQL store, MIT/Apache, active in 2026; suits linked-data export of work locators, not the runtime query path.",
+      "status": "research_reference",
       "pinned_artifact": null
     }
   ]

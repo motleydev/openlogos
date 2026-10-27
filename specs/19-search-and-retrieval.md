@@ -1,0 +1,146 @@
+# Search, retrieval and relation architecture
+
+Revision 5. This spec fixes the storage, search, vector and relation technologies for every tier, and the pipelines that feed them. The evidence is in reports/Bible corpus search architecture.md and its notes in research_notes/. The decision record is docs/adr/0002-embedded-retrieval-stack.md. Everything below the AI layer works with no model, account or network.
+
+## Why one embedded engine
+
+The corpora are small by retrieval standards. MACULA counts 137,740 tokens in SBLGNT and 475,910 morpheme rows in the Hebrew Bible [S47]. An English Bible is roughly 31,000 verses, and OpenBible's cross-reference set is about 340,000 links [S09]. At this scale the hard problems are the data (token-keyed alignment, versification, rights) and keeping curated relations distinct from model similarity. Engine throughput is not the hard problem. Search servers (OpenSearch, Elasticsearch, Meilisearch), vector databases and graph databases solve scale this product does not have. They cannot run offline on an iPad, and they would force linguistic query logic to be written twice. The query engine is therefore embedded in the Rust core and identical on every platform and on the optional server.
+
+## Query families and what powers them
+
+| Family | Examples | Data | Engine |
+|---|---|---|---|
+| Reference | `Rom 8:28-39`, `Ps 9 (LXX)`, German aliases | edition book/division tables, `verse_map` | core reference parser |
+| Keyword, phrase, Boolean | `"steadfast love" AND covenant NOT Ruth` | verse/paragraph text, normalized search keys | SQLite FTS5 with the shared Rust tokenizer |
+| Lemma and morphology | every ἀγαπάω; aorist imperatives of a lemma | token feature columns | roaring-bitmap postings per (feature, value) |
+| Proximity, sequence, agreement | X BEFORE/WITHIN 3 words of Y; noun and article agreeing in case | global token positions, feature columns | positional join engine |
+| Within unit | same verse, clause or sentence | per-level parent-id columns | parent-column filter |
+| Syntax and roles (when a cleared layer exists) | clauses with Jesus as subject and Peter as object | MACULA trees, roles, referents [S47] | parent array with pre/post-order intervals |
+| Rendering and alignment | English renderings of each ἀγάπη per translation | token-keyed alignment tables [S55] | forward/reverse alignment maps plus group-by |
+| Concordance and facets | KWIC; hits by book × form × rendering | hit list plus compact columns | positional slices and group-by |
+| Relations | cross references, "who cites this verse", OT in NT, parallels, lexeme links | typed edge table | indexed lookup and `WITH RECURSIVE` |
+| Semantic recall (optional) | passages about hospitality; commentary on a theme | precomputed vectors | sqlite-vec brute force, hybrid with FTS5 |
+
+**Worked example.** The query "every ἀγάπη / ἀγαπάω versus φιλέω with English renderings" is three lemma postings (143, 116 and 25 SBLGNT tokens), joined to each installed translation's token alignment, then grouped by translation × rendering × book. It is millisecond work. It is only *correct* if alignments are keyed to tokens rather than Strong's numbers, because a Strong's-keyed link cannot distinguish two ἀγαπάω tokens in one verse. Strong's-level views are derived from token alignments, never the reverse.
+
+The query language extends specs/17-search-and-cross-references.md. Each feature predicate (`lemma:`, `morph:`, `domain:`, `referent:`), positional operator (`BEFORE n`, `AFTER n`, `WITHIN n`, `AGREE(case,number)`) and unit scope (`IN verse|clause|sentence`) parses into the same bounded AST and appears in the visual query builder. A predicate whose layer is not installed or not cleared returns an explicit "layer unavailable" result. It never falls back to an approximation.
+
+## Embedded engine (all clients)
+
+1. **SQLite is the only store.** Native builds use rusqlite. Web and Obsidian use the official sqlite-wasm build with the `opfs-sahpool` VFS: it needs no cross-origin isolation headers and suits a single core worker, and it must be pinned to SQLite 3.54 or later for the OPFS locking fix [S16]. Corpus packs are read-only and attached on demand; user data lives in a separate mutable database.
+2. **FTS5 with one Rust tokenizer.** A single normalization function registered through the FTS5 tokenizer API indexes and parses queries. For Greek it folds case and final sigma and strips accents and breathings; for Hebrew it strips points and cantillation in U+0591–U+05C7. Modes are versioned. Display text is stored byte-exact; Unicode NFC reorders Hebrew points and is never applied to display text (specs/03-data-model.md).
+3. **Linguistic engine** (`crates/search`), modeled on Text-Fabric's slot/feature/edge model [S48] rather than Lucene:
+   - dense token table with dictionary-encoded columns (surface, normalized form, lemma, each morphology field, domain, referent, syntactic parent);
+   - roaring bitmaps [S50] per (feature, value) over global token positions, serialized as SQLite BLOBs;
+   - per-level parent-id columns for verse, clause and sentence scope;
+   - parent array plus pre/post-order intervals for dominance tests;
+   - CSR-encoded edges for alignments, referents and cross references;
+   - a join engine for sequence, proximity and agreement, and a set-algebra layer for quantifiers (`without`, `where … have`).
+   Separating the fixed base ("warp") from feature layers ("weft") lets licensed feature layers and community annotation packs install independently.
+4. **Relations** use one typed edge table: `edge(src_kind, src_id, rel, dst_kind, dst_id, weight, source_work, method, provenance_kind, confidence)` with covering indexes on (src, rel) and (dst, rel). `provenance_kind` is `curated` (named source such as TSK or OpenBible), `extracted` (parser version), `model_similarity` (model version plus score) or `user` (device-local, see Cross-resource links). Destinations may be passages, tokens, lexemes or work locators. A model-similarity row can never carry a curated relation type such as `quotes` or `explicitly_cites`. Centrality and clustering are computed in the build pipeline and shipped as weights; no runtime graph database is used.
+5. **Vectors (optional layer)** use sqlite-vec [S49] inside the same pack file, with brute-force search: binary or 256-dimension int8 vectors for the coarse scan, rescored with full-dimension int8. Float32 never ships to devices. If an on-device set exceeds the measured brute-force budget before sqlite-vec's ANN indexes stabilize, USearch (Apache-2.0) is the escalation path.
+6. **Hybrid retrieval** fuses FTS5 BM25 and vector kNN by reciprocal rank fusion, which needs no score calibration. An optional cross-encoder reranker runs on Mac, high-end iPad or the server only.
+
+## Semantic retrieval rules
+
+- **Anchor vectors on translations.** No public benchmark measures embedding models on Koine Greek or Biblical Hebrew. The best ancient-domain evidence shows small adapted encoders beating generic multilingual models [S61]. Semantic search therefore embeds two or three representative translations per UI language. Original-language passages inherit hits through verse and token alignment, which is exact. An optional original-language index over normalized or lemmatized text is an explicitly labeled experiment until the B066 evaluation passes.
+- **Chunking.** Verses are the citable unit, embedded with a book/chapter/heading prefix. Retrieval also scores five-verse windows (stride 2) and pericopes from one fixed segmentation dataset, then resolves window hits to their best verse. Commentaries are chunked by paragraph with a heading-path prefix and the parsed `refs[]` they discuss. Lexicons are chunked one per sense, keyed by lemma.
+- **Model identity.** Corpus vectors and query vectors must come from the identical model, revision, prefix strings and quantization. Each vector set's manifest records these, and the core refuses to mix sets.
+- **Tiers.** Tier A is a small license-clean model (multilingual-e5-small class, MIT/Apache) for phones and web: an explicit opt-in download, with BM25-only search when absent. Tier B is a larger model (Qwen3-Embedding-0.6B or BGE-M3 class) with an optional reranker on Mac, iPad Pro or the server. Tiers use separate vector spaces. Jina v3 (non-commercial) is excluded; EmbeddingGemma requires a license review before bundling.
+- **Inference.** One ONNX export per model: the Rust core runs it through the `ort` crate on Apple and Android, and the web runs it with transformers.js on WebGPU with a WASM fallback. The web may instead use server-side query embedding from a personal hub. No retrieval path depends on Apple Foundation Models, which is generation-only on eligible devices.
+- **Labeling.** Similarity is never presented as a documented relation. Results say "semantically similar (model, version)", in the UI and in agent tool results alike.
+
+## Package layers
+
+A corpus pack is one read-only, content-addressed, signed SQLite file per edition or work. It contains text, FTS5 index, token columns and bitmaps, alignment and edge tables, an optional vector table and a provenance manifest. Optional layers (vectors, syntax, restricted lexical modules) may ship as separate packs so rights and size are chosen independently. Indicative sizes, all estimates to be measured in B064: original-language token layers a few MB each; cross references about 2 MB; one translation's verse vectors 1–8 MB at the recommended quantization; a large commentary library 10–80 MB of vectors. The Tier A query model (about 120–300 MB) is the largest single download.
+
+## Cross-resource links
+
+Bible references resolve because every edition shares one coordinate system (book, chapter, verse, pivoted through `org`). Most links in a study library point elsewhere: a commentary cites Calvin's *Institutes* 3.2.7, a sermon cites WCF 1.6, a lexicon cites "BDAG p. 6", a confession's proof texts cite verses, a church father quotes another. Without equivalent coordinates for non-Bible works, these remain inert text. The contract:
+
+1. **Work-level locators.** Every non-Bible work gets a citable locator scheme registered in a `locator_scheme` catalog: a hierarchical canonical citation (book.chapter.section, question/answer, article, homily.paragraph) in the style of CTS URNs [S62], and page milestones of named print editions where citations use pages. A link targets `work_id + canonical locator`, never a file offset or a single edition's numbering. Reference grammars for each scheme (abbreviations such as "Inst.", "WCF", "Hom. Matt.") extend the citation parser and are versioned with it.
+2. **Work, expression, edition.** Following FRBR's work/expression/manifestation split [S63], a link to *Institutes* 3.2.7 resolves to whichever installed translation (Battles, Beveridge) carries that section. Each edition ships a `section_map(scheme, locator, edition_segment, kind)` analogous to `verse_map`, with kinds equal, split, merge, partial and absent. Page-based citations resolve through the named print edition's page milestones; when only a different edition is installed, the link resolves to the nearest canonical section and says so.
+3. **Links live with their source; backlinks are computed on device.** A pack carries the edges its own text asserts. A device-local **link index** (`crates/package`, one mutable SQLite database beside the user database) merges outbound edges from every installed pack into a single table keyed by (dst_work, dst_locator, rel). It is updated incrementally on pack install, update and removal, and rebuilt deterministically from the installed set. This answers "who cites this" without attaching hundreds of packs: SQLite allows 10 attached databases by default and at most 125 [S64]. A small shared `catalog` database records installed works, schemes and pack hashes.
+4. **Unresolved targets stay visible.** A target that is not installed, not yet ingested or rights-restricted shows as "cited, not in your library", with the locator, the citing context and an acquisition path where one exists. Links are never dropped silently. Packaging reports resolution rates per work and per scheme (resolved, unresolved-known-work, unparsed), and the release QA gate sets a minimum per scheme.
+5. **Library-relative metrics.** Backlink counts, "most cited passages" and citation neighborhoods depend on what is installed, so the link index computes them on device and labels them "in your library". Build-time weights from a curated source (for example OpenBible votes) remain separate, attributed fields.
+6. **Stability across revisions.** Edges target stable locators plus content revision. When a target edition is revised, links pass through `id_lineage` and the re-anchoring rules for annotations in specs/03-data-model.md. A link that no longer resolves exactly becomes orphaned and is never moved to a nearby section.
+7. **Chains and cycles.** Quotation chains (A quotes B, which quotes C) are traversed with explicit depth limits, cycle detection and path deduplication. A quotation reached through several intermediate works counts once, and every displayed chain shows each hop's provenance and review state. An unstated hop stops the chain with "basis not documented" (specs/03-data-model.md).
+8. **Rights through links.** A link into a restricted work may display the citation, locator and citing context. It never displays restricted target text the user has not licensed. The rights gate applies to edge payloads (quoted snippets) as well as to text.
+9. **User material participates.** Notes, collection items and Obsidian exports that reference a passage or work locator write `user`-provenance edges into the link index, so a Calvin section shows the user's notes pointing at it. These edges sync with the user database and never enter packs.
+
+## Graph engines: offline options re-evaluated
+
+Revision 5's first draft said graph databases cannot run offline. That is wrong as a general claim. A 2026-10-27 re-check found several in-process graph engines. None yet covers every client target with one engine, so the default stays the SQLite edge table plus the link index, and a graph engine is an escalation gated on benchmark R9.
+
+| Option | iOS / iPadOS native | Android | Browser and Obsidian | Rust core | License | Status (2026-10) | Role |
+|---|---|---|---|---|---|---|---|
+| SQLite edge table + `WITH RECURSIVE` + link index | yes | yes | yes | rusqlite | public domain | mature | **Default** |
+| petgraph over edge subgraphs loaded from SQLite | yes | yes | yes | native | MIT/Apache | mature | In-memory analytics: deep chains, genealogy layout, centrality |
+| GraphQLite (Cypher as a SQLite extension) [S70] | expected (C), unverified | expected, unverified | expected, unverified | crate exists | MIT | active, young | First escalation: same file and pack format |
+| LadybugDB (Kuzu fork, Cypher) [S69] | Swift binding exists; iOS build unverified | unverified | official WASM build | `lbug` crate | MIT | very active; new governance | Second escalation: read-only graph index built from SQLite |
+| Grafeo (pure Rust; GQL, Cypher, SPARQL, SQL/PGQ) [S70] | expected (pure Rust) | expected | wasm-bindgen binding | native | Apache-2.0 | active, 0.5.x | Watch list |
+| PGlite + Apache AGE + pgvector (Postgres 18 in WASM) [S65][S67] | no: JS/WASM host only | no | **yes**, IndexedDB or OPFS (OPFS not in Safari) | no shipped path | Apache-2.0 / PostgreSQL | very active; AGE package 0.0.x | Not adopted: would split the core across two engines |
+| libpglite (native PGlite library) [S66] | planned, no date | planned | n/a | intended | — | draft | Watch: reopen if it ships for iOS and Android |
+| Stock or embedded Postgres | no (needs process spawning, forbidden on iOS) | subprocess only | no | no | PostgreSQL | mature | Server tier only |
+| Oxigraph (RDF/SPARQL) [S71] | expected (Rust) | expected | in-memory | native | MIT/Apache | active | Linked-data export and interchange, not runtime queries |
+| DuckDB + DuckPGQ, SurrealDB embedded, CozoDB, IndraDB, RyuGraph | DIY / inferred / dormant | — | — | — | MIT / BSL 1.1 / MPL | research, heavy, or stale | Not adopted |
+| Neo4j, Memgraph, FalkorDBLite, HelixDB, TerminusDB | no | no | no | — | — | server or subprocess | Not adopted |
+
+"Expected" means the build is plausible from the language and toolchain but has not been demonstrated. B064 must demonstrate it before adoption.
+
+Why SQLite stays the default:
+
+- **Workload shape.** The workloads are backlinks, one- to four-hop neighborhoods, filtered aggregates and occasional deep chains, over a few million edges at most. Indexed (src, rel) and (dst, rel) lookups with bounded recursive CTEs fit that shape. No published benchmark compares SQLite recursive CTEs with embedded graph engines at this scale, so R9 measures it on OpenLogos data.
+- **One store.** One engine keeps one pack format, one sync model, one crash-safety story and one conformance suite on every client.
+- **Exposure.** Traversals are exposed as Rust core functions (`neighbors`, `backlinks`, `citation_chain`, `genealogy`) and as tool-registry tools. They are not exposed as a database query language. That keeps UI and agent callers independent of whether an escalation engine later serves them.
+- **Postgres on device.** PGlite with AGE is the real Postgres offline route and works well in browsers. It has no native iOS or Android runtime. Adopting it would mean a second engine and a second copy of the relation logic for the web and Obsidian builds only. SQL/PGQ was committed to PostgreSQL 19 and then reverted on 7 September 2026 [S68]. It is PostgreSQL 20 at the earliest, so the server tier must not depend on it.
+
+Escalation path: if R9 misses its targets, first try GraphQLite over the same pack files, then LadybugDB as a derived, read-only graph index built from the SQLite edges. Either needs proven iOS, Android and WASM builds within the B064 binary-size budget. Keep CTS-style locators and FRBR identifiers as edge keys so an RDF export (Oxigraph) remains possible.
+
+## Optional server tier
+
+The personal hub and maintainer installations link the same Rust core and read the same packs. PostgreSQL with pgvector [S56] is added only for multi-user sync, shared annotations and large global vector sets (inference: comfortable at 1–5M vectors on one host; to be benchmarked). The server may host query embedding and reranking for web clients. Graph-style views on the server use the same edge tables, and Apache AGE [S67] is acceptable there if Cypher is needed; SQL/PGQ is not available until PostgreSQL 20 at the earliest [S68]. Escalations, adopted only on measured need: ParadeDB pg_search (AGPL-3.0) if FTS5 ranking is insufficient server-side, and Qdrant (Apache-2.0) for very large vector sets. Not adopted: OpenSearch/Elasticsearch, Neo4j, Memgraph, Kuzu (archived after acquisition in October 2025) and CozoDB (dormant). LadybugDB is an escalation candidate (see Graph engines above), not a server component. DuckDB is permitted as a build-time analysis tool only.
+
+## Pipelines
+
+```text
+fetch → parse → normalize → tokenize + mint IDs → versify → align → enrich → index → embed → package → sign
+```
+
+- **Registry and caching.** A source registry pins each upstream by commit or SHA-256 with SPDX license, attribution, non-commercial/share-alike flags, declared versification and normalization mode. Each stage's cache key is hash(code version, config, input hashes). Sorted iteration, no wall-clock values and fixed aligner seeds make output deterministic. The runner is a Rust `cargo xtask`-style DAG; Python stages (usfmtc conformance oracle, alignment experiments, evaluation) run hermetically pinned. Dagster/Airflow are not needed at this source count.
+- **Parse.** USFM/USX/USJ normalizes to USJ with the Rust `usfm3` crate, and CI diffs its output against `usfmtc`, the USFM Technical Committee reference implementation [S53]. OSIS (OSHB, SWORD) and TEI (MACULA, CCEL ThML) use a streaming XML reader with one small adapter per corpus. Proskomma is not a dependency (experimental, no releases).
+- **Token identity.** Upstream IDs (OSHB `id`, MACULA `xml:id`, STEPBible ref + index) are kept as immutable external keys. OpenLogos mints `edition:BBCCCVVVWWW[s]` IDs, where the morpheme suffix handles Hebrew prefix segmentation differences between sources. A new upstream release produces a token diff and an `id_lineage` table (same, split, merge, insert, delete); IDs are never silently renumbered.
+- **Versification.** Every text is stored in its native scheme. A compiled `verse_map(scheme_from, ref_from, scheme_to, ref_to, kind)` pivots through the Paratext/Copenhagen `org` scheme, so N schemes need N maps [S51]. Kinds are equal, split, merge, partial and absent; partial verses get sub-verse anchors. STEPBible TVTMS [S05] informs difficult cases but uses an NRSV-based standard, so it needs an explicit crosswalk to `org`. Copenhagen scheme-sniffing rules act as an ingest QA gate.
+- **Alignment.** All alignments normalize to standoff records: `(source_token_ids[], target_token_ids[], status, origin, confidence, tokenization_hash)`. Inline unfoldingWord `\zaln` milestones and Clear's proposed Scripture Burrito alignment tables [S55] both convert to this form. The tokenization hash invalidates an alignment automatically when either side is re-tokenized. Versification must agree before alignment. Translations without curated alignments use a pinned statistical aligner (`origin = auto:<tool>@<version>`), shown with review flags until B067 scores it against curated gold.
+- **Commentaries and citations.** CCEL ThML `scripRef parsed` attributes are used where present. Otherwise the openbibleinfo Bible-Passage-Reference-Parser (MIT) [S54] runs as a hermetic build stage, producing `(work_id, anchor, char_start, char_end, osis_ref, scheme, method, confidence)`. These become `extracted` edges ("who cites this verse") and the `refs[]` for commentary chunks.
+- **Rights gate.** The packager fails any redistributable bundle that mixes non-commercial, EULA or unflagged share-alike content. License-clean defaults: SBLGNT (CC BY 4.0) [S06], WLC (public domain) and OSHB morphology (CC BY 4.0) [S07], MACULA Greek/Hebrew trees, roles and referents (CC BY 4.0) [S47], STEPBible data (CC BY 4.0, changes recorded) [S05], Clear alignments (CC BY 4.0) [S55], OpenBible cross references (CC BY) [S09], and the BSB as the public-domain English base [S52]. Restricted by default:
+  - ETCBC BHSA (CC BY-NC) [S58]: user-downloaded optional module only.
+  - MACULA's Louw-Nida domain columns: UBS data used with permission, not openly licensed. Use the CC BY-SA UBS semantic dictionaries [S57] as a separate share-alike module.
+  - MorphGNT morphology [S18]: CC BY-SA. Prefer MACULA's CC BY morphology for redistributed derived layers.
+- **QA gates.** Verse counts against the declared scheme, scheme-sniffing agreement, unique IDs, resolvable alignment endpoints, token-count diffs between releases, morphology code validity, USFM round trips and license compatibility. The embed stage uses the same pinned ONNX export the apps ship, and the retrieval evaluation set must pass before a vector pack is published.
+
+## AI layer: tools first, proposals second
+
+- **One tool registry.** The core exposes its deterministic functions as a tool registry, served over MCP to external agents and in-process to the research assistant (specs/14-research-assistant.md). Tools include `get_passage`, `search_text`, `lemma_search`, `get_alignments`, `get_cross_references`, `lexicon_entry`, `parallel_passages`, `semantic_search` and `verify_quote`. Results carry edition ID, scheme, reference, token IDs and a content hash. The UI calls the same functions, so the app is complete without AI and the AI layer stays provider-agnostic.
+- **Grounding.** Where a provider supports document citations (for example Anthropic's Citations API [S60]), passages are supplied one block per verse so citation indices map to verse IDs. That API cannot be combined with structured outputs, so a cited answer and a claim/evidence record take two steps. For every provider, OpenLogos runs its own verifier: each quoted span is re-fetched by reference and must match after normalization, or it is flagged or removed.
+- **Translation research** (specs/07-translation-lab.md). This follows SIL's production pattern: AI drafts are a separate layer that humans edit and promote [S59]. Inputs are public-domain, CC BY and explicitly opted-in CC BY-SA texts only. Copyrighted translations (for example NET, LEB) are user-licensed reference views, never model inputs. The working base is the BSB, renamed for any altered text as its terms request. Drafting is conditioned on lemmas, token alignments and a locked key-term glossary. Every output is an immutable `ai_proposal` carrying its provenance: provider, model and version, prompt template and rendered-prompt hash, tool transcript hash, source hashes and input licenses.
+  - Proposal states: `proposed → auto_checks_passed | auto_checks_failed → under_review → accepted | accepted_with_edits | rejected | needs_consultant`.
+  - Deterministic auto-checks: names and numbers match the aligned source tokens; verse IDs exist in the scheme; key terms are consistent per lemma; every content lemma is aligned, and no unaligned target words remain (this catches additions and harmonization).
+  - chrF++/BLEU are regression signals only.
+  - The accepted translation is a derived edition linked by `derived_from` edges to its proposals and human edits.
+
+## Benchmarks that confirm or revise these choices
+
+| ID | Question | Task |
+|---|---|---|
+| R1 | Do generic embedders retrieve Greek/Hebrew acceptably after normalization? | B066 gold set: 100–300 graded topical queries, OT-in-NT quotations, Greek→English verse retrieval, commentary grounding; nDCG@10, Recall@50 per language |
+| R2 | Cost of binary/int8/256-dimension quantization | B066, same gold set |
+| R3 | WASM and mobile binary sizes of SQLite, sqlite-vec and the core | B064 |
+| R4 | Query-embedding and rerank latency on mid-range phones and browsers | B066 |
+| R5 | Brute-force vector latency at 50k/200k/500k vectors | B064 |
+| R6 | Linguistic engine latency and correctness for 50 representative queries across 10 translations, checked against Text-Fabric on N1904 | B064 |
+| R7 | `opfs-sahpool` under the Obsidian plugin's access pattern | B064 |
+| R8 | Statistical aligner accuracy against Clear's curated alignments, plus license audit | B067 |
+| R9 | Relation latency on about 5M edges across 200 packs: backlinks, 1–6 hop traversals with fan-out caps, chain deduplication and library-relative counts, with p95 targets on a named iPad, iPhone and browser; link-index rebuild and incremental-update time on pack install | B064, B068 |
+
+Open factual items: sqlite-vec iOS/WASM packaging, the Clear alignment schema and translation coverage, the UBS dictionary repository license, WEB modification terms, aligner licenses, LXX dataset licensing (not yet researched), and the user-database sync library (op-log per specs/03, cr-sqlite, Automerge or Yrs). Two citations in the research report point to a third-party mirror of sqlite-vec documentation. Re-verify those claims against the author's own documentation before relying on them.

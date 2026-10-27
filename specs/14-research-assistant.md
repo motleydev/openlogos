@@ -79,3 +79,7 @@ The audience informs useful library collections and study workflows, not the ass
 Record source scope, evidence and the user's request. Distinguish biblical quotation, attributed interpretation and generated synthesis. Relevant disagreement and uncertainty stay visible; an exhaustive all-traditions preamble is not required. No doctrinal preference may change source-language analysis or translation fidelity.
 
 Selected replies can be collected with their machine-generated status and evidence preserved, then handed to Obsidian. Drafting and service planning are outside scope. Human-reviewed cases cover unrequested-perspective injection, an explicitly requested perspective, conflicting sources, confessional misattribution, false quotations and pressure to distort a translation. Agreement with the expected audience's theology is not a passing criterion.
+
+## Revision 5 tool registry and retrieval
+
+Research tools are the Rust core's deterministic functions, served in-process and over MCP (specs/19-search-and-retrieval.md). Semantic search is an optional hybrid layer anchored on translations; its results are labeled as model similarity. Where provider citations exist [S60], passages are supplied as one block per verse, and OpenLogos re-verifies every quotation against the installed edition for all providers.

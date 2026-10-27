@@ -23,17 +23,19 @@
       "id": "B002",
       "phase": "P0",
       "owner_role": "infrastructure",
-      "title": "Create actual Nix skeleton and isolated worktrees",
+      "title": "Create actual Nix skeleton, Rust workspace and isolated worktrees",
       "depends_on": [
         "B001"
       ],
       "acceptance": [
-        "Real flake.lock and language lockfiles committed",
-        "Fresh Linux development shell passes minimal checks",
-        "Mac/Xcode exception and signing prerequisites documented"
+        "Real flake.lock, Cargo.lock and other language lockfiles committed",
+        "Fresh Linux .#core/.#web/.#android shells pass minimal checks",
+        "Mac .#apple shell verifies the recorded Xcode version; signing prerequisites documented",
+        "Repository layout follows specs/06-nix-operations.md"
       ],
       "spec_paths": [
-        "specs/06-nix-operations.md"
+        "specs/06-nix-operations.md",
+        "specs/20-orchestration-and-build-hosts.md"
       ],
       "initial_status": "blocked",
       "human_gate": false
@@ -50,7 +52,8 @@
         "Three Bible/source-language editions with explicit coverage and one ancient edition have exact artifact/rights records",
         "No ESV or unknown-rights bytes in fixture imports",
         "Human source steward signs acquisition decisions or substitutes source",
-        "Clear an exact baseline cross-reference artifact and declare its coverage; no proprietary screenshot-derived data"
+        "Clear an exact baseline cross-reference artifact and declare its coverage; no proprietary screenshot-derived data",
+        "Prefer the license-clean defaults in specs/19-search-and-retrieval.md (BSB, SBLGNT, WLC/OSHB, MACULA CC BY layers, Clear alignments, OpenBible); flag BHSA, Louw-Nida columns and share-alike layers as restricted modules"
       ],
       "spec_paths": [
         "specs/10-sources.md",
@@ -87,20 +90,23 @@
       "id": "B005",
       "phase": "P0",
       "owner_role": "client-engineer",
-      "title": "Spike native selection and browser persistence",
+      "title": "Spike native text surfaces against core anchors",
       "depends_on": [
         "B002",
-        "B004"
+        "B004",
+        "B061"
       ],
       "acceptance": [
-        "Selection across verse boundaries and Hebrew combining marks tested on iOS and Android",
-        "Web OPFS/IndexedDB and Safari fallback documented",
-        "Renderer/stack decision includes measured evidence",
-        "Three-pane plus notes-dock selection/focus/performance tested at suitable widths"
+        "TextKit 2 reader on a real iPad and Mac selects across verse boundaries and Hebrew combining marks and round-trips identical core anchors",
+        "DOM reader on Safari/Firefox/Chromium round-trips the same anchors; OPFS/IndexedDB fallback documented",
+        "Three-pane plus notes-dock selection, focus, VoiceOver and scroll performance measured at suitable widths",
+        "Android Compose surface feasibility sketched; full Android gate deferred to its own task",
+        "Any failing platform surface has a measured alternative recorded in ADR 0001"
       ],
       "spec_paths": [
         "specs/01-product.md",
-        "specs/02-architecture.md"
+        "specs/02-architecture.md",
+        "docs/adr/0001-rust-core-native-ui.md"
       ],
       "initial_status": "blocked",
       "human_gate": false
@@ -117,7 +123,8 @@
         "Many-to-many/unknown verse mappings represented",
         "Unicode offset and edition revision fixtures pass",
         "JSON Schema and migration version policy established",
-        "Define StudyCollection, source-bearing CollectionItem and VaultExportReceipt identity/provenance contracts"
+        "Define StudyCollection, source-bearing CollectionItem and VaultExportReceipt identity/provenance contracts",
+        "Token ID minting, id_lineage, verse_map pivot through org and standoff alignment records specified with fixtures (specs/19-search-and-retrieval.md)"
       ],
       "spec_paths": [
         "specs/03-data-model.md",
@@ -157,7 +164,11 @@
         "B006",
         "B007",
         "B055",
-        "B037"
+        "B037",
+        "B061",
+        "B062",
+        "B063",
+        "B064"
       ],
       "acceptance": [
         "Chosen stack and deferred features recorded",
@@ -181,7 +192,8 @@
       "acceptance": [
         "Pinned text fidelity and verse/paragraph/poetry metadata checked",
         "License/attribution bundled per layer",
-        "Malformed or mismatched reference fixture rejected"
+        "Malformed or mismatched reference fixture rejected",
+        "Build DAG is deterministic: identical inputs produce identical pack hashes; rights gate rejects mixed NC/EULA/unflagged share-alike bundles"
       ],
       "spec_paths": [
         "specs/04-ingestion.md"
@@ -520,7 +532,7 @@
     },
     {
       "id": "B026",
-      "phase": "P4",
+      "phase": "P2",
       "owner_role": "data-engineer",
       "title": "Import source-language morphology and lexical layers",
       "depends_on": [
@@ -530,7 +542,8 @@
       "acceptance": [
         "Selected OSHB/SBL/STEP versions and layered rights pinned",
         "Greek/Hebrew/Aramaic and conflicting analyses represented",
-        "No Strong-only inferred English alignment"
+        "No Strong-only inferred English alignment",
+        "MACULA/OSHB token layers load into the columnar engine with feature bitmaps; restricted layers stay in separate optional packs"
       ],
       "spec_paths": [
         "specs/03-data-model.md",
@@ -1000,10 +1013,12 @@
         "Supported subscription path capability tested or clearly unavailable",
         "BYOK/local adapters isolate credentials and enforce context scope",
         "Read-only MCP/retrieval tools reject scope widening",
-        "Local development/desktop companion path works without waiting for P3 multi-user NixOS hosting"
+        "Local development/desktop companion path works without waiting for P3 multi-user NixOS hosting",
+        "Agent tools are the same core functions the UI calls, exposed in-process and over MCP; results carry edition, scheme, token IDs and content hash; verify_quote rejects unmatched quotations"
       ],
       "spec_paths": [
-        "specs/14-research-assistant.md"
+        "specs/14-research-assistant.md",
+        "specs/19-search-and-retrieval.md"
       ],
       "initial_status": "blocked",
       "human_gate": false
@@ -1144,10 +1159,12 @@
       "acceptance": [
         "Reference, phrase, AND/OR/NOT, precedence and edition/range filters pass fixed expected-result fixtures",
         "Invalid syntax, Unicode normalization and incomplete indexes are explicit; parameterized bounded query execution tested",
-        "No LLM/account/network requirement; editorial preferences cannot change exact-match counts"
+        "No LLM/account/network requirement; editorial preferences cannot change exact-match counts",
+        "FTS5 runs through the shared Rust tokenizer on every platform with identical counts from the conformance fixtures"
       ],
       "spec_paths": [
-        "specs/17-search-and-cross-references.md"
+        "specs/17-search-and-cross-references.md",
+        "specs/19-search-and-retrieval.md"
       ],
       "initial_status": "blocked",
       "human_gate": false
@@ -1240,6 +1257,183 @@
       ],
       "initial_status": "blocked",
       "human_gate": true
+    },
+    {
+      "id": "B061",
+      "phase": "P0",
+      "owner_role": "data-engineer",
+      "title": "Scaffold Rust core API with UniFFI and WebAssembly bindings",
+      "depends_on": [
+        "B002"
+      ],
+      "acceptance": [
+        "crates/core exposes reference parsing and anchor round-trip through a versioned API",
+        "Swift and Kotlin bindings generated by UniFFI and exercised from minimal test hosts",
+        "WebAssembly build runs the same conformance fixtures in a browser worker and Node test",
+        "crates/conformance fixtures include Hebrew cantillation, cross-verse selection, bidi isolation and Psalm 9/10 numbering"
+      ],
+      "spec_paths": [
+        "docs/adr/0001-rust-core-native-ui.md",
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B062",
+      "phase": "P0",
+      "owner_role": "reader-design",
+      "title": "Specify platform roles, capability tiers and layout profiles",
+      "depends_on": [
+        "B004"
+      ],
+      "acceptance": [
+        "Capability matrix in specs/18-platform-capabilities.md reviewed against real iPad, Mac, iPhone and ultra-wide displays",
+        "Workspace layout profiles defined for compact, regular, wide and ultra-wide classes without losing panes",
+        "Every platform enhancement has an unsupported-state design and lossless degradation path",
+        "Teaching-view decision D18-1 presented to the owner with options; no delivery mode added without that decision"
+      ],
+      "spec_paths": [
+        "specs/18-platform-capabilities.md",
+        "specs/12-workspace-ux.md",
+        "specs/16-design-guide.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B063",
+      "phase": "P0",
+      "owner_role": "infrastructure",
+      "title": "Provision Mac Mini agent/build host and signing lane",
+      "depends_on": [
+        "B001",
+        "B002"
+      ],
+      "acceptance": [
+        "Paperclip version, adapters and Mac Mini toolchain versions recorded",
+        "Agent run in an isolated worktree builds the Rust core, the Apple app for an iPad simulator and the web reader, and attaches results to its issue",
+        "Agent users cannot read signing material; negative test recorded",
+        "Two concurrent agent runs plus one CI job complete without resource exhaustion"
+      ],
+      "spec_paths": [
+        "specs/20-orchestration-and-build-hosts.md",
+        "specs/06-nix-operations.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B064",
+      "phase": "P0",
+      "owner_role": "data-engineer",
+      "title": "Spike embedded corpus engine and storage budgets",
+      "depends_on": [
+        "B061"
+      ],
+      "acceptance": [
+        "SQLite + FTS5 custom tokenizer + roaring-bitmap token engine built for iOS, Android, macOS and wasm32 with measured binary sizes",
+        "Fifty representative lemma/morphology/proximity/agreement queries on N1904 or SBLGNT match Text-Fabric result counts and meet latency targets with facets across the fixture translations",
+        "sqlite-vec brute-force latency measured at 50k, 200k and 500k vectors on a named iPad, iPhone and browser",
+        "opfs-sahpool sustains attached packs plus concurrent UI and agent queries in an Obsidian-like host",
+        "Benchmark R9 run on SQLite edges plus link index; any graph-engine escalation candidate demonstrates iOS, Android and wasm32 builds within the binary budget",
+        "Results recorded in ADR 0002; any failing component has a named replacement"
+      ],
+      "spec_paths": [
+        "specs/19-search-and-retrieval.md",
+        "docs/adr/0002-embedded-retrieval-stack.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B065",
+      "phase": "P2",
+      "owner_role": "data-engineer",
+      "title": "Deliver original-language corpus search and word-study queries",
+      "depends_on": [
+        "B064",
+        "B026",
+        "B056"
+      ],
+      "acceptance": [
+        "Lemma, morphology, proximity, agreement and unit-scoped queries run offline through the visual builder and query syntax",
+        "Rendering-per-translation results use token-keyed alignments; Strong's-only links are never presented as token alignment",
+        "KWIC and faceted counts show scope, denominators and unavailable layers explicitly",
+        "Syntax/role queries available only where a cleared layer is installed"
+      ],
+      "spec_paths": [
+        "specs/19-search-and-retrieval.md",
+        "specs/17-search-and-cross-references.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B066",
+      "phase": "P2",
+      "owner_role": "research-engineer",
+      "title": "Evaluate embeddings and ship optional semantic vector layers",
+      "depends_on": [
+        "B064",
+        "B009"
+      ],
+      "acceptance": [
+        "Human-judged gold set of 100-300 queries plus OT-in-NT and cross-lingual tasks; nDCG@10 and Recall@50 per language and quantization",
+        "Tier A and Tier B models selected with licenses recorded; vector manifests pin model, revision, prefixes and quantization",
+        "Hybrid FTS5 + vector RRF beats either alone on the gold set or the layer is not shipped",
+        "Similarity results are labeled as model-derived everywhere; app search works unchanged with the layer absent"
+      ],
+      "spec_paths": [
+        "specs/19-search-and-retrieval.md",
+        "specs/14-research-assistant.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B067",
+      "phase": "P4",
+      "owner_role": "ingestion-engineer",
+      "title": "Build alignment ingestion and statistical aligner evaluation",
+      "depends_on": [
+        "B026",
+        "B027"
+      ],
+      "acceptance": [
+        "unfoldingWord inline and Clear standoff alignments normalize to token-keyed records with tokenization hashes",
+        "Pinned statistical aligner scored against curated alignments; licenses audited",
+        "Auto-aligned links carry origin and review flags in UI and agent results"
+      ],
+      "spec_paths": [
+        "specs/19-search-and-retrieval.md",
+        "specs/04-ingestion.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B068",
+      "phase": "P2",
+      "owner_role": "data-engineer",
+      "title": "Implement work locators, section maps and the device link index",
+      "depends_on": [
+        "B064"
+      ],
+      "acceptance": [
+        "Locator schemes and reference grammars registered for at least three non-Bible works (a confession, a systematic theology in two translations, a lexicon cited by page)",
+        "Section maps resolve a citation to each installed edition, labeling nearest-section fallbacks",
+        "Link index updates incrementally on pack install and removal and rebuilds byte-identically from the installed set",
+        "Unresolved, restricted and not-installed targets display as cited-not-in-library; per-scheme resolution rates reported by the packager",
+        "Quotation-chain traversal enforces depth limits, cycle detection and deduplication with per-hop provenance",
+        "User-note edges appear in backlinks and never enter packs"
+      ],
+      "spec_paths": [
+        "specs/19-search-and-retrieval.md",
+        "specs/03-data-model.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 | Decision | Proposed default | Evidence needed / owner |
 |---|---|---|
-| Rendering stack | React Native mobile + DOM web | Native arbitrary selection, RTL and accessibility spike; client/design |
+| Rendering stack | Decided (ADR 0001): Rust core, SwiftUI/TextKit 2, Compose, DOM | B005 confirms anchors/performance on real iPad, Mac and browsers; failure reopens only the failing platform surface |
 | Second Bible / first ancient edition | Small approved artifact set | Exact edition/license/hash; source steward and human reviewer |
 | App/content licenses | MPL client + AGPL services, separate data | Owner choice and upstream/app-store compatibility review |
 | Models and budget | Capability tiers; two coding runs | Installed adapter/model probe and 24-task quality/cost benchmark |
@@ -34,3 +34,11 @@ The project owner chooses product scope and public licenses. A source steward ma
 - B042/B060 establish the actual desktop/mobile Obsidian transport and preservation behavior. File transfer is acceptable when direct access is unavailable; an untested universal vault bridge is not.
 - First-party licensing remains unresolved. This public specification repository does not yet contain an adopted LICENSE. B037 must settle the code/documentation terms before reuse/public code release; public visibility alone is not an open-source license.
 - A reviewed cross-reference artifact, original-language alignment coverage, and confessional edition permissions remain acquisition/review work. No copied screenshot content supplies these datasets.
+
+## Revision 5 decisions
+
+- Stack: Rust core with native interfaces (docs/adr/0001-rust-core-native-ui.md). Engineering effort is not the binding constraint; reading quality, correctness and performance are.
+- Platform roles: iPadOS is the primary study/teaching surface, macOS the preparation and power-study workstation, phones first-class companions (specs/18-platform-capabilities.md).
+- Orchestration: Paperclip directs implementation; a Mac Mini is the agent and build host with an isolated signing lane (specs/20-orchestration-and-build-hosts.md).
+- Storage, search, vector and relation technologies: decided in specs/19-search-and-retrieval.md (ADR 0002).
+- **D18-1 (open):** whether to add a bounded iPad teaching view (large-type passages and collection, locked navigation, optional external display) without reintroducing a sermon editor or delivery/teleprompter mode. Owner decision.

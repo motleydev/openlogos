@@ -1,3 +1,14 @@
+# Blueprint revision 5 — 27 October 2026
+
+- Replaces the TypeScript/React Native baseline with a Rust core and native interfaces: SwiftUI/TextKit 2 for iPadOS, macOS and iOS; Kotlin + Compose; DOM web; Tauri desktop; Obsidian via WebAssembly (docs/adr/0001-rust-core-native-ui.md).
+- Adds platform roles and capability tiers. iPadOS is the primary study and teaching surface and macOS the power workstation (ultra-wide, search workbench); phones are first-class companions. Enhancements degrade without data loss (specs/18-platform-capabilities.md). Records open decision D18-1 on a bounded iPad teaching view.
+- Fixes the retrieval stack after a five-track research pass (reports/Bible corpus search architecture.md): SQLite everywhere, FTS5 with a shared Rust tokenizer, a Text-Fabric-style roaring-bitmap corpus engine, optional sqlite-vec semantic layers anchored on translations, and typed edge tables instead of a graph database. PostgreSQL + pgvector serve the optional server tier only (specs/19-search-and-retrieval.md, docs/adr/0002-embedded-retrieval-stack.md).
+- Specifies the deterministic Rust build pipeline, token ID lineage, versification pivot through `org`, token-keyed standoff alignments, rights build gates, the AI tool registry shared with the UI, and the AI proposal lifecycle.
+- Adds Paperclip-directed orchestration with a Mac Mini agent/build host, self-hosted CI and an isolated signing lane (specs/20-orchestration-and-build-hosts.md).
+- Adds cross-resource links: work-level locator schemes (CTS-style), FRBR-style section maps between editions, a device-local link index for backlinks across packs, visible unresolved targets, library-relative counts, chain/cycle rules and user-note edges (specs/19, specs/03; task B068).
+- Re-evaluates offline graph engines (PGlite + Apache AGE, LadybugDB, GraphQLite, Grafeo, Oxigraph and others). SQLite edges stay the default; GraphQLite then LadybugDB are escalations gated on benchmark R9. Corrects the server tier: SQL/PGQ was reverted from PostgreSQL 19.
+- Updates role work scopes; 14 roles, 68 tasks (B061–B068 added; B026 moved to P2) and 71 source references.
+
 # Blueprint revision 4 — 26 October 2026
 
 - Clarifies that the Reformed audience determines resource and workflow priorities, not interpretation.

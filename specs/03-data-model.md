@@ -16,6 +16,9 @@
 | Claim | Evidence-bearing edge or assertion with lifecycle and provenance |
 | Annotation | User-private record with target selectors, body revisions and device provenance |
 | Package | Immutable collection of approved artifacts/derived layers, rights and hashes |
+| LocatorScheme | Citable coordinate system for a non-Bible work (canonical hierarchy such as book.chapter.section or question/answer, or a named print edition's pages), with reference grammar and version |
+| SectionMap | Edition-to-canonical-locator mapping (equal, split, merge, partial, absent), analogous to the verse map |
+| LinkIndex | Device-local, rebuildable merge of outbound edges from installed packs plus user edges; serves backlinks and library-relative counts (specs/19-search-and-retrieval.md) |
 
 Separate immutable source, deterministic parse, machine proposals, reviewed scholarly overlay, and user annotations. A source correction creates a new revision and mapping; it does not silently replace the text beneath old notes. Stable upstream IDs, such as OSHB token IDs, are preserved in a namespace [S07]. Synthetic IDs include edition/revision context and never pretend continuity after retokenization.
 
@@ -45,7 +48,7 @@ A word study starts at an occurrence, offers the relevant lemma analyses, then d
 | span_aligns_with | Translation correspondence, many-to-many or explicitly null |
 | occurrence_has_analysis | Source-backed or reviewed lemma/morphology proposal |
 | occurrence_uses_sense | Contextual lexical judgment with cited evidence |
-| explicitly_cites | Identifiable citation to a passage |
+| explicitly_cites | Identifiable citation to a passage or to a work locator |
 | quotes / alludes_to | Verbatim/near quotation or interpretive allusion; distinct thresholds |
 | shares_theme | Editorial/theological connection, attributed to a scheme or reviewer |
 | lexeme_etymologically_related | Historical linguistic assertion requiring evidence |

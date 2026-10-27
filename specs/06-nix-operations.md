@@ -5,31 +5,38 @@ This blueprint specifies desired outputs. It does not contain a tested flake, pi
 ## Intended implementation repository
 
 ```text
-apps/mobile/              iOS + Android shell and platform adapters
+crates/core/              references, versification mappings, anchors, typed claims
+crates/text/              render-ready attributed runs, normalization, offset adapters
+crates/search/            corpus query engine and prose full-text (specs/19)
+crates/retrieval/         optional vector and hybrid retrieval (specs/19)
+crates/package/           safe archive, hashes, signature verification, index layers
+crates/collections/       study collections, export receipts, Markdown/JSON export
+crates/workspaces/        pane trees, link groups, layout profiles
+crates/ink/               portable stroke geometry and snapshot contracts
+crates/notes/             app/vault note authority and merge contracts
+crates/sync/              encrypted operation log and conflict resolution
+crates/ffi/               UniFFI and wasm-bindgen surfaces, versioned API
+crates/conformance/       cross-platform fixtures and expected results
+apps/apple/               SwiftUI app for iPadOS, macOS and iOS
+apps/android/             Kotlin + Compose app
 apps/web/                 DOM reader, static build and offline shell
-packages/domain/          references, anchors, typed claims
-packages/contracts/       JSON Schema, OpenAPI and generated types
-packages/reader-ui/       shared design tokens, not forced shared text layout
-packages/storage/         SQLite and browser adapters
-packages/package-format/  safe archive, hashes, signature verification
-packages/sync/            encrypted operations and conflict resolution
-packages/workspaces/      pane trees and layout persistence
-packages/ink/             portable stroke geometry and snapshot contracts
-packages/notes/           app/vault note authority and merge contracts
-packages/llm-providers/   capability-based inference adapters
+apps/desktop/             Tauri shell for Windows/Linux
+apps/review/              evidence and reviewer decisions
+contracts/                JSON Schema, OpenAPI and generated types
+design/tokens/            single-source design tokens generated per platform
 plugins/obsidian/         native block embedding and vault bridge
-services/companion/       optional scoped vault/research runtime
-services/hub/             optional identity-aware encrypted sync API
+services/hub/             optional identity-aware encrypted sync API (Rust)
+services/companion/       optional scoped vault/research runtime (Rust)
 services/catalog/         optional static catalog builder
-pipelines/ingest/          Python adapters and job workers
-pipelines/enrich/          constrained proposal producers
-apps/review/               evidence and reviewer decisions
-corpus/registry/           metadata/rights records; no large copyrighted dumps
+pipelines/build/          Rust acquisition-to-package build (specs/04, specs/19)
+pipelines/ml/             Python experiments: OCR, alignment, embeddings, evaluation
+corpus/registry/          metadata/rights records; no large copyrighted dumps
 fixtures/                 small licensed or synthetic fixtures
 nix/modules/              NixOS services and profiles
 nix/checks/               VM integration tests
-nix/darwin/                macOS developer/CI environment
-ops/runbooks/              restore, upgrades, signing, enrollment
+nix/darwin/               macOS developer/CI environment
+ops/                      runbooks, apple-build entry point, host profiles
+docs/adr/                 architecture decision records
 specs/                    inert product and agent data
 flake.nix                 explicit packages/devShells/checks/modules
 flake.lock                actual pinned revisions generated and reviewed
@@ -37,11 +44,11 @@ flake.lock                actual pinned revisions generated and reviewed
 
 ## Required outputs and commands
 
-- `nix develop .#web`, `.#mobile`, `.#pipeline`, `.#ops`: pinned tools, package-manager versions, code generators, language runtimes, OCR dependencies and test clients.
+- `nix develop .#core`, `.#web`, `.#android`, `.#apple`, `.#pipeline`, `.#ops`: pinned Rust toolchains and targets, UniFFI/wasm-bindgen tooling, package-manager versions, code generators, OCR dependencies and test clients. `.#apple` verifies a recorded Xcode version rather than claiming hermeticity. Build-host topology is in specs/20-orchestration-and-build-hosts.md.
 - `nix flake check`: schema validation, formatting, lint/type tests, unit/property tests, relevant deterministic fixtures and NixOS VM tests where platform-supported.
 - `nix build .#web`, `.#hub`, `.#corpus-tools`: immutable deliverables with provenance and dependency/SBOM output. Distribution of the corpus is separate from the build code.
 - Android release/debug packages through a pinned SDK/NDK/JDK/Gradle path with declared SDK license acceptance [S19]. No unrecorded downloads during a purportedly hermetic build; explicit dependency prefetch/lock phases precede offline checks.
-- macOS developer shell and CI wrappers pin the open-source toolchain, CocoaPods/Ruby dependencies where used, JS package locks and selected Xcode path/version. Apple SDK/Xcode, device provisioning and signing remain external licensed prerequisites; do not claim iOS release archives build on Linux or are fully Nix-hermetic.
+- macOS developer shell and CI wrappers pin the open-source toolchain, Swift package resolution, JS package locks and selected Xcode path/version. Apple SDK/Xcode, device provisioning and signing remain external licensed prerequisites; do not claim iOS release archives build on Linux or are fully Nix-hermetic.
 - `nixosModules.open-bible-web`, `open-bible-hub`, `open-bible-worker`, plus composable personal-hub and maintainer profiles. Names are desired outputs, not existing module claims.
 
 Choose current compatible versions at implementation time and commit real lockfiles. Support x86_64-linux/aarch64-linux for servers and appropriate Darwin development; skip impossible platform checks explicitly rather than reporting them passed. Nix store paths never contain tokens, private notes, signing keys, license keys or unpublished private corpora.

@@ -33,3 +33,7 @@ B056 uses a deterministic, locally stored expected-result fixture covering case,
 B057 includes overlapping links from two sources, an unspecified imported relation, one partial or unmapped reference, a reverse lookup, an unavailable target edition and an unreviewed suggestion. The UI preserves attribution and cannot make an unreviewed thematic link look like an explicit biblical quotation. Human source review is required for published corpus coverage.
 
 B031 later adds multiword alignments, repeated lemma occurrences in one verse, homographs, ambiguous morphology and unknown token coverage to word-study evaluations. Tests verify that denominators and the occurrence table agree. They do not certify the linguistic correctness of the source dataset; that remains a separate human-reviewed gate.
+
+## Revision 5 engine and query extensions
+
+The engines behind this contract are fixed in specs/19-search-and-retrieval.md: FTS5 with a shared Rust tokenizer for text, a columnar roaring-bitmap engine for lemma/morphology/proximity/agreement/unit queries, typed edge tables for cross references and citations, and optional sqlite-vec semantic layers. Feature predicates (`lemma:`, `morph:`, `domain:`, `referent:`), positional operators (`BEFORE n`, `AFTER n`, `WITHIN n`, `AGREE(...)`) and unit scopes (`IN verse|clause|sentence`) join the bounded AST. B065 moves original-language search into P2 using cleared MACULA/OSHB layers; it was previously P4.
