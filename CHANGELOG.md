@@ -3,7 +3,8 @@
 - Decides D18-1: a bounded teaching view (large-text preaching mode) is in scope as B069; sermon editor, teleprompter and slides stay excluded (specs/18, 01, 09, 11).
 - Accepts ADR 0002 as the starting point, with storage and relation engines behind core traits so the engine can change later.
 - Defers Paperclip. A Claude Code session on the Mac mini orchestrates with audited subagents, small commits and owner-merged pull requests; records Mac mini status and adopts the sudoku-color sim/ship/shelf pattern (specs/20; B001, B002, B063 adjusted).
-- 69 tasks.
+- Reviews CoreQuarry (re-Isearch lineage): not adopted as a dependency; PEER/XPEER/ANCESTOR structural operators and MAYBE/NARROW/PROMOTE/DEMOTE score shaping borrowed into the query AST and tool registry (specs/19, B065, S72).
+- 69 tasks, 72 sources.
 
 # Blueprint revision 5 — 27 October 2026
 

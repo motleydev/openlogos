@@ -23,7 +23,7 @@ The corpora are small by retrieval standards. MACULA counts 137,740 tokens in SB
 
 **Worked example.** The query "every ἀγάπη / ἀγαπάω versus φιλέω with English renderings" is three lemma postings (143, 116 and 25 SBLGNT tokens), joined to each installed translation's token alignment, then grouped by translation × rendering × book. It is millisecond work. It is only *correct* if alignments are keyed to tokens rather than Strong's numbers, because a Strong's-keyed link cannot distinguish two ἀγαπάω tokens in one verse. Strong's-level views are derived from token alignments, never the reverse.
 
-The query language extends specs/17-search-and-cross-references.md. Each feature predicate (`lemma:`, `morph:`, `domain:`, `referent:`), positional operator (`BEFORE n`, `AFTER n`, `WITHIN n`, `AGREE(case,number)`) and unit scope (`IN verse|clause|sentence`) parses into the same bounded AST and appears in the visual query builder. A predicate whose layer is not installed or not cleared returns an explicit "layer unavailable" result. It never falls back to an approximation.
+The query language extends specs/17-search-and-cross-references.md. Each feature predicate (`lemma:`, `morph:`, `domain:`, `referent:`), positional operator (`BEFORE n`, `AFTER n`, `WITHIN n`, `AGREE(case,number)`) unit scope (`IN verse|clause|sentence`), structural operator (`PEER` same immediate container, `XPEER` different containers, `ANCESTOR` shared container) and score-shaping operator (`MAYBE`, `NARROW`, `PROMOTE`, `DEMOTE`; see CoreQuarry below) parses into the same bounded AST and appears in the visual query builder. A predicate whose layer is not installed or not cleared returns an explicit "layer unavailable" result. It never falls back to an approximation.
 
 ## Embedded engine (all clients)
 
@@ -96,6 +96,14 @@ Why SQLite stays the default:
 - **Postgres on device.** PGlite with AGE is the real Postgres offline route and works well in browsers. It has no native iOS or Android runtime. Adopting it would mean a second engine and a second copy of the relation logic for the web and Obsidian builds only. SQL/PGQ was committed to PostgreSQL 19 and then reverted on 7 September 2026 [S68]. It is PostgreSQL 20 at the earliest, so the server tier must not depend on it.
 
 Escalation path: if R9 misses its targets, first try GraphQLite over the same pack files, then LadybugDB as a derived, read-only graph index built from the SQLite edges. Either needs proven iOS, Android and WASM builds within the B064 binary-size budget. Keep CTS-style locators and FRBR identifiers as edge keys so an RDF export (Oxigraph) remains possible.
+
+## Engines reviewed after revision 5
+
+**CoreQuarry** [S72] (reviewed 27 October 2026 at the owner's request) is the 2026 Apache-2.0 packaging of the re-Isearch/Isearch lineage that began in 1995: a C++17 hybrid engine (`ib`) with structure-preserving positional indexes, overlapping structures, structural operators (`PEER`, `XPEER`, `ANCESTOR`, `WITHIN`, `BEFORE`, `AFTER`, `NEAR`), agent-oriented score shaping (`MAYBE`, `NARROW`, `PROMOTE`, `DEMOTE`) and a ggml/HNSW vector stack (Schmate, bert.cpp). Its design confirms the direction of specs/17 and this document: structure and position are first-class, vectors are selective, ranking is inspectable, and agents compose queries from deterministic operators.
+
+- **Not adopted as a dependency now.** One maintainer; repositories published May–June 2026; about 13 MB of C++ with no C API, Rust, Swift, Kotlin or WebAssembly bindings and no iOS, Android or browser builds; Schmate carries no declared license; the agent documentation marks the HNSW index types other than `hnsw_raw` as not enabled; CLI-first; no Greek or Hebrew tokenization. Our corpora also do not need its scale.
+- **Permitted later**, behind the `TextIndex` trait, as an optional server-tier engine for large prose libraries (commentaries, PDFs) once every component's license is clear, and as a comparison oracle for the positional and structural queries in benchmark R6.
+- **Borrowed now.** (1) `PEER`, `XPEER` and `ANCESTOR` join the bounded AST as structural operators over our verse, clause and sentence containers, which overlap exactly as CoreQuarry's structures do. (2) `MAYBE`, `NARROW`, `PROMOTE` and `DEMOTE` are deterministic score-shaping operators in `search_text` and `lemma_search`, so an agent or the workbench can refine a result set without re-running it, with no model involved. (3) Byte-exact hit positions and container paths stay in every result, which we already require through token IDs and anchors.
 
 ## Optional server tier
 
