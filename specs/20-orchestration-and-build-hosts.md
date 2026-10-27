@@ -2,6 +2,17 @@
 
 Revision 5. The owner intends Paperclip [S01] to direct implementation of this repository: Paperclip holds the agents and issues derived from specs/agents.json and specs/backlog.json, and its agents produce reviewable changes here. A Mac Mini acts as the primary agent and build host, because Apple builds, simulators and attached test devices need macOS. This document is a desired topology. It does not provision anything, and specs/00-import-contract.md still governs how records are imported.
 
+## Interim operation without Paperclip (from 27 October 2026)
+
+The owner deferred Paperclip. Until it is adopted, the orchestrator is a **Claude Code session on the Mac mini**, working with the owner, under the same discipline Paperclip would impose:
+
+- **One backlog task per branch or worktree**, named after the task (`b061-core-scaffold`). Subagents implement; the orchestrator audits their trail by reading the diff and running the build and tests itself, never by accepting a summary.
+- **Small, frequent commits** with the task ID in the message, so every step is reviewable and revertible. Evidence (test output, measured sizes, screenshots) is recorded in the pull request body or in `docs/evidence/`, not only in chat.
+- **Every change lands through a pull request that the owner merges.** No orchestrator or agent pushes to `main`. If pull-request tooling is unavailable, work stops at the pushed branch.
+- **Paperclip import stays possible**: specs/agents.json and specs/backlog.json remain the task source of truth and are updated when scope changes, so B001's Paperclip mapping can run later without rework.
+
+**Mac mini status (checked 27 October 2026).** The orchestrator already runs on the Mac mini (`office-hub`, Apple M1, macOS 26.4, Xcode 26.6). It holds a valid Apple Development signing identity in the owner's login keychain and already serves test builds for another project over Tailscale (the `scripts/ship.sh` and shelf pattern in the owner's sudoku-color repository). OpenLogos reuses that pattern: `scripts/sim.sh` for unsigned simulator runs and screenshots, `scripts/ship.sh` for signed ad hoc builds onto the shelf, settings such as the team ID in a git-ignored `.envrc.local`. The isolated signing keychain described below is a hardening step required before any agent runs unattended; it is not yet in place.
+
 ## Roles of each system
 
 | System | Responsibility | Never does |

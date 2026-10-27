@@ -47,9 +47,18 @@ At 3440–5120 px widths the desktop may show four to six reading panes, or pane
 
 A `Workspace` keeps one set of panes and link groups, with **per-device-class layout profiles** (compact, regular, wide, ultra-wide). Opening a Mac workspace on an iPad selects or derives the regular profile; it never discards panes. Changing a layout on one device class does not rewrite another's profile. This extends the Workspace entity in specs/03-data-model.md and the fixture contract in schemas/workspace.schema.json (B040).
 
-## iPad teaching use and the delivery-mode boundary
+## Teaching view (D18-1, decided)
 
-Revision 4 excluded a dedicated sermon editor and delivery/teleprompter mode. The owner's observation that people teach from an iPad is recorded as **open decision D18-1** (specs/11-open-decisions.md): whether to provide a bounded **teaching view**, meaning large-type, distraction-free display of chosen passages and the active collection, with locked navigation and optional external-display output, and no sermon manuscript editing or slide generation. Until decided, focus mode plus large text is the supported path, and no delivery-specific task is in the backlog.
+The owner accepted a bounded **teaching view** on 27 October 2026: a large-text mode for preaching and teaching from the device in hand. It displays what was prepared in the ordinary study workspace; it does not add a place to write.
+
+- **What it shows.** An ordered **teaching sequence** of passages (in one or more editions) and items from a collection (quotations, the user's own notes, resource excerpts within rights). The sequence is a Collection with a `teaching` role, built with the existing collection tools (specs/15-reformed-study-and-collections.md); no new editor, document type or workflow state is introduced.
+- **How it reads.** Large type with a remembered per-device scale, high-contrast light, dark and warm themes, generous measure, verse numbers optional, reference always visible. Optional current-item emphasis dims the rest. The screen stays awake while the view is open.
+- **How it moves.** Navigation is locked to the sequence: previous and next by tap, swipe, hardware keyboard, Pencil tap or a paired page-turn remote, plus a jump list. A quick reference lookup opens any passage without leaving the view and returns to the sequence position. Accidental edits are impossible: highlighting and note editing are disabled until the view is closed.
+- **External display.** On iPadOS and macOS, an external display can show either a mirror or an **audience view** limited to the current passage text and reference (no notes, no collection items). This is display of existing text, not slide authoring or export.
+- **Where it runs.** iPadOS first, macOS and iPhone with the same sequence data (phone: single column), web and Android through the conformance suite. A sequence prepared on one device opens on every other (lossless degradation, above).
+- **Still excluded.** Sermon manuscript editing, teleprompter scrolling of a manuscript, slide generation or export, timers tied to a manuscript, and any generated sermon content (specs/01-product.md).
+
+Task B069 (P2) implements the view after saved workspaces (B041) and collections (B058) exist. Until then, focus mode plus large text is the supported path.
 
 ## Acceptance additions (B062)
 

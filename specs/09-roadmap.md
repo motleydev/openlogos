@@ -50,7 +50,7 @@ Three-pane layout contracts, study notes/collections and the bounded Obsidian ha
 
 P1 includes one ancient work/local catalog (B016), signed package install/file exchange (B017/B018), deterministic search (B056), basic attributed cross references (B057), collections (B058), and a bounded Obsidian path (B042/B043/B060). This resolves the earlier mismatch between the product's first-release promise and its P2 task labels. LAN transfer and advanced enrichment remain later. B043 P1 covers materialized blocks; B044/B045 P2 cover fuller editing and dynamic rendering.
 
-B055 checks audience-driven resource/workflow scope without a doctrinal ratification gate in P0; B059 introduces an edition-cleared confessional resource collection in P2. A separate sermon editor/delivery mode is excluded. No additional agent or concurrency slot is added. Earlier calendar estimates are superseded for this revised P1 scope: re-estimate after platform/vault and renderer spikes before making a release-date commitment. Each core track remains independently testable, while the complete P1 product gate requires them all.
+B055 checks audience-driven resource/workflow scope without a doctrinal ratification gate in P0; B059 introduces an edition-cleared confessional resource collection in P2. A sermon editor and teleprompter remain excluded; the bounded teaching view decided in D18-1 is P2 work (B069). No additional agent or concurrency slot is added. Earlier calendar estimates are superseded for this revised P1 scope: re-estimate after platform/vault and renderer spikes before making a release-date commitment. Each core track remains independently testable, while the complete P1 product gate requires them all.
 
 ## Revision 5 sequencing
 

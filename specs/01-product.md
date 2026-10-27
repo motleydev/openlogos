@@ -48,7 +48,7 @@ User studies: five to eight readers, including at least one screen-reader user a
 
 ## Deliberately deferred
 
-Service/liturgy design, scheduled prayer-office workflows (including Sunday Mass or Afternoon Prayer planning), dedicated sermon editor, delivery/teleprompter mode, slides, sermon generation, subscription marketplace, social network, collaboration editing, audio production, automatic reading streaks, complete Logos import parity, universal OCR, unreviewed theology ontology, autonomous whole-Bible translation, and remote always-on mobile seeding are outside the MVP.
+Service/liturgy design, scheduled prayer-office workflows (including Sunday Mass or Afternoon Prayer planning), dedicated sermon editor, teleprompter mode, slides, sermon generation, subscription marketplace, social network, collaboration editing, audio production, automatic reading streaks, complete Logos import parity, universal OCR, unreviewed theology ontology, autonomous whole-Bible translation, and remote always-on mobile seeding are outside the MVP. A bounded teaching view (large-type display of prepared passages and collection items, decision D18-1) is in scope and is not a sermon editor; see specs/18-platform-capabilities.md.
 
 German texts and interface are a high-priority follow-on; rights to modern Luther/Elberfelder revisions must be checked per edition. Imported works retain their own canon/versification metadata for accurate scholarship; the default reader/search canon is Protestant and launch coverage is explicit.
 
