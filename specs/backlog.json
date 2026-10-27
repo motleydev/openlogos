@@ -1356,6 +1356,7 @@
       ],
       "acceptance": [
         "Lemma, morphology, proximity, agreement and unit-scoped queries run offline through the visual builder and query syntax",
+        "Structural operators PEER, XPEER and ANCESTOR over verse, clause and sentence containers, and deterministic score shaping MAYBE, NARROW, PROMOTE and DEMOTE, work in the syntax, the builder and the tool registry with no model involved",
         "Rendering-per-translation results use token-keyed alignments; Strong's-only links are never presented as token alignment",
         "KWIC and faceted counts show scope, denominators and unavailable layers explicitly",
         "Syntax/role queries available only where a cleared layer is installed"

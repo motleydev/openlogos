@@ -392,3 +392,5 @@ Checked 27 October 2026 through the research in reports/Bible corpus search arch
 **S70 — GraphQLite and Grafeo.** GraphQLite adds Cypher and graph algorithms to SQLite files (MIT, C, Rust crate). Grafeo is a young pure-Rust Apache-2.0 multi-language graph engine with a WASM binding. Source: https://github.com/colliery-io/graphqlite Additional reference: https://github.com/GrafeoDB/grafeo
 
 **S71 — Oxigraph.** Rust RDF/SPARQL store, MIT/Apache, active in 2026; suits linked-data export of work locators, not the runtime query path. Source: https://github.com/oxigraph/oxigraph
+
+**S72 — CoreQuarry (re-Isearch ib, Schmate, bert.cpp).** Apache-2.0 C++17 hybrid retrieval kernel from the 1995 Isearch lineage, published 2026: positional and structural operators (PEER, XPEER, ANCESTOR, WITHIN, NEAR), score shaping for agents (MAYBE, NARROW, PROMOTE, DEMOTE), ggml/HNSW vectors. Single maintainer, no bindings or mobile/WASM builds, Schmate unlicensed. Design reference and possible server-tier engine; not a dependency. Source: https://corequarry.com/ Additional reference: https://github.com/re-Isearch/ib
