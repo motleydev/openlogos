@@ -47,8 +47,9 @@ else
 fi
 
 # The toolchain downloads are large; a nearly full store fails in confusing ways.
+# POSIX `df -Pk` works for both BSD df and the GNU coreutils df a Nix shell puts first.
 if [[ -d /nix/store ]]; then
-  free_gb="$(df -g /nix/store 2>/dev/null | awk 'NR == 2 { print $4 }')"
+  free_gb="$(df -Pk /nix/store 2>/dev/null | awk 'NR == 2 { printf "%d", $4 / 1048576 }')"
   if [[ -n "$free_gb" ]]; then
     if ((free_gb < 10)); then
       warn "only ${free_gb} GB free for /nix/store" "free space or run 'nix store gc' before adding shells (the Rust toolchain alone is over 1 GB)"
