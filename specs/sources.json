@@ -641,6 +641,15 @@
       "finding": "Rust RDF/SPARQL store, MIT/Apache, active in 2026; suits linked-data export of work locators, not the runtime query path.",
       "status": "research_reference",
       "pinned_artifact": null
+    },
+    {
+      "id": "S72",
+      "title": "CoreQuarry (re-Isearch ib, Schmate, bert.cpp)",
+      "url": "https://corequarry.com/",
+      "secondary_url": "https://github.com/re-Isearch/ib",
+      "finding": "Apache-2.0 C++17 hybrid retrieval kernel from the 1995 Isearch lineage, published 2026: positional and structural operators (PEER, XPEER, ANCESTOR, WITHIN, NEAR), score shaping for agents (MAYBE, NARROW, PROMOTE, DEMOTE), ggml/HNSW vectors. Single maintainer, no bindings or mobile/WASM builds, Schmate unlicensed. Design reference and possible server-tier engine; not a dependency.",
+      "status": "research_reference",
+      "pinned_artifact": null
     }
   ]
 }
