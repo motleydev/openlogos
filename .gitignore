@@ -1,0 +1,51 @@
+# --- Rust -----------------------------------------------------------------
+/target/
+**/*.rs.bk
+
+# --- Nix / direnv ---------------------------------------------------------
+.direnv/
+result
+result-*
+.envrc.local
+
+# --- Editors / OS ---------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Xcode (apps/apple) ---------------------------------------------------
+xcuserdata/
+DerivedData/
+*.xcuserstate
+*.moved-aside
+*.xcscmblueprint
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# --- Android (apps/android) -----------------------------------------------
+local.properties
+.gradle/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+**/build/
+
+# --- Node (apps/web, apps/desktop) ----------------------------------------
+node_modules/
+dist/
+.cache/
+
+# --- Python (pipelines/ml) ------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# --- Local evidence scratch; committed evidence lives in docs/evidence ------
+/artifacts/
