@@ -1,0 +1,15 @@
+# Git hooks, installed by `just setup`. Keep them fast: CI runs the full `just ci`.
+pre-commit:
+  parallel: true
+  commands:
+    rust-format:
+      glob: "*.rs"
+      run: rustfmt --check --edition 2024 {staged_files}
+    nix-format:
+      glob: "*.nix"
+      run: nixfmt --check {staged_files}
+
+pre-push:
+  commands:
+    test:
+      run: just test

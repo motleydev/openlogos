@@ -1,0 +1,45 @@
+# OpenLogos Rust workspace. Every crate under crates/ is a member; specs/06-nix-operations.md
+# names each crate's responsibility and docs/adr/0001-rust-core-native-ui.md explains why
+# one Rust core serves every platform. `just` lists the build and test workflows.
+
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# Matches the toolchain pinned in flake.nix; bump both together.
+rust-version = "1.99"
+repository = "https://github.com/motleydev/openlogos"
+publish = false
+
+[workspace.dependencies]
+openlogos-core = { path = "crates/core" }
+openlogos-text = { path = "crates/text" }
+openlogos-search = { path = "crates/search" }
+openlogos-retrieval = { path = "crates/retrieval" }
+openlogos-package = { path = "crates/package" }
+openlogos-collections = { path = "crates/collections" }
+openlogos-workspaces = { path = "crates/workspaces" }
+openlogos-ink = { path = "crates/ink" }
+openlogos-notes = { path = "crates/notes" }
+openlogos-sync = { path = "crates/sync" }
+
+# Shared lint policy; each crate opts in with `[lints] workspace = true`. Clippy itself
+# runs with `-D warnings` (justfile, nix flake check), so a warning here fails CI.
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+
+# Size first: the core ships inside mobile apps and as WebAssembly, and specs/01 sets
+# binary budgets. `panic` stays at the default "unwind" because UniFFI (B061) turns
+# panics into errors at the binding boundary, which an aborting panic cannot do.
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = true
