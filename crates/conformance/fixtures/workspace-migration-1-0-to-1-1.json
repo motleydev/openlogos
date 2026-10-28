@@ -1,0 +1,257 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "active_pane_id": "p1",
+        "fixture_only": true,
+        "id": "fixture:workspace:1",
+        "layout_profiles": {},
+        "notes_dock_id": "fixture:note:1",
+        "panes": [
+          {
+            "content_id": "fixture:edition-1",
+            "content_revision": "0",
+            "id": "p1",
+            "kind": "reading",
+            "link_group": "A",
+            "pinned": false,
+            "reference": "fixture:passage:1",
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "content_id": "fixture:edition-2",
+            "content_revision": "0",
+            "id": "p2",
+            "kind": "reading",
+            "link_group": "A",
+            "pinned": false,
+            "reference": "fixture:passage:1",
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "content_id": "fixture:edition-3",
+            "content_revision": "0",
+            "id": "p3",
+            "kind": "reading",
+            "link_group": null,
+            "pinned": true,
+            "reference": "fixture:passage:1",
+            "width_fraction": 0.3333333333333333
+          }
+        ],
+        "schema_version": "1.1",
+        "title": "Three texts plus optional notes dock"
+      },
+      "from": "1.0",
+      "input": {
+        "active_pane_id": "p1",
+        "fixture_only": true,
+        "id": "fixture:workspace:1",
+        "notes_dock_id": "fixture:note:1",
+        "panes": [
+          {
+            "content_id": "fixture:edition-1",
+            "content_revision": "0",
+            "id": "p1",
+            "kind": "reading",
+            "link_group": "A",
+            "pinned": false,
+            "reference": "fixture:passage:1",
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "content_id": "fixture:edition-2",
+            "content_revision": "0",
+            "id": "p2",
+            "kind": "reading",
+            "link_group": "A",
+            "pinned": false,
+            "reference": "fixture:passage:1",
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "content_id": "fixture:edition-3",
+            "content_revision": "0",
+            "id": "p3",
+            "kind": "reading",
+            "link_group": null,
+            "pinned": true,
+            "reference": "fixture:passage:1",
+            "width_fraction": 0.3333333333333333
+          }
+        ],
+        "schema_version": "1.0",
+        "title": "Three texts plus optional notes dock"
+      },
+      "layouts": [
+        {
+          "device_class": "wide",
+          "expected": {
+            "centered_measure": [
+              false,
+              false,
+              false
+            ],
+            "column_widths_pt": [
+              480,
+              480,
+              480
+            ],
+            "columns": [
+              [
+                "p1"
+              ],
+              [
+                "p2"
+              ],
+              [
+                "p3"
+              ]
+            ],
+            "notes_dock": "hidden",
+            "profile_source": {
+              "kind": "pane_order"
+            },
+            "slots": 4,
+            "tabs": []
+          },
+          "text_size": "standard",
+          "width_pt": 1440.0
+        },
+        {
+          "device_class": "regular",
+          "expected": {
+            "centered_measure": [
+              false,
+              false,
+              false
+            ],
+            "column_widths_pt": [
+              341,
+              341,
+              341
+            ],
+            "columns": [
+              [
+                "p1"
+              ],
+              [
+                "p2"
+              ],
+              [
+                "p3"
+              ]
+            ],
+            "notes_dock": "hidden",
+            "profile_source": {
+              "kind": "pane_order"
+            },
+            "slots": 3,
+            "tabs": []
+          },
+          "text_size": "standard",
+          "width_pt": 1024.0
+        },
+        {
+          "device_class": "regular",
+          "expected": {
+            "centered_measure": [
+              false,
+              false
+            ],
+            "column_widths_pt": [
+              512,
+              512
+            ],
+            "columns": [
+              [
+                "p1"
+              ],
+              [
+                "p2"
+              ]
+            ],
+            "notes_dock": "hidden",
+            "profile_source": {
+              "kind": "pane_order"
+            },
+            "slots": 2,
+            "tabs": [
+              "p3"
+            ]
+          },
+          "text_size": "accessibility",
+          "width_pt": 1024.0
+        },
+        {
+          "device_class": "compact",
+          "expected": {
+            "centered_measure": [
+              false
+            ],
+            "column_widths_pt": [
+              390
+            ],
+            "columns": [
+              [
+                "p1"
+              ]
+            ],
+            "notes_dock": "hidden",
+            "profile_source": {
+              "kind": "pane_order"
+            },
+            "slots": 1,
+            "tabs": [
+              "p2",
+              "p3"
+            ]
+          },
+          "text_size": "standard",
+          "width_pt": 390.0
+        },
+        {
+          "device_class": "ultra-wide",
+          "expected": {
+            "centered_measure": [
+              true,
+              true,
+              true
+            ],
+            "column_widths_pt": [
+              1147,
+              1147,
+              1147
+            ],
+            "columns": [
+              [
+                "p1"
+              ],
+              [
+                "p2"
+              ],
+              [
+                "p3"
+              ]
+            ],
+            "notes_dock": "hidden",
+            "profile_source": {
+              "kind": "pane_order"
+            },
+            "slots": 6,
+            "tabs": []
+          },
+          "text_size": "standard",
+          "width_pt": 3440.0
+        }
+      ],
+      "name": "archived 1.0 example to 1.1",
+      "to": "1.1"
+    }
+  ],
+  "description": "The first schema migration under docs/adr/0003 (B040): the archived 1.0 workspace example (three panes, two in link group A and one pinned, no profiles) migrated to 1.1. The core must produce exactly the expected document (schema_version 1.1 and an empty layout_profiles object; no pane renumbered, no scroll anchor invented), migrating again must change nothing, migrating backwards must be refused, and the original and the migrated document must derive the same layout on every listed class and width (the pane order, since there is no profile). Editions and passages are fixture ids; the fixture carries no text.",
+  "id": "workspace-migration-1-0-to-1-1",
+  "kind": "workspace_migration",
+  "license": "CC0 (synthetic layout data; no text)",
+  "source": "docs/adr/0003-identity-and-schema-versioning.md, Migrations; examples/archive/workspace-1.0.json; specs/18-platform-capabilities.md derivation rules"
+}

@@ -25,8 +25,14 @@ use openlogos_text::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub mod contracts;
 pub mod identity;
 pub mod layout;
+
+pub use contracts::{
+    AuthorityScenario, AuthorityStep, MigrationCase, MigrationLayout, NoteAuthorityFixture,
+    WorkspaceMigrationFixture,
+};
 
 pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 
@@ -38,7 +44,7 @@ pub use identity::{
 };
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 12] = [
+pub const FIXTURE_FILES: [(&str, &str); 14] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -87,6 +93,14 @@ pub const FIXTURE_FILES: [(&str, &str); 12] = [
         "workspace-layout-five-panes",
         include_str!("../fixtures/workspace-layout-five-panes.json"),
     ),
+    (
+        "workspace-migration-1-0-to-1-1",
+        include_str!("../fixtures/workspace-migration-1-0-to-1-1.json"),
+    ),
+    (
+        "note-authority-transitions",
+        include_str!("../fixtures/note-authority-transitions.json"),
+    ),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -117,6 +131,10 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/edition-revision-reanchor.json"),
         ",",
         include_str!("../fixtures/workspace-layout-five-panes.json"),
+        ",",
+        include_str!("../fixtures/workspace-migration-1-0-to-1-1.json"),
+        ",",
+        include_str!("../fixtures/note-authority-transitions.json"),
         "]"
     )
 }
@@ -473,6 +491,10 @@ pub enum Fixture {
     Reanchor(ReanchorFixture),
     /// A workspace opened on every device class (B062 layout profiles).
     WorkspaceLayout(Box<WorkspaceLayoutFixture>),
+    /// A workspace document migrated between schema versions (B040, ADR 0003).
+    WorkspaceMigration(WorkspaceMigrationFixture),
+    /// Note bindings taken through the authority state machine (B040).
+    NoteAuthority(Box<NoteAuthorityFixture>),
 }
 
 impl Fixture {
@@ -487,6 +509,8 @@ impl Fixture {
             Fixture::Alignment(f) => &f.id,
             Fixture::Reanchor(f) => &f.id,
             Fixture::WorkspaceLayout(f) => &f.id,
+            Fixture::WorkspaceMigration(f) => &f.id,
+            Fixture::NoteAuthority(f) => &f.id,
         }
     }
 }
@@ -590,6 +614,12 @@ pub fn run_all() -> ConformanceReport {
             Ok(Fixture::Reanchor(fixture)) => identity::run_reanchor(&fixture, &mut recorder),
             Ok(Fixture::WorkspaceLayout(fixture)) => {
                 layout::run_workspace_layout(&fixture, &mut recorder);
+            }
+            Ok(Fixture::WorkspaceMigration(fixture)) => {
+                contracts::run_workspace_migration(&fixture, &mut recorder);
+            }
+            Ok(Fixture::NoteAuthority(fixture)) => {
+                contracts::run_note_authority(&fixture, &mut recorder);
             }
             Err(error) => recorder.fail(
                 "fixture parses",

@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:note-binding",
+  "title": "Note binding",
+  "description": "The serialized form of openlogos_notes::NoteBinding (specs/03-data-model.md, NoteBinding; specs/13-obsidian-and-ink.md, Ownership and scope, Direct vault integration): a stable note id, the body authority (app or vault), an opaque vault id, a relative file path that is not identity, the vault file hash as the app last saw it, the hash of the body the app holds, the synchronization state (app_owned, vault_owned, migrating with preview and backup, conflict keeping both bodies, detached) and the operation ids the binding issued for idempotent create/write/delete and watcher-echo suppression. No credential, provider secret or body text. Schema 1.0.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "note_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{3,63}$"
+    },
+    "authority": {
+      "type": "string",
+      "enum": [
+        "app",
+        "vault"
+      ]
+    },
+    "vault_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "vault_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.?(/|$))[^\\\\:\\u0000]+$"
+    },
+    "last_seen_sha256": {
+      "$ref": "#/$defs/sha256_or_null"
+    },
+    "app_sha256": {
+      "$ref": "#/$defs/sha256_or_null"
+    },
+    "state": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "app_owned"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "vault_owned"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "migrating"
+            },
+            "to": {
+              "type": "string",
+              "enum": [
+                "app",
+                "vault"
+              ]
+            },
+            "preview_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "backup_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "state",
+            "to",
+            "preview_sha256",
+            "backup_id"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "conflict"
+            },
+            "app_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "vault_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "stale_write",
+                "external_edit"
+              ]
+            }
+          },
+          "required": [
+            "state",
+            "app_sha256",
+            "vault_sha256",
+            "cause"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "detached"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        }
+      ]
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "create",
+              "write",
+              "delete",
+              "adopt"
+            ]
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256_or_null"
+          },
+          "echoed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "echoed"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "note_id",
+    "authority",
+    "vault_id",
+    "vault_path",
+    "last_seen_sha256",
+    "app_sha256",
+    "state"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "properties": {
+              "state": {
+                "const": "app_owned"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "authority": {
+            "const": "app"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "vault_owned",
+                  "detached"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "authority": {
+            "const": "vault"
+          },
+          "vault_id": {
+            "type": "string"
+          },
+          "vault_path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "vault_owned",
+                  "conflict"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "last_seen_sha256": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sha256_or_null": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
