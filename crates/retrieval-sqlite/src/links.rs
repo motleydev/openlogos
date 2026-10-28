@@ -4,7 +4,7 @@
 //! updated per pack on install and removal and rebuilt deterministically from the installed
 //! set. Counts it answers are library-relative.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use openlogos_retrieval::{
@@ -296,6 +296,79 @@ impl LinkIndex {
     }
 }
 
+/// The frontier-side node of an edge for a traversal direction.
+fn from_of(edge: &Edge, direction: Direction) -> Locator {
+    match direction {
+        Direction::Outbound => edge.src.clone(),
+        _ => edge.dst.clone(),
+    }
+}
+
+impl LinkIndex {
+    /// Fills the temporary `frontier` table with the nodes to expand in one hop, so one
+    /// statement per (relation, direction) serves the whole hop instead of one per node.
+    fn load_frontier(&self, frontier: &[Locator]) -> Result<()> {
+        self.conn
+            .execute_batch(
+                "CREATE TEMP TABLE IF NOT EXISTS frontier(work INTEGER NOT NULL, locator TEXT NOT NULL);
+                 DELETE FROM frontier;",
+            )
+            .map_err(storage)?;
+        let mut insert = self
+            .conn
+            .prepare_cached("INSERT INTO frontier(work, locator) VALUES (?1, ?2)")
+            .map_err(storage)?;
+        let mut works: HashMap<&str, Option<i64>> = HashMap::new();
+        for node in frontier {
+            let id = match works.get(node.work.as_str()) {
+                Some(id) => *id,
+                None => {
+                    let id = self.work_id(&node.work)?;
+                    works.insert(node.work.as_str(), id);
+                    id
+                }
+            };
+            if let Some(id) = id {
+                insert.execute(params![id, node.locator]).map_err(storage)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// The edges leaving (or entering) the frontier nodes, at most `fan_out` per node by
+    /// descending weight (`row_number()` over a partition per node), with the frontier node
+    /// of each edge.
+    fn expand_frontier(
+        &self,
+        direction: Direction,
+        rel: Option<i64>,
+        fan_out: usize,
+    ) -> Result<Vec<(Locator, Edge)>> {
+        let column = match direction {
+            Direction::Inbound => "dst",
+            _ => "src",
+        };
+        let sql = format!(
+            "SELECT sw.name, x.src_locator, r.name, dw.name, x.dst_locator, x.weight, x.provenance, ow.name FROM (
+                 SELECT l.*, row_number() OVER (PARTITION BY l.{column}_work, l.{column}_locator ORDER BY l.weight DESC) AS rn
+                 FROM frontier f JOIN link l ON l.{column}_work = f.work AND l.{column}_locator = f.locator
+                 WHERE (?1 IS NULL OR l.rel = ?1)
+             ) x JOIN work sw ON sw.id = x.src_work JOIN work dw ON dw.id = x.dst_work
+             JOIN rel r ON r.id = x.rel JOIN work ow ON ow.id = x.source_work
+             WHERE ?2 = 0 OR x.rn <= ?2
+             ORDER BY x.{column}_work, x.{column}_locator, x.rn"
+        );
+        let mut stmt = self.conn.prepare_cached(&sql).map_err(storage)?;
+        let rows = stmt
+            .query_map(params![rel, fan_out as i64], |r| {
+                let edge = edge_from_row(r)?;
+                Ok((from_of(&edge, direction), edge))
+            })
+            .map_err(storage)?;
+        rows.collect::<std::result::Result<_, _>>().map_err(storage)
+    }
+}
+
 impl RelationStore for LinkIndex {
     fn backlinks(&self, target: &Locator, rel: Option<&str>, limit: usize) -> Result<Vec<Edge>> {
         self.edges(Direction::Inbound, target, rel, limit)
@@ -328,15 +401,20 @@ impl RelationStore for LinkIndex {
                 "max_depth must be 1..=6".into(),
             ));
         }
-        let fan_out = if options.fan_out == 0 {
-            usize::MAX
-        } else {
-            options.fan_out as usize
-        };
-        let rels: Vec<Option<&str>> = if options.rels.is_empty() {
+        let fan_out = options.fan_out as usize;
+        let rels: Vec<Option<i64>> = if options.rels.is_empty() {
             vec![None]
         } else {
-            options.rels.iter().map(|r| Some(r.as_str())).collect()
+            let mut ids = Vec::new();
+            for r in &options.rels {
+                if let Some(id) = self.rel_id(Some(r))? {
+                    ids.push(id);
+                }
+            }
+            if ids.is_empty() {
+                return Ok(Vec::new());
+            }
+            ids
         };
         let directions: &[Direction] = match options.direction {
             Direction::Outbound => &[Direction::Outbound],
@@ -348,49 +426,49 @@ impl RelationStore for LinkIndex {
         let mut reached: Vec<Reached> = Vec::new();
         let mut paths: HashMap<Locator, Vec<Edge>> = HashMap::new();
         paths.insert(start.clone(), Vec::new());
-        let mut frontier: VecDeque<Locator> = VecDeque::new();
-        frontier.push_back(start.clone());
+        let mut frontier: Vec<Locator> = vec![start.clone()];
         for depth in 1..=options.max_depth {
-            let mut next: VecDeque<Locator> = VecDeque::new();
-            while let Some(node) = frontier.pop_front() {
-                let base = paths.get(&node).cloned().unwrap_or_default();
-                let mut expanded = 0usize;
-                'rels: for rel in &rels {
-                    for direction in directions {
-                        let edges =
-                            self.edges(*direction, &node, *rel, fan_out.saturating_sub(expanded))?;
-                        for edge in edges {
-                            if expanded >= fan_out {
-                                break 'rels;
-                            }
-                            expanded += 1;
-                            let other = match direction {
-                                Direction::Outbound => edge.dst.clone(),
-                                _ => edge.src.clone(),
-                            };
-                            if !visited.insert(other.clone()) {
-                                continue; // cycle or second path: counted once
-                            }
-                            let mut path = base.clone();
-                            path.push(edge);
-                            paths.insert(other.clone(), path.clone());
-                            reached.push(Reached {
-                                node: other.clone(),
-                                depth,
-                                path,
-                            });
-                            if reached.len() >= options.max_nodes {
-                                return Ok(reached);
-                            }
-                            next.push_back(other);
+            let mut next: Vec<Locator> = Vec::new();
+            // Edges expanded per frontier node in this hop, across relations and directions.
+            let mut expanded: HashMap<Locator, usize> = HashMap::new();
+            self.load_frontier(&frontier)?;
+            'hop: for rel in &rels {
+                for direction in directions {
+                    for (from, edge) in self.expand_frontier(*direction, *rel, fan_out)? {
+                        let used = expanded.entry(from).or_insert(0);
+                        if fan_out != 0 && *used >= fan_out {
+                            continue;
                         }
+                        *used += 1;
+                        let other = match direction {
+                            Direction::Outbound => edge.dst.clone(),
+                            _ => edge.src.clone(),
+                        };
+                        if !visited.insert(other.clone()) {
+                            continue; // cycle or second path: counted once
+                        }
+                        let mut path = paths
+                            .get(&from_of(&edge, *direction))
+                            .cloned()
+                            .unwrap_or_default();
+                        path.push(edge);
+                        paths.insert(other.clone(), path.clone());
+                        reached.push(Reached {
+                            node: other.clone(),
+                            depth,
+                            path,
+                        });
+                        if reached.len() >= options.max_nodes {
+                            break 'hop;
+                        }
+                        next.push(other);
                     }
                 }
             }
-            frontier = next;
-            if frontier.is_empty() {
+            if reached.len() >= options.max_nodes || next.is_empty() {
                 break;
             }
+            frontier = next;
         }
         Ok(reached)
     }

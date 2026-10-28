@@ -165,5 +165,8 @@ fn retrieval_engine_runs_fts5_with_the_shared_tokenizer() {
     console_log!("{summary}");
     // sqlite-wasm-rs 0.5.5 bundles SQLite 3.53.0; specs/19 wants 3.54+ for OPFS (see B064).
     assert!(summary.starts_with("sqlite 3.5"), "{summary}");
-    assert!(summary.contains("greek_hits 1 hebrew_hits 1 mode ol-norm-1"), "{summary}");
+    assert!(
+        summary.contains("greek_hits 1 hebrew_hits 1 mode ol-norm-1"),
+        "{summary}"
+    );
 }

@@ -23,8 +23,12 @@ pub fn retrieval_probe() -> Result<String, JsValue> {
     )
     .map_err(|e| err(e.to_string()))?;
     let count = |q: &str| -> Result<i64, JsValue> {
-        conn.query_row("SELECT count(*) FROM probe WHERE probe MATCH ?1", [q], |r| r.get(0))
-            .map_err(|e| err(e.to_string()))
+        conn.query_row(
+            "SELECT count(*) FROM probe WHERE probe MATCH ?1",
+            [q],
+            |r| r.get(0),
+        )
+        .map_err(|e| err(e.to_string()))
     };
     let greek = count("λογος")?;
     let hebrew = count("ברא")?;

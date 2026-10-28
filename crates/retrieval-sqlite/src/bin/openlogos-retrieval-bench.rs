@@ -125,11 +125,14 @@ impl Rng {
             chunk.copy_from_slice(&bytes[..chunk.len()]);
         }
     }
-    /// Zipf-like index in `0..n`: index k is drawn with probability about 1 / (k + 1).
+    /// Skewed index in `0..n`: a power law with exponent 0.5 (index k drawn with probability
+    /// about 1 / sqrt(k + 1)), so the most popular of 30,000 verses receives about 0.3 % of
+    /// all citations (about 15,000 of 5M). A steeper Zipf (exponent 1) put 6 % of every
+    /// edge on one verse, which no real library does (OpenBible's busiest verse has a few
+    /// thousand inbound references).
     fn zipf(&mut self, n: u64) -> u64 {
         let u = (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64;
-        let k = ((n as f64 + 1.0).powf(u) - 1.0) as u64;
-        k.min(n - 1)
+        ((n as f64 * u * u) as u64).min(n - 1)
     }
 }
 
@@ -637,7 +640,7 @@ fn r9(args: &[String]) -> Res<()> {
     let plan = plan_packs(packs, edges, &mut rng);
     let planned: u64 = plan.iter().map(|p| p.edges).sum();
     println!(
-        "{} packs planned, {planned} edges (xref {}, lexicons {}, works {}, commentaries {}); destinations Zipf over {} verses",
+        "{} packs planned, {planned} edges (xref {}, lexicons {}, works {}, commentaries {}); destinations power-law (exponent 0.5) over {} verses",
         plan.len(),
         plan.iter().filter(|p| p.kind == "xref").count(),
         plan.iter().filter(|p| p.kind == "lexicon").count(),
@@ -735,7 +738,7 @@ fn r9(args: &[String]) -> Res<()> {
     };
 
     for (label, targets) in [
-        ("Zipf-popular verses", &popular),
+        ("skew-popular verses", &popular),
         ("uniform verses", &uniform),
     ] {
         let mut s = Vec::new();
