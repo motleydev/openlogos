@@ -52,15 +52,11 @@ function panesFrom(fixtures) {
   const bsb = textFixture(fixtures, "cross-verse-selection-john-3");
   const wlc = textFixture(fixtures, "hebrew-cantillation-genesis-1");
   const note = textFixture(fixtures, "bidi-isolation-note");
-  const alignment = fixtures.find((f) => f.id === "alignment-john-3-16-sblgnt-bsb");
-  const greek = alignment && alignment.source_segment;
+  const greek = textFixture(fixtures, "greek-diacritics-john-3-sblgnt");
   const panes = [];
   if (bsb) panes.push(pane("p1", "BSB", "John 3:16–17", bsb, "ltr", "en", "Group 1"));
   if (wlc) panes.push(pane("p2", "WLC", "בראשית א׳ 1–2", wlc, "rtl", "he", "Group 1"));
-  if (greek) panes.push(pane("p3", "SBLGNT", "Κατὰ Ἰωάννην 3:16", {
-    edition_id: greek.edition_id, content_revision: greek.content_revision, license: alignment.license,
-    segments: [{ segment_id: greek.segment_id, text: greek.text, tokens: greek.tokens }],
-  }, "ltr", "grc", "Pinned"));
+  if (greek) panes.push(pane("p3", "SBLGNT", "Κατὰ Ἰωάννην 3:16", greek, "ltr", "grc", "Pinned"));
   const dock = note ? pane("note", "Note", "Note on Genesis 1:1", note, "ltr", "en", "") : null;
   return { panes, dock };
 }
