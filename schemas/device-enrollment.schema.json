@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:device-enrollment",
+  "title": "Device roster",
+  "description": "The device roster of one vault (openlogos_sync::enrollment::Roster; docs/adr/0004-vault-identity-and-sync.md; specs/05-sharing-security.md 'Identity and encrypted notes'): every device ever approved with its public keys, who approved it and how, the vault key of each epoch wrapped to it, and its revocation if any; the recovery identity's public key and wraps; the current key epoch; the user-approved link to a remote (issuer, subject). The roster holds public keys, ciphertext, signatures and provenance only and may be stored anywhere; a field for a private key, a raw vault key or a token is rejected. Schema 1.0.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "vault_id": {
+      "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/vault_id"
+    },
+    "key_epoch": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "principal": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "subject": {
+              "type": "string",
+              "minLength": 1
+            },
+            "linked_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "linked_by": {
+              "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/device_id"
+            }
+          },
+          "required": [
+            "issuer",
+            "subject",
+            "linked_at",
+            "linked_by"
+          ]
+        }
+      ]
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recovery_public": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex256"
+        },
+        "wrapped_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/wrapped_vault_key"
+          }
+        }
+      },
+      "required": [
+        "recovery_public",
+        "wrapped_keys"
+      ]
+    },
+    "devices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/device_record"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "vault_id",
+    "key_epoch",
+    "principal",
+    "recovery",
+    "devices"
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "device_public": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device_id": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/device_id"
+        },
+        "signing_public": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex256"
+        },
+        "exchange_public": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex256"
+        }
+      },
+      "required": [
+        "device_id",
+        "signing_public",
+        "exchange_public"
+      ]
+    },
+    "wrapped_vault_key": {
+      "type": "object",
+      "description": "X25519 + HKDF-SHA256 + XChaCha20-Poly1305 wrap of a 32-byte vault key (48-byte ciphertext).",
+      "additionalProperties": false,
+      "properties": {
+        "key_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recipient": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "device"
+                },
+                "device_id": {
+                  "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/device_id"
+                }
+              },
+              "required": [
+                "kind",
+                "device_id"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "recovery"
+                },
+                "recovery_public": {
+                  "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex256"
+                }
+              },
+              "required": [
+                "kind",
+                "recovery_public"
+              ]
+            }
+          ]
+        },
+        "ephemeral_public": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex256"
+        },
+        "nonce": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex192"
+        },
+        "ciphertext": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{96}$"
+        }
+      },
+      "required": [
+        "key_epoch",
+        "recipient",
+        "ephemeral_public",
+        "nonce",
+        "ciphertext"
+      ]
+    },
+    "approval": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "by": {
+              "const": "founder"
+            },
+            "signature": {
+              "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/signature"
+            }
+          },
+          "required": [
+            "by",
+            "signature"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "by": {
+              "const": "device"
+            },
+            "device_id": {
+              "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/device_id"
+            },
+            "signature": {
+              "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/signature"
+            }
+          },
+          "required": [
+            "by",
+            "device_id",
+            "signature"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "by": {
+              "const": "recovery"
+            }
+          },
+          "required": [
+            "by"
+          ]
+        }
+      ]
+    },
+    "revocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "revoked_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "by": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/device_id"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cutoff_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "epoch_after": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "signature": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/signature"
+        }
+      },
+      "required": [
+        "revoked_at",
+        "by",
+        "reason",
+        "cutoff_sequence",
+        "epoch_after",
+        "signature"
+      ]
+    },
+    "device_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device": {
+          "$ref": "#/$defs/device_public"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "enrolled_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "enrolled_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "approval": {
+          "$ref": "#/$defs/approval"
+        },
+        "wrapped_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/wrapped_vault_key"
+          }
+        },
+        "revocation": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/revocation"
+            }
+          ]
+        }
+      },
+      "required": [
+        "device",
+        "display_name",
+        "enrolled_at",
+        "enrolled_epoch",
+        "approval",
+        "wrapped_keys",
+        "revocation"
+      ]
+    }
+  }
+}

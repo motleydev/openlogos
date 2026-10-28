@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:recovery-export",
+  "title": "Recovery export",
+  "description": "The offline recovery package (openlogos_sync::recovery::RecoveryExport; docs/adr/0004-vault-identity-and-sync.md; specs/05-sharing-security.md 'Lost all keys'): the recovery secret sealed under a passphrase (Argon2id with its recorded parameters, then XChaCha20-Poly1305), the vault key of the export's epoch wrapped to the recovery identity, and the public roster as of the export. With the package and the passphrase a fresh device recovers the vault; without them no server can. The recovery secret, the vault key and any device private key never appear in the clear. Schema 1.0.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "vault_id": {
+      "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/vault_id"
+    },
+    "created_at": {
+      "$ref": "urn:open-bible-blueprint:device-enrollment#/$defs/timestamp"
+    },
+    "key_epoch": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "recovery_public": {
+      "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex256"
+    },
+    "protected_secret": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "argon2id": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "m_cost": {
+              "type": "integer",
+              "minimum": 8,
+              "description": "KiB. The library default is 19456 (19 MiB)."
+            },
+            "t_cost": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "p_cost": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "m_cost",
+            "t_cost",
+            "p_cost"
+          ]
+        },
+        "salt": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "nonce": {
+          "$ref": "urn:open-bible-blueprint:sync-operation#/$defs/hex192"
+        },
+        "ciphertext": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{96}$"
+        }
+      },
+      "required": [
+        "argon2id",
+        "salt",
+        "nonce",
+        "ciphertext"
+      ]
+    },
+    "wrapped_vault_key": {
+      "$ref": "urn:open-bible-blueprint:device-enrollment#/$defs/wrapped_vault_key"
+    },
+    "roster": {
+      "$ref": "urn:open-bible-blueprint:device-enrollment"
+    }
+  },
+  "required": [
+    "schema_version",
+    "vault_id",
+    "created_at",
+    "key_epoch",
+    "recovery_public",
+    "protected_secret",
+    "wrapped_vault_key",
+    "roster"
+  ]
+}
