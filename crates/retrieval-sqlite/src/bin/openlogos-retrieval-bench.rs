@@ -7,7 +7,13 @@
 //! openlogos-retrieval-bench r6 <pack.sqlite> <queries.json> [--runs N] [--json out.json]
 //! openlogos-retrieval-bench r5 <work-dir> [--sizes 50000,200000,500000] [--dims 256,768] [--runs N]
 //! openlogos-retrieval-bench r9 <work-dir> [--packs 200] [--edges 5000000] [--runs N] [--reuse]
+//! openlogos-retrieval-bench b068 <work-dir> [--packs 200] [--edges 1000000] [--runs N] [--reuse]
 //! ```
+//!
+//! `b068` (docs/evidence/B068.md) builds the same synthetic pack set as `r9`, records it in a
+//! catalog, builds the link index twice from the catalog's installed set and compares the
+//! two files' SHA-256, then times incremental install and removal, the in-place rebuild that
+//! keeps user edges, and the count-table `most_cited`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,9 +23,10 @@ use openlogos_retrieval::{
     Direction, Locator, ProvenanceKind, Quantization, QueryVector, RelationStore, ReviewState,
     TextStore, TokenEngine, TokenQuery, VectorIndex, VerseId,
 };
+use openlogos_retrieval_sqlite::catalog::{Access, Catalog, sha256_file};
 use openlogos_retrieval_sqlite::ingest::build_n1904_pack;
 use openlogos_retrieval_sqlite::pack::{EdgeRow, PackBuilder, PackManifest};
-use openlogos_retrieval_sqlite::{Engine, LinkIndex};
+use openlogos_retrieval_sqlite::{Engine, LinkIndex, UserEdge};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -28,9 +35,10 @@ fn main() {
         Some("r6") => r6(&args[2..]),
         Some("r5") => r5(&args[2..]),
         Some("r9") => r9(&args[2..]),
+        Some("b068") => b068(&args[2..]),
         _ => {
             eprintln!(
-                "usage: openlogos-retrieval-bench ingest-tf|r6|r5|r9 ... (see the crate's bin source)"
+                "usage: openlogos-retrieval-bench ingest-tf|r6|r5|r9|b068 ... (see the crate's bin source)"
             );
             std::process::exit(2);
         }
@@ -897,5 +905,314 @@ fn r9(args: &[String]) -> Res<()> {
             .collect::<Vec<_>>()
     );
     let _ = engine.editions();
+    Ok(())
+}
+
+/// B068: deterministic rebuild, incremental install and removal, user edges, count table.
+fn b068(args: &[String]) -> Res<()> {
+    let dir = PathBuf::from(args.first().ok_or("b068 needs <work-dir>")?);
+    fs::create_dir_all(&dir)?;
+    let packs: u64 = flag(args, "--packs")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(200);
+    let edges: u64 = flag(args, "--edges")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1_000_000);
+    let runs: usize = flag(args, "--runs")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(20);
+    let reuse = has_flag(args, "--reuse");
+    banner();
+    let verses = verse_universe();
+    let mut rng = Rng::new(2026);
+    let plan = plan_packs(packs, edges, &mut rng);
+    let planned: u64 = plan.iter().map(|p| p.edges).sum();
+    println!("{} packs planned, {planned} edges", plan.len());
+
+    let pack_dir = dir.join("packs");
+    fs::create_dir_all(&pack_dir)?;
+    let mut paths: Vec<(String, PathBuf)> = Vec::new();
+    let mut pack_bytes = 0u64;
+    let (_, build_time) = time(|| -> Res<()> {
+        for p in &plan {
+            let path = pack_dir.join(format!("{}.sqlite", p.id));
+            if !(reuse && path.exists()) {
+                build_synthetic_pack(&pack_dir, p, &verses, &mut rng)?;
+            }
+            pack_bytes += file_size(&path);
+            paths.push((p.id.clone(), path));
+        }
+        Ok(())
+    });
+    println!(
+        "packs: {pack_bytes} bytes on disk, build {:.1} s{}",
+        build_time.as_secs_f64(),
+        if reuse { " (reused where present)" } else { "" }
+    );
+
+    // The catalog: hash and register every pack (the installed set).
+    let catalog_path = dir.join("catalog.sqlite");
+    let _ = fs::remove_file(&catalog_path);
+    let mut catalog = Catalog::open(&catalog_path)?;
+    catalog.register_builtin_schemes()?;
+    let (_, catalog_time) = time(|| -> Res<()> {
+        for (id, path) in &paths {
+            catalog.install_pack(id, path, Access::Open)?;
+        }
+        Ok(())
+    });
+    let installed = catalog.pack_list()?;
+
+    // Two fresh builds from the same installed set, the second from the reversed list.
+    let user_edges: Vec<UserEdge> = (0..3)
+        .map(|i| UserEdge {
+            source: format!("note-{i}"),
+            edge: openlogos_retrieval::Edge {
+                src: Locator {
+                    work: "notes".into(),
+                    locator: format!("n{i}"),
+                },
+                rel: "cites".into(),
+                dst: Locator::verse("bible", verses[i * 1000]),
+                weight: 0.0,
+                provenance: ProvenanceKind::User,
+                source_work: "user-db".into(),
+                method: "note".into(),
+                review_state: ReviewState::Published,
+            },
+            context: Some("a note".into()),
+        })
+        .collect();
+    let a = dir.join("links-a.sqlite");
+    let b = dir.join("links-b.sqlite");
+    let (n_a, build_a) = time(|| LinkIndex::build_fresh(&a, &installed, &user_edges));
+    let n_a = n_a?;
+    let reversed: Vec<(String, PathBuf)> = installed.iter().rev().cloned().collect();
+    let (n_b, build_b) = time(|| LinkIndex::build_fresh(&b, &reversed, &user_edges));
+    let n_b = n_b?;
+    let (hash_a, hash_time) = time(|| sha256_file(&a));
+    let hash_a = hash_a?;
+    let hash_b = sha256_file(&b)?;
+    let identical = hash_a == hash_b && file_size(&a) == file_size(&b);
+
+    println!("\n| Measure | Value |\n|---|---|");
+    println!("| packs | {} |", installed.len());
+    println!(
+        "| edges per build | {n_a} / {n_b} (+ {} user edges) |",
+        user_edges.len()
+    );
+    println!(
+        "| catalog install (hash + manifest + section maps) of {} packs | {:.1} s |",
+        installed.len(),
+        catalog_time.as_secs_f64()
+    );
+    println!(
+        "| fresh build A (pack-id order) | {:.1} s, {} bytes |",
+        build_a.as_secs_f64(),
+        file_size(&a)
+    );
+    println!(
+        "| fresh build B (reversed input order) | {:.1} s, {} bytes |",
+        build_b.as_secs_f64(),
+        file_size(&b)
+    );
+    println!(
+        "| sha256 A | `{hash_a}` ({:.1} s to hash) |",
+        hash_time.as_secs_f64()
+    );
+    println!("| sha256 B | `{hash_b}` |");
+    println!(
+        "| byte-identical | **{}** |",
+        if identical { "yes" } else { "NO" }
+    );
+    let _ = fs::remove_file(&b);
+
+    // Incremental work on A.
+    let mut index = LinkIndex::open(&a)?;
+    let (last_id, last_path) = installed.last().cloned().ok_or("no packs")?;
+    let last_edges = index
+        .installed()?
+        .iter()
+        .find(|(id, _)| *id == last_id)
+        .map_or(0, |(_, n)| *n);
+    let (_, removal) = time(|| index.remove_pack(&last_id));
+    let (_, reinstall) = time(|| index.install_pack(&last_id, &last_path));
+    let (first_id, first_path) = installed.first().cloned().ok_or("no packs")?;
+    let first_edges = index
+        .installed()?
+        .iter()
+        .find(|(id, _)| *id == first_id)
+        .map_or(0, |(_, n)| *n);
+    let (_, removal_first) = time(|| index.remove_pack(&first_id));
+    let (_, reinstall_first) = time(|| index.install_pack(&first_id, &first_path));
+    println!(
+        "| removal of `{last_id}` ({last_edges} edges) | {} ms |",
+        ms(removal)
+    );
+    println!("| reinstall of `{last_id}` | {} ms |", ms(reinstall));
+    println!(
+        "| removal of `{first_id}` ({first_edges} edges) | {} ms |",
+        ms(removal_first)
+    );
+    println!("| reinstall of `{first_id}` | {} ms |", ms(reinstall_first));
+    println!("| cited_count rows | {} |", index.count_rows()?);
+
+    // In-place rebuild keeps the user edges.
+    let before = index.user_edges()?;
+    let (_, rebuild) = time(|| index.rebuild(&installed));
+    let after = index.user_edges()?;
+    println!(
+        "| in-place rebuild (user edges kept) | {:.1} s, {} → {} user edges |",
+        rebuild.as_secs_f64(),
+        before.len(),
+        after.len()
+    );
+    index
+        .connection()
+        .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")?;
+    println!(
+        "| link index bytes after rebuild (WAL checkpointed) | {} |",
+        file_size(&a)
+    );
+
+    // Queries: the count table against the old GROUP BY, and backlink counts.
+    println!(
+        "\n| Query | p50 ms | p95 ms | max ms | median result size |\n|---|---:|---:|---:|---:|"
+    );
+    let row = |name: &str, samples: &mut Vec<Duration>, sizes: &mut Vec<u64>| {
+        let (p50, p95, max) = percentiles(samples);
+        sizes.sort();
+        println!(
+            "| {name} | {} | {} | {} | {} |",
+            ms(p50),
+            ms(p95),
+            ms(max),
+            sizes[sizes.len() / 2]
+        );
+    };
+    for rel in [None, Some("cross_reference"), Some("cites")] {
+        let mut s = Vec::new();
+        let mut sizes = Vec::new();
+        for _ in 0..runs {
+            let (r, d) = time(|| index.most_cited("bible", rel, 20));
+            sizes.push(r?.len() as u64);
+            s.push(d);
+        }
+        row(
+            &format!(
+                "most_cited(bible, {}, top 20) from cited_count",
+                rel.unwrap_or("any rel")
+            ),
+            &mut s,
+            &mut sizes,
+        );
+    }
+    // Correctness: the count table agrees with a GROUP BY over link for the top 20.
+    let top = index.most_cited("bible", None, 20)?;
+    let direct: Vec<(String, u64)> = {
+        let mut stmt = index.connection().prepare(
+            "SELECT dst_locator, count(*) AS n FROM link WHERE dst_work = (SELECT id FROM work WHERE name = 'bible')
+             GROUP BY dst_locator ORDER BY n DESC, dst_locator LIMIT 20",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? as u64))
+        })?;
+        rows.collect::<std::result::Result<_, _>>()?
+    };
+    let (_, group_by_time) = time(|| -> Res<()> {
+        let mut stmt = index.connection().prepare(
+            "SELECT dst_locator, count(*) AS n FROM link WHERE dst_work = (SELECT id FROM work WHERE name = 'bible')
+             GROUP BY dst_locator ORDER BY n DESC, dst_locator LIMIT 20",
+        )?;
+        let n = stmt.query_map([], |r| r.get::<_, String>(0))?.count();
+        assert_eq!(n, 20);
+        Ok(())
+    });
+    let agrees = top
+        .iter()
+        .map(|(l, n)| (l.locator.clone(), *n))
+        .collect::<Vec<_>>()
+        == direct;
+    println!(
+        "| most_cited(bible, any rel, top 20) by GROUP BY over link (B064 path), one run | {} | | | 20 |",
+        ms(group_by_time)
+    );
+    println!("\ncount table agrees with GROUP BY on the top 20: {agrees}");
+    let mut qrng = Rng::new(99);
+    let targets: Vec<Locator> = (0..runs)
+        .map(|_| Locator::verse("bible", verses[qrng.zipf(verses.len() as u64) as usize]))
+        .collect();
+    let mut s = Vec::new();
+    let mut sizes = Vec::new();
+    for t in &targets {
+        let (r, d) = time(|| index.backlink_count(t, None));
+        sizes.push(r?);
+        s.push(d);
+    }
+    row(
+        "backlink_count from cited_count, skew-popular verses",
+        &mut s,
+        &mut sizes,
+    );
+    let mut s = Vec::new();
+    let mut sizes = Vec::new();
+    for t in &targets {
+        let (r, d) = time(|| index.backlinks(t, None, 100));
+        sizes.push(r?.len() as u64);
+        s.push(d);
+    }
+    row(
+        "backlinks (limit 100), skew-popular verses",
+        &mut s,
+        &mut sizes,
+    );
+    let chain_starts: Vec<Locator> = (0..runs)
+        .map(|_| Locator {
+            work: format!("work-{:02}", qrng.below(19)),
+            locator: format!(
+                "{}.{}.{}",
+                1 + qrng.below(4),
+                1 + qrng.below(25),
+                1 + qrng.below(30)
+            ),
+        })
+        .collect();
+    let options = openlogos_retrieval::ChainOptions {
+        rels: vec!["quotes".into()],
+        direction: Direction::Both,
+        max_depth: 6,
+        fan_out: 50,
+        max_nodes: 10_000,
+    };
+    let mut s = Vec::new();
+    let mut sizes = Vec::new();
+    for t in &chain_starts {
+        let (r, d) = time(|| index.citation_chains(t, &options));
+        sizes.push(r?.len() as u64);
+        s.push(d);
+    }
+    row(
+        "citation_chains (quotes, both ways, depth 6, fan-out 50)",
+        &mut s,
+        &mut sizes,
+    );
+    let mut s = Vec::new();
+    let mut sizes = Vec::new();
+    for (edge, context) in index.outlinks_with_context(&chain_starts[0], 50)? {
+        let (r, d) = time(|| catalog.cited_target(&edge, context.as_deref()));
+        sizes.push(u64::from(matches!(
+            r?.status,
+            openlogos_retrieval::TargetStatus::InLibrary { .. }
+        )));
+        s.push(d);
+    }
+    if !s.is_empty() {
+        row(
+            "catalog.cited_target per outlink of one work section (1 = in library)",
+            &mut s,
+            &mut sizes,
+        );
+    }
+    let _ = Engine::new();
     Ok(())
 }
