@@ -546,6 +546,8 @@ dependencies = [
  "openlogos-retrieval",
  "roaring",
  "rusqlite",
+ "serde",
+ "serde_json",
  "sqlite-vec",
  "thiserror",
  "unicode-normalization",

@@ -15,7 +15,7 @@ use roaring::RoaringBitmap;
 use rusqlite::{Connection, OpenFlags, params};
 
 use crate::fts::register_tokenizer;
-use crate::tokenizer::{NORMALIZATION_MODE, normalize};
+use crate::tokenizer::{NORMALIZATION_MODE, feature_key, normalize};
 use crate::vectors::install_vec_extension;
 
 /// Schema version written to every pack; readers refuse other versions.
@@ -225,7 +225,7 @@ impl PackBuilder {
             let id = match value {
                 Some(v) if !v.is_empty() => {
                     let next = self.dictionaries[i].len() as u32 + 1;
-                    *self.dictionaries[i].entry((*v).to_owned()).or_insert(next)
+                    *self.dictionaries[i].entry(feature_key(v)).or_insert(next)
                 }
                 _ => 0,
             };
@@ -546,7 +546,7 @@ pub(crate) mod fixture {
 
     const ROWS: &[(VerseId, &[Row])] = &[
         (
-            VerseId(43_001_001),
+            VerseId(44_001_001),
             &[
                 ("Ἐν", "ἐν", "prep", "", "", "", "", "", "", ""),
                 (
@@ -711,7 +711,7 @@ pub(crate) mod fixture {
             ],
         ),
         (
-            VerseId(43_001_002),
+            VerseId(44_001_002),
             &[
                 (
                     "οὗτος",
@@ -778,7 +778,7 @@ pub(crate) mod fixture {
             ],
         ),
         (
-            VerseId(62_004_008),
+            VerseId(63_004_008),
             &[
                 (
                     "ὁ",
@@ -913,9 +913,9 @@ pub(crate) mod fixture {
     /// ANCESTOR versus PEER.
     pub fn build(path: &Path) -> PackResult<()> {
         let mut b = PackBuilder::create(path, &manifest(), FEATURES)?;
-        b.add_verse(VerseId(43_001_001), JOHN_1_1)?;
-        b.add_verse(VerseId(43_001_002), JOHN_1_2)?;
-        b.add_verse(VerseId(62_004_008), FIRST_JOHN_4_8)?;
+        b.add_verse(VerseId(44_001_001), JOHN_1_1)?;
+        b.add_verse(VerseId(44_001_002), JOHN_1_2)?;
+        b.add_verse(VerseId(63_004_008), FIRST_JOHN_4_8)?;
         for (verse, rows) in ROWS {
             for (i, r) in rows.iter().enumerate() {
                 let values = [r.1, r.2, r.3, r.4, r.5, r.6, r.7, r.8, r.9];
@@ -947,17 +947,17 @@ pub(crate) mod fixture {
         b.add_container(clause, Some(s3), 31, 35);
         b.add_verse_map(
             "org",
-            VerseId(43_001_001),
+            VerseId(44_001_001),
             "eng",
-            VerseId(43_001_001),
+            VerseId(44_001_001),
             "equal",
         )?;
         b.add_edge(&EdgeRow {
             src_work: "sblgnt-test",
-            src_locator: "62004008",
+            src_locator: "63004008",
             rel: "cross_reference",
             dst_work: "sblgnt-test",
-            dst_locator: "43001001",
+            dst_locator: "44001001",
             weight: 3.0,
             source_work: "sblgnt-test",
             method: "typed",
@@ -1009,7 +1009,7 @@ mod tests {
         assert_eq!((verses, tokens), (3, 36));
         // Byte-exact text survives.
         let body: String = conn
-            .query_row("SELECT body FROM text WHERE verse_id = 43001001", [], |r| {
+            .query_row("SELECT body FROM text WHERE verse_id = 44001001", [], |r| {
                 r.get(0)
             })
             .unwrap();

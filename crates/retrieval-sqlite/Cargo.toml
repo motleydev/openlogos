@@ -16,6 +16,9 @@ sqlite-vec = { workspace = true }
 roaring = { workspace = true }
 unicode-normalization = { workspace = true }
 thiserror = { workspace = true }
+# The bench binary reads query lists and writes results as JSON.
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

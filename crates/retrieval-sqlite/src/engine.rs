@@ -504,23 +504,23 @@ mod tests {
     fn text_store_reads_byte_exact_text_and_maps() {
         let e = engine();
         assert_eq!(
-            e.verse_text("sblgnt-test", VerseId(43_001_001))
+            e.verse_text("sblgnt-test", VerseId(44_001_001))
                 .unwrap()
                 .as_deref(),
             Some(crate::pack::fixture::JOHN_1_1)
         );
         assert_eq!(
-            e.verse_text("sblgnt-test", VerseId(43_001_003)).unwrap(),
+            e.verse_text("sblgnt-test", VerseId(44_001_003)).unwrap(),
             None
         );
-        assert_eq!(e.chapter_text("sblgnt-test", 43, 1).unwrap().len(), 2);
+        assert_eq!(e.chapter_text("sblgnt-test", 44, 1).unwrap().len(), 2);
         let maps = e
-            .map_verse("sblgnt-test", VerseId(43_001_001), "eng")
+            .map_verse("sblgnt-test", VerseId(44_001_001), "eng")
             .unwrap();
         assert_eq!(maps.len(), 1);
         assert_eq!(maps[0].kind, "equal");
         assert!(
-            e.map_verse("sblgnt-test", VerseId(43_001_002), "eng")
+            e.map_verse("sblgnt-test", VerseId(44_001_002), "eng")
                 .unwrap()
                 .is_empty()
         );
@@ -543,9 +543,9 @@ mod tests {
             .unwrap()
         };
         assert_eq!(q("θεον", None).len(), 3);
-        assert_eq!(q("θεον", Some(62)).len(), 1);
+        assert_eq!(q("θεον", Some(63)).len(), 1);
         assert_eq!(q("\"προς τον θεον\"", None).len(), 2);
-        assert_eq!(q("αγαπη", None)[0].verse, VerseId(62_004_008));
+        assert_eq!(q("αγαπη", None)[0].verse, VerseId(63_004_008));
         assert_eq!(e.normalize("Ἀγάπη"), "αγαπη");
         assert_eq!(e.normalization_mode(), "ol-norm-1");
         assert!(matches!(q("θεον", None).first(), Some(h) if h.score < 0.0));
@@ -573,7 +573,7 @@ mod tests {
             .unwrap();
         assert_eq!(imperfects.count, 4);
         let mut by_book = TokenQuery::single("sblgnt-test", TokenPattern::one("lemma", "θεός"));
-        by_book.book = Some(62);
+        by_book.book = Some(63);
         assert_eq!(e.token_search(&by_book).unwrap().count, 2);
         let err = e
             .token_search(&TokenQuery::single(
@@ -731,7 +731,7 @@ mod tests {
         let e = engine();
         let info = e.token_info("sblgnt-test", 26).unwrap();
         assert_eq!(info.surface, "ἀγαπῶν");
-        assert_eq!(info.verse, VerseId(62_004_008));
+        assert_eq!(info.verse, VerseId(63_004_008));
         assert!(
             info.features
                 .contains(&("mood".to_owned(), "participle".to_owned()))
@@ -761,11 +761,11 @@ mod tests {
             by_book,
             vec![
                 Facet {
-                    value: "43".into(),
+                    value: "44".into(),
                     count: 3
                 },
                 Facet {
-                    value: "62".into(),
+                    value: "63".into(),
                     count: 2
                 }
             ]
@@ -778,7 +778,7 @@ mod tests {
         build(&path).unwrap();
         let mut e = Engine::new().unwrap();
         e.attach_pack(&path).unwrap();
-        let target = Locator::verse("sblgnt-test", VerseId(43_001_001));
+        let target = Locator::verse("sblgnt-test", VerseId(44_001_001));
         assert!(matches!(
             e.backlink_count(&target, None),
             Err(RetrievalError::LayerUnavailable(_))
@@ -795,7 +795,7 @@ mod tests {
             e.backlinks(&target, Some("cross_reference"), 10).unwrap()[0]
                 .src
                 .locator,
-            "62004008"
+            "63004008"
         );
     }
 

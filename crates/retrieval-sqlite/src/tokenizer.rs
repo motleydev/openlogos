@@ -78,6 +78,14 @@ fn classify(c: char) -> Option<Option<char>> {
     Some(None)
 }
 
+/// The comparison form of a feature value (lemma, gloss, morphology code): NFC. Feature
+/// values are dictionary keys, not display text, so composing them is safe and necessary:
+/// N1904's lemmas use the Greek Extended oxia code points (U+1F79 ό) where a query typed on a
+/// modern keyboard produces the tonos forms (U+03CC), and NFC maps the former to the latter.
+pub fn feature_key(value: &str) -> String {
+    value.nfc().collect()
+}
+
 /// Splits `text` into normalized tokens with byte offsets into `text`.
 pub fn tokenize(text: &str) -> Vec<Token> {
     let mut tokens = Vec::new();
@@ -185,6 +193,13 @@ mod tests {
         let tokens = tokenize(hebrew);
         assert_eq!(&hebrew[tokens[0].start..tokens[0].end], "אֵ֥ת");
         assert_eq!(&hebrew[tokens[1].start..tokens[1].end], "הַשָּׁמַ֖יִם");
+    }
+
+    #[test]
+    fn feature_keys_fold_oxia_into_tonos() {
+        assert_eq!(feature_key("\u{03B8}\u{03B5}\u{1F79}\u{03C2}"), "θεός");
+        assert_eq!(feature_key("θεός"), "θεός");
+        assert_eq!(feature_key("Ἰησοῦς"), "Ἰησοῦς");
     }
 
     #[test]

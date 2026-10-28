@@ -217,7 +217,7 @@ impl TokenColumns {
         let column = self
             .feature(feature)
             .ok_or_else(|| RetrievalError::LayerUnavailable(format!("feature `{feature}`")))?;
-        let Some(value_id) = column.lookup.get(value) else {
+        let Some(value_id) = column.lookup.get(&crate::tokenizer::feature_key(value)) else {
             return Ok(std::rc::Rc::new(RoaringBitmap::new()));
         };
         let key = (column.id, *value_id);
