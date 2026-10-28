@@ -6,7 +6,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # Crates that must build for the browser worker (ADR 0001), including the binding surface and,
 # since B064, the retrieval engine (SQLite compiled for wasm32 by sqlite-wasm-rs; the dev
 # shells point the `cc` crate at an unwrapped clang for it).
-wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-ffi"
+wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-workspaces -p openlogos-conformance -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-ffi"
 
 [private]
 default:

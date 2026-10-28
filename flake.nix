@@ -303,7 +303,7 @@
             # an unwrapped clang (see CC_wasm32_unknown_unknown in the shells); inside this
             # sandboxed build that compiler is not wired yet, so `just check-wasm` covers it
             # and this check does not.
-            wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-ffi";
+            wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-workspaces -p openlogos-conformance -p openlogos-ffi";
             nixfmt = toolCheck "nixfmt" [
               pkgs.nixfmt
               pkgs.findutils

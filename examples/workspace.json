@@ -68,8 +68,7 @@
       "reference": "fixture:passage:1",
       "link_group": "2",
       "pinned": false,
-      "width_fraction": 0.2,
-      "scroll_anchor": null
+      "width_fraction": 0.2
     }
   ],
   "notes_dock_id": "fixture:note:1",
@@ -91,8 +90,7 @@
         "p4": 0.2,
         "p5": 0.14
       },
-      "notes_dock_open": false,
-      "collapsed_link_groups": []
+      "notes_dock_open": false
     },
     "regular": {
       "visible_pane_ids": [
@@ -104,8 +102,7 @@
         "p4",
         "p5"
       ],
-      "notes_dock_open": false,
-      "collapsed_link_groups": []
+      "notes_dock_open": false
     }
   }
 }

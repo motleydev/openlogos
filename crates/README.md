@@ -31,6 +31,7 @@ the crate version; its doc comment states the bump rule. The modules so far:
 | `core::anchor` | `TokenId`, `ScalarRange`, `TextQuoteSelector`, `Anchor`, `TokenSpan`, `Revision`, `Segment`, `ReanchorResult`, `AnchorError` | `TokenId::parse`/`Display`, `TextQuoteSelector::from_text`, `split_selection(...)`, `reanchor(&anchor, &old, &new)` |
 | `text::offsets` | `Utf16Range`, `GraphemeRange`, `OffsetUnit`, `OffsetError` | `scalar_to_utf16`, `utf16_to_scalar`, `scalar_to_grapheme`, `grapheme_to_scalar`, `snap_to_graphemes`, `slice_scalars`, `scalar_len`/`utf16_len`/`grapheme_len` |
 | `conformance` | `Fixture` and its parts, `ConformanceReport`, `CaseResult` | `run_all()`, `fixtures()`, `fixtures_json()`, `FIXTURE_FILES` |
+| `workspaces` (B062) | `Workspace`, `Pane`, `ScrollAnchor`, `LayoutProfile`, `LayoutProfiles`, `DeviceClass`, `TextSize`, `DerivedLayout`, `Column`, `NotesDockPlacement`, `ProfileSource`, `LayoutError` | `derive_profile(&workspace, class, width_pt, text_size)`, `with_profile(&workspace, class, profile)`, `check_profile(...)`, `DeviceClass::for_width_pt` |
 
 Everything public is plain data (owned `String`s and `Vec`s, no lifetimes or generics),
 `serde`-serializable, and each module has one `thiserror` enum, so the UniFFI and wasm-bindgen
