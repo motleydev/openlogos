@@ -6,6 +6,10 @@
 # The core comes in exactly as scripts/apple-bindings.sh leaves it under artifacts/apple/ (one
 # copy, gitignored): the XCFramework with the three static slices and the generated Swift
 # file. Run `just bindings-swift` before generating the project.
+#
+# B005 adds the test bundles: OpenLogosTests / OpenLogosMacTests host Tests/ReaderTests in the
+# app (the TextKit 2 round trips through the real text view) and OpenLogosUITests runs
+# Tests/UITests (accessibility audit, element labels) against the iPad simulator app.
 name: OpenLogos
 options:
   bundleIdPrefix: org.openlogos
@@ -63,6 +67,44 @@ targets:
         PRODUCT_NAME: OpenLogos
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
+  OpenLogosTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/ReaderTests
+    dependencies:
+      - target: OpenLogos
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.openlogos.app.tests
+        GENERATE_INFOPLIST_FILE: true
+  OpenLogosUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/UITests
+    dependencies:
+      - target: OpenLogos
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.openlogos.app.uitests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: OpenLogos
+  OpenLogosMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/ReaderTests
+    dependencies:
+      - target: OpenLogosMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.openlogos.app.mactests
+        GENERATE_INFOPLIST_FILE: true
+        CODE_SIGN_IDENTITY: "-"
+        # The host target is OpenLogosMac but its product is OpenLogos.app.
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/OpenLogos.app/Contents/MacOS/OpenLogos
+        BUNDLE_LOADER: $(TEST_HOST)
   OpenLogosMac:
     type: application
     platform: macOS
@@ -95,6 +137,11 @@ schemes:
         OpenLogos: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - OpenLogosTests
+        - OpenLogosUITests
     archive:
       config: Release
   OpenLogosMac:
@@ -103,3 +150,7 @@ schemes:
         OpenLogosMac: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - OpenLogosMacTests

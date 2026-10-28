@@ -45,3 +45,47 @@ React Native's text component cannot provide precise custom selection ranges, hi
 | Kotlin Multiplatform core | Strong for Android/Apple, weaker for WebAssembly and the Obsidian plugin; less mature corpus/search ecosystem |
 | Swift-only Apple app | Best Apple experience but no shared core for web, Android, Obsidian or the build pipeline |
 | C++ core | Comparable reach, weaker memory safety and packaging ergonomics than Rust |
+
+## B005 findings
+
+Spike B005 (docs/evidence/B005.md, 28 October 2026) ran the redirected question against the
+Mac mini natively, the iPad Pro 11-inch (M5) simulator and headless Chromium, with the Rust
+core unchanged and the B061 binding surface as is.
+
+**Both surfaces round-trip the core's anchors on every case.** A TextKit 2 surface
+(`UITextView` and `NSTextView` created with `NSTextLayoutManager`) and a semantic-DOM surface
+(plain HTML, the browser `Selection`, the wasm core) each took thirteen driven selections
+(cross-verse in BSB John 3:16–17, inside and across Hebrew combining marks in WLC Genesis
+1:1–2, Greek diacritics, a note with an emoji modifier sequence and bidi isolates) through
+`selectionToAnchors` and `anchorToUtf16` and painted the ranges the core handed back. On every
+case the painted text, the anchors' quoted text and the selected core text were identical, and
+the anchors matched the conformance fixtures. Verse numbers and other non-core runs are mapped
+out by the surface before the core sees an offset, and are never painted.
+
+**Grapheme clusters are the platform's job, and the platforms differ.** No user can select
+between a letter and its marks on any of the three; programmatically, `NSTextView` widens such a
+range itself, `UITextView` and Chromium keep it, and the surface widens it (composed character
+sequences, `Intl.Segmenter`) before calling the core. The core's `NotGraphemeBoundary` was never
+raised. The consequence stands: the core measures scalars, the surface owns clusters.
+
+**One measured cost, not a failing surface: the paragraph crosses the binding on every
+selection change.** `selectionToAnchors` takes the whole `Paragraph` by value. For a two-verse
+pane the two core calls take 0.03–0.3 ms; for a synthetic 1,000-verse paragraph set (27,000
+token spans) they took 28–43 ms on the Mac and 35 ms on the simulator, and the full selection
+latency (text view selection, scroll-to-visible, core calls, paint) was about 80–95 ms at p50,
+against the specs/01 budget of 100 ms for a visible highlight acknowledgement. The alternative,
+measured in principle and compatible with the present API, is to pass only the segments the
+selection touches (the surface already knows their offsets), which is O(selected segments); a
+paragraph handle kept by the core is the cleaner binding follow-up. B062 should pick one before
+a whole-book paragraph set exists. Scrolling the same 1,000-verse set at 720 pt/s held 60 Hz on
+the simulator at both widths and on the Mac mini at 1024 points; on the Mac at 1440 × 900 the
+programmatic scroll (bounds origin set and reflected every frame, which bypasses responsive
+scrolling) took two display intervals for 40 % of frames, which is a profiling task for B062,
+not a verdict on NSTextView; see the evidence for the numbers and the caveats.
+
+**Decision kept, with two notes for B062.** The verse-marker run layout is produced by the
+surfaces today (`RunMap` in Swift, the `.marker` rule in the DOM) and should come from the core
+as this ADR already says, so the three surfaces cannot drift on it. TextKit 2 rendering
+attributes did not paint a background in either view; the spike used storage attributes, and the
+production reader should draw highlights in a layout-fragment subclass. Android remains a sketch
+(apps/android/README.md) and its gate its own task.

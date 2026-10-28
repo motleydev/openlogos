@@ -4,6 +4,9 @@
 // 1024 × 768 landscape frame fits a portrait iPad) or scaled down, and the debug bar says so; the
 // layout engine still lays out at the true size, so the measured numbers are unaffected.
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct PrototypeRoot: View {
     @StateObject private var options = PrototypeOptions()
@@ -18,6 +21,27 @@ struct PrototypeRoot: View {
             }
         }
         .environmentObject(options)
+        #if os(macOS)
+        // B005 on the Mac: a simulated viewport sizes the real window to it, at the top left of
+        // the screen, so `screencapture -R` can take the window alone without accessibility
+        // permissions (the Mac mini runs unattended).
+        .onAppear {
+            // `-OPENLOGOS_APPEARANCE light|dark` fixes the app's appearance for a capture
+            // (specs/16 asks for both themes) without touching the system setting.
+            switch UserDefaults.standard.string(forKey: "OPENLOGOS_APPEARANCE") {
+            case "light": NSApp.appearance = NSAppearance(named: .aqua)
+            case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+            default: break
+            }
+            guard let size = options.simulatedSize else { return }
+            DispatchQueue.main.async {
+                guard let window = NSApp.windows.first, let screen = window.screen ?? NSScreen.main else { return }
+                let height = size.height + (options.showDebugBar ? DebugBar.height : 0)
+                let frame = NSRect(x: screen.frame.minX, y: screen.visibleFrame.maxY - height - 28, width: size.width, height: height + 28)
+                window.setFrame(frame, display: true)
+            }
+        }
+        #endif
     }
 }
 
@@ -59,8 +83,26 @@ private struct ScenarioView: View {
             if options.view == .shell {
                 ReadingShellView()
             } else {
-                WorkspaceView(workspace: holder.workspace(for: options.view, state: options.state), size: size)
+                let workspace = holder.workspace(for: options.view, state: options.state)
+                WorkspaceView(workspace: workspace, size: size)
+                    .task(id: options.view) { await drive(workspace) }
             }
+        }
+    }
+
+    /// B005: the launch arguments that select a case or run the measurement, once the surfaces
+    /// have laid out (a short delay; the commands then go through the same path as the handles).
+    private func drive(_ workspace: Workspace) async {
+        guard options.view == .anchors else { return }
+        try? await Task.sleep(for: .milliseconds(800))
+        if options.launchMeasurement {
+            workspace.send(.measure, to: "p1")
+        }
+        guard let name = options.launchCase else { return }
+        let cases = name == "all" ? AnchorCase.all : [AnchorCase.named(name)].compactMap { $0 }
+        for anchorCase in cases {
+            workspace.send(.runCase(anchorCase.name), to: anchorCase.paneID)
+            if cases.count > 1 { try? await Task.sleep(for: .milliseconds(700)) }
         }
     }
 }

@@ -44,7 +44,7 @@ pub use identity::{
 };
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 13] = [
+pub const FIXTURE_FILES: [(&str, &str); 14] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -56,6 +56,10 @@ pub const FIXTURE_FILES: [(&str, &str); 13] = [
     (
         "bidi-isolation-note",
         include_str!("../fixtures/bidi-isolation-note.json"),
+    ),
+    (
+        "greek-diacritics-john-3-sblgnt",
+        include_str!("../fixtures/greek-diacritics-john-3-sblgnt.json"),
     ),
     (
         "psalm-9-10-numbering",
@@ -109,6 +113,8 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/cross-verse-selection-john-3.json"),
         ",",
         include_str!("../fixtures/bidi-isolation-note.json"),
+        ",",
+        include_str!("../fixtures/greek-diacritics-john-3-sblgnt.json"),
         ",",
         include_str!("../fixtures/psalm-9-10-numbering.json"),
         ",",

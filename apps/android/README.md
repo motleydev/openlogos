@@ -29,7 +29,7 @@ that the Kotlin bindings generated from `crates/ffi` load the Rust core through 
 the same answers as the Rust and Swift tests: `apiVersion()`, `parseReference("Jn 3:16, 18;
 Rom 8:28-30")`, every fixture selection as a UTF-16 round trip through `selectionToAnchors`
 and `anchorToUtf16`, `mapVerse` on the Psalm 9/10 table, `reanchor`, and
-`runConformance().failed == 0u` (744 cases). It needs neither the Android SDK nor the NDK.
+`runConformance().failed == 0u` (842 cases). It needs neither the Android SDK nor the NDK.
 
 ```sh
 nix develop .#android
@@ -57,3 +57,65 @@ The Android app will use the same generated Kotlin with the `.so` from `cargo nd
 `jniLibs`; `docs/evidence/B061-bindings.md` records sizes and timings.
 
 Release signing keys stay outside the repository and outside agent runs, as for Apple.
+
+## B005 sketch: a Compose text surface over the same anchors
+
+Written for B005 (docs/evidence/B005.md, acceptance 4) from the platform's documented text
+stack; nothing here was built or measured, since this machine has no Android SDK or NDK. The
+full Android gate is its own task and must run the conformance cases below on a device.
+
+**What the surface is.** A Compose `BasicText`/`Text` composable draws through
+`androidx.compose.ui.text` (Minikin and HarfBuzz underneath), and `SelectionContainer` gives
+the platform selection handles and toolbar across any number of composables. Verse markers,
+poetry indentation and the attribution are `AnnotatedString` spans and inline content, exactly
+as the TextKit 2 surface uses attributed runs, so the display string again contains runs that
+are not core text and the same `RunMap` rule applies: a selection end inside a verse number
+collapses to its edge, and a highlight the core hands back never covers one. One paragraph of
+verses is one `AnnotatedString`; a chapter is a `LazyColumn` of paragraphs, which is the
+virtualization the ADR asks for (one item per paragraph, laid out when visible). A 1,000-verse
+synthetic set is 125 items of 8 verses, the shape the Apple measurement used.
+
+**Offsets.** Compose counts `TextRange` in UTF-16 code units of the `AnnotatedString`, as Java
+strings do, so the binding's `selectionToAnchors(paragraph, Utf16Range)` takes the display
+range after the run map, without conversion, and `anchorToUtf16` gives back a range that
+`AnnotatedString.Builder.addStyle(SpanStyle(background = …), start, end)` paints. The Kotlin
+CoreHost already asserts every fixture selection through these two calls (B061), so the
+Android question is only whether the platform selection reports the same code-unit range the
+user sees, which is what the Apple and DOM evidence in B005 checked for their stacks.
+
+**Grapheme clusters.** Compose places the cursor and the selection handles only on grapheme
+boundaries (`BreakIterator`-based, the same ICU data the core's grapheme adapter follows), so a
+user cannot select between a Hebrew letter and its dagesh or between an emoji and its skin-tone
+modifier; a programmatic `TextRange` inside a cluster is widened by the surface with
+`java.text.BreakIterator.getCharacterInstance()` before it goes to the core, as the Apple
+surface does with composed character sequences and the DOM reader with `Intl.Segmenter`.
+
+**Extended selection action mode.** The specs/21 §3 group (Highlight, Collect, Study, More)
+goes into the selection toolbar, not over it. Compose 1.7's `TextToolbar` can be replaced
+through `LocalTextToolbar` with one whose `showMenu` adds the four items ahead of Copy and
+Select all; underneath it is the platform `ActionMode` (`ActionMode.Callback2` floating mode)
+so the OS items keep their positions and the project items are a labelled group, as on Apple.
+The callbacks receive the current `TextRange`, run the round trip above and hand the anchors to
+the workspace; nothing in the toolbar reinterprets text.
+
+**Cross-verse and right-to-left.** `SelectionContainer` spans composables, so a selection that
+crosses a paragraph boundary is reported per `Text` with its own `TextRange`; the surface joins
+adjacent ranges in display order and runs one `selectionToAnchors` per paragraph, which already
+splits per segment. Hebrew paragraphs set `LocalLayoutDirection` to RTL inside an LTR workspace
+and `TextStyle(textDirection = TextDirection.ContentOrRtl)`; verse markers then sit at the
+reading start, as on Apple, with the stored text untouched (no normalisation; the fixture's
+non-NFC WLC bytes must survive `AnnotatedString`, which stores the string as given).
+
+**TalkBack.** `SelectionContainer` and `Text` expose the text with `semantics { }`; verse
+markers get `contentDescription = "verse 16"` on their inline content, and a custom
+accessibility action "Select verse" per marker gives the VoiceOver rotor's function. The
+accessibility audit equivalent is the Accessibility Test Framework's `AccessibilityChecks` in
+an instrumented test, which the Android gate should run on the same three-pane scenario.
+
+**What could fail, and the alternative.** If `SelectionContainer` reports ranges after its own
+word snapping (it extends a drag to word boundaries on long press) that cannot be reduced to
+the arbitrary range the user dragged, the alternative is the platform `TextView` with
+`Spannable` text inside `AndroidView`, whose `Selection.getSelectionStart/End` is exact and
+whose `ActionMode.Callback` is the extended action mode directly; it is the same Minikin/
+HarfBuzz stack with the same UTF-16 offsets, so the core side is unchanged. That is the
+measurement the Android gate must make first.

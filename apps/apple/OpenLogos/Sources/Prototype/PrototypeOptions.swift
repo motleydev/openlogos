@@ -13,11 +13,17 @@
 //   -OPENLOGOS_METRICS 1                   show the measured reading-area overlay
 //   -OPENLOGOS_FOCUS   1                   start in focus mode
 //   -OPENLOGOS_DEBUGBAR 0                  hide the debug bar (screenshots of the frame alone)
+//   B005 (view `anchors`, Sources/Reader):
+//   -OPENLOGOS_CASE cross-verse            drive one AnchorCase through the surface at launch (or `all`, one after another)
+//   -OPENLOGOS_PERF 1                      pane 1 is a synthetic 1,000-verse set; the scroll and selection measurement runs
+//   -OPENLOGOS_SYNTH 1000                  verses in the synthetic set
+//   -OPENLOGOS_LOG 1                       append round trips and measurements to Documents/b005-*.jsonl
+//   -OPENLOGOS_APPEARANCE light|dark       macOS only: fix the app appearance for a capture
 // Dynamic Type comes from the system: -UIPreferredContentSizeCategoryName (scripts/sim.sh).
 import SwiftUI
 
 enum PrototypeView: String, CaseIterable, Identifiable {
-    case shell, read, three, collection, selection, search, margin, handoff
+    case shell, read, three, collection, selection, search, margin, handoff, anchors
     var id: String { rawValue }
 
     /// The names specs/16 "Prototype and usability gate" uses.
@@ -31,6 +37,7 @@ enum PrototypeView: String, CaseIterable, Identifiable {
         case .search: return "Search results"
         case .margin: return "Margin capture"
         case .handoff: return "Obsidian handoff"
+        case .anchors: return "B005 anchors (3 texts + note)"
         }
     }
 }
@@ -64,8 +71,13 @@ final class PrototypeOptions: ObservableObject {
     @Published var showMetrics: Bool
     @Published var focusMode: Bool
     @Published var showDebugBar: Bool
+    /// B005 launch-time drivers: a named AnchorCase (or `all`) and the measurement.
+    let launchCase: String?
+    let launchMeasurement: Bool
 
     init(defaults: UserDefaults = .standard) {
+        launchCase = defaults.string(forKey: "OPENLOGOS_CASE")
+        launchMeasurement = defaults.bool(forKey: "OPENLOGOS_PERF")
         view = PrototypeView(rawValue: defaults.string(forKey: "OPENLOGOS_VIEW") ?? "") ?? .read
         layout = LayoutVariant(rawValue: defaults.string(forKey: "OPENLOGOS_LAYOUT") ?? "") ?? .a
         state = PrototypeState(rawValue: defaults.string(forKey: "OPENLOGOS_STATE") ?? "") ?? .normal

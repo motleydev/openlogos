@@ -1,0 +1,362 @@
+{
+  "id": "greek-diacritics-john-3-sblgnt",
+  "kind": "text",
+  "description": "John 3:16 in the SBLGNT, the text and token layer of alignment-john-3-16-sblgnt-bsb, as a selection fixture for Greek with breathings, accents and an iota subscript (B005). The SBLGNT source is NFC: every letter with its diacritics is one precomposed scalar, so scalar, UTF-16 and grapheme offsets coincide and no selection can fall inside a cluster; a renderer that decomposes for shaping must still report these offsets. Offsets were computed with Python, independently of the Rust implementation.",
+  "license": "SBLGNT: CC BY 4.0, Society of Biblical Literature and Logos Bible Software (https://sblgnt.com/).",
+  "source": "alignment-john-3-16-sblgnt-bsb.json source_segment (SBLGNT John 3:16, apparatus siglum removed)",
+  "edition_id": "sblgnt",
+  "content_revision": "sblgnt-2010",
+  "segments": [
+    {
+      "segment_id": "John.3.16",
+      "text": "Οὕτως γὰρ ἠγάπησεν ὁ θεὸς τὸν κόσμον ὥστε τὸν υἱὸν τὸν μονογενῆ ἔδωκεν, ἵνα πᾶς ὁ πιστεύων εἰς αὐτὸν μὴ ἀπόληται ἀλλὰ ἔχῃ ζωὴν αἰώνιον.",
+      "scalar_len": 135,
+      "utf16_len": 135,
+      "grapheme_len": 135,
+      "tokens": [
+        {
+          "id": "sblgnt:44003016001",
+          "start": 0,
+          "end": 5,
+          "surface": "Οὕτως"
+        },
+        {
+          "id": "sblgnt:44003016002",
+          "start": 6,
+          "end": 9,
+          "surface": "γὰρ"
+        },
+        {
+          "id": "sblgnt:44003016003",
+          "start": 10,
+          "end": 18,
+          "surface": "ἠγάπησεν"
+        },
+        {
+          "id": "sblgnt:44003016004",
+          "start": 19,
+          "end": 20,
+          "surface": "ὁ"
+        },
+        {
+          "id": "sblgnt:44003016005",
+          "start": 21,
+          "end": 25,
+          "surface": "θεὸς"
+        },
+        {
+          "id": "sblgnt:44003016006",
+          "start": 26,
+          "end": 29,
+          "surface": "τὸν"
+        },
+        {
+          "id": "sblgnt:44003016007",
+          "start": 30,
+          "end": 36,
+          "surface": "κόσμον"
+        },
+        {
+          "id": "sblgnt:44003016008",
+          "start": 37,
+          "end": 41,
+          "surface": "ὥστε"
+        },
+        {
+          "id": "sblgnt:44003016009",
+          "start": 42,
+          "end": 45,
+          "surface": "τὸν"
+        },
+        {
+          "id": "sblgnt:44003016010",
+          "start": 46,
+          "end": 50,
+          "surface": "υἱὸν"
+        },
+        {
+          "id": "sblgnt:44003016011",
+          "start": 51,
+          "end": 54,
+          "surface": "τὸν"
+        },
+        {
+          "id": "sblgnt:44003016012",
+          "start": 55,
+          "end": 63,
+          "surface": "μονογενῆ"
+        },
+        {
+          "id": "sblgnt:44003016013",
+          "start": 64,
+          "end": 71,
+          "surface": "ἔδωκεν,"
+        },
+        {
+          "id": "sblgnt:44003016014",
+          "start": 72,
+          "end": 75,
+          "surface": "ἵνα"
+        },
+        {
+          "id": "sblgnt:44003016015",
+          "start": 76,
+          "end": 79,
+          "surface": "πᾶς"
+        },
+        {
+          "id": "sblgnt:44003016016",
+          "start": 80,
+          "end": 81,
+          "surface": "ὁ"
+        },
+        {
+          "id": "sblgnt:44003016017",
+          "start": 82,
+          "end": 90,
+          "surface": "πιστεύων"
+        },
+        {
+          "id": "sblgnt:44003016018",
+          "start": 91,
+          "end": 94,
+          "surface": "εἰς"
+        },
+        {
+          "id": "sblgnt:44003016019",
+          "start": 95,
+          "end": 100,
+          "surface": "αὐτὸν"
+        },
+        {
+          "id": "sblgnt:44003016020",
+          "start": 101,
+          "end": 103,
+          "surface": "μὴ"
+        },
+        {
+          "id": "sblgnt:44003016021",
+          "start": 104,
+          "end": 112,
+          "surface": "ἀπόληται"
+        },
+        {
+          "id": "sblgnt:44003016022",
+          "start": 113,
+          "end": 117,
+          "surface": "ἀλλὰ"
+        },
+        {
+          "id": "sblgnt:44003016023",
+          "start": 118,
+          "end": 121,
+          "surface": "ἔχῃ"
+        },
+        {
+          "id": "sblgnt:44003016024",
+          "start": 122,
+          "end": 126,
+          "surface": "ζωὴν"
+        },
+        {
+          "id": "sblgnt:44003016025",
+          "start": 127,
+          "end": 135,
+          "surface": "αἰώνιον."
+        }
+      ]
+    }
+  ],
+  "selections": [
+    {
+      "name": "whole verse",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 0,
+        "end": 135
+      },
+      "utf16": {
+        "start": 0,
+        "end": 135
+      },
+      "grapheme": {
+        "start": 0,
+        "end": 135
+      },
+      "exact": "Οὕτως γὰρ ἠγάπησεν ὁ θεὸς τὸν κόσμον ὥστε τὸν υἱὸν τὸν μονογενῆ ἔδωκεν, ἵνα πᾶς ὁ πιστεύων εἰς αὐτὸν μὴ ἀπόληται ἀλλὰ ἔχῃ ζωὴν αἰώνιον.",
+      "tokens": [
+        "sblgnt:44003016001",
+        "sblgnt:44003016002",
+        "sblgnt:44003016003",
+        "sblgnt:44003016004",
+        "sblgnt:44003016005",
+        "sblgnt:44003016006",
+        "sblgnt:44003016007",
+        "sblgnt:44003016008",
+        "sblgnt:44003016009",
+        "sblgnt:44003016010",
+        "sblgnt:44003016011",
+        "sblgnt:44003016012",
+        "sblgnt:44003016013",
+        "sblgnt:44003016014",
+        "sblgnt:44003016015",
+        "sblgnt:44003016016",
+        "sblgnt:44003016017",
+        "sblgnt:44003016018",
+        "sblgnt:44003016019",
+        "sblgnt:44003016020",
+        "sblgnt:44003016021",
+        "sblgnt:44003016022",
+        "sblgnt:44003016023",
+        "sblgnt:44003016024",
+        "sblgnt:44003016025"
+      ]
+    },
+    {
+      "name": "word with rough breathing and perispomeni (ὥστε)",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 37,
+        "end": 41
+      },
+      "utf16": {
+        "start": 37,
+        "end": 41
+      },
+      "grapheme": {
+        "start": 37,
+        "end": 41
+      },
+      "exact": "ὥστε",
+      "tokens": [
+        "sblgnt:44003016008"
+      ],
+      "note": "U+1F65: breathing and accent precomposed with the omega"
+    },
+    {
+      "name": "word with smooth breathing and oxia (ἠγάπησεν)",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 10,
+        "end": 18
+      },
+      "utf16": {
+        "start": 10,
+        "end": 18
+      },
+      "grapheme": {
+        "start": 10,
+        "end": 18
+      },
+      "exact": "ἠγάπησεν",
+      "tokens": [
+        "sblgnt:44003016003"
+      ]
+    },
+    {
+      "name": "word ending in perispomeni (μονογενῆ)",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 55,
+        "end": 63
+      },
+      "utf16": {
+        "start": 55,
+        "end": 63
+      },
+      "grapheme": {
+        "start": 55,
+        "end": 63
+      },
+      "exact": "μονογενῆ",
+      "tokens": [
+        "sblgnt:44003016012"
+      ]
+    },
+    {
+      "name": "word with iota subscript (ἔχῃ)",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 118,
+        "end": 121
+      },
+      "utf16": {
+        "start": 118,
+        "end": 121
+      },
+      "grapheme": {
+        "start": 118,
+        "end": 121
+      },
+      "exact": "ἔχῃ",
+      "tokens": [
+        "sblgnt:44003016023"
+      ],
+      "note": "U+1FC3 eta with ypogegrammeni, one scalar"
+    },
+    {
+      "name": "article alone (ὁ before πιστεύων)",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 80,
+        "end": 81
+      },
+      "utf16": {
+        "start": 80,
+        "end": 81
+      },
+      "grapheme": {
+        "start": 80,
+        "end": 81
+      },
+      "exact": "ὁ",
+      "tokens": [
+        "sblgnt:44003016016"
+      ]
+    },
+    {
+      "name": "two words with the final full stop",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 122,
+        "end": 135
+      },
+      "utf16": {
+        "start": 122,
+        "end": 135
+      },
+      "grapheme": {
+        "start": 122,
+        "end": 135
+      },
+      "exact": "ζωὴν αἰώνιον.",
+      "tokens": [
+        "sblgnt:44003016024",
+        "sblgnt:44003016025"
+      ]
+    },
+    {
+      "name": "partial word: the accented vowel and what follows (-ῆ of μονογενῆ)",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 62,
+        "end": 70
+      },
+      "utf16": {
+        "start": 62,
+        "end": 70
+      },
+      "grapheme": {
+        "start": 62,
+        "end": 70
+      },
+      "exact": "ῆ ἔδωκεν",
+      "tokens": [
+        "sblgnt:44003016012",
+        "sblgnt:44003016013"
+      ],
+      "note": "a selection may start inside a word; the token is still reported"
+    }
+  ],
+  "paragraph_selections": []
+}
