@@ -29,7 +29,7 @@ that the Kotlin bindings generated from `crates/ffi` load the Rust core through 
 the same answers as the Rust and Swift tests: `apiVersion()`, `parseReference("Jn 3:16, 18;
 Rom 8:28-30")`, every fixture selection as a UTF-16 round trip through `selectionToAnchors`
 and `anchorToUtf16`, `mapVerse` on the Psalm 9/10 table, `reanchor`, and
-`runConformance().failed == 0u` (512 cases). It needs neither the Android SDK nor the NDK.
+`runConformance().failed == 0u` (693 cases). It needs neither the Android SDK nor the NDK.
 
 ```sh
 nix develop .#android

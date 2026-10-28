@@ -26,7 +26,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod identity;
+pub mod layout;
 pub mod locators;
+
+pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 
 pub use identity::{
     AlignedSegment, AlignmentFixture, ExpectedReanchor, FixtureAlignmentRecord, FixtureLineage,
@@ -40,7 +43,7 @@ pub use locators::{
 };
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 12] = [
+pub const FIXTURE_FILES: [(&str, &str); 13] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -89,6 +92,10 @@ pub const FIXTURE_FILES: [(&str, &str); 12] = [
         "section-maps-institutes-thayer",
         include_str!("../fixtures/section-maps-institutes-thayer.json"),
     ),
+    (
+        "workspace-layout-five-panes",
+        include_str!("../fixtures/workspace-layout-five-panes.json"),
+    ),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -119,6 +126,8 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/work-citations-builtin.json"),
         ",",
         include_str!("../fixtures/section-maps-institutes-thayer.json"),
+        ",",
+        include_str!("../fixtures/workspace-layout-five-panes.json"),
         "]"
     )
 }
@@ -477,6 +486,8 @@ pub enum Fixture {
     WorkCitations(WorkCitationFixture),
     /// Section-map resolution to installed editions (B068).
     SectionMaps(SectionMapFixture),
+    /// A workspace opened on every device class (B062 layout profiles).
+    WorkspaceLayout(Box<WorkspaceLayoutFixture>),
 }
 
 impl Fixture {
@@ -492,6 +503,7 @@ impl Fixture {
             Fixture::Reanchor(f) => &f.id,
             Fixture::WorkCitations(f) => &f.id,
             Fixture::SectionMaps(f) => &f.id,
+            Fixture::WorkspaceLayout(f) => &f.id,
         }
     }
 }
@@ -598,6 +610,9 @@ pub fn run_all() -> ConformanceReport {
             }
             Ok(Fixture::SectionMaps(fixture)) => {
                 locators::run_section_maps(&fixture, &mut recorder);
+            }
+            Ok(Fixture::WorkspaceLayout(fixture)) => {
+                layout::run_workspace_layout(&fixture, &mut recorder);
             }
             Err(error) => recorder.fail(
                 "fixture parses",

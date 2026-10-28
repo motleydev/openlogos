@@ -550,6 +550,7 @@ dependencies = [
  "openlogos-core",
  "openlogos-retrieval",
  "openlogos-text",
+ "openlogos-workspaces",
  "serde",
  "serde_json",
 ]
@@ -642,6 +643,11 @@ dependencies = [
 [[package]]
 name = "openlogos-workspaces"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "percent-encoding"

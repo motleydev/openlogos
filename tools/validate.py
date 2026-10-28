@@ -79,6 +79,33 @@ def check_thread(thread):
         if any(e not in evidence for e in m['evidence_ids']): raise ValueError('Fabricated evidence ID')
         seen.add(m['id'])
 
+PROFILE_LIMITS={'compact':1,'regular':3,'wide':6,'ultra-wide':6}
+def check_workspace(wp):
+    # B062: layout profiles place every pane exactly once and own no link state or anchor
+    # (specs/18-platform-capabilities.md, "Workspace layout profiles").
+    ids=[p['id'] for p in wp['panes']]
+    if len(set(ids))!=len(ids): raise ValueError('Duplicate pane IDs')
+    if wp['active_pane_id'] not in ids: raise ValueError('Active pane is not a pane')
+    if abs(sum(p['width_fraction'] for p in wp['panes'])-1)>1e-8: raise ValueError('Pane widths do not sum to one')
+    groups={p['link_group'] for p in wp['panes'] if p['link_group'] is not None}
+    for p in wp['panes']:
+        if p['pinned'] and p['link_group'] is not None: raise ValueError('Pinned pane inside a link group: '+p['id'])
+    for cls,profile in wp.get('layout_profiles',{}).items():
+        if cls not in PROFILE_LIMITS: raise ValueError('Unknown device class: '+cls)
+        placed=profile['visible_pane_ids']+profile['tab_order']
+        if sorted(placed)!=sorted(ids): raise ValueError('Profile '+cls+' does not place every pane exactly once')
+        collapsed=set(profile.get('collapsed_link_groups',[]))
+        group_of={p['id']:p['link_group'] for p in wp['panes']}
+        columns,seen=0,set()
+        for pid in profile['visible_pane_ids']:
+            g=group_of[pid]
+            if g in collapsed and g in seen: continue
+            columns+=1; seen.add(g)
+        if columns>PROFILE_LIMITS[cls]: raise ValueError('Profile '+cls+' shows more columns than its class allows')
+        widths=profile.get('widths',{})
+        if widths and not set(widths)<=set(profile['visible_pane_ids']): raise ValueError('Profile '+cls+' sizes a pane it does not show')
+        if widths and abs(sum(widths.values())-1)>1e-8: raise ValueError('Profile '+cls+' widths do not sum to one')
+        if not set(profile.get('collapsed_link_groups',[]))<=groups: raise ValueError('Profile '+cls+' collapses a link group no pane belongs to')
 def core_api_version():
     text=(R/'crates/core/src/lib.rs').read_text()
     m=re.search(r'pub const API_VERSION: &str = "([^"]+)"', text)
@@ -161,7 +188,7 @@ def check_report(report):
 
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -179,6 +206,7 @@ def main():
         ('rights-record','examples/rights-record.json'),
         ('research-provider-policy','specs/research-provider-policy.json'),
         ('workspace','examples/workspace.json'),
+        ('workspace','examples/archive/workspace-1.0.json'),
         ('reading-snapshot','examples/reading-snapshot.json'),
         ('ink-document','examples/ink-document.json'),
         ('research-thread','examples/research-thread.json'),
@@ -246,9 +274,28 @@ def main():
     unsigned['fixture_only']=False
     expect_rejected(lambda:validate('package-manifest',unsigned),'unsigned production manifest')
     wp=load('examples/workspace.json')
-    assert len(wp['panes'])==3 and all(p['kind']=='reading' for p in wp['panes'])
-    assert wp['active_pane_id'] in {p['id'] for p in wp['panes']}
-    assert abs(sum(p['width_fraction'] for p in wp['panes'])-1)<1e-8
+    check_workspace(wp)
+    assert wp['schema_version']=='1.1' and len(wp['panes'])==5, 'Workspace example is the five-pane two-group workspace of specs/18'
+    assert len({p['link_group'] for p in wp['panes']})==2 and {'wide','regular'}<=set(wp['layout_profiles'])
+    old_wp=load('examples/archive/workspace-1.0.json')
+    check_workspace(old_wp)
+    assert old_wp['schema_version']=='1.0' and len(old_wp['panes'])==3 and 'layout_profiles' not in old_wp
+    dropped=copy.deepcopy(wp); dropped['layout_profiles']['wide']['visible_pane_ids'].remove('p5')
+    expect_rejected(lambda:check_workspace(dropped),'layout profile that drops a pane')
+    twice=copy.deepcopy(wp); twice['layout_profiles']['regular']['tab_order'].append('p1')
+    expect_rejected(lambda:check_workspace(twice),'layout profile that places a pane twice')
+    cross=copy.deepcopy(wp); cross['layout_profiles']['regular']['compact']={'visible_pane_ids':['p2'],'tab_order':['p1','p3','p4','p5'],'notes_dock_open':False}
+    expect_rejected(lambda:validate('workspace',cross),'layout profile that carries another class\'s layout')
+    foreign_class=copy.deepcopy(wp); foreign_class['layout_profiles']['desktop']=foreign_class['layout_profiles']['wide']
+    expect_rejected(lambda:validate('workspace',foreign_class),'layout profile for an unknown device class')
+    crowded=copy.deepcopy(wp); crowded['layout_profiles']['compact']={'visible_pane_ids':['p1','p2'],'tab_order':['p3','p4','p5'],'notes_dock_open':False}
+    expect_rejected(lambda:check_workspace(crowded),'compact profile with two columns')
+    stacked=copy.deepcopy(crowded); stacked['layout_profiles']['compact']['collapsed_link_groups']=['1']
+    check_workspace(stacked)  # the same two panes in one collapsed group are one column
+    old_with_profiles=copy.deepcopy(old_wp); old_with_profiles['layout_profiles']={}
+    expect_rejected(lambda:validate('workspace',old_with_profiles),'1.0 workspace with 1.1 profiles')
+    new_without_profiles=copy.deepcopy(wp); del new_without_profiles['layout_profiles']
+    expect_rejected(lambda:validate('workspace',new_without_profiles),'1.1 workspace without profiles')
     sn=load('examples/reading-snapshot.json')
     ink=load('examples/ink-document.json')
     check_ink(sn,ink)
@@ -336,6 +383,6 @@ def main():
     expect_rejected(lambda:validate('locator-scheme',bad_schemes),'page scheme without a print edition')
     bad_schemes=copy.deepcopy(schemes); bad_schemes['schemes'][2]['canonical']=True
     expect_rejected(lambda:validate('locator-scheme',bad_schemes),'page scheme as a canonical scheme')
-    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity and citation resolution minimums.')
+    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums and workspace layout profiles.')
     print('Scope: blueprint structure only. No app, Nix build, cryptography, source clearance or Paperclip deployment has been tested.')
 if __name__=='__main__': main()

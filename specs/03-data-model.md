@@ -75,7 +75,7 @@ For v1 sync use an append-only operation log, globally unique operation IDs, cau
 
 ## Revision 2 entities
 
-- `Workspace`: versioned ordered pane layout with pane IDs, content types, edition/revision/reference, link group, pin state and independent navigation history. Notes and research panes reference app-owned note/thread IDs; credentials and copied private text are excluded.
+- `Workspace`: versioned ordered pane layout with pane IDs, content types, edition/revision/reference, link group, pin state, scroll anchor and independent navigation history, plus per-device-class layout profiles (compact, regular, wide, ultra-wide) that place every pane as visible or tab without owning its link state or anchor (specs/18-platform-capabilities.md, schema 1.1 from B062). Notes and research panes reference app-owned note/thread IDs; credentials and copied private text are excluded.
 - `NoteBinding`: stable note ID, authority (`app` or `vault`), opaque vault ID, relative file path, last-seen content hash and synchronization state. A path is not identity. Markdown user content remains independent of generated metadata and screenshots.
 - `ReadingSnapshot`: immutable background asset hashes and dimensions, pane rectangles, captured source spans/revisions, workspace recipe, capture scope and explicit private-content flags. Never automatically reflow.
 - `InkDocument`: snapshot or blank-canvas target, immutable coordinate-space ID, strokes/masks with per-operation IDs and brush versions, optional native fidelity blob and portable geometry. A fresh capture gets a new snapshot/coordinate-space ID.
