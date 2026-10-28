@@ -22,7 +22,8 @@ const cases = args.flatMap((a, i) => (a === "--case" ? [args[i + 1]] : []));
 const chromedriver = option("--chromedriver", process.env.CHROMEDRIVER);
 const shotsDir = option("--shots", null);
 const browser = option("--browser", "chrome");
-const binary = option("--binary", null); // the browser executable, when the driver should not use the default
+const binary = option("--binary", null);
+const theme = option("--theme", null); // light|dark for the case screenshots // the browser executable, when the driver should not use the default
 const width = Number(option("--width", "1440"));
 const height = Number(option("--height", "900"));
 
@@ -103,13 +104,13 @@ try {
       console.log(`screenshot ${join(shotsDir, `${name}.png`)}`);
     };
     for (const name of cases) {
-      await wd("POST", `${S}/url`, { url: `${pageUrl}?case=${encodeURIComponent(name)}` });
+      await wd("POST", `${S}/url`, { url: `${pageUrl}?case=${encodeURIComponent(name)}${theme ? `&theme=${theme}` : ""}` });
       for (let i = 0; i < 50; i++) {
         const ready = await wd("POST", `${S}/execute/sync`, { script: "return !!window.openlogosReady", args: [] });
         if (ready) break;
         await new Promise((ok) => setTimeout(ok, 200));
       }
-      await shoot(`web-${browser}-${width}-${name}`);
+      await shoot(`web-${browser}-${width}-${name}${theme ? `-${theme}` : ""}`);
     }
   }
 } catch (error) {

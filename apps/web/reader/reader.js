@@ -400,6 +400,8 @@ async function main() {
   document.addEventListener("selectionchange", onSelectionChange);
   status.textContent = `${panes.length} panes + notes dock · ${navigator.userAgent}`;
   const params = new URLSearchParams(location.search);
+  // `?theme=light|dark` fixes the page's colour scheme for a capture (specs/16: both themes).
+  if (params.get("theme")) document.documentElement.style.colorScheme = params.get("theme");
   window.openlogos = { core, CASES, runCase, runAllCases, state };
   if (params.get("autorun")) {
     window.openlogosResults = runAllCases();

@@ -26,6 +26,13 @@ struct PrototypeRoot: View {
         // the screen, so `screencapture -R` can take the window alone without accessibility
         // permissions (the Mac mini runs unattended).
         .onAppear {
+            // `-OPENLOGOS_APPEARANCE light|dark` fixes the app's appearance for a capture
+            // (specs/16 asks for both themes) without touching the system setting.
+            switch UserDefaults.standard.string(forKey: "OPENLOGOS_APPEARANCE") {
+            case "light": NSApp.appearance = NSAppearance(named: .aqua)
+            case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+            default: break
+            }
             guard let size = options.simulatedSize else { return }
             DispatchQueue.main.async {
                 guard let window = NSApp.windows.first, let screen = window.screen ?? NSScreen.main else { return }

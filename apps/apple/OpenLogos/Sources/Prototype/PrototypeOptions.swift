@@ -18,6 +18,7 @@
 //   -OPENLOGOS_PERF 1                      pane 1 is a synthetic 1,000-verse set; the scroll and selection measurement runs
 //   -OPENLOGOS_SYNTH 1000                  verses in the synthetic set
 //   -OPENLOGOS_LOG 1                       append round trips and measurements to Documents/b005-*.jsonl
+//   -OPENLOGOS_APPEARANCE light|dark       macOS only: fix the app appearance for a capture
 // Dynamic Type comes from the system: -UIPreferredContentSizeCategoryName (scripts/sim.sh).
 import SwiftUI
 
