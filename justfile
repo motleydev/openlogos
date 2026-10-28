@@ -82,3 +82,23 @@ nix-update:
 clean:
     cargo clean
     rm -rf result result-*
+
+# Build crates/ffi for macOS, iOS and the simulator, generate the Swift bindings and assemble artifacts/apple/OpenLogosCoreFFI.xcframework (apple shell)
+[group('5 · bindings')]
+bindings-swift:
+    scripts/apple-bindings.sh --no-test
+
+# bindings-swift, then `swift test` in apps/apple/CoreHost (apple shell)
+[group('5 · bindings')]
+test-swift:
+    scripts/apple-bindings.sh
+
+# Build crates/ffi as a shared library for this machine and generate the Kotlin bindings into apps/android/CoreHost (android shell)
+[group('5 · bindings')]
+bindings-kotlin:
+    scripts/kotlin-bindings.sh --no-test
+
+# bindings-kotlin, then `gradle test` in apps/android/CoreHost (android shell)
+[group('5 · bindings')]
+test-kotlin:
+    scripts/kotlin-bindings.sh

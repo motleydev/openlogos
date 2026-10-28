@@ -1,0 +1,12 @@
+# Binding generator settings read by `uniffi-bindgen generate --library` (B061).
+
+[bindings.swift]
+# `import OpenLogosCore` in Swift; the C module the Swift file wraps is OpenLogosCoreFFI.
+module_name = "OpenLogosCore"
+ffi_module_name = "OpenLogosCoreFFI"
+generate_module_map = true
+
+[bindings.kotlin]
+package_name = "org.openlogos.core"
+# JNA loads lib<cdylib_name>.{dylib,so}.
+cdylib_name = "openlogos_ffi"
