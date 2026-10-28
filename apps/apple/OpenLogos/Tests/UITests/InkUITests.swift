@@ -41,14 +41,30 @@ final class InkUITests: XCTestCase {
         }
     }
 
+    /// First what the simulator's touches look like to the palm rule (their majorRadius is
+    /// above the 20 pt fingertip threshold, so the default rule calls them palms), then the
+    /// drags with the threshold raised by launch argument.
     func testFingerDragsDrawStrokesAndTheAppMeasuresThem() throws {
-        let app = launch()
+        var app = launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
         sleep(2)
-        let canvas = app.descendants(matching: .any)["ink-canvas"].firstMatch
+        var canvas = app.descendants(matching: .any)["ink-canvas"].firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 10), "the ink canvas is on screen")
-        // Finger mode so the system touches draw.
-        let mode = app.segmentedControls["ink-mode"].firstMatch
+        var mode = app.segmentedControls["ink-mode"].firstMatch
+        if mode.exists { mode.buttons["Finger"].tap() } else { app.buttons["Finger"].firstMatch.tap() }
+        let probeStart = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.2))
+        probeStart.press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
+        sleep(1)
+        let probeReadout = app.descendants(matching: .any)["ink-readout"].firstMatch
+        let probeText = String(describing: probeReadout.value ?? probeReadout.label)
+        attach("default threshold: \(probeText)", name: "ink-simulator-touch-radius.txt")
+
+        app = launch(extra: ["-OPENLOGOS_INK_PALM_RADIUS", "1000"])
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        sleep(2)
+        canvas = app.descendants(matching: .any)["ink-canvas"].firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        mode = app.segmentedControls["ink-mode"].firstMatch
         if mode.exists { mode.buttons["Finger"].tap() } else { app.buttons["Finger"].firstMatch.tap() }
 
         // One long drag across the sheet (a single system gesture, many touchesMoved).

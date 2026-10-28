@@ -268,8 +268,8 @@
       "id": "S30",
       "title": "Excalidraw source and license",
       "url": "https://github.com/excalidraw/excalidraw/blob/master/LICENSE",
-      "secondary_url": null,
-      "finding": "MIT editor candidate; validate the selected package, assets and platform behavior.",
+      "secondary_url": "https://registry.npmjs.org/@excalidraw/excalidraw/-/excalidraw-0.18.1.tgz",
+      "finding": "MIT editor candidate; validate the selected package, assets and platform behavior. B039 mounted @excalidraw/excalidraw 0.18.1 (published 2026-04-21; React peer dependency; 47 MB unpacked, 17 MB prod dist of which 13 MB fonts; its freedraw tool calls perfect-freehand 1.2.0) offline through esbuild (apps/web/ink/excalidraw): a freedraw element keeps points and pressures but no per-point time, tilt or brush version, stores one point per frame, deletes by whole-element tombstone, and exports open JSON/SVG/PNG; a complete editor, not a margin-ink layer (docs/evidence/B039.md).",
       "status": "candidate_open",
       "pinned_artifact": null
     },

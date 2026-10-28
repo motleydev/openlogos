@@ -131,7 +131,10 @@ final class InkCanvasEngine {
                 liveLayer.contentsScale = scale
             }
         case .ignore(let reason):
-            if reason != .fingerInStylusMode { sheet.readout = "\(contact) ignored: \(reason.rawValue)" }
+            if reason != .fingerInStylusMode {
+                let radiusNote = radius.map { String(format: " (majorRadius %.1f pt, threshold %.0f)", $0, sheet.policy.palmRadius) } ?? ""
+                sheet.readout = "\(contact) ignored: \(reason.rawValue)\(radiusNote)"
+            }
         case .scroll:
             break
         }
@@ -229,14 +232,16 @@ final class InkCanvasEngine {
             try? await Task.sleep(for: .seconds(interval))
             moved(id: 900, samples: [at(i)])
         }
-        ended(id: 900, sample: at(points - 1), cancelled: false)
+        ended(id: 900, sample: nil, cancelled: false)
         try? await Task.sleep(for: .milliseconds(80))
         recording = false
         if let previousMode { sheet?.mode = previousMode }
-        return InkLatencyReport(label: label, samples: latency)
+        return report(label: label)
     }
 
-    func report(label: String) -> InkLatencyReport { InkLatencyReport(label: label, samples: latency) }
+    /// Samples still waiting for a display-link frame (none runs in a unit test) are reported
+    /// without a frame target rather than dropped.
+    func report(label: String) -> InkLatencyReport { InkLatencyReport(label: label, samples: latency + pending) }
 }
 
 // MARK: - UIKit

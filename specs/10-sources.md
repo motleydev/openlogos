@@ -261,7 +261,7 @@ Status: `candidate_open`.
 
 [Excalidraw source and license](https://github.com/excalidraw/excalidraw/blob/master/LICENSE)
 
-MIT editor candidate; validate the selected package, assets and platform behavior.
+MIT editor candidate; validate the selected package, assets and platform behavior. B039 mounted @excalidraw/excalidraw 0.18.1 (published 2026-04-21; React peer dependency; 47 MB unpacked, 17 MB prod dist of which 13 MB fonts; its freedraw tool calls perfect-freehand 1.2.0) offline through esbuild (apps/web/ink/excalidraw): a freedraw element keeps points and pressures but no per-point time, tilt or brush version, stores one point per frame, deletes by whole-element tombstone, and exports open JSON/SVG/PNG; a complete editor, not a margin-ink layer (docs/evidence/B039.md).
 
 Status: `candidate_open`.
 

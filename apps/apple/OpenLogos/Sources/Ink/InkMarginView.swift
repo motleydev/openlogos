@@ -160,8 +160,16 @@ struct InkMarginView: View {
 
     private func measure() async {
         guard let engine else { return }
+        // What the platform delivered since launch (XCUITest drags, a finger, a Pencil) is
+        // reported first; the synthesized run then replaces the buffer.
+        var real: InkLatencyReport?
+        if !engine.latency.isEmpty {
+            real = engine.report(label: "platform touches since launch (\(engine.label))")
+            log(real!)
+        }
         let report = await engine.synthesize(label: "synthesized pen (in-process)")
         sheet.latency = report
+        if let real { sheet.readout = real.summary + "\n" + sheet.readout }
         log(report)
     }
 

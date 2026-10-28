@@ -79,11 +79,18 @@ enum InkIgnoreReason: String { case palmDuringStroke, largeContact, secondFinger
 /// `TouchArbiter` in crates/ink: decisions are made at `began` and remembered for the touch.
 struct InkTouchPolicy {
     static let palmRadiusPoints = 20.0
+    /// The threshold in use; `-OPENLOGOS_INK_PALM_RADIUS <pt>` overrides it (the simulator's
+    /// XCUITest touches report a radius above the default, see docs/evidence/B039.md).
+    var palmRadius = InkTouchPolicy.palmRadiusPoints
     var mode: InkInputMode
     private var active: (id: Int, contact: InkContact)?
     private var live: [Int: InkDecision] = [:]
 
-    init(mode: InkInputMode) { self.mode = mode }
+    init(mode: InkInputMode) {
+        self.mode = mode
+        let override = UserDefaults.standard.double(forKey: "OPENLOGOS_INK_PALM_RADIUS")
+        if override > 0 { palmRadius = override }
+    }
 
     var strokeInProgress: Bool { active != nil }
 
@@ -122,7 +129,7 @@ struct InkTouchPolicy {
             if inCanvas { return active == nil ? .draw : .ignore(.secondFinger) }
             return .scroll(event.pane)
         case .finger:
-            if let radius = event.radius, radius >= Self.palmRadiusPoints { return .ignore(.largeContact) }
+            if let radius = event.radius, radius >= palmRadius { return .ignore(.largeContact) }
             if active != nil { return .ignore(inCanvas && mode == .finger ? .secondFinger : .palmDuringStroke) }
             if inCanvas { return mode == .finger ? .draw : .ignore(.fingerInStylusMode) }
             return .scroll(event.pane)

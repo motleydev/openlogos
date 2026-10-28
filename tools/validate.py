@@ -384,10 +384,15 @@ def main():
     assert (R/shared).is_file()
     source_ids={s['id'] for s in load('specs/sources.json')['sources']}
     assert len(source_ids)==len(load('specs/sources.json')['sources'])
-    for p in R.rglob('*.md'):
+    # Build output and installed packages are not part of the bundle (gitignored): a vendored
+    # package may ship its own AGENTS.md or cite other things called S29.
+    skipped={'node_modules','target','artifacts','.direnv','DerivedData','.build','dist'}
+    def bundle(pattern):
+        return (p for p in R.rglob(pattern) if not skipped & set(p.relative_to(R).parts[:-1]))
+    for p in bundle('*.md'):
         for sid in re.findall(r'\bS\d{2}\b',p.read_text()):
             assert sid in source_ids, 'Unknown research citation: ' + sid
-    for p in R.rglob('*'):
+    for p in bundle('*'):
         assert p.name not in {'AGENTS.md','CLAUDE.md'}, 'Auto-loaded instructions forbidden in this data bundle'
     manifest=load('examples/package-manifest.json')
     for artifact in manifest['artifacts']:

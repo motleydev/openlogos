@@ -155,6 +155,7 @@ final class InkTests: XCTestCase {
         XCTAssertGreaterThan(report.outlineMs.n, 0)
         // No display link runs in a unit test, so frame targets are absent; commits are timed.
         XCTAssertEqual(report.inputToCommitMs.n, 39)
+        XCTAssertEqual(report.inputToFrameTargetMs.n, 0)
         print("B039 unit: \(report.summary)")
     }
 
