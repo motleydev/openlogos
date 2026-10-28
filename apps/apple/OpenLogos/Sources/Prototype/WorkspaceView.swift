@@ -157,7 +157,7 @@ struct WorkspaceView: View {
 
     @ViewBuilder private var destination: some View {
         switch options.view {
-        case .search: SearchResultsView(workspace: workspace, state: options.state, width: size.width)
+        case .search: SearchResultsView(workspace: workspace, state: options.state, width: size.width, showsField: layout == .b)
         case .margin: MarginCaptureView(workspace: workspace, state: options.state, width: size.width)
         case .handoff: HandoffView(workspace: workspace, state: options.state, width: size.width)
         default: EmptyView()

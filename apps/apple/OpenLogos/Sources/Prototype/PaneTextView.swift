@@ -29,7 +29,7 @@ struct PaneTextView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                content
+                content(paneWidth: geometry.size.width)
                     .padding(.horizontal, ChromeMetrics.panePadding(width))
                     .padding(.vertical, 20)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -41,7 +41,7 @@ struct PaneTextView: View {
         .onTapGesture { workspace.activate(pane.id) }
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private func content(paneWidth: CGFloat) -> some View {
         if !pane.content.isInstalled {
             UnavailableSourceView(content: pane.content)
         } else if state == .loading && pane.id == workspace.activePaneID {
@@ -52,7 +52,8 @@ struct PaneTextView: View {
                     StateNotice(symbol: "lock", text: "Reference only: this edition can be read and cited, not quoted. Collect adds the reference without text.")
                 }
                 if selectable, let first = pane.content.verses.first {
-                    SelectableVerse(workspace: workspace, pane: pane, verse: first, compact: WidthClass(width: width) == .compact, onCollect: onCollect, onStudy: onStudy)
+                    // The strip stacks icon over label when the pane (not the window) is narrow.
+                    SelectableVerse(workspace: workspace, pane: pane, verse: first, compact: paneWidth < 440, onCollect: onCollect, onStudy: onStudy)
                     paragraph(Array(pane.content.verses.dropFirst()))
                 } else {
                     paragraph(pane.content.verses)

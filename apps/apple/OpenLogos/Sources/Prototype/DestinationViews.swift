@@ -8,6 +8,9 @@ struct SearchResultsView: View {
     @ObservedObject var workspace: Workspace
     let state: PrototypeState
     let width: CGFloat
+    /// Layout A's shared bar already holds the one field for passages and words (specs/16
+    /// "One search field"); only layout B, which has no bar, puts the field here.
+    var showsField = false
     @State private var scope = "BSB · Protestant canon · verse unit"
 
     private var invalid: Bool { state == .invalidQuery }
@@ -16,7 +19,12 @@ struct SearchResultsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                PassageField(text: $workspace.passageFieldText, compact: true)
+                if showsField {
+                    PassageField(text: $workspace.passageFieldText, compact: true)
+                } else {
+                    Text("Results for “\(workspace.passageFieldText)” (the field above is the query)")
+                        .font(.subheadline).accessibilityAddTraits(.isHeader)
+                }
                 HStack(spacing: 8) {
                     KindBadge(text: scope)
                     KindBadge(text: "exact phrase")

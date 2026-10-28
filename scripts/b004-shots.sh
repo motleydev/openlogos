@@ -55,7 +55,7 @@ shoot() { # name view width layout state typesize metrics focus
     factor="$(python3 -I -c "print(min($screen_w/$width, $avail_h/$height))")"
     draw_w="$(python3 -I -c "print(int($width*$factor))")"; draw_h="$(python3 -I -c "print(int($height*$factor))")"
   fi
-  local x=$(( (screen_w - draw_w) / 2 * scale )) y=$(( safe_top * scale ))
+  local x=$(( (screen_w - draw_w) * scale / 2 )) y=$(( safe_top * scale ))
   sips -c $((draw_h * scale)) $((draw_w * scale)) --cropOffset "$y" "$x" "$raw" --out "$out" >/dev/null
   if (( rotated )); then sips -r 90 "$out" --out "$out" >/dev/null; fi
   # Under 400 KB: downscale the long edge until it is.

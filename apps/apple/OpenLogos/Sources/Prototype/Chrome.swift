@@ -6,7 +6,10 @@ import SwiftUI
 
 enum ChromeMetrics {
     static let sharedBar: CGFloat = 44 // layout A, pointer and touch alike
-    static let identityRowA: CGFloat = 36 // layout A inline pane label
+    // specs/16 budgets 32–40 px for a pointer desktop; on touch the row's controls need 44-point
+    // targets, so on iPadOS the row is 44 (the first render showed 36 as designed and 44 as
+    // rendered; the constant now says what the layout does).
+    static let identityRowA: CGFloat = 44 // layout A inline pane label (touch); 36 on pointer desktops
     static let headerB: CGFloat = 44 // layout B explicit local header
     static let passageRowB: CGFloat = 44 // layout B: the active pane's passage field row when its header is too narrow
     static let passageInlineMinimumPaneWidth: CGFloat = 560 // below this, B's passage field takes its own row
@@ -234,7 +237,9 @@ struct EdgeLauncher: View {
                         launcherButton(item, label: true).frame(maxWidth: .infinity)
                     }
                 }
-                .frame(height: ChromeMetrics.launcherStrip)
+                .padding(.bottom, 2)
+                // 44 at normal type; the labels grow with Dynamic Type and the strip with them.
+                .frame(minHeight: ChromeMetrics.launcherStrip)
                 .background(.bar)
                 .overlay(alignment: .top) { Divider() }
             } else {
