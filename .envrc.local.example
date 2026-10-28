@@ -1,0 +1,26 @@
+# Copy to .envrc.local (git-ignored; direnv loads it after the Nix shell) and fill in what
+# applies. Only identifiers and paths belong here: never a key's contents, never a
+# certificate (apps/apple/README.md, Signing; specs/20-orchestration-and-build-hosts.md).
+
+# scripts/ship.sh: the Apple developer team that signs test builds
+# (developer.apple.com/account → Membership details → Team ID).
+export APPLE_TEAM_ID=ABCDE12345
+
+# Optional: an App Store Connect API key so xcodebuild can reach the portal without an Apple ID
+# signed into Xcode. The .p8 file stays outside the repository.
+# export ASC_KEY_PATH=$HOME/.private_keys/AuthKey_XXXXXXXXXX.p8
+# export ASC_KEY_ID=XXXXXXXXXX
+# export ASC_ISSUER_ID=00000000-0000-0000-0000-000000000000
+
+# Optional: the shelf (scripts/ship.sh install). Defaults: ~/OpenLogosShelf, port 8767, and the
+# address https://<this-mac>.<tailnet>.ts.net:8767 from Tailscale.
+# export OPENLOGOS_SHELF_DIR=$HOME/OpenLogosShelf
+# export OPENLOGOS_SHELF_PORT=8767
+# export OPENLOGOS_SHELF_URL=https://office-hub.example.ts.net:8767
+
+# Optional: release-testing (ad hoc, the default) or debugging (development profile).
+# export IOS_EXPORT_METHOD=release-testing
+
+# Android (apps/android/README.md): the SDK and NDK live outside Nix.
+# export ANDROID_HOME=$HOME/Library/Android/sdk
+# export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/<version>

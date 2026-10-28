@@ -137,3 +137,28 @@ sim-shot file="":
 [group('7 · apple app')]
 sim-stop:
     @scripts/sim.sh stop
+
+# A signed test build onto the shelf devices on the tailnet install from: `just ship ios` (apple shell; .envrc.local sets APPLE_TEAM_ID)
+[group('7 · apple app')]
+ship platform:
+    @scripts/ship.sh {{ platform }}
+
+# What this Mac still needs before it can ship, with the fix for each
+[group('7 · apple app')]
+ship-check:
+    @scripts/ship.sh check
+
+# Serve the shelf from this Mac at login (launchd) and share it with the tailnet (Tailscale Serve, own HTTPS port)
+[group('7 · apple app')]
+shelf-install:
+    @scripts/ship.sh install
+
+# Stop serving the shelf (its builds stay in its folder)
+[group('7 · apple app')]
+shelf-uninstall:
+    @scripts/ship.sh uninstall
+
+# Negative test: can THIS user read signing identities, ASC keys or profiles? Exits 1 if so (specs/20 wants agents isolated)
+[group('7 · apple app')]
+signing-isolation-check:
+    @scripts/signing-isolation-check.sh
