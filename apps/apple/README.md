@@ -97,7 +97,7 @@ docs/evidence/B005.md.
 generated from `crates/ffi` link against the Rust core and give the same answers as the Rust
 tests: `apiVersion()`, `parseReference("Jn 3:16, 18; Rom 8:28-30")`, every fixture selection as
 a UTF-16 round trip through `selectionToAnchors` and `anchorToUtf16`, `mapVerse` on the Psalm
-9/10 table, `reanchor`, and `runConformance().failed == 0` (512 cases).
+9/10 table, `reanchor`, and `runConformance().failed == 0` (674 cases).
 
 ```sh
 nix develop .#apple

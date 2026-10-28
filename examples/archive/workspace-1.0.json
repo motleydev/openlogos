@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "fixture_only": true,
+  "id": "fixture:workspace:1",
+  "title": "Three texts plus optional notes dock",
+  "panes": [
+    {
+      "id": "p1",
+      "kind": "reading",
+      "content_id": "fixture:edition-1",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": "A",
+      "pinned": false,
+      "width_fraction": 0.3333333333333333
+    },
+    {
+      "id": "p2",
+      "kind": "reading",
+      "content_id": "fixture:edition-2",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": "A",
+      "pinned": false,
+      "width_fraction": 0.3333333333333333
+    },
+    {
+      "id": "p3",
+      "kind": "reading",
+      "content_id": "fixture:edition-3",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": null,
+      "pinned": true,
+      "width_fraction": 0.3333333333333333
+    }
+  ],
+  "notes_dock_id": "fixture:note:1",
+  "active_pane_id": "p1"
+}
