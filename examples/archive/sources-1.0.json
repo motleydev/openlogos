@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "checked_on": "2026-10-27",
+  "notice": "Archived 1.0 shape of the source registry (pinned_artifact always null), kept so the validator exercises the N reads N-1 rule after the B003 1.1 bump. Two entries copied from specs/sources.json as it stood before B003; not a registry.",
+  "sources": [
+    {
+      "id": "S04",
+      "title": "World English Bible",
+      "url": "https://ebible.org/eng-web/webfaq.htm",
+      "secondary_url": "https://ebible.org/study/content/texts/engwebp/about.html",
+      "finding": "Publisher identifies the text as public domain; preserve edition and text integrity. Changed text must not be represented as the unchanged World English Bible.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    },
+    {
+      "id": "S05",
+      "title": "STEPBible Data",
+      "url": "https://github.com/STEPBible/STEPBible-Data/blob/master/README.md",
+      "secondary_url": null,
+      "finding": "Repository states CC BY 4.0 with attribution/change recording. Inspect each chosen file and its upstream dependencies; useful for tagged texts, lexical data and mappings.",
+      "status": "candidate_open",
+      "pinned_artifact": null
+    }
+  ]
+}

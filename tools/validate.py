@@ -330,15 +330,68 @@ def check_fixtures():
         if f['kind'] not in kinds: raise ValueError('Unknown fixture kind: '+f['kind'])
         if not f['description'] or not f['license']: raise ValueError('Fixture without description or license: '+path.name)
         if f['kind']=='sync-merge': check_sync_fixture(f)
+        check_fixture_sources(f, path.name)
         count+=1
     return count
+
+# B003: rights records (schemas/rights-record 1.1) and the source registry's pinned artifacts.
+# A record describes exact bytes that live outside the repository; what the repository holds is
+# the hash of their manifest and, under rights/<record>/, a copy of that manifest. The checks
+# below bind those together and keep the human gate honest: a proposal is not a signature.
+FIXTURE_TEXT_DENY=('ESV','English Standard Version','NIV','New International Version')
+def check_rights_record(rec, label):
+    if rec['status']=='approved' and (rec['reviewer'] is None or rec['reviewed_at'] is None):
+        raise ValueError(f'{label}: approved without reviewer and date')
+    if rec['status']=='unknown' and (rec['reviewer'] is not None or rec['reviewed_at'] is not None):
+        raise ValueError(f'{label}: unknown status with a reviewer or date')
+    acq=rec.get('acquisition')
+    if acq is None: return
+    if acq['manifest_sha256']!=rec['artifact_sha256']:
+        raise ValueError(f'{label}: artifact_sha256 must be the manifest hash for a manifested artifact')
+    mp=acq['manifest_path']
+    if mp is not None:
+        safe_path(mp)
+        data=(R/mp).read_bytes()
+        if hashlib.sha256(data).hexdigest()!=acq['manifest_sha256']:
+            raise ValueError(f'{label}: committed manifest copy does not match manifest_sha256')
+        hashes={}
+        for line in data.decode('utf-8').splitlines():
+            h,_,path=line.partition('  ')
+            if not re.fullmatch(r'[a-f0-9]{64}',h) or not path: raise ValueError(f'{label}: malformed manifest line')
+            hashes[path]=h
+        if acq.get('file_count') is not None and acq['file_count']!=len(hashes):
+            raise ValueError(f'{label}: file_count disagrees with the manifest')
+        for lf in rec.get('license_files',[]):
+            if hashes.get(lf['path'])!=lf['sha256']:
+                raise ValueError(f'{label}: licence file {lf["path"]} hash is not in the manifest')
+        if rec['license_artifact_sha256'] not in hashes.values():
+            raise ValueError(f'{label}: license_artifact_sha256 is not a manifested file')
+    if any(f['kind']=='restricted_module' for f in rec.get('flags',[])) and rec['permissions']['redistribute']=='allow' and rec.get('steward_proposal',{}).get('decision')=='restricted_module':
+        raise ValueError(f'{label}: a restricted module cannot be marked redistributable')
+def check_sources_pins(sources):
+    for s in sources:
+        pin=s['pinned_artifact']
+        if pin is None: continue
+        for rp in pin['rights_records']:
+            safe_path(rp)
+            rec=load(rp)
+            if rec.get('source_id')!=s['id']: raise ValueError(f'{s["id"]}: pinned rights record {rp} names another source')
+            if rec['acquisition']['commit']!=pin['commit'] and pin['commit'] is not None:
+                raise ValueError(f'{s["id"]}: pin commit disagrees with {rp}')
+def check_fixture_sources(fixture, label):
+    text=' '.join(str(fixture.get(k,'')) for k in ('license','source','description'))
+    for term in FIXTURE_TEXT_DENY:
+        if re.search(r'\b'+re.escape(term)+r'\b', text):
+            raise ValueError(f'{label}: fixture names a translation the rights policy excludes: {term}')
 
 def main():
     pairs = [
         ('agents','specs/agents.json'), ('backlog','specs/backlog.json'),
         ('model-policy','specs/model-policy.json'), ('sources','specs/sources.json'),
+        ('sources','examples/archive/sources-1.0.json'),
         ('claim','examples/claim.json'), ('package-manifest','examples/package-manifest.json'),
         ('rights-record','examples/rights-record.json'),
+        ('rights-record','examples/archive/rights-record-1.0.json'),
         ('research-provider-policy','specs/research-provider-policy.json'),
         ('workspace','examples/workspace.json'),
         ('workspace','examples/archive/workspace-1.0.json'),
@@ -652,6 +705,38 @@ def main():
     expect_rejected(lambda:check_binding(bad_binding),'repeated operation id')
     old_migrated=copy.deepcopy(old_wp); old_migrated['layout_profiles']={}
     expect_rejected(lambda:validate('workspace',old_migrated),'migration output still declaring 1.0')
+    # B003: every rights record validates, binds to its committed manifest copy, and stays unsigned
+    # until a human sets status, reviewer and date; the registry's pins resolve to those records.
+    rights_files=sorted(p for p in (R/'rights').glob('*.json'))
+    for p in rights_files:
+        rec=load('rights/'+p.name)
+        validate('rights-record',rec); check_rights_record(rec,p.name)
+        assert rec['id']=='rights:'+p.stem, 'Rights record id differs from file name: '+p.name
+        assert rec['source_id'] in source_ids, 'Rights record names an unknown source: '+p.name
+        assert rec.get('steward_proposal') is not None, 'Rights record without a steward proposal: '+p.name
+    check_sources_pins(load('specs/sources.json')['sources'])
+    pinned={s['id'] for s in load('specs/sources.json')['sources'] if s['pinned_artifact'] is not None}
+    assert {load('rights/'+p.name)['source_id'] for p in rights_files}==pinned, 'Every rights record is pinned by its source and every pin has a record'
+    assert load('examples/archive/sources-1.0.json')['schema_version']=='1.0' and all(s['pinned_artifact'] is None for s in load('examples/archive/sources-1.0.json')['sources'])
+    assert 'schema_version' not in load('examples/archive/rights-record-1.0.json') and load('examples/rights-record.json')['schema_version']=='1.1'
+    signed=copy.deepcopy(load('rights/'+rights_files[0].name)); signed['status']='approved'
+    expect_rejected(lambda:check_rights_record(signed,'approved without reviewer'),'rights approved without reviewer')
+    unsigned=copy.deepcopy(load('rights/'+rights_files[0].name)); unsigned['reviewer']='someone'
+    expect_rejected(lambda:check_rights_record(unsigned,'unknown with reviewer'),'rights unknown with a reviewer')
+    tampered=copy.deepcopy(load('rights/'+rights_files[0].name)); tampered['artifact_sha256']='0'*64
+    expect_rejected(lambda:check_rights_record(tampered,'tampered hash'),'rights artifact hash differs from manifest hash')
+    moved=copy.deepcopy(load('rights/'+rights_files[0].name)); moved['license_files'][0]['sha256']='1'*64
+    expect_rejected(lambda:check_rights_record(moved,'licence hash'),'licence file hash not in manifest')
+    bad_src=copy.deepcopy(load('specs/sources.json')); bad_src['sources'][0]['pinned_artifact']={'rights_records':['rights/S52.json'],'commit':None,'fetched_on':'2026-10-28','storage':'nas'}
+    expect_rejected(lambda:check_sources_pins(bad_src['sources']),'pin to another source\'s record')
+    bad_pin=copy.deepcopy(load('specs/sources.json')); bad_pin['sources'][0]['pinned_artifact']={'rights_records':['../outside.json'],'commit':None,'fetched_on':'2026-10-28','storage':'nas'}
+    expect_rejected(lambda:validate('sources',bad_pin),'pin path outside rights/')
+    bad_shape=copy.deepcopy(load('specs/sources.json')); bad_shape['sources'][0]['pinned_artifact']='rights/S52.json'
+    expect_rejected(lambda:validate('sources',bad_shape),'pin as a bare string')
+    esv_fixture={'license':'Text (c) 2001 Crossway, ESV','source':'x','description':'y'}
+    expect_rejected(lambda:check_fixture_sources(esv_fixture,'esv fixture'),'fixture naming ESV')
+    bad_flag=copy.deepcopy(load('rights/S58.json')); bad_flag['permissions']['redistribute']='allow'
+    expect_rejected(lambda:check_rights_record(bad_flag,'restricted redistributable'),'restricted module marked redistributable')
     print('Scope: blueprint structure only. No app, Nix build, cryptography, source clearance or Paperclip deployment has been tested.')
-    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums, note-binding authority, workspace layout profiles, key material in sync records and malformed operations.')
+    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; {len(rights_files)} rights records bound to their manifests and source pins; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums, note-binding authority, workspace layout profiles, key material in sync records, malformed operations, unsigned or tampered rights records and excluded translations in fixtures.')
 if __name__=='__main__': main()

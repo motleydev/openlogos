@@ -1,5 +1,7 @@
 {
+  "schema_version": "1.1",
   "id": "fixture:rights:1",
+  "source_id": "S04",
   "artifact_sha256": "b53b8c28198ee34906b9babffe8028938772e9bf6d8811ff47bb61509da6e3f0",
   "edition_id": "fixture:edition-a",
   "status": "unknown",
@@ -18,5 +20,43 @@
     "translation_evaluate": "unknown"
   },
   "reviewer": null,
-  "reviewed_at": null
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://example.invalid/fixture-edition-a.zip",
+    "commit": null,
+    "release": "fixture",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "fixture",
+    "method": "synthetic: no bytes were fetched",
+    "storage": "nowhere: this record is a shape example",
+    "paths": [],
+    "file_count": 0,
+    "bytes": 0,
+    "manifest_sha256": "b53b8c28198ee34906b9babffe8028938772e9bf6d8811ff47bb61509da6e3f0",
+    "manifest_path": null,
+    "fetch_seconds": null
+  },
+  "coverage": {
+    "scope": "fixture",
+    "books": null,
+    "verses": null,
+    "tokens": null,
+    "counting_rule": "nothing counted; synthetic example"
+  },
+  "license_files": [],
+  "flags": [
+    {
+      "kind": "provenance_research",
+      "text": "Fixture flag: the shape a real record uses to say what still needs research.",
+      "resolves_by": "Nothing; this is an example."
+    }
+  ],
+  "upstream_dependencies": [],
+  "steward_proposal": {
+    "decision": "flagged_provenance_research",
+    "rationale": "Synthetic example; a proposal is not a signature.",
+    "proposed_by": "fixture",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "The 1.0 shape of this record is examples/archive/rights-record-1.0.json."
 }
