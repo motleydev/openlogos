@@ -34,12 +34,22 @@ enum FixtureTexts {
         let segments: [Segment]?
     }
 
-    /// Fixture id to heading and reading direction. Anything else the core ships is ignored.
+    /// Fixture id to heading and reading direction. Anything else the core ships is ignored:
+    /// the bidi study-note fixture (with its test emoji) stays in the conformance suite only.
     private static let shown: [(id: String, heading: String, rtl: Bool)] = [
         ("hebrew-cantillation-genesis-1", "בְּרֵאשִׁית א", true),
         ("cross-verse-selection-john-3", "John 3", false),
-        ("bidi-isolation-note", "A study note", false),
     ]
+
+    /// The fixture's license line without its URLs, so the attribution stays one short line
+    /// ("Text: public domain (Westminster Leningrad Codex). OSHB markup: CC BY 4.0").
+    private static func attribution(_ license: String?) -> String {
+        guard let license else { return "" }
+        let words = license.split(separator: " ").filter { !$0.hasPrefix("http") }
+        var text = words.joined(separator: " ")
+        while let last = text.last, ",;: ".contains(last) { text.removeLast() }
+        return text
+    }
 
     static func passages() -> [Passage] {
         let decoder = JSONDecoder()
@@ -59,7 +69,7 @@ enum FixtureTexts {
                 id: fixture.id,
                 heading: entry.heading,
                 verses: verses,
-                attribution: fixture.license ?? "",
+                attribution: attribution(fixture.license),
                 isRightToLeft: entry.rtl
             )
         }
