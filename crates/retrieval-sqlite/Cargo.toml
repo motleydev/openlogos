@@ -16,6 +16,7 @@ thiserror = { workspace = true }
 # The bench binary reads query lists and writes results as JSON.
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 
 # Native targets: SQLite compiled from the bundled amalgamation, sqlite-vec linked statically.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
