@@ -9,6 +9,7 @@
 //! (docs/adr/0001-rust-core-native-ui.md).
 
 pub mod reference;
+pub mod versification;
 
 /// Version of the core API that bindings (UniFFI, wasm-bindgen) are generated against.
 ///
