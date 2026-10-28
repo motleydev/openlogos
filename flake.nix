@@ -77,6 +77,8 @@
           ./rustfmt.toml
           ./.cargo # build-script environment for the C sources (sqlite-vec NEON)
           ./crates
+          # Schema examples that crate tests read (B006 at run time, B039 at compile time).
+          ./examples
         ];
       };
 
