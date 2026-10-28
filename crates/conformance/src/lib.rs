@@ -794,6 +794,34 @@ fn single_range(
         .collect())
 }
 
+/// The verse map that `rows` (the shape of a versification fixture's `rows` array) describe,
+/// with every same-chapter range expanded verse by verse. This is how a binding or a host
+/// loads the Psalm 9/10 table, or its own rows in the same JSON shape, into a [`VerseMap`];
+/// the error names the first row that is not a verse or a same-length pair of ranges.
+pub fn verse_map_from_rows(rows: &[FixtureRow]) -> Result<VerseMap, String> {
+    let table = AliasTable::english();
+    let mut entries = Vec::new();
+    for (index, row) in rows.iter().enumerate() {
+        let expanded =
+            expand_row(row, &table).map_err(|e| format!("row {index} `{}`: {e}", row.from))?;
+        entries.extend(expanded);
+    }
+    Ok(VerseMap::new(entries))
+}
+
+/// The rows of every versification fixture, in file order: the table [`run_all`] maps with.
+#[must_use]
+pub fn fixture_rows() -> Vec<FixtureRow> {
+    fixtures()
+        .into_iter()
+        .filter_map(|fixture| match fixture {
+            Fixture::Versification(f) => Some(f.rows),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
 /// Status, targets and path of a mapping, for one comparison.
 #[derive(Serialize, PartialEq)]
 struct MappingShape {

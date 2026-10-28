@@ -3,8 +3,15 @@
 //! (B061) and wasm-bindgen exports for the web reader and the Obsidian plugin (B064), both
 //! generated from the same versioned API over crates/core and its siblings. Bindings are
 //! versioned with the core; a breaking core change updates every platform in one change set
-//! (docs/adr/0001-rust-core-native-ui.md). This crate contains no domain logic. Neither UniFFI
-//! nor wasm-bindgen is a dependency yet: B002 only establishes the crate.
+//! (docs/adr/0001-rust-core-native-ui.md). This crate contains no domain logic. The UniFFI
+//! surface lives in [`native`]; the wasm-bindgen surface (B064) in its own module.
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod native;
+// uniffi's proc macros look for the scaffolding tag at the crate root.
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub use native::UniFfiTag;
 
 /// The core API version this binding surface was built against.
 #[must_use]
