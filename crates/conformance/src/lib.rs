@@ -935,6 +935,10 @@ mod tests {
             .collect();
         assert!(failures.is_empty(), "{}", failures.join("\n"));
         assert!(report.all_passed());
+        eprintln!(
+            "conformance cases: {} passed, {} failed",
+            report.passed, report.failed
+        );
         assert!(report.passed > 100, "{}", report.passed);
         assert_eq!(report.api_version, openlogos_core::api_version());
     }
