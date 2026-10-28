@@ -19,6 +19,18 @@ failing call throws an `Error` with `kind` (the variant tag, e.g. `unknown_book`
 Offsets a page gives or receives are UTF-16 code units, that is JS string indexes; anchors keep
 Unicode scalar values inside. The generated `openlogos_ffi.d.ts` carries the TypeScript types.
 
+## The DOM reader (B005)
+
+`reader/` is the semantic-DOM reading surface spike: `index.html` and `reader.js`, no
+framework and no build, served next to `core-host/pkg`. Three panes and a notes dock of fixture
+text; the browser's own selection becomes core anchors through `selectionToAnchor` (verse
+markers are not core text and are mapped out) and the ranges `anchorToUtf16` hands back are
+painted with the CSS Custom Highlight API, or overlays where it is missing. `?case=<name>`
+drives one of its cases, `?autorun=1` all of them. `reader/test/run-chrome.mjs` runs them in a
+real browser through WebDriver (`just test-dom-reader`, headless Chrome by default;
+`GECKODRIVER`/`FIREFOX` or `WEBDRIVER_URL` with `--browser firefox|safari` for the others) and
+takes the evidence screenshots. Results and the OPFS/IndexedDB fallback notes: docs/evidence/B005.md.
+
 ## Run
 
 Inside `nix develop .#web`:
@@ -27,6 +39,7 @@ Inside `nix develop .#web`:
 just wasm-build   # wasm-pack --target web, then wasm-opt -Oz, into core-host/pkg (gitignored); prints sizes
 just test-web     # builds, then runs the Node 24 test host in core-host with node:test
 just test-wasm    # the same checks as wasm-bindgen tests in a dedicated worker in headless Chrome
+just test-dom-reader  # the B005 DOM reader's selection cases in headless Chrome through WebDriver
 just lint-wasm    # clippy for wasm32, including the worker tests
 ```
 

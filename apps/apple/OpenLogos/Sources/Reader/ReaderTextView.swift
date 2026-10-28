@@ -214,8 +214,7 @@ final class ReaderSurface: NSObject {
                 select(display: range)
             }
         case .clearSelection:
-            setSelectedRange(NSRange(location: 0, length: 0))
-            selectionChanged()
+            clearSelection()
         case .scrollTo(let fraction):
             scroll(toFraction: fraction)
         case .measure:
@@ -231,6 +230,13 @@ final class ReaderSurface: NSObject {
         scrollRangeToVisible(range)
         setSelectedRange(range)
         _ = textView
+        selectionChanged()
+    }
+
+    /// Collapses the platform selection and reports no selection; a command does this, and so
+    /// does the measurement when it ends (without consuming the host's last command).
+    func clearSelection() {
+        setSelectedRange(NSRange(location: 0, length: 0))
         selectionChanged()
     }
 
@@ -548,6 +554,8 @@ final class ReaderMeasurement {
     private var ticksInPhase = 0
     private var selectionIndex = 0
     private var pipelineMs: [Double] = []
+    /// The two core calls and the offset mapping alone (ReaderSelection.elapsedMilliseconds).
+    private var coreMs: [Double] = []
     private var toNextFrameMs: [Double] = []
     private var selectionSet: CFAbsoluteTime = 0
     private let scrollTicks = 480 // 8 s at 60 Hz
@@ -555,12 +563,12 @@ final class ReaderMeasurement {
     private let selections = 30
     private let signposter = AnchorRoundTrip.signposter
     private var scrollState: OSSignpostIntervalState?
-    private let width: CGFloat
+    private weak var view: PlatformTextView?
 
     init(surface: ReaderSurface, view: PlatformTextView, completion: @escaping (String) -> Void) {
         self.surface = surface
         self.completion = completion
-        width = view.bounds.width
+        self.view = view
     }
 
     func start() {
@@ -619,6 +627,7 @@ final class ReaderMeasurement {
                 surface.select(display: display)
                 let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000
                 pipelineMs.append(elapsed)
+                coreMs.append(surface.current?.elapsedMilliseconds ?? 0)
                 selectionSet = t0
                 selectionIndex += 1
             }
@@ -633,7 +642,7 @@ final class ReaderMeasurement {
         link?.invalidate()
         link = nil
         guard let surface else { return }
-        surface.perform(ReaderCommand.make(.clearSelection))
+        surface.clearSelection()
         let frames = scrollFrames
         func percentile(_ values: [Double], _ p: Double) -> Double {
             guard !values.isEmpty else { return 0 }
@@ -644,6 +653,8 @@ final class ReaderMeasurement {
         let over17 = frames.filter { $0 > 17.5 }.count
         let over34 = frames.filter { $0 > 34 }.count
         let verses = surface.layout?.content.verses.count ?? 0
+        // The text view's width as laid out now, not at the start of the run.
+        let width = view?.bounds.width ?? 0
         let result: [String: Any] = [
             "pane": surface.paneID,
             "width_pt": Double(width),
@@ -659,16 +670,20 @@ final class ReaderMeasurement {
             "select_ms_p50": percentile(pipelineMs, 0.5),
             "select_ms_p95": percentile(pipelineMs, 0.95),
             "select_ms_max": pipelineMs.max() ?? 0,
+            "core_ms_p50": percentile(coreMs, 0.5),
+            "core_ms_p95": percentile(coreMs, 0.95),
+            "core_ms_max": coreMs.max() ?? 0,
             "select_to_next_frame_ms_p50": percentile(toNextFrameMs, 0.5),
             "select_to_next_frame_ms_p95": percentile(toNextFrameMs, 0.95),
             "select_to_next_frame_ms_max": toNextFrameMs.max() ?? 0,
         ]
         RoundTripLog.append(result, to: "b005-perf.jsonl")
         let summary = String(
-            format: "%d verses at %.0f pt, TextKit 2 %@ · scroll %d frames: p50 %.1f ms, p95 %.1f ms, max %.1f ms, %d over 17.5 ms, %d over 34 ms · select (set → anchors → paint) %d runs: p50 %.2f ms, p95 %.2f ms, max %.2f ms; to next frame p50 %.1f ms, p95 %.1f ms",
+            format: "%d verses at %.0f pt, TextKit 2 %@ · scroll %d frames: p50 %.1f ms, p95 %.1f ms, max %.1f ms, %d over 17.5 ms, %d over 34 ms · select (set → anchors → paint) %d runs: p50 %.2f ms, p95 %.2f ms, max %.2f ms, of which core calls p50 %.2f ms, p95 %.2f ms; to next frame p50 %.1f ms, p95 %.1f ms",
             verses, Double(width), surface.usesTextKit2 ? "yes" : "NO",
             frames.count, percentile(frames, 0.5), percentile(frames, 0.95), frames.max() ?? 0, over17, over34,
             pipelineMs.count, percentile(pipelineMs, 0.5), percentile(pipelineMs, 0.95), pipelineMs.max() ?? 0,
+            percentile(coreMs, 0.5), percentile(coreMs, 0.95),
             percentile(toNextFrameMs, 0.5), percentile(toNextFrameMs, 0.95)
         )
         completion(summary)

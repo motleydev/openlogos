@@ -4,7 +4,9 @@
 # Chrome installed on this machine (set CHROMEDRIVER to use another). Needs the wasm build
 # (`just wasm-build`). Extra arguments go to the Node runner, e.g.
 #   scripts/dom-reader-test.sh --shots artifacts/b005/shots --case cross-verse --case hebrew-elohim
-# WEBDRIVER_URL=... with --browser firefox|safari runs the same file against another driver.
+# WEBDRIVER_URL=... with --browser firefox|safari runs the same file against another driver;
+# GECKODRIVER=<path> FIREFOX=<firefox executable> starts geckodriver here and runs Firefox
+# headless (B005 used nixpkgs' firefox-bin and geckodriver, see docs/evidence/B005.md).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -38,4 +40,13 @@ if [ -z "${WEBDRIVER_URL:-}" ] && [ -z "${CHROMEDRIVER:-}" ]; then
 fi
 
 cd "$root"
+if [ -n "${GECKODRIVER:-}" ]; then
+  port=$((4444 + RANDOM % 1000))
+  "$GECKODRIVER" --port "$port" >"${TMPDIR:-/tmp}/geckodriver-$port.log" 2>&1 &
+  driver_pid=$!
+  trap 'kill "$driver_pid" 2>/dev/null || true' EXIT
+  sleep 2
+  WEBDRIVER_URL="http://127.0.0.1:$port" node apps/web/reader/test/run-chrome.mjs --browser firefox ${FIREFOX:+--binary "$FIREFOX"} "$@"
+  exit $?
+fi
 exec node apps/web/reader/test/run-chrome.mjs "$@"

@@ -67,6 +67,30 @@ Tailscale on, and tap Install. The shelf is static files behind `/usr/bin/python
 http.server`; sudoku-color's shelf (a .NET tool on port 443 of the same Mac) is not shared.
 `just shelf-uninstall` removes the agent and only this port's Serve entry.
 
+## The TextKit 2 reading surface (B005)
+
+`OpenLogos/Sources/Reader/` is the reading surface the panes use since B005: a `UITextView`
+(iPadOS/iOS) or `NSTextView` (macOS) created with `NSTextLayoutManager`, fed an attributed
+display string built from the fixture verses (`ReaderLayout`), with every selection change
+turned into core anchors through `selectionToAnchors` and painted back through
+`anchorToUtf16` (`AnchorRoundTrip`). Verse numbers and the attribution are non-core runs that
+`RunMap` maps out of a selection. The project actions (Highlight, Collect, Study, More) sit in
+the native edit menu; a VoiceOver rotor "Verses" walks the markers on iOS. The "B005 anchors"
+view of the prototype shows three texts and the conformance study note in the notes dock, and
+launch arguments drive it (see `Sources/Prototype/PrototypeOptions.swift`):
+
+```sh
+just sim                                    # build, boot, install, launch on the iPad simulator
+just b005-shot ipad cross-verse 1024        # one driven case, cropped picture in artifacts/b005/shots
+just test-reader                            # the round-trip unit tests in the app on the simulator
+just test-reader mac                        # the same natively in the macOS app (it builds now)
+```
+
+`Tests/ReaderTests` pushes each `AnchorCase` through the real text view on both platforms;
+`Tests/UITests` runs the XCUITest accessibility audit on the simulator. The evidence, with the
+measurements and what the two text views do with a range inside a grapheme cluster, is
+docs/evidence/B005.md.
+
 ## CoreHost: the UniFFI Swift bindings test host (B061)
 
 `CoreHost/` is a SwiftPM package for macOS, not the app. It proves that the Swift bindings

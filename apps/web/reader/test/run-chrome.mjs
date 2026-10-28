@@ -6,7 +6,7 @@
 // 1440 × 900 window plus one of each named case the caller asks for.
 //
 //   node apps/web/reader/test/run-chrome.mjs --chromedriver <path> [--shots <dir>] [--case name…]
-//   WEBDRIVER_URL=http://127.0.0.1:4444 node apps/web/reader/test/run-chrome.mjs --browser firefox
+//   WEBDRIVER_URL=http://127.0.0.1:4444 node apps/web/reader/test/run-chrome.mjs --browser firefox [--binary <firefox executable>]
 //
 // Exit code 0 when every case passed; the results are printed as JSON lines.
 import { spawn } from "node:child_process";
@@ -22,6 +22,7 @@ const cases = args.flatMap((a, i) => (a === "--case" ? [args[i + 1]] : []));
 const chromedriver = option("--chromedriver", process.env.CHROMEDRIVER);
 const shotsDir = option("--shots", null);
 const browser = option("--browser", "chrome");
+const binary = option("--binary", null); // the browser executable, when the driver should not use the default
 const width = Number(option("--width", "1440"));
 const height = Number(option("--height", "900"));
 
@@ -65,7 +66,7 @@ async function wd(method, path, body) {
 }
 
 const capabilities = browser === "firefox"
-  ? { alwaysMatch: { browserName: "firefox", "moz:firefoxOptions": { args: ["-headless", `-width=${width}`, `-height=${height}`] } } }
+  ? { alwaysMatch: { browserName: "firefox", "moz:firefoxOptions": { ...(binary ? { binary } : {}), args: ["-headless", `-width=${width}`, `-height=${height}`] } } }
   : browser === "safari"
     ? { alwaysMatch: { browserName: "safari" } }
     : { alwaysMatch: { browserName: "chrome", "goog:chromeOptions": { args: ["--headless=new", `--window-size=${width},${height}`, "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1"] } } };

@@ -104,7 +104,7 @@ function render(p, isDock) {
   } else {
     const identity = document.createElement("div");
     identity.className = "identity";
-    identity.innerHTML = `<b>${p.shortName}</b> <span class="ref" dir="auto">${p.reference}</span> <span class="link">${p.link}</span>`;
+    identity.innerHTML = `<b>${p.shortName}</b> <span class="ref">${p.reference}</span> <span class="link">${p.link}</span>`;
     section.appendChild(identity);
   }
   const text = document.createElement("p");
