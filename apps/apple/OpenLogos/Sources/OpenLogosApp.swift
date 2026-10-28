@@ -8,7 +8,10 @@ import SwiftUI
 struct OpenLogosApp: App {
     var body: some Scene {
         WindowGroup {
-            ReadingShellView()
+            // B004: the reading-interactions prototype (Sources/Prototype/) is the root; the
+            // B063 shell stays reachable as the "B063 shell" view in its debug bar, or with
+            // the launch argument `-OPENLOGOS_VIEW shell`.
+            PrototypeRoot()
         }
     }
 }
