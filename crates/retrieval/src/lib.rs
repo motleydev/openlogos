@@ -14,6 +14,19 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod chains;
+pub mod locators;
+
+pub use chains::{
+    BASIS_NOT_DOCUMENTED, ChainHop, ChainOptions, ChainStop, QuotationChain, ReviewState,
+};
+pub use locators::{
+    CITED_NOT_IN_LIBRARY, CitedTarget, EditionResolution, LocatorScheme, LocatorSchemeKind,
+    NotInLibraryReason, RESOLUTION_REPORT_SCHEMA_VERSION, ResolutionBasis, ResolutionOutcome,
+    ResolutionReport, SchemeMinimum, SchemeRates, SectionMap, SectionMapKind, SectionMapRow,
+    SectionOutcome, SectionResolution, SectionTarget, TargetStatus,
+};
+
 /// Errors every engine reports through the trait boundary.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 pub enum RetrievalError {
@@ -420,6 +433,22 @@ pub struct Edge {
     pub provenance: ProvenanceKind,
     /// The pack or work that asserts the edge.
     pub source_work: String,
+    /// What produced the edge: the curated source's name, the parser or model version, or
+    /// the user note's id. Empty means the basis is not documented (see
+    /// [`Edge::basis_documented`]).
+    #[serde(default)]
+    pub method: String,
+    /// Review state of the claim the edge is (specs/03, "Typed claims").
+    #[serde(default = "ReviewState::default_for_edge")]
+    pub review_state: ReviewState,
+}
+
+impl ReviewState {
+    /// What an edge without a stored review state is taken as: attested by its source.
+    #[must_use]
+    pub fn default_for_edge() -> ReviewState {
+        ReviewState::SourceAttested
+    }
 }
 
 /// Which way a traversal follows edges.
@@ -482,6 +511,15 @@ pub trait RelationStore {
         rel: Option<&str>,
         limit: usize,
     ) -> Result<Vec<(Locator, u64)>>;
+    /// Quotation chains from a locator: depth-limited, cycle-free, one chain per node
+    /// reached, every hop with its provenance and review state, and a hop without a
+    /// documented basis stopping its chain (specs/19 item 7). When one of the start node's
+    /// own hops is undocumented, the start appears as an empty chain carrying that stop.
+    fn citation_chains(
+        &self,
+        start: &Locator,
+        options: &ChainOptions,
+    ) -> Result<Vec<QuotationChain>>;
 }
 
 /// Vector storage precision (specs/19 item 5: float32 never ships to devices).
@@ -599,6 +637,9 @@ mod tests {
             Ok(Vec::new())
         }
         fn most_cited(&self, _: &str, _: Option<&str>, _: usize) -> Result<Vec<(Locator, u64)>> {
+            Ok(Vec::new())
+        }
+        fn citation_chains(&self, _: &Locator, _: &ChainOptions) -> Result<Vec<QuotationChain>> {
             Ok(Vec::new())
         }
     }

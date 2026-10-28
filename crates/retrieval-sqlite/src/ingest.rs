@@ -396,6 +396,8 @@ mod tests {
             source: "test".into(),
             license: "CC0-1.0".into(),
             attribution: String::new(),
+            work: None,
+            locator_scheme: None,
         };
         let report = build_n1904_pack(&dir, &pack, &manifest).unwrap();
         assert_eq!(

@@ -14,8 +14,8 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use openlogos_retrieval::{
-    Direction, Locator, ProvenanceKind, Quantization, QueryVector, RelationStore, TextStore,
-    TokenEngine, TokenQuery, VectorIndex, VerseId,
+    Direction, Locator, ProvenanceKind, Quantization, QueryVector, RelationStore, ReviewState,
+    TextStore, TokenEngine, TokenQuery, VectorIndex, VerseId,
 };
 use openlogos_retrieval_sqlite::ingest::build_n1904_pack;
 use openlogos_retrieval_sqlite::pack::{EdgeRow, PackBuilder, PackManifest};
@@ -159,6 +159,8 @@ fn ingest_tf(args: &[String]) -> Res<()> {
         attribution: flag(args, "--attribution")
             .unwrap_or("Nestle 1904 Greek New Testament in Text-Fabric, CBLC and ETCBC, from MACULA Greek (Clear Bible)")
             .to_owned(),
+        work: None,
+        locator_scheme: None,
     };
     banner();
     let (report, took) = time(|| build_n1904_pack(&tf_dir, &out, &manifest));
@@ -356,6 +358,8 @@ fn r5(args: &[String]) -> Res<()> {
                         source: "synthetic".into(),
                         license: "CC0-1.0".into(),
                         attribution: String::new(),
+                        work: None,
+                        locator_scheme: None,
                     };
                     let (_, took) = time(|| -> Res<()> {
                         let mut b = PackBuilder::create(&path, &manifest, &[])?;
@@ -506,6 +510,8 @@ fn build_synthetic_pack(
         source: "synthetic (R9)".into(),
         license: "CC0-1.0".into(),
         attribution: String::new(),
+        work: None,
+        locator_scheme: None,
     };
     let mut b = PackBuilder::create(&path, &manifest, &[])?;
     let nv = verses.len() as u64;
@@ -525,6 +531,8 @@ fn build_synthetic_pack(
                     source_work: &plan.id,
                     method: "openbible-votes",
                     provenance: ProvenanceKind::Curated,
+                    review_state: ReviewState::SourceAttested,
+                    context: None,
                 })?;
             }
             "lexicon" => {
@@ -545,6 +553,8 @@ fn build_synthetic_pack(
                         source_work: &plan.id,
                         method: "editorial",
                         provenance: ProvenanceKind::Curated,
+                        review_state: ReviewState::SourceAttested,
+                        context: None,
                     })?;
                 } else {
                     b.add_edge(&EdgeRow {
@@ -557,6 +567,8 @@ fn build_synthetic_pack(
                         source_work: &plan.id,
                         method: "editorial",
                         provenance: ProvenanceKind::Curated,
+                        review_state: ReviewState::SourceAttested,
+                        context: None,
                     })?;
                 }
             }
@@ -586,6 +598,8 @@ fn build_synthetic_pack(
                         source_work: &plan.id,
                         method: "scripRef-parsed",
                         provenance: ProvenanceKind::Extracted,
+                        review_state: ReviewState::SourceAttested,
+                        context: None,
                     })?;
                 } else {
                     b.add_edge(&EdgeRow {
@@ -598,6 +612,8 @@ fn build_synthetic_pack(
                         source_work: &plan.id,
                         method: "bcv-parser@2",
                         provenance: ProvenanceKind::Extracted,
+                        review_state: ReviewState::SourceAttested,
+                        context: None,
                     })?;
                 }
             }
@@ -613,6 +629,8 @@ fn build_synthetic_pack(
                     source_work: &plan.id,
                     method: "bcv-parser@2",
                     provenance: ProvenanceKind::Extracted,
+                    review_state: ReviewState::SourceAttested,
+                    context: None,
                 })?;
             }
         }

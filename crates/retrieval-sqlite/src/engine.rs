@@ -8,9 +8,10 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use openlogos_retrieval::{
-    Edge, EditionInfo, Facet, Locator, QueryVector, Reached, RelationStore, Result, RetrievalError,
-    TextHit, TextIndex, TextQuery, TextStore, TokenEngine, TokenHits, TokenInfo, TokenPos,
-    TokenQuery, TraversalOptions, VectorHit, VectorIndex, VectorSetInfo, VerseId, VerseMapping,
+    ChainOptions, Edge, EditionInfo, Facet, Locator, QueryVector, QuotationChain, Reached,
+    RelationStore, Result, RetrievalError, TextHit, TextIndex, TextQuery, TextStore, TokenEngine,
+    TokenHits, TokenInfo, TokenPos, TokenQuery, TraversalOptions, VectorHit, VectorIndex,
+    VectorSetInfo, VerseId, VerseMapping,
 };
 use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 
@@ -415,6 +416,14 @@ impl RelationStore for Engine {
         limit: usize,
     ) -> Result<Vec<(Locator, u64)>> {
         self.links()?.most_cited(work, rel, limit)
+    }
+
+    fn citation_chains(
+        &self,
+        start: &Locator,
+        options: &ChainOptions,
+    ) -> Result<Vec<QuotationChain>> {
+        self.links()?.citation_chains(start, options)
     }
 }
 
