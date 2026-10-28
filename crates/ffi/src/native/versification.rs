@@ -127,10 +127,11 @@ pub enum VersificationError {
         name: String,
     },
     /// A supplied row does not expand: not a verse, or ranges of different lengths.
-    #[error("invalid verse map: {message}")]
+    /// (`reason`, not `message`: the Kotlin binding is a `Throwable`, which owns `message`.)
+    #[error("invalid verse map: {reason}")]
     InvalidVerseMap {
         /// Which row and why.
-        message: String,
+        reason: String,
     },
 }
 
@@ -139,7 +140,7 @@ impl From<ReferenceError> for VersificationError {
         match error {
             ReferenceError::UnknownBook { name } => VersificationError::UnknownBook { name },
             other => VersificationError::InvalidVerseMap {
-                message: other.to_string(),
+                reason: other.to_string(),
             },
         }
     }
@@ -175,12 +176,12 @@ pub fn map_verse(
 fn verse_map(rows: Vec<VerseMapRow>) -> Result<VerseMap, VersificationError> {
     let rows: Vec<FixtureRow> = rows.into_iter().map(FixtureRow::from).collect();
     openlogos_conformance::verse_map_from_rows(&rows)
-        .map_err(|message| VersificationError::InvalidVerseMap { message })
+        .map_err(|reason| VersificationError::InvalidVerseMap { reason })
 }
 
 fn fixture_verse_map() -> Result<VerseMap, VersificationError> {
     openlogos_conformance::verse_map_from_rows(&openlogos_conformance::fixture_rows())
-        .map_err(|message| VersificationError::InvalidVerseMap { message })
+        .map_err(|reason| VersificationError::InvalidVerseMap { reason })
 }
 
 #[cfg(test)]

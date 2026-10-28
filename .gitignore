@@ -49,3 +49,9 @@ __pycache__/
 
 # --- Local evidence scratch; committed evidence lives in docs/evidence ------
 /artifacts/
+
+# --- Generated bindings and host inputs (B061); scripts/*-bindings.sh rebuild them ----
+apps/apple/CoreHost/Sources/OpenLogosCore/OpenLogosCore.swift
+apps/apple/CoreHost/Frameworks/
+apps/apple/CoreHost/.build/
+apps/android/CoreHost/generated/
