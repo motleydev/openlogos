@@ -4,7 +4,7 @@
   "package_id": "fixture:package:1",
   "revision": "0",
   "minimum_reader_version": "0.0.0-fixture",
-  "core_api_version": "0.1.1",
+  "core_api_version": "0.1.2",
   "editions": [
     "fixture:edition-a"
   ],

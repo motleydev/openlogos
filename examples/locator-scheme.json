@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "schemes": [
+    {
+      "id": "institutes",
+      "work": "institutes",
+      "title": "Calvin, Institutes of the Christian Religion (1559), book, chapter and section",
+      "canonical": true,
+      "kind": {
+        "kind": "hierarchical"
+      },
+      "levels": [
+        "book",
+        "chapter",
+        "section"
+      ],
+      "version": "1",
+      "grammar_version": "b068-1"
+    },
+    {
+      "id": "thayer",
+      "work": "thayer",
+      "title": "Thayer, Greek-English Lexicon of the New Testament, headword",
+      "canonical": true,
+      "kind": {
+        "kind": "hierarchical"
+      },
+      "levels": [
+        "headword"
+      ],
+      "version": "1",
+      "grammar_version": "b068-1"
+    },
+    {
+      "id": "thayer-1889-pages",
+      "work": "thayer",
+      "title": "Thayer, Greek-English Lexicon of the New Testament (1889 print edition), page",
+      "canonical": false,
+      "kind": {
+        "kind": "page",
+        "print_edition": "thayer-1889"
+      },
+      "levels": [
+        "page"
+      ],
+      "version": "1",
+      "grammar_version": "b068-1"
+    },
+    {
+      "id": "wcf",
+      "work": "wcf",
+      "title": "Westminster Confession of Faith (1647), chapter and section",
+      "canonical": true,
+      "kind": {
+        "kind": "hierarchical"
+      },
+      "levels": [
+        "chapter",
+        "section"
+      ],
+      "version": "1",
+      "grammar_version": "b068-1"
+    },
+    {
+      "id": "wlc",
+      "work": "wlc",
+      "title": "Westminster Larger Catechism (1648), question",
+      "canonical": true,
+      "kind": {
+        "kind": "question_answer"
+      },
+      "levels": [
+        "question"
+      ],
+      "version": "1",
+      "grammar_version": "b068-1"
+    },
+    {
+      "id": "wsc",
+      "work": "wsc",
+      "title": "Westminster Shorter Catechism (1647), question",
+      "canonical": true,
+      "kind": {
+        "kind": "question_answer"
+      },
+      "levels": [
+        "question"
+      ],
+      "version": "1",
+      "grammar_version": "b068-1"
+    }
+  ]
+}

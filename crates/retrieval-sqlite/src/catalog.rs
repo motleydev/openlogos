@@ -1202,6 +1202,22 @@ mod tests {
         assert_eq!(report.failures.len(), 1);
         assert!(report.failures[0].starts_with("wcf: resolved 2 of 3"));
         assert_eq!(builtin_schemes().iter().filter(|s| s.canonical).count(), 5);
+        // The schema example under examples/ is the built-in catalog, byte for byte in
+        // meaning (skipped when the tree is filtered to crates/, as the nix checks are).
+        let example = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/locator-scheme.json"
+        );
+        if let Ok(text) = std::fs::read_to_string(example) {
+            let doc: serde_json::Value = serde_json::from_str(&text).unwrap();
+            assert_eq!(doc["schema_version"], "1.0");
+            assert_eq!(
+                doc["schemes"],
+                serde_json::to_value(builtin_schemes()).unwrap()
+            );
+        } else {
+            eprintln!("skipping {example}: not present in this source tree");
+        }
         assert_eq!(
             edge_locator("thayer-1889-pages", false, "p.6"),
             "thayer-1889-pages:p.6"

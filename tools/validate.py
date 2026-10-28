@@ -147,9 +147,21 @@ def check_receipt(rc, collection):
         permitted=item['kind']=='source_excerpt' and item.get('text') is not None and item['source']['rights']['quotation']=='allow'
         if e['disposition']=='quoted' and not permitted: raise ValueError('Quoted block without permission: '+e['item_id'])
         if e['disposition']!='quoted' and not (e.get('reason') or '').strip(): raise ValueError('Non-quoted entry without a reason: '+e['item_id'])
+def check_report(report):
+    # Per-scheme minimums decide the failures, and passed follows from them (B068).
+    rates={s['scheme']:(s['resolved']/(s['resolved']+s['unresolved_known_work']+s['unparsed']) if (s['resolved']+s['unresolved_known_work']+s['unparsed']) else 1.0) for s in report['schemes']}
+    failing={m['scheme'] for m in report['minimums'] if m['scheme'] in rates and rates[m['scheme']]<m['minimum_resolved_rate']}
+    listed={f.split(':')[0] for f in report['failures']}
+    if failing!=listed: raise ValueError('Resolution report failures do not match its minimums')
+    if report['passed']!=(not report['failures']): raise ValueError('Resolution report passed flag disagrees with its failures')
+    canonical={}
+    for s in load('examples/locator-scheme.json')['schemes']:
+        if s['canonical']: canonical.setdefault(s['work'],[]).append(s['id'])
+    if any(len(v)!=1 for v in canonical.values()): raise ValueError('A work must have exactly one canonical locator scheme')
+
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -175,7 +187,9 @@ def main():
         ('reference-mapping','examples/reference-mapping.json'),
         ('token-lineage','examples/token-lineage.json'), ('alignment','examples/alignment.json'),
         ('study-collection','examples/study-collection.json'),
-        ('vault-export-receipt','examples/vault-export-receipt.json')]
+        ('vault-export-receipt','examples/vault-export-receipt.json'),
+        ('locator-scheme','examples/locator-scheme.json'),
+        ('resolution-report','examples/resolution-report.json')]
     for s,p in pairs: validate(s,load(p))
     agents = load('specs/agents.json')['agents']
     tasks = load('specs/backlog.json')['tasks']
@@ -312,6 +326,16 @@ def main():
     expect_rejected(lambda:validate('verse-map',bad_map),'absent row with a target')
     bad_anchor=copy.deepcopy(anchor); bad_anchor['tokens'][0]['book']='Gen2'
     expect_rejected(lambda:validate('anchor',bad_anchor),'token id with an unknown book')
-    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights and receipt identity.')
+    report=load('examples/resolution-report.json'); check_report(report)
+    bad_report=copy.deepcopy(report); bad_report['passed']=True
+    expect_rejected(lambda:validate('resolution-report',bad_report),'resolution report passed with failures')
+    bad_report=copy.deepcopy(report); bad_report['minimums'][1]['minimum_resolved_rate']=0.5
+    expect_rejected(lambda:check_report(bad_report),'resolution report failure not implied by its minimums')
+    schemes=load('examples/locator-scheme.json')
+    bad_schemes=copy.deepcopy(schemes); del bad_schemes['schemes'][2]['kind']['print_edition']
+    expect_rejected(lambda:validate('locator-scheme',bad_schemes),'page scheme without a print edition')
+    bad_schemes=copy.deepcopy(schemes); bad_schemes['schemes'][2]['canonical']=True
+    expect_rejected(lambda:validate('locator-scheme',bad_schemes),'page scheme as a canonical scheme')
+    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity and citation resolution minimums.')
     print('Scope: blueprint structure only. No app, Nix build, cryptography, source clearance or Paperclip deployment has been tested.')
 if __name__=='__main__': main()

@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "commentary-fixture",
+  "grammar_version": "b068-1",
+  "schemes": [
+    {
+      "scheme": "institutes",
+      "resolved": 2,
+      "unresolved_known_work": 1,
+      "unparsed": 1
+    },
+    {
+      "scheme": "scripture",
+      "resolved": 1,
+      "unresolved_known_work": 0,
+      "unparsed": 0
+    },
+    {
+      "scheme": "thayer-1889-pages",
+      "resolved": 1,
+      "unresolved_known_work": 0,
+      "unparsed": 1
+    },
+    {
+      "scheme": "unknown",
+      "resolved": 0,
+      "unresolved_known_work": 0,
+      "unparsed": 1
+    },
+    {
+      "scheme": "wcf",
+      "resolved": 2,
+      "unresolved_known_work": 1,
+      "unparsed": 0
+    },
+    {
+      "scheme": "wlc",
+      "resolved": 0,
+      "unresolved_known_work": 1,
+      "unparsed": 0
+    }
+  ],
+  "minimums": [
+    {
+      "scheme": "institutes",
+      "minimum_resolved_rate": 0.5
+    },
+    {
+      "scheme": "wcf",
+      "minimum_resolved_rate": 0.9
+    }
+  ],
+  "failures": [
+    "wcf: resolved 2 of 3 (66.7%), minimum 90.0%"
+  ],
+  "passed": false
+}

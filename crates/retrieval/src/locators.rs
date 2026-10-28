@@ -843,6 +843,26 @@ mod tests {
     }
 
     #[test]
+    fn the_report_example_is_consistent_with_its_minimums() {
+        let example = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/resolution-report.json"
+        );
+        let Ok(text) = std::fs::read_to_string(example) else {
+            eprintln!("skipping {example}: not present in this source tree");
+            return;
+        };
+        let report: ResolutionReport = serde_json::from_str(&text).unwrap();
+        let mut recomputed = report.clone();
+        recomputed.apply_minimums(&report.minimums);
+        assert_eq!(recomputed, report);
+        assert_eq!(
+            serde_json::to_value(&report).unwrap(),
+            serde_json::from_str::<serde_json::Value>(&text).unwrap()
+        );
+    }
+
+    #[test]
     fn target_status_labels() {
         let status = TargetStatus::NotInLibrary {
             reason: NotInLibraryReason::NotInstalled,
