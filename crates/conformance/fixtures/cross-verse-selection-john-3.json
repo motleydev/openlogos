@@ -1,0 +1,369 @@
+{
+  "id": "cross-verse-selection-john-3",
+  "kind": "text",
+  "description": "John 3:16-17 in the Berean Standard Bible, two adjacent verse segments rendered as one paragraph joined by a single space. A selection from the middle of verse 16 to the middle of verse 17 must split into one anchor per segment with the right scalar ranges, quoted text and token spans. Tokens are whitespace-separated words with their punctuation. The BSB footnote marker after 'only' is omitted from the text.",
+  "license": "Berean Standard Bible: public domain (CC0), https://berean.bible/",
+  "source": "https://bible.helloao.org/api/BSB/JHN/3.json, verses 16 and 17",
+  "edition_id": "bsb",
+  "content_revision": "bsb-2024",
+  "segments": [
+    {
+      "segment_id": "John.3.16",
+      "text": "For God so loved the world that He gave His one and only Son, that everyone who believes in Him shall not perish but have eternal life.",
+      "scalar_len": 135,
+      "utf16_len": 135,
+      "grapheme_len": 135,
+      "tokens": [
+        {
+          "id": "bsb:44003016001",
+          "start": 0,
+          "end": 3
+        },
+        {
+          "id": "bsb:44003016002",
+          "start": 4,
+          "end": 7
+        },
+        {
+          "id": "bsb:44003016003",
+          "start": 8,
+          "end": 10
+        },
+        {
+          "id": "bsb:44003016004",
+          "start": 11,
+          "end": 16
+        },
+        {
+          "id": "bsb:44003016005",
+          "start": 17,
+          "end": 20
+        },
+        {
+          "id": "bsb:44003016006",
+          "start": 21,
+          "end": 26
+        },
+        {
+          "id": "bsb:44003016007",
+          "start": 27,
+          "end": 31
+        },
+        {
+          "id": "bsb:44003016008",
+          "start": 32,
+          "end": 34
+        },
+        {
+          "id": "bsb:44003016009",
+          "start": 35,
+          "end": 39
+        },
+        {
+          "id": "bsb:44003016010",
+          "start": 40,
+          "end": 43
+        },
+        {
+          "id": "bsb:44003016011",
+          "start": 44,
+          "end": 47
+        },
+        {
+          "id": "bsb:44003016012",
+          "start": 48,
+          "end": 51
+        },
+        {
+          "id": "bsb:44003016013",
+          "start": 52,
+          "end": 56
+        },
+        {
+          "id": "bsb:44003016014",
+          "start": 57,
+          "end": 61
+        },
+        {
+          "id": "bsb:44003016015",
+          "start": 62,
+          "end": 66
+        },
+        {
+          "id": "bsb:44003016016",
+          "start": 67,
+          "end": 75
+        },
+        {
+          "id": "bsb:44003016017",
+          "start": 76,
+          "end": 79
+        },
+        {
+          "id": "bsb:44003016018",
+          "start": 80,
+          "end": 88
+        },
+        {
+          "id": "bsb:44003016019",
+          "start": 89,
+          "end": 91
+        },
+        {
+          "id": "bsb:44003016020",
+          "start": 92,
+          "end": 95
+        },
+        {
+          "id": "bsb:44003016021",
+          "start": 96,
+          "end": 101
+        },
+        {
+          "id": "bsb:44003016022",
+          "start": 102,
+          "end": 105
+        },
+        {
+          "id": "bsb:44003016023",
+          "start": 106,
+          "end": 112
+        },
+        {
+          "id": "bsb:44003016024",
+          "start": 113,
+          "end": 116
+        },
+        {
+          "id": "bsb:44003016025",
+          "start": 117,
+          "end": 121
+        },
+        {
+          "id": "bsb:44003016026",
+          "start": 122,
+          "end": 129
+        },
+        {
+          "id": "bsb:44003016027",
+          "start": 130,
+          "end": 135
+        }
+      ]
+    },
+    {
+      "segment_id": "John.3.17",
+      "text": "For God did not send His Son into the world to condemn the world, but to save the world through Him.",
+      "scalar_len": 100,
+      "utf16_len": 100,
+      "grapheme_len": 100,
+      "tokens": [
+        {
+          "id": "bsb:44003017001",
+          "start": 0,
+          "end": 3
+        },
+        {
+          "id": "bsb:44003017002",
+          "start": 4,
+          "end": 7
+        },
+        {
+          "id": "bsb:44003017003",
+          "start": 8,
+          "end": 11
+        },
+        {
+          "id": "bsb:44003017004",
+          "start": 12,
+          "end": 15
+        },
+        {
+          "id": "bsb:44003017005",
+          "start": 16,
+          "end": 20
+        },
+        {
+          "id": "bsb:44003017006",
+          "start": 21,
+          "end": 24
+        },
+        {
+          "id": "bsb:44003017007",
+          "start": 25,
+          "end": 28
+        },
+        {
+          "id": "bsb:44003017008",
+          "start": 29,
+          "end": 33
+        },
+        {
+          "id": "bsb:44003017009",
+          "start": 34,
+          "end": 37
+        },
+        {
+          "id": "bsb:44003017010",
+          "start": 38,
+          "end": 43
+        },
+        {
+          "id": "bsb:44003017011",
+          "start": 44,
+          "end": 46
+        },
+        {
+          "id": "bsb:44003017012",
+          "start": 47,
+          "end": 54
+        },
+        {
+          "id": "bsb:44003017013",
+          "start": 55,
+          "end": 58
+        },
+        {
+          "id": "bsb:44003017014",
+          "start": 59,
+          "end": 65
+        },
+        {
+          "id": "bsb:44003017015",
+          "start": 66,
+          "end": 69
+        },
+        {
+          "id": "bsb:44003017016",
+          "start": 70,
+          "end": 72
+        },
+        {
+          "id": "bsb:44003017017",
+          "start": 73,
+          "end": 77
+        },
+        {
+          "id": "bsb:44003017018",
+          "start": 78,
+          "end": 81
+        },
+        {
+          "id": "bsb:44003017019",
+          "start": 82,
+          "end": 87
+        },
+        {
+          "id": "bsb:44003017020",
+          "start": 88,
+          "end": 95
+        },
+        {
+          "id": "bsb:44003017021",
+          "start": 96,
+          "end": 100
+        }
+      ]
+    }
+  ],
+  "selections": [
+    {
+      "name": "'eternal life.' at the end of 16",
+      "segment_id": "John.3.16",
+      "scalar": {
+        "start": 122,
+        "end": 135
+      },
+      "utf16": {
+        "start": 122,
+        "end": 135
+      },
+      "grapheme": {
+        "start": 122,
+        "end": 135
+      },
+      "exact": "eternal life.",
+      "tokens": [
+        "bsb:44003016026",
+        "bsb:44003016027"
+      ]
+    },
+    {
+      "name": "'the world' second occurrence in 17",
+      "segment_id": "John.3.17",
+      "scalar": {
+        "start": 55,
+        "end": 64
+      },
+      "utf16": {
+        "start": 55,
+        "end": 64
+      },
+      "grapheme": {
+        "start": 55,
+        "end": 64
+      },
+      "exact": "the world",
+      "tokens": [
+        "bsb:44003017013",
+        "bsb:44003017014"
+      ]
+    }
+  ],
+  "paragraph_selections": [
+    {
+      "name": "from 'but have eternal life.' in 16 through 'His Son' in 17",
+      "joiner": " ",
+      "segments": [
+        "John.3.16",
+        "John.3.17"
+      ],
+      "utf16": {
+        "start": 113,
+        "end": 164
+      },
+      "scalar": {
+        "start": 113,
+        "end": 164
+      },
+      "grapheme": {
+        "start": 113,
+        "end": 164
+      },
+      "exact": "but have eternal life. For God did not send His Son",
+      "anchors": [
+        {
+          "segment_id": "John.3.16",
+          "scalar": {
+            "start": 113,
+            "end": 135
+          },
+          "exact": "but have eternal life.",
+          "tokens": [
+            "bsb:44003016024",
+            "bsb:44003016025",
+            "bsb:44003016026",
+            "bsb:44003016027"
+          ]
+        },
+        {
+          "segment_id": "John.3.17",
+          "scalar": {
+            "start": 0,
+            "end": 28
+          },
+          "exact": "For God did not send His Son",
+          "tokens": [
+            "bsb:44003017001",
+            "bsb:44003017002",
+            "bsb:44003017003",
+            "bsb:44003017004",
+            "bsb:44003017005",
+            "bsb:44003017006",
+            "bsb:44003017007"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,178 @@
+{
+  "id": "reference-parsing-english",
+  "kind": "references",
+  "description": "Citations in the usual English syntaxes with their canonical OSIS-like form, human form and review flags, plus inputs that must be rejected.",
+  "license": "CC0",
+  "source": "written for this fixture; syntaxes from specs/03 and the B061 task",
+  "alias_table": "english",
+  "cases": [
+    {
+      "input": "John 3:16",
+      "osis": "John.3.16",
+      "human": "John 3:16",
+      "flags": []
+    },
+    {
+      "input": "Jn 3.16",
+      "osis": "John.3.16",
+      "human": "John 3:16",
+      "flags": []
+    },
+    {
+      "input": "John.3.16",
+      "osis": "John.3.16",
+      "human": "John 3:16",
+      "flags": []
+    },
+    {
+      "input": "Gen 1:1-2:3",
+      "osis": "Gen.1.1-Gen.2.3",
+      "human": "Gen 1:1–2:3",
+      "flags": []
+    },
+    {
+      "input": "Ps 9:1–10:18",
+      "osis": "Ps.9.1-Ps.10.18",
+      "human": "Ps 9:1–10:18",
+      "flags": []
+    },
+    {
+      "input": "Rom 8:28, 31; 12:1",
+      "osis": "Rom.8.28;Rom.8.31;Rom.12.1",
+      "human": "Rom 8:28, 31; 12:1",
+      "flags": []
+    },
+    {
+      "input": "Ps 23",
+      "osis": "Ps.23",
+      "human": "Ps 23",
+      "flags": [
+        {
+          "kind": "chapter_only",
+          "range": 0
+        }
+      ]
+    },
+    {
+      "input": "Jn 3:16,18",
+      "osis": "John.3.16;John.3.18",
+      "human": "John 3:16, 18",
+      "flags": []
+    },
+    {
+      "input": "1 Cor 13:4-7",
+      "osis": "1Cor.13.4-1Cor.13.7",
+      "human": "1 Cor 13:4–7",
+      "flags": []
+    },
+    {
+      "input": "1Co 13.4",
+      "osis": "1Cor.13.4",
+      "human": "1 Cor 13:4",
+      "flags": []
+    },
+    {
+      "input": "Phil 4:13",
+      "osis": "Phil.4.13",
+      "human": "Phil 4:13",
+      "flags": []
+    },
+    {
+      "input": "Phlm 6",
+      "osis": "Phlm.1.6",
+      "human": "Phlm 6",
+      "flags": []
+    },
+    {
+      "input": "Ph 1:1",
+      "osis": "Phil.1.1",
+      "human": "Phil 1:1",
+      "flags": [
+        {
+          "kind": "ambiguous_book",
+          "range": 0,
+          "alias": "Ph",
+          "candidates": [
+            "Phil",
+            "Phlm"
+          ]
+        }
+      ]
+    },
+    {
+      "input": "Jude 3",
+      "osis": "Jude.1.3",
+      "human": "Jude 3",
+      "flags": []
+    },
+    {
+      "input": "Gen 50:26-Exod 1:1",
+      "osis": "Gen.50.26-Exod.1.1",
+      "human": "Gen 50:26–Exod 1:1",
+      "flags": []
+    },
+    {
+      "input": "Gen 1:1a",
+      "osis": "Gen.1.1!a",
+      "human": "Gen 1:1a",
+      "flags": []
+    },
+    {
+      "input": "Song of Songs 2:1",
+      "osis": "Song.2.1",
+      "human": "Song 2:1",
+      "flags": []
+    },
+    {
+      "input": "Ps 3:0",
+      "osis": "Ps.3.0",
+      "human": "Ps 3:0",
+      "flags": []
+    },
+    {
+      "input": "Jn 3:16; Ps 23",
+      "osis": "John.3.16;Ps.23",
+      "human": "John 3:16; Ps 23",
+      "flags": [
+        {
+          "kind": "chapter_only",
+          "range": 1
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "input": "",
+      "error": "empty"
+    },
+    {
+      "input": "Hezekiah 3:16",
+      "error": "unknown_book"
+    },
+    {
+      "input": "3:16",
+      "error": "missing_book"
+    },
+    {
+      "input": "Gen",
+      "error": "missing_chapter"
+    },
+    {
+      "input": "Gen 0:1",
+      "error": "missing_chapter"
+    },
+    {
+      "input": "Gen 2:1-1:1",
+      "error": "reversed_range"
+    },
+    {
+      "input": "Gen 1:1 Exod",
+      "error": "unexpected_character"
+    },
+    {
+      "input": "Gen 1:99999",
+      "error": "invalid_number"
+    }
+  ]
+}
