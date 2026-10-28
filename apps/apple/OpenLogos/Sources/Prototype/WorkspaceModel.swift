@@ -184,6 +184,9 @@ extension Workspace {
             return ws
         case .search:
             return Workspace(panes: [Pane(id: "p1", content: f.bsbJohn3, link: .pinned)], passage: "\"one and only\"")
+        case .ink:
+            // B039: one reading pane beside the ink margin.
+            return Workspace(panes: [Pane(id: "p1", content: f.bsbJohn3, link: .pinned)])
         }
     }
 }

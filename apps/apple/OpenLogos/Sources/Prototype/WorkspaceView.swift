@@ -43,7 +43,7 @@ struct WorkspaceView: View {
         return workspace.panes.first { !shown.contains($0.id) }?.content.shortName
     }
 
-    private var isDestination: Bool { [.search, .margin, .handoff].contains(options.view) }
+    private var isDestination: Bool { [.search, .margin, .handoff, .ink].contains(options.view) }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -161,6 +161,7 @@ struct WorkspaceView: View {
         case .search: SearchResultsView(workspace: workspace, state: options.state, width: size.width, showsField: layout == .b)
         case .margin: MarginCaptureView(workspace: workspace, state: options.state, width: size.width)
         case .handoff: HandoffView(workspace: workspace, state: options.state, width: size.width)
+        case .ink: InkMarginView(workspace: workspace, state: options.state, width: size.width)
         default: EmptyView()
         }
     }
