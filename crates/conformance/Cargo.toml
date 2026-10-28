@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 openlogos-core = { workspace = true }
+openlogos-retrieval = { workspace = true }
 openlogos-text = { workspace = true }
 openlogos-workspaces = { workspace = true }
 openlogos-notes = { workspace = true }

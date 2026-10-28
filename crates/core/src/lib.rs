@@ -11,6 +11,7 @@
 
 pub mod anchor;
 pub mod identity;
+pub mod locator;
 pub mod reference;
 pub mod versification;
 pub mod versioning;
@@ -24,7 +25,7 @@ pub mod versioning;
 /// additive change bumps MINOR, or PATCH while the MAJOR is 0. Bindings are generated against
 /// this value and must embed it, so a host can refuse a core whose API version it was not
 /// built for (docs/adr/0001-rust-core-native-ui.md).
-pub const API_VERSION: &str = "0.1.1";
+pub const API_VERSION: &str = "0.1.2";
 
 /// [`API_VERSION`] as a function, for hosts that cannot read a constant through a binding.
 #[must_use]

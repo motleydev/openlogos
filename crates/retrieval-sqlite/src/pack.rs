@@ -5,12 +5,13 @@
 //! `text_fts`, the columnar token layer (`token`, `feature`, `feature_value`, `token_column`,
 //! `posting`), containers for unit scoping (`container_kind`, `container`,
 //! `token_container`), `verse_map`, the typed `edge` table with (src, rel) and (dst, rel)
-//! indexes, and `vector_set` plus one sqlite-vec `vec0` virtual table per vector set.
+//! indexes, `section_map` (a non-Bible edition's segments per canonical locator, B068), and
+//! `vector_set` plus one sqlite-vec `vec0` virtual table per vector set.
 
 use std::collections::HashMap;
 use std::path::Path;
 
-use openlogos_retrieval::{ProvenanceKind, Quantization, VerseId};
+use openlogos_retrieval::{ProvenanceKind, Quantization, ReviewState, SectionMapRow, VerseId};
 use roaring::RoaringBitmap;
 use rusqlite::{Connection, OpenFlags, params};
 
@@ -19,7 +20,7 @@ use crate::tokenizer::{NORMALIZATION_MODE, feature_key, normalize};
 use crate::vectors::install_vec_extension;
 
 /// Schema version written to every pack; readers refuse other versions.
-pub const PACK_SCHEMA_VERSION: &str = "b064-1";
+pub const PACK_SCHEMA_VERSION: &str = "b068-1";
 
 /// Error type of the writer; the reader maps SQLite errors into `RetrievalError::Storage`.
 pub type PackResult<T> = Result<T, rusqlite::Error>;
@@ -37,6 +38,12 @@ pub struct PackManifest {
     pub license: String,
     /// Attribution text the license asks for.
     pub attribution: String,
+    /// The work this pack is an edition of, when it is not a Bible edition (`institutes`
+    /// for the Beveridge and Allen packs). `None` means the edition is a Bible and its
+    /// locators are verses.
+    pub work: Option<String>,
+    /// The work's canonical locator scheme, which its `section_map` rows use (`institutes`).
+    pub locator_scheme: Option<String>,
 }
 
 /// One token to add: its verse, 1-based word number, byte-exact surface, and one optional
@@ -74,6 +81,10 @@ pub struct EdgeRow<'a> {
     pub method: &'a str,
     /// Provenance kind.
     pub provenance: ProvenanceKind,
+    /// Review state of the claim.
+    pub review_state: ReviewState,
+    /// The citing text around the citation, when the pack may carry it (rights gate).
+    pub context: Option<&'a str>,
 }
 
 /// Text of the provenance kind as stored in `edge.provenance_kind`.
@@ -129,9 +140,12 @@ CREATE INDEX verse_map_from ON verse_map(scheme_from, ref_from, scheme_to);
 CREATE TABLE edge(src_work TEXT NOT NULL, src_locator TEXT NOT NULL, rel TEXT NOT NULL,
     dst_work TEXT NOT NULL, dst_locator TEXT NOT NULL, weight REAL NOT NULL DEFAULT 0,
     source_work TEXT NOT NULL, method TEXT NOT NULL, provenance_kind TEXT NOT NULL,
-    confidence REAL);
+    confidence REAL, review_state TEXT NOT NULL DEFAULT 'source_attested', context TEXT);
 CREATE INDEX edge_src ON edge(src_work, src_locator, rel);
 CREATE INDEX edge_dst ON edge(dst_work, dst_locator, rel);
+CREATE TABLE section_map(scheme TEXT NOT NULL, locator TEXT NOT NULL, edition TEXT NOT NULL,
+    segment TEXT, kind TEXT NOT NULL);
+CREATE INDEX section_map_locator ON section_map(scheme, locator);
 CREATE TABLE vector_set(name TEXT PRIMARY KEY, model TEXT NOT NULL, revision TEXT NOT NULL,
     dimensions INTEGER NOT NULL, quantization TEXT NOT NULL, count INTEGER NOT NULL) WITHOUT ROWID;
 ";
@@ -186,6 +200,14 @@ impl PackBuilder {
             ("attribution", manifest.attribution.as_str()),
         ] {
             insert.execute(params![key, value])?;
+        }
+        for (key, value) in [
+            ("work", manifest.work.as_deref()),
+            ("locator_scheme", manifest.locator_scheme.as_deref()),
+        ] {
+            if let Some(value) = value {
+                insert.execute(params![key, value])?;
+            }
         }
         drop(insert);
         let mut insert = conn.prepare("INSERT INTO feature(id, name) VALUES (?1, ?2)")?;
@@ -302,7 +324,9 @@ impl PackBuilder {
         Ok(())
     }
 
-    /// Adds one edge. A `model_similarity` edge with a curated relation type is refused.
+    /// Adds one edge. A `model_similarity` edge with a curated relation type is refused, and
+    /// so is any `user` edge: user material lives in the device's link index and user
+    /// database and never enters a pack (specs/19 item 9).
     pub fn add_edge(&mut self, edge: &EdgeRow<'_>) -> PackResult<()> {
         if edge.provenance == ProvenanceKind::ModelSimilarity
             && CURATED_ONLY_RELATIONS.contains(&edge.rel)
@@ -312,9 +336,14 @@ impl PackBuilder {
                 edge.rel
             )));
         }
+        if edge.provenance == ProvenanceKind::User {
+            return Err(rusqlite::Error::InvalidParameterName(
+                "user edges never enter a pack; they belong to the link index".to_owned(),
+            ));
+        }
         self.conn.execute(
-            "INSERT INTO edge(src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method, provenance_kind)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO edge(src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method, provenance_kind, review_state, context)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 edge.src_work,
                 edge.src_locator,
@@ -324,7 +353,25 @@ impl PackBuilder {
                 f64::from(edge.weight),
                 edge.source_work,
                 edge.method,
-                provenance_name(edge.provenance)
+                provenance_name(edge.provenance),
+                edge.review_state.name(),
+                edge.context
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Adds one `section_map` row: which segment of this edition carries a canonical locator
+    /// (specs/19 item 2). The row's `edition` should be this pack's edition.
+    pub fn add_section_map(&mut self, row: &SectionMapRow) -> PackResult<()> {
+        self.conn.execute(
+            "INSERT INTO section_map(scheme, locator, edition, segment, kind) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                row.scheme,
+                row.locator,
+                row.edition,
+                row.segment,
+                row.kind.name()
             ],
         )?;
         Ok(())
@@ -941,6 +988,8 @@ pub(crate) mod fixture {
             attribution:
                 "SBL Greek New Testament, Society of Biblical Literature and Logos Bible Software"
                     .into(),
+            work: None,
+            locator_scheme: None,
         }
     }
 
@@ -999,6 +1048,8 @@ pub(crate) mod fixture {
             source_work: "sblgnt-test",
             method: "typed",
             provenance: ProvenanceKind::Curated,
+            review_state: ReviewState::SourceAttested,
+            context: None,
         })?;
         b.finish()
     }
@@ -1097,7 +1148,7 @@ mod tests {
     }
 
     #[test]
-    fn model_similarity_cannot_carry_a_curated_relation() {
+    fn model_similarity_cannot_carry_a_curated_relation_and_user_edges_never_enter() {
         let path = temp_path("pack-provenance");
         let mut b = PackBuilder::create(&path, &fixture::manifest(), &[]).unwrap();
         let err = b
@@ -1111,9 +1162,27 @@ mod tests {
                 source_work: "model",
                 method: "e5-small@1",
                 provenance: ProvenanceKind::ModelSimilarity,
+                review_state: ReviewState::SourceAttested,
+                context: None,
             })
             .unwrap_err();
         assert!(err.to_string().contains("model_similarity"));
+        let err = b
+            .add_edge(&EdgeRow {
+                src_work: "note",
+                src_locator: "n-1",
+                rel: "cites",
+                dst_work: "b",
+                dst_locator: "2",
+                weight: 0.0,
+                source_work: "user",
+                method: "note",
+                provenance: ProvenanceKind::User,
+                review_state: ReviewState::Published,
+                context: None,
+            })
+            .unwrap_err();
+        assert!(err.to_string().contains("user edges never enter a pack"));
         b.add_edge(&EdgeRow {
             src_work: "a",
             src_locator: "1",
@@ -1124,6 +1193,8 @@ mod tests {
             source_work: "model",
             method: "e5-small@1",
             provenance: ProvenanceKind::ModelSimilarity,
+            review_state: ReviewState::SourceAttested,
+            context: None,
         })
         .unwrap();
         b.finish().unwrap();
