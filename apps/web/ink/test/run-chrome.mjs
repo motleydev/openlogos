@@ -24,6 +24,7 @@ const shotsDir = option("--shots", null);
 const browser = option("--browser", "chrome");
 const binary = option("--binary", null);
 const theme = option("--theme", null); // light|dark for the case screenshots // the browser executable, when the driver should not use the default
+const page = option("--page", "ink"); // ink | excalidraw (the comparison page, needs scripts/ink-excalidraw-build.sh)
 const width = Number(option("--width", "1440"));
 const height = Number(option("--height", "900"));
 
@@ -43,7 +44,7 @@ const server = createServer(async (request, response) => {
 });
 await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
 const port = server.address().port;
-const pageUrl = `http://127.0.0.1:${port}/ink/`;
+const pageUrl = page === "excalidraw" ? `http://127.0.0.1:${port}/ink/excalidraw/` : `http://127.0.0.1:${port}/ink/`;
 
 let driver = null;
 let driverUrl = process.env.WEBDRIVER_URL;
@@ -72,6 +73,7 @@ const capabilities = browser === "firefox"
     ? { alwaysMatch: { browserName: "safari" } }
     : { alwaysMatch: { browserName: "chrome", "goog:chromeOptions": { args: ["--headless=new", `--window-size=${width},${height}`, "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1"] } } };
 
+class DoneSignal extends Error {}
 let failures = 0;
 let sessionId = null;
 try {
@@ -79,6 +81,35 @@ try {
   sessionId = session.sessionId;
   const S = `/session/${sessionId}`;
   try { await wd("POST", `${S}/window/rect`, { width, height }); } catch {}
+  if (page === "excalidraw") {
+    await wd("POST", `${S}/url`, { url: `${pageUrl}?autorun=1${theme ? `&theme=${theme}` : ""}` });
+    let results = null;
+    for (let i = 0; i < 300 && !results; i++) {
+      const value = await wd("POST", `${S}/execute/sync`, { script: "return window.openlogosError || (window.openlogosReady && window.openlogosExcalidraw && window.openlogosExcalidraw.results ? JSON.stringify({ version: window.openlogosExcalidraw.version, ...window.openlogosExcalidraw.results }) : null)", args: [] });
+      if (typeof value === "string" && value.startsWith("{")) results = JSON.parse(value);
+      else if (value) throw new Error(`page failed: ${value}`);
+      else await new Promise((ok) => setTimeout(ok, 200));
+    }
+    if (!results) throw new Error("the Excalidraw page never reported results");
+    const agent = await wd("POST", `${S}/execute/sync`, { script: "return navigator.userAgent", args: [] });
+    console.log(JSON.stringify({ browser: agent, excalidraw: results.version, width, height }));
+    for (const key of ["measurement", "model", "export", "rtl", "debug"]) console.log(JSON.stringify({ [key]: results[key] }));
+    if (!(results.model.freedraw_elements > 0)) failures += 1;
+    const m = results.measurement;
+    console.log(`Excalidraw: ${results.model.freedraw_elements} freedraw element(s) from ${m.samples} samples; input→first frame p50 ${m.input_to_first_frame_ms.p50} p95 ${m.input_to_first_frame_ms.p95} ms, input→next frame p50 ${m.input_to_next_frame_ms.p50} p95 ${m.input_to_next_frame_ms.p95} ms; export json ${results.export.json_bytes} bytes, svg ${results.export.svg_bytes} bytes`);
+    if (shotsDir) {
+      await mkdir(shotsDir, { recursive: true });
+      const shoot = async (name) => { const png = await wd("GET", `${S}/screenshot`); await writeFile(join(shotsDir, `${name}.png`), Buffer.from(png, "base64")); console.log(`screenshot ${join(shotsDir, `${name}.png`)}`); };
+      await shoot(`web-excalidraw-${browser}-${width}-autorun${theme ? `-${theme}` : ""}`);
+      await wd("POST", `${S}/url`, { url: `${pageUrl}?lang=he-IL${theme ? `&theme=${theme}` : ""}` });
+      for (let i = 0; i < 100; i++) { const ready = await wd("POST", `${S}/execute/sync`, { script: "return !!window.openlogosReady", args: [] }); if (ready) break; await new Promise((ok) => setTimeout(ok, 200)); }
+      await new Promise((ok) => setTimeout(ok, 1500)); // the locale chunk loads after the API arrives
+      const rtl = await wd("POST", `${S}/execute/sync`, { script: "return JSON.stringify(window.openlogosExcalidraw.rtl())", args: [] });
+      console.log(JSON.stringify({ rtl_he_IL: JSON.parse(rtl) }));
+      await shoot(`web-excalidraw-${browser}-${width}-rtl-he${theme ? `-${theme}` : ""}`);
+    }
+    throw new DoneSignal();
+  }
   await wd("POST", `${S}/url`, { url: `${pageUrl}?autorun=1${theme ? `&theme=${theme}` : ""}` });
   let results = null;
   for (let i = 0; i < 300 && !results; i++) {
@@ -120,8 +151,10 @@ try {
     }
   }
 } catch (error) {
-  console.error(String(error));
-  failures = failures || 1;
+  if (!(error instanceof DoneSignal)) {
+    console.error(String(error));
+    failures = failures || 1;
+  }
 } finally {
   if (sessionId) { try { await wd("DELETE", `/session/${sessionId}`); } catch {} }
   if (driver) driver.kill();

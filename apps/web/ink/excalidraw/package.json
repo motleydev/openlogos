@@ -1,0 +1,12 @@
+{
+  "name": "@openlogos/ink-excalidraw-comparison",
+  "version": "0.1.0",
+  "private": true,
+  "description": "B039: the Excalidraw comparison page; scripts/ink-excalidraw-build.sh bundles the pinned package with esbuild into dist/ (gitignored) so the page loads offline",
+  "type": "module",
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

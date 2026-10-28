@@ -145,6 +145,11 @@ test-dom-reader *args:
 test-ink-web *args:
     @scripts/ink-web-test.sh {{ args }}
 
+# B039: bundle the Excalidraw comparison page (apps/web/ink/excalidraw, pinned npm package, esbuild from nixpkgs) into its gitignored dist/; then `just test-ink-web --page excalidraw`
+[group('6 · web')]
+ink-excalidraw-build:
+    @scripts/ink-excalidraw-build.sh
+
 # Build the app shell for an iPad simulator (unsigned), boot it, install and launch: `just sim` or `just sim "iPad mini (A17 Pro)"` (apple shell)
 [group('7 · apple app')]
 sim device="":

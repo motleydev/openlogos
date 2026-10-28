@@ -45,7 +45,7 @@ final class InkUITests: XCTestCase {
         let app = launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
         sleep(2)
-        let canvas = app.otherElements["ink-canvas"].firstMatch.exists ? app.otherElements["ink-canvas"].firstMatch : app.descendants(matching: .any)["ink-canvas"].firstMatch
+        let canvas = app.descendants(matching: .any)["ink-canvas"].firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 10), "the ink canvas is on screen")
         // Finger mode so the system touches draw.
         let mode = app.segmentedControls["ink-mode"].firstMatch
@@ -56,7 +56,13 @@ final class InkUITests: XCTestCase {
         let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
         a.press(forDuration: 0.05, thenDragTo: b, withVelocity: .slow, thenHoldForDuration: 0.05)
         // A wavy scribble in segments.
-        scribble(on: canvas, points: (0..<16).map { i in (0.15 + Double(i) * 0.045, 0.65 + (i % 2 == 0 ? 0.0 : 0.08)) })
+        var wave: [(Double, Double)] = []
+        for i in 0..<16 {
+            let x: Double = 0.15 + Double(i) * 0.045
+            let y: Double = i % 2 == 0 ? 0.65 : 0.73
+            wave.append((x, y))
+        }
+        scribble(on: canvas, points: wave)
         sleep(1)
 
         let meta = app.staticTexts["ink-meta"].firstMatch

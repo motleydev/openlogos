@@ -319,7 +319,9 @@ function readout(text) { $("readout").textContent = text; }
 // MARK: Pointer events through the arbiter
 
 const samples = []; // measurement samples of the current run
-let measuring = null;
+// `?record=1`: real pointer events are recorded from the start (the hand run in a headed
+// browser); `openlogosInk.handReport()` analyses what was drawn so far.
+let measuring = params.get("record") === "1" ? { label: "hand run (real pointer events)" } : null;
 
 function touchEvent(event, phase) {
   return { id: event.pointerId, contact: contactOf(event), phase, pane: paneOf(event.target), radius: event.pointerType === "touch" ? Math.max(event.width, event.height) / 2 : null };
@@ -558,7 +560,8 @@ try {
   if (params.get("demo") !== "0") { demoStrokes(); repaintCommitted(); paint(); }
   if (params.get("tool")) document.getElementById(`tool-${params.get("tool")}`)?.click();
   $("status").textContent = `Pointer events: ${"PointerEvent" in window ? "yes" : "no"} · coalesced events: ${"getCoalescedEvents" in PointerEvent.prototype ? "yes" : "no"} · dpr ${dpr} · brushes ${ENGINE}`;
-  window.openlogosInk = { doc, measure, palmCases, livePalmCase, undo, redo, arbiter, decisions, core, brushes: BRUSHES };
+  window.openlogosInk = { doc, measure, palmCases, livePalmCase, undo, redo, arbiter, decisions, core, brushes: BRUSHES,
+    handReport: () => { const r = analyse(samples, "hand run (real pointer events)"); readout(summarize(r)); return r; } };
   if (params.get("autorun") === "1") {
     const palm = palmCases();
     const livePalm = await livePalmCase();
