@@ -82,3 +82,23 @@ nix-update:
 clean:
     cargo clean
     rm -rf result result-*
+
+# Build the web bindings (wasm-pack --target web, then wasm-opt -Oz) into apps/web/core-host/pkg, printing sizes
+[group('6 · web')]
+wasm-build:
+    @scripts/wasm-bindings.sh
+
+# Clippy for the wasm32 target, including the browser worker tests
+[group('6 · web')]
+lint-wasm:
+    cargo clippy --target wasm32-unknown-unknown -p openlogos-ffi --all-targets -- -D warnings
+
+# Run the wasm-bindgen tests of crates/ffi in a dedicated worker in headless Chrome (installed on the machine; the matching chromedriver is fetched once); extra arguments go to wasm-pack, e.g. `just test-wasm -- --nocapture`
+[group('6 · web')]
+test-wasm *args:
+    @scripts/wasm-test.sh {{ args }}
+
+# Run the Node test host (apps/web/core-host) against the built bindings; builds them first
+[group('6 · web')]
+test-web: wasm-build
+    cd apps/web/core-host && npm test
