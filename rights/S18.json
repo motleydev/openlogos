@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S18",
+  "source_id": "S18",
+  "artifact_sha256": "94e970ef1835ab88677cc19f8966fcd7faf1b5ee2e38fecb6742c772392424fd",
+  "edition_id": "morphgnt-sblgnt:6.12:aaed91e",
+  "status": "unknown",
+  "license_identifier": "CC-BY-SA-3.0 AND LicenseRef-SBLGNT-EULA-as-cited",
+  "evidence_url": "https://github.com/morphgnt/sblgnt/blob/aaed91e57c8e4a8dc9a2383e129ca5e75fe6393d/README.md",
+  "license_artifact_sha256": "043bb6c0d654e85fa8a8db19e177ee035623e23b7ff1556e5431ad95184d5830",
+  "jurisdictions": [
+    "worldwide (CC BY-SA 3.0 for the analysis)"
+  ],
+  "attribution": "MorphGNT: SBLGNT Edition, version 6.12, J. K. Tauber (ed.), 2017, https://github.com/morphgnt/sblgnt, DOI 10.5281/zenodo.376200, CC BY-SA 3.0 (analysis); SBLGNT text SBL and Logos Bible Software.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "unknown",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/morphgnt/sblgnt",
+    "commit": "aaed91e57c8e4a8dc9a2383e129ca5e75fe6393d",
+    "release": "MorphGNT: SBLGNT Edition, version 6.12 (README citation; master head on 2026-10-28)",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone) of /*; fetch --depth 1 --filter=blob:none of the commit; checkout",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S18-morphgnt/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/* (27 per-book files and README.md)"
+    ],
+    "file_count": 28,
+    "bytes": 8938504,
+    "manifest_sha256": "94e970ef1835ab88677cc19f8966fcd7faf1b5ee2e38fecb6742c772392424fd",
+    "manifest_path": "rights/S18/manifest.sha256",
+    "fetch_seconds": 9
+  },
+  "coverage": {
+    "scope": "Greek New Testament, 27 books, one row per token",
+    "books": 27,
+    "verses": null,
+    "tokens": 137554,
+    "counting_rule": "line count of the 27 *-morphgnt.txt files; 187 fewer than SBLGNT v1.2, consistent with a text that predates the John 7:53-8:11 addition"
+  },
+  "license_files": [
+    {
+      "path": "README.md",
+      "sha256": "043bb6c0d654e85fa8a8db19e177ee035623e23b7ff1556e5431ad95184d5830",
+      "says": "\"The SBLGNT text itself is subject to the SBLGNT EULA (http://sblgnt.com/license/) and the morphological parsing and lemmatization is made available under a CC-BY-SA License (3.0).\" No licence file in the repository."
+    }
+  ],
+  "flags": [
+    {
+      "kind": "share_alike",
+      "text": "Morphology and lemmas are CC BY-SA 3.0: a share-alike layer, kept as a separate module; prefer MACULA's CC BY morphology for redistributed derived layers (specs/19).",
+      "resolves_by": "Packaging decision."
+    },
+    {
+      "kind": "per_item_review",
+      "text": "EULA mismatch: the README binds the text column to the old SBLGNT EULA while the current SBLGNT upstream (S06) is CC BY 4.0; the token count also shows the text is an SBLGNT edition before v1.2. The text column should be taken from S06 and only the analysis columns used from here.",
+      "resolves_by": "Confirm with the MorphGNT maintainers which SBLGNT version the text column reproduces and whether they consider it re-licensed under CC BY 4.0."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "text column",
+      "source": "SBLGNT (pre-v1.2)",
+      "license": "SBLGNT EULA per README; CC-BY-4.0 upstream today"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "restricted_module",
+    "rationale": "Share-alike analysis over a text column whose licence statement is out of date; usable locally and as a cross-check for MACULA morphology, not redistributed.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": ""
+}

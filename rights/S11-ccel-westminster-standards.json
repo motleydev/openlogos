@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S11-ccel-westminster-standards",
+  "source_id": "S11",
+  "artifact_sha256": "28d937ac365b4305021b63397273a6fe15a724ed4213084605be642733179f6d",
+  "edition_id": "ccel:anonymous/westminster1-3:ccel-2000-2004",
+  "status": "unknown",
+  "license_identifier": "LicenseRef-Public-Domain-Text AND LicenseRef-CCEL-Edition-Policy",
+  "evidence_url": "https://www.ccel.org/about/copyright.html",
+  "license_artifact_sha256": "3dd5edddcb7775e8696ef054778e39287ba5a67c898a5d639b0cc55283c24e9f",
+  "jurisdictions": [
+    "United States (public domain text); CCEL edition policy worldwide"
+  ],
+  "attribution": "The Westminster Confession of Faith, Larger Catechism and Shorter Catechism (Westminster Assembly, 1646-1648); electronic editions by the Christian Classics Ethereal Library (https://www.ccel.org/ccel/anonymous/westminster3.html and siblings).",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "unknown",
+    "modify": "allow",
+    "public_index": "unknown",
+    "model_prompt": "allow",
+    "model_train": "unknown",
+    "translation_evaluate": "unknown"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://www.ccel.org/ccel/anonymous/westminster3.html",
+    "commit": null,
+    "release": "CCEL electronic editions: Confession (westminster3) created 2000-07-09; Larger Catechism (westminster2) and Shorter Catechism (westminster1) created 2004-07-11, version 1.0",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "curl -sSL of /ccel/c/anonymous/<id>.xml, /ccel/c/anonymous/<id>/cache/<id>.txt and /ccel/anonymous/<id>.html for the three ids, plus the copyright page",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S11-ccel-westminster-standards/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "westminster3.xml and .txt (Confession of Faith)",
+      "westminster2.xml and .txt (Larger Catechism)",
+      "westminster1.xml and .txt (Shorter Catechism)",
+      "three work-info pages",
+      "ccel-copyright.html"
+    ],
+    "file_count": 10,
+    "bytes": 563580,
+    "manifest_sha256": "28d937ac365b4305021b63397273a6fe15a724ed4213084605be642733179f6d",
+    "manifest_path": "rights/S11-ccel-westminster-standards/manifest.sha256",
+    "fetch_seconds": 20
+  },
+  "coverage": {
+    "scope": "Confession: 33 chapters; Larger Catechism: 196 questions; Shorter Catechism: 107 questions (per the works; the CCEL files are complete texts)",
+    "books": 3,
+    "verses": null,
+    "tokens": null,
+    "counting_rule": "westminster3.xml has 36 div2 elements titled \"Chapter n\" (33 chapters plus front matter); westminster2.xml 8 div2, westminster1.xml 5 div2; files are 107 KB, 107 KB and 33 KB"
+  },
+  "license_files": [
+    {
+      "path": "ccel-copyright.html",
+      "sha256": "3dd5edddcb7775e8696ef054778e39287ba5a67c898a5d639b0cc55283c24e9f",
+      "says": "CCEL Copyright Policy as for the Institutes"
+    },
+    {
+      "path": "westminster3.xml",
+      "sha256": "f3017e0bac771d64a73586a97af55f843034ade20bdd03265adddb81788a06cc",
+      "says": "ThML header: DC.Rights empty, print source empty, edition not stated"
+    },
+    {
+      "path": "westminster2.xml",
+      "sha256": "1b23146c4302b8f94c527723377c2b6c8e0989cd0259bdf2aa81c3270c0140f2",
+      "says": "ThML header: DC.Rights \"Public Domain\", print source \"Unknown\""
+    },
+    {
+      "path": "westminster1.xml",
+      "sha256": "27bab86445b4a7b5f1199d5b1af9f8ad3720a026f77d51653d6f4237efb6ae12",
+      "says": "ThML header: DC.Rights \"Public Domain\""
+    }
+  ],
+  "flags": [
+    {
+      "kind": "provenance_research",
+      "text": "Edition: the CCEL Confession is the American revision, not the 1646 text. Chapter 23 reads \"as nursing fathers, it is the duty of civil magistrates to protect the Church\", the 1788 American wording; the 1646 text reads \"yet he hath authority, and it is his duty, to take order, that unity and peace be preserved in the Church\". The header names no print source. The Larger and Shorter Catechism editions are also unstated.",
+      "resolves_by": "Acquire the 1646/1647 text from a stated public-domain print: Schaff, Creeds of Christendom vol. III (1877) prints the original with the American changes in notes (CCEL ccel/schaff/creeds3, same CCEL policy), or a fresh transcription from a scanned 1647 or 1658 printing; then record which edition the grammar of B068 cites."
+    },
+    {
+      "kind": "provenance_research",
+      "text": "Digitization rights: CCEL's edition policy (personal, educational or non-profit use; permission to republish or use commercially) applies to all three files; the confessional texts themselves are public domain.",
+      "resolves_by": "CCEL permission, or an independently provenanced transcription."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "texts",
+      "source": "Westminster Assembly 1646-1648; American revision 1788 for the Confession as digitized",
+      "license": "public domain"
+    },
+    {
+      "component": "transcription and ThML markup",
+      "source": "CCEL",
+      "license": "CCEL edition policy"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "flagged_provenance_research",
+    "rationale": "The Confession on the NAS is the American revision rather than the 1646 edition asked for, and all three files sit under CCEL's edition policy; they serve B068's locator-grammar work (chapter.section, question numbers) but are not a cleared 1646 edition.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "S37 (OPC edition at opc.org) is the same American text family and remains an editorial reference, not an acquired artifact."
+}

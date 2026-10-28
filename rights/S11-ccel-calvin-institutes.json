@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S11-ccel-calvin-institutes",
+  "source_id": "S11",
+  "artifact_sha256": "0bf75e020c7ec132b6550f6e36c60c9acc9805257ea422c8186f93648106f702",
+  "edition_id": "ccel:calvin/institutes:beveridge-1845:ccel-2002-08-31",
+  "status": "unknown",
+  "license_identifier": "LicenseRef-Public-Domain-Text AND LicenseRef-CCEL-Edition-Policy",
+  "evidence_url": "https://www.ccel.org/about/copyright.html",
+  "license_artifact_sha256": "c3b618ae0142260019b98951e259ead8402a34dfcce1c7cafd764a41aa543366",
+  "jurisdictions": [
+    "United States (public domain text); CCEL edition policy worldwide"
+  ],
+  "attribution": "John Calvin, Institutes of the Christian Religion, translated by Henry Beveridge (1845); electronic edition by the Christian Classics Ethereal Library (https://www.ccel.org/ccel/calvin/institutes.html), markup Jon Van Hofwegen, 2002.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "unknown",
+    "modify": "allow",
+    "public_index": "unknown",
+    "model_prompt": "allow",
+    "model_train": "unknown",
+    "translation_evaluate": "unknown"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://www.ccel.org/ccel/calvin/institutes.html",
+    "commit": null,
+    "release": "CCEL electronic edition created 2002-08-31, version 1.0; translation by Henry Beveridge, first published 1845; markup Jon Van Hofwegen",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "curl -sSL of the four files",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S11-ccel-calvin-institutes/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "institutes.xml (ThML, https://www.ccel.org/ccel/c/calvin/institutes.xml)",
+      "institutes.txt (https://www.ccel.org/ccel/c/calvin/institutes/cache/institutes.txt)",
+      "workinfo.html (the work page)",
+      "ccel-copyright.html (https://www.ccel.org/about/copyright.html)"
+    ],
+    "file_count": 4,
+    "bytes": 9645684,
+    "manifest_sha256": "0bf75e020c7ec132b6550f6e36c60c9acc9805257ea422c8186f93648106f702",
+    "manifest_path": "rights/S11-ccel-calvin-institutes/manifest.sha256",
+    "fetch_seconds": 20
+  },
+  "coverage": {
+    "scope": "Four books in 80 chapters with prefatory material, the Hundred Aphorisms and indexes; the B068 locator grammar book.chapter.section applies",
+    "books": 4,
+    "verses": null,
+    "tokens": null,
+    "counting_rule": "ThML div1 elements: Title Page, Prefatory Material, Books First to Fourth, One Hundred Aphorisms, Indexes (8); 103 div2 elements; 3,795 scripRef elements"
+  },
+  "license_files": [
+    {
+      "path": "ccel-copyright.html",
+      "sha256": "c3b618ae0142260019b98951e259ead8402a34dfcce1c7cafd764a41aa543366",
+      "says": "CCEL Copyright Policy: \"Most of the editions ... are based on books that are public domain in the United States ... These books may be used for personal, educational, or non-profit purposes. Contact us for permission to republish CCEL works or to use them commercially.\""
+    },
+    {
+      "path": "institutes.xml",
+      "sha256": "d7995178c1fe1723d1124126010e430f12d0444239ad7f9a7c8c818aa9766717",
+      "says": "ThML header: DC.Rights \"Public Domain\"; editorialComments \"Some Roman numerals changed to Arabic and some spelling modernized.\"; print source not stated"
+    }
+  ],
+  "flags": [
+    {
+      "kind": "provenance_research",
+      "text": "Digitization rights: the ThML header marks the text \"Public Domain\" (Beveridge died 1863; the 1845 translation is public domain), but CCEL's site policy limits its editions to personal, educational or non-profit use and asks for permission to republish or use commercially, and the header does not name the print edition that was transcribed. A clean redistributable Beveridge text needs either CCEL's permission or a separately provenanced digitization.",
+      "resolves_by": "Ask CCEL for permission for this edition; or identify the 1845/1846 Calvin Translation Society print volumes on the Internet Archive and produce or locate an independent transcription; the John Allen translation on Project Gutenberg (S75) is a licence-clean alternative text of the same work in the meantime."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "translation",
+      "source": "Henry Beveridge, Calvin Translation Society, Edinburgh 1845-1846",
+      "license": "public domain"
+    },
+    {
+      "component": "transcription and ThML markup",
+      "source": "CCEL (Jon Van Hofwegen)",
+      "license": "CCEL edition policy"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "flagged_provenance_research",
+    "rationale": "The named edition (Beveridge 1845) is on the NAS with its header and CCEL's policy page, but CCEL's non-commercial edition policy and the unstated print source keep it out of redistribution until resolved.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "ThML scripRef elements give parsed scripture citations the B068 citation pipeline can use directly (specs/19)."
+}

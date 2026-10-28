@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S73",
+  "source_id": "S73",
+  "artifact_sha256": "9cd47904aa3cae073b035791c6c7b2bff2b1c6c29814004db2e8ee765b273c6c",
+  "edition_id": "n1904-tf:1.0.0:2024-07-28",
+  "status": "unknown",
+  "license_identifier": "MIT AND CC-BY-4.0",
+  "evidence_url": "https://github.com/CenterBLC/N1904/blob/def0fd230b9ab77c11c371b273d020b1a573c884/LICENSE.md",
+  "license_artifact_sha256": "aff0eb9dcff124e15a20fef85424267047e3712123cfec52743eb0ab60a96459",
+  "jurisdictions": [
+    "worldwide (MIT; CC BY 4.0)"
+  ],
+  "attribution": "Nestle 1904 Greek New Testament in Text-Fabric, CBLC and ETCBC (converters S. de Oliveira Cantanhede, T. Jurg, D. Roorda), from MACULA Greek (Clear Bible, CC BY 4.0); repository MIT.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/CenterBLC/N1904",
+    "commit": "def0fd230b9ab77c11c371b273d020b1a573c884",
+    "release": "Text-Fabric data version 1.0.0 (written 2024-07-28 by converter 1.0.0 of 9 July 2024)",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "sparse clone made by B064 on 2026-10-28 (corpora/b064-data/n1904); copied with cp -R into this directory, `git -c core.fileMode=false status` clean against the commit; the Text-Fabric binary cache tf/1.0.0/.tf left by the B064 oracle run was removed before hashing",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S73-n1904/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE.md",
+      "/README.md",
+      "/.gitignore",
+      "/tf/1.0.0/ (62 feature files)"
+    ],
+    "file_count": 65,
+    "bytes": 110976216,
+    "manifest_sha256": "9cd47904aa3cae073b035791c6c7b2bff2b1c6c29814004db2e8ee765b273c6c",
+    "manifest_path": "rights/S73/manifest.sha256",
+    "fetch_seconds": null
+  },
+  "coverage": {
+    "scope": "Greek New Testament (Nestle 1904), 27 books",
+    "books": 27,
+    "verses": 7944,
+    "tokens": 137779,
+    "counting_rule": "otype.tf node ranges: 1-137779 word, 137780-137806 book (27), 382714-390657 verse (7,944)"
+  },
+  "license_files": [
+    {
+      "path": "LICENSE.md",
+      "sha256": "aff0eb9dcff124e15a20fef85424267047e3712123cfec52743eb0ab60a96459",
+      "says": "MIT License, Copyright (c) 2024 Center of Biblical Languages and Computing (CBLC); the feature files name MACULA Greek (CC BY 4.0) as dataSource"
+    }
+  ],
+  "flags": [
+    {
+      "kind": "not_ingested",
+      "text": "The `domain` and `ln` features carry Louw-Nida (UBS MARBLE) data that MACULA uses with permission and does not license CC BY; B064 did not ingest them and no redistributable pack may.",
+      "resolves_by": "Use the CC BY-SA UBS dictionaries (S57) as a separate module; or written permission from UBS."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "word slots, lemma, morphology, trees",
+      "source": "MACULA Greek Nestle1904 lowfat (Clear-Bible/macula-greek)",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "component": "Nestle 1904 transcription",
+      "source": "biblicalhumanities/Nestle1904 (Diego Santos; morphology Ulrik Sandborg-Petersen; markup Jonathan Robie)",
+      "license": "CC-BY-SA-3.0 per that repository; verify",
+      "note": "Listed in MACULA's LICENSE.md as an upstream with its own licence."
+    },
+    {
+      "component": "domain, ln features",
+      "source": "UBS MARBLE (Louw-Nida)",
+      "license": "used with permission, not open",
+      "note": "excluded"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "Already the B064 oracle data at this commit; MIT repository over CC BY 4.0 MACULA data, Louw-Nida features excluded. The Nestle1904 transcription's own licence (biblicalhumanities) should be confirmed before a redistributable pack is cut.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "Recorded rather than re-fetched. B064 counted 137,779 tokens and 7,943 verses after ingestion; otype.tf has 7,944 verse nodes."
+}

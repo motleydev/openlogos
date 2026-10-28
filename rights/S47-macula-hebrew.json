@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S47-macula-hebrew",
+  "source_id": "S47",
+  "artifact_sha256": "443c6cc72b0699fe46b8e85d81b64913c4cdee63aff5b8280593e95dd5cc2068",
+  "edition_id": "macula-hebrew:wlc-trees:47db250",
+  "status": "unknown",
+  "license_identifier": "CC-BY-4.0",
+  "evidence_url": "https://github.com/Clear-Bible/macula-hebrew/blob/47db250bd55d0d8577f2a94fba114ef16c35b23c/LICENSE.md",
+  "license_artifact_sha256": "df45ba3224e7d6f9dba3ec8fd2d0b3f1d2febb2620147c889667886fccd4d8e1",
+  "jurisdictions": [
+    "worldwide (CC BY 4.0)"
+  ],
+  "attribution": "MACULA Hebrew Linguistic Datasets, Clear Bible / Biblica, Inc., CC BY 4.0 (https://github.com/Clear-Bible/macula-hebrew); Westminster Leningrad Codex (Groves Center, tanach.us); morphology from the Open Scriptures Hebrew Bible (CC BY 4.0); Westminster Hebrew Syntax (Groves Center, CC BY 4.0).",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/Clear-Bible/macula-hebrew",
+    "commit": "47db250bd55d0d8577f2a94fba114ef16c35b23c",
+    "release": "main head on 2026-10-28",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "sparse clone as for macula-greek; WLC/tsv/macula-hebrew.tsv is a Git LFS object (oid 965cb059...), downloaded through the LFS batch API and verified against the oid, replacing the pointer file",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S47-macula-hebrew/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE.md",
+      "/README.md",
+      "/UNIT-TEST.md",
+      "/WLC/lowfat/",
+      "/WLC/tsv/",
+      "/doc/"
+    ],
+    "file_count": 941,
+    "bytes": 508500795,
+    "manifest_sha256": "443c6cc72b0699fe46b8e85d81b64913c4cdee63aff5b8280593e95dd5cc2068",
+    "manifest_path": "rights/S47-macula-hebrew/manifest.sha256",
+    "fetch_seconds": 77
+  },
+  "coverage": {
+    "scope": "WLC syntax trees (lowfat, per chapter) and the morph TSV, 39 books",
+    "books": 39,
+    "verses": null,
+    "tokens": 475910,
+    "counting_rule": "data rows of WLC/tsv/macula-hebrew.tsv (lines minus header; rows are morphs, not orthographic words); 929 per-chapter lowfat files plus one index file"
+  },
+  "license_files": [
+    {
+      "path": "LICENSE.md",
+      "sha256": "df45ba3224e7d6f9dba3ec8fd2d0b3f1d2febb2620147c889667886fccd4d8e1",
+      "says": "MACULA Hebrew Linguistic Datasets (c) 2022-2024 Biblica, Inc, CC BY 4.0; WLC text copied without restriction (tanach.us); Semantic Dictionary of Biblical Hebrew (c) 2000-2021 United Bible Societies \"Used with permission.\""
+    }
+  ],
+  "flags": [
+    {
+      "kind": "restricted_module",
+      "text": "Semantic-domain columns: the `sdbh`, `lexdomain`, `coredomain` and `contextualdomain` attributes are Semantic Dictionary of Biblical Hebrew data (c) United Bible Societies \"used with permission\", not CC BY. They must be dropped from any redistributable pack; the CC BY-SA UBS Hebrew dictionary (S57) is the separate share-alike substitute.",
+      "resolves_by": "Written permission from UBS, or the S57 substitute."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "text",
+      "source": "Westminster Leningrad Codex, tanach.us snapshot",
+      "license": "free to view or copy without restriction (tanach.us licence)"
+    },
+    {
+      "component": "morphology",
+      "source": "openscriptures/morphhb",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "component": "syntax trees",
+      "source": "Westminster Hebrew Syntax, Groves Center",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "component": "glosses",
+      "source": "Cherith Glosses for the Hebrew Old Testament, Andi Wu",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "component": "sdbh, lexdomain, coredomain, contextualdomain",
+      "source": "Semantic Dictionary of Biblical Hebrew, UBS",
+      "license": "used with permission; not open"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "CC BY 4.0 trees and morphology over a public-domain text; the four SDBH columns are flagged as a restricted module and excluded from redistribution.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "The TSV row count matches S47's finding (475,910)."
+}

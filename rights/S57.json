@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S57",
+  "source_id": "S57",
+  "artifact_sha256": "c3c71930049b6e1f28864cc5f807efe8cc186fe3ac6aae51d71a1876fd2ec064",
+  "edition_id": "ubs-open-license:dictionaries:a15a96c",
+  "status": "unknown",
+  "license_identifier": "CC-BY-SA-4.0",
+  "evidence_url": "https://github.com/ubsicap/ubs-open-license/blob/a15a96cfaa4ca18a6c0339016645ba1e534db3c8/LICENSE.md",
+  "license_artifact_sha256": "7abe19ec9bb73b36141b999b861d24ad855e808bafe0f81e84cce28556f6c297",
+  "jurisdictions": [
+    "worldwide (CC BY-SA 4.0)"
+  ],
+  "attribution": "UBS Dictionary of Biblical Hebrew (c) United Bible Societies 2026 and UBS Dictionary of the Greek New Testament (c) United Bible Societies 2023, https://github.com/ubsicap/ubs-open-license, CC BY-SA 4.0.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "unknown",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/ubsicap/ubs-open-license",
+    "commit": "a15a96cfaa4ca18a6c0339016645ba1e534db3c8",
+    "release": "main head on 2026-10-28; Greek dictionary v1.0 (fr v1.01), Hebrew dictionary v0.9.4",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone) of the listed patterns; fetch --depth 1 --filter=blob:none of the commit; checkout",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S57-ubs-dictionaries/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE.md",
+      "/README.md",
+      "/dictionaries/ (greek and hebrew, XML and JSON, per language)"
+    ],
+    "file_count": 72,
+    "bytes": 689567729,
+    "manifest_sha256": "c3c71930049b6e1f28864cc5f807efe8cc186fe3ac6aae51d71a1876fd2ec064",
+    "manifest_path": "rights/S57/manifest.sha256",
+    "fetch_seconds": 60
+  },
+  "coverage": {
+    "scope": "Greek NT dictionary and lexical domains (en, es, fr, zh-Hans, zh-Hant); Hebrew dictionary and contextual domains (en, es, fr, pt, zh-Hans, zh-Hant), about 90% of OT vocabulary per README",
+    "books": null,
+    "verses": null,
+    "tokens": null,
+    "counting_rule": "file inventory only: greek 12 XML and 17 JSON files, hebrew 18 XML and 18 JSON files; entry counts not computed"
+  },
+  "license_files": [
+    {
+      "path": "LICENSE.md",
+      "sha256": "7abe19ec9bb73b36141b999b861d24ad855e808bafe0f81e84cce28556f6c297",
+      "says": "Creative Commons Attribution-ShareAlike 4.0 International, full legal text"
+    },
+    {
+      "path": "README.md",
+      "sha256": "fcf2fd1f4cd8c90dc5905ee80ee00034a2cc67c3de6a2f3b931904d320365b2d",
+      "says": "\"UNITED BIBLE SOCIETIES RESOURCES PUBLISHED UNDER CC-BY-SA\"; Hebrew dictionary adapted from SDBH (c) 2000-2026 UBS, about 90% of OT words; Greek dictionary adapted from SDBG (c) 2018-2023, itself adapted from Louw-Nida (c) 1988, 1989"
+    }
+  ],
+  "flags": [
+    {
+      "kind": "share_alike",
+      "text": "CC BY-SA 4.0: any pack that includes or adapts these entries must itself be CC BY-SA. Ship as a separate share-alike module, never merged into a CC BY or public-domain pack (specs/19 rights gate).",
+      "resolves_by": "Packaging decision; no research needed."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "Greek dictionary",
+      "source": "Semantic Dictionary of Biblical Greek, from Louw-Nida",
+      "license": "CC-BY-SA-4.0 as released here"
+    },
+    {
+      "component": "Hebrew dictionary",
+      "source": "Semantic Dictionary of Biblical Hebrew (de Blois)",
+      "license": "CC-BY-SA-4.0 as released here"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "restricted_module",
+    "rationale": "Exact licence verified as CC BY-SA 4.0 (the question S57 left open); acquired as the share-alike substitute for the Louw-Nida and SDBH columns in MACULA.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "The HOTTP, flora-fauna-realia, images, index, parallel passages and Bible routes folders were not taken."
+}

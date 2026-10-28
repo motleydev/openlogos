@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S47-macula-greek",
+  "source_id": "S47",
+  "artifact_sha256": "372dc1e049ebd3c7f08b51b59f2e185b97acaa7a6df180d2e061cd51e69b0d7a",
+  "edition_id": "macula-greek:sblgnt-trees:8423afe",
+  "status": "unknown",
+  "license_identifier": "CC-BY-4.0",
+  "evidence_url": "https://github.com/Clear-Bible/macula-greek/blob/8423afe47b9e8f24b7772e808af45c7159a6fe7e/LICENSE.md",
+  "license_artifact_sha256": "41b49a2387b628a7bc772ddfae3a8af9dd8f4d4470b27b6132f6da6c73e4a557",
+  "jurisdictions": [
+    "worldwide (CC BY 4.0)"
+  ],
+  "attribution": "MACULA Greek Linguistic Datasets, Clear Bible / Biblica, Inc., CC BY 4.0 (https://github.com/Clear-Bible/macula-greek); SBLGNT text CC BY 4.0, SBL and Logos Bible Software.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/Clear-Bible/macula-greek",
+    "commit": "8423afe47b9e8f24b7772e808af45c7159a6fe7e",
+    "release": "main head on 2026-10-28",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone) of the listed patterns; fetch --depth 1 --filter=blob:none of the commit; checkout",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S47-macula-greek/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE.md",
+      "/README.md",
+      "/UNIT-TEST.md",
+      "/SBLGNT/README.md",
+      "/SBLGNT/lowfat/",
+      "/SBLGNT/tsv/",
+      "/doc/"
+    ],
+    "file_count": 37,
+    "bytes": 134934544,
+    "manifest_sha256": "372dc1e049ebd3c7f08b51b59f2e185b97acaa7a6df180d2e061cd51e69b0d7a",
+    "manifest_path": "rights/S47-macula-greek/manifest.sha256",
+    "fetch_seconds": 41
+  },
+  "coverage": {
+    "scope": "SBLGNT syntax trees (lowfat) and the token TSV, 27 books",
+    "books": 27,
+    "verses": null,
+    "tokens": 137741,
+    "counting_rule": "data rows of SBLGNT/tsv/macula-greek-SBLGNT.tsv (lines minus header); 27 per-book lowfat files plus sblgntlowfat.xml; the Nestle1904 trees are not in this checkout (N1904 comes through S73)"
+  },
+  "license_files": [
+    {
+      "path": "LICENSE.md",
+      "sha256": "41b49a2387b628a7bc772ddfae3a8af9dd8f4d4470b27b6132f6da6c73e4a557",
+      "says": "MACULA Greek Linguistic Datasets (c) 2022-2024 Biblica, Inc, CC BY 4.0; lists the upstream datasets and says of the UBS MARBLE word-sense data (@ln, @domain): \"Used with permission.\""
+    }
+  ],
+  "flags": [
+    {
+      "kind": "restricted_module",
+      "text": "Louw-Nida columns: the `ln` and `domain` attributes (TSV columns) are UBS MARBLE semantic-domain data \"used with permission\", not CC BY. They must be dropped from any redistributable pack and may not be indexed publicly; use the CC BY-SA UBS dictionaries (S57) as a separate share-alike module instead.",
+      "resolves_by": "Written permission from UBS for redistribution, or the S57 substitute."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "SBLGNT text",
+      "source": "Faithlife/SBLGNT at 736fdc76158950c3d04b949b7e013ca14305145a (2023-07-10)",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "component": "English and Chinese glosses",
+      "source": "Cherith Glosses for the Greek New Testament, Andi Wu, Cherith Analytics",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "component": "Gloss attribute",
+      "source": "Berean Interlinear Bible",
+      "license": "public domain"
+    },
+    {
+      "component": "ln, domain",
+      "source": "UBS MARBLE (Louw-Nida)",
+      "license": "used with permission; not open"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "CC BY 4.0 trees, morphology, glosses and referents; the two Louw-Nida columns are flagged as a restricted module and excluded from redistribution.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "S47's finding counted SBLGNT 137,740 tokens from an earlier commit; this commit's TSV has 137,741 data rows."
+}

@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S58",
+  "source_id": "S58",
+  "artifact_sha256": "3a41e918d0fc57ddc40a82587a5c0b1f212ef5a7d4e124d0ac0f506363c1aeaa",
+  "edition_id": "bhsa:tf-2021:v1.8.1",
+  "status": "unknown",
+  "license_identifier": "CC-BY-NC-4.0",
+  "evidence_url": "https://github.com/ETCBC/bhsa/blob/4db00e2157915495e1a4d3d57e41223df24775da/README.md",
+  "license_artifact_sha256": "3bf6c039ec757b531869869d5edb7b3d2460020abf785cef2aa1341f82c7b560",
+  "jurisdictions": [
+    "worldwide (CC BY-NC 4.0)"
+  ],
+  "attribution": "BHSA (Biblia Hebraica Stuttgartensia Amstelodamensis), Eep Talstra Centre for Bible and Computer, Vrije Universiteit Amsterdam, https://github.com/ETCBC/bhsa, CC BY-NC 4.0.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "deny",
+    "modify": "allow",
+    "public_index": "deny",
+    "model_prompt": "allow",
+    "model_train": "deny",
+    "translation_evaluate": "unknown"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/ETCBC/bhsa",
+    "commit": "4db00e2157915495e1a4d3d57e41223df24775da",
+    "release": "tf/2021, __checkout__.txt v1.8.1 (master head on 2026-10-28)",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone) of the listed patterns; fetch --depth 1 --filter=blob:none of the commit; checkout",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S58-bhsa/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE",
+      "/README.md",
+      "/tf/2021/ (117 feature files)"
+    ],
+    "file_count": 120,
+    "bytes": 172784871,
+    "manifest_sha256": "3a41e918d0fc57ddc40a82587a5c0b1f212ef5a7d4e124d0ac0f506363c1aeaa",
+    "manifest_path": "rights/S58/manifest.sha256",
+    "fetch_seconds": 39
+  },
+  "coverage": {
+    "scope": "Hebrew Bible, 39 books, version 2021",
+    "books": 39,
+    "verses": null,
+    "tokens": 426590,
+    "counting_rule": "value lines of tf/2021/g_word.tf after the @ header (one per word slot)"
+  },
+  "license_files": [
+    {
+      "path": "README.md",
+      "sha256": "3bf6c039ec757b531869869d5edb7b3d2460020abf785cef2aa1341f82c7b560",
+      "says": "\"This work is licensed under a Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)\""
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "95a3837831dba9b99db791cf6b024995b58655e0280e4d06ee1ed75540a22ac7",
+      "says": "MIT License (c) 2019 Dirk Roorda, which covers the repository code, not the data"
+    }
+  ],
+  "flags": [
+    {
+      "kind": "restricted_module",
+      "text": "CC BY-NC 4.0: non-commercial only. Never in a redistributable OpenLogos pack; an optional module the user downloads from ETCBC for personal study, with the licence shown (specs/19 rights gate).",
+      "resolves_by": "A separate licence from ETCBC would be needed for redistribution; not sought."
+    }
+  ],
+  "upstream_dependencies": [],
+  "steward_proposal": {
+    "decision": "restricted_module",
+    "rationale": "Licence as the registry recorded; acquired only so the module loader can be built and tested against real data on this machine.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "Only the 2021 version was taken; older versions (2016, 2017, c, 3, 4, 4b) were not."
+}

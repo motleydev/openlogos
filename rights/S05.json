@@ -1,0 +1,133 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S05",
+  "source_id": "S05",
+  "artifact_sha256": "6c6f64e3d549ce603e8cb8a2a0ece2826da211264d5f2c0ac112e27e473e54e3",
+  "edition_id": "stepbible-data:be4191f",
+  "status": "unknown",
+  "license_identifier": "CC-BY-4.0",
+  "evidence_url": "https://github.com/STEPBible/STEPBible-Data/blob/be4191f0082aeedddb0eff0c02c966292b2bd641/README.md",
+  "license_artifact_sha256": "261d5157c0ffeadeedad3f734db945a4c3642e3e4ce5fa28002985b6c52437b1",
+  "jurisdictions": [
+    "worldwide (CC BY 4.0, per-file caveats below)"
+  ],
+  "attribution": "Data created by www.STEPBible.org based on work at Tyndale House Cambridge (CC BY 4.0); credit \"STEP Bible\" linked to www.STEPBible.org and record any changes.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "unknown",
+    "modify": "allow",
+    "public_index": "unknown",
+    "model_prompt": "allow",
+    "model_train": "unknown",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/STEPBible/STEPBible-Data",
+    "commit": "be4191f0082aeedddb0eff0c02c966292b2bd641",
+    "release": "master head on 2026-10-28",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone) of the listed patterns; fetch --depth 1 --filter=blob:none of the commit; checkout",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S05-stepbible/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/README.md",
+      "/Lexicons/TBESG*",
+      "/Lexicons/TBESH*",
+      "/Translators Amalgamated OT+NT/TAGNT*",
+      "/Translators Amalgamated OT+NT/TAHOT*",
+      "/Versification/ (TVTMS)"
+    ],
+    "file_count": 10,
+    "bytes": 114168257,
+    "manifest_sha256": "6c6f64e3d549ce603e8cb8a2a0ece2826da211264d5f2c0ac112e27e473e54e3",
+    "manifest_path": "rights/S05/manifest.sha256",
+    "fetch_seconds": 41
+  },
+  "coverage": {
+    "scope": "TBESG and TBESH lexicons, TAGNT (NT, 2 files) and TAHOT (OT, 4 files) tagged texts, TVTMS versification",
+    "books": 66,
+    "verses": null,
+    "tokens": null,
+    "counting_rule": "line counts: TBESG 11,125; TBESH 11,737; TAGNT Mat-Jhn 112,009 and Act-Rev (see manifest); TAHOT Gen-Deu, Jos-Est (183,814), Job-Sng, Isa-Mal; TVTMS 29,896; token totals were not computed because the files mix header, verse and word lines"
+  },
+  "license_files": [
+    {
+      "path": "README.md",
+      "sha256": "261d5157c0ffeadeedad3f734db945a4c3642e3e4ce5fa28002985b6c52437b1",
+      "says": "\"STEPBible Data Repository CC BY 4.0\"; asks that changes be recorded, that others be referred to the repository, and that it be credited to \"STEP Bible\" linked to www.STEPBible.org"
+    }
+  ],
+  "flags": [
+    {
+      "kind": "provenance_research",
+      "text": "TBESH: its own header says the Meaning column is \"based on the Abridged BDB by Online Bible, (c) Larry Pierce of OnlineBible.net ... They are for guidance only. Permission should be gained from Online Bible before these definitions are applied\". That column is not cleared by the repository's CC BY.",
+      "resolves_by": "Permission from Online Bible, or drop the Meaning column and keep the Tyndale House columns."
+    },
+    {
+      "kind": "provenance_research",
+      "text": "TAGNT: the Greek column \"Spelling comes from NA28 when available ... Text follows NA27\". The German Bible Society asserts rights in the NA text; STEPBible publishes the file as CC BY. Confirm the basis before redistributing that column; the SBLGNT (S06) is the project's Greek text in any case.",
+      "resolves_by": "A statement from STEPBible/Tyndale House on the NA text basis, or use only the lexical and grammar columns keyed to SBLGNT."
+    },
+    {
+      "kind": "share_alike",
+      "text": "TAGNT: \"Grammar: Based on James Tauber\" (MorphGNT, CC BY-SA 3.0). The licence lineage of that column is not stated.",
+      "resolves_by": "Confirmation from STEPBible that the grammar column was re-licensed or independently produced."
+    },
+    {
+      "kind": "provenance_research",
+      "text": "TAHOT: \"Morphology is from ETCBC\" (BHSA, CC BY-NC 4.0, S58) while the file is published CC BY.",
+      "resolves_by": "Confirmation that ETCBC granted a CC BY release for this derivative; otherwise treat the TAHOT morphology column as non-commercial."
+    },
+    {
+      "kind": "per_item_review",
+      "text": "Every file header says \"Refer others to github.com/STEPBible as the source of the data. Please do not redistribute it yourself.\" This is a request beside a CC BY grant; the project should fetch from upstream at build time and credit STEP Bible rather than mirror the files.",
+      "resolves_by": "Policy decision by the steward."
+    }
+  ],
+  "upstream_dependencies": [
+    {
+      "component": "TBESG definitions",
+      "source": "Abbott-Smith (1922), MiddleLiddel for a few words",
+      "license": "public domain"
+    },
+    {
+      "component": "TBESH Meaning column",
+      "source": "Abridged BDB by Online Bible (Larry Pierce)",
+      "license": "permission required per header"
+    },
+    {
+      "component": "TAGNT Greek",
+      "source": "NA27 text, NA28 spelling, TR, other editions for variants",
+      "license": "unclear"
+    },
+    {
+      "component": "TAGNT English",
+      "source": "Berean Study Bible as at 1 July 2019, with permission",
+      "license": "public domain since 2023"
+    },
+    {
+      "component": "TAGNT grammar",
+      "source": "James Tauber (MorphGNT)",
+      "license": "CC-BY-SA-3.0"
+    },
+    {
+      "component": "TAHOT Hebrew",
+      "source": "WLC 4.20 via OpenScriptures, checked against BHS",
+      "license": "public domain / CC-BY-4.0"
+    },
+    {
+      "component": "TAHOT morphology",
+      "source": "ETCBC",
+      "license": "CC-BY-NC-4.0 upstream"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "flagged_provenance_research",
+    "rationale": "The repository is CC BY 4.0 but the chosen files name upstream components (Online Bible BDB, NA27/28 text, MorphGNT grammar, ETCBC morphology) whose licences are stricter than CC BY or unstated; usable locally now, not redistributable until the per-file questions above are answered.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "The TFLSJ (full LSJ) files were not taken."
+}

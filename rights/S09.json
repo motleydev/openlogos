@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S09",
+  "source_id": "S09",
+  "artifact_sha256": "0f385bd7aeaf0af40970222de6cf6924587f893eb2ae817c3909121237f68ecf",
+  "edition_id": "openbible-cross-references:2026-10-26",
+  "status": "unknown",
+  "license_identifier": "CC-BY-4.0",
+  "evidence_url": "https://www.openbible.info/labs/cross-references/",
+  "license_artifact_sha256": "6674984c69a81692978007f81e48f0df1120bde8d594985e8440a460070e873e",
+  "jurisdictions": [
+    "worldwide (CC BY 4.0)"
+  ],
+  "attribution": "Cross references from OpenBible.info (https://www.openbible.info/labs/cross-references/), CC BY 4.0; primarily derived from the public-domain Treasury of Scripture Knowledge, with votes seeded from the Topical Bible and Twitter Bible Search.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://a.openbible.info/data/cross-references.zip",
+    "commit": null,
+    "release": "file header \"#www.openbible.info CC-BY 2026-10-26\"",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "curl -sSL of the zip linked from https://www.openbible.info/labs/cross-references/ and of that page",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S09-openbible-xrefs/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "cross-references.zip (cross_references.txt)",
+      "cross-references-page.html (the labs page with the licence statement)"
+    ],
+    "file_count": 2,
+    "bytes": 1997460,
+    "manifest_sha256": "0f385bd7aeaf0af40970222de6cf6924587f893eb2ae817c3909121237f68ecf",
+    "manifest_path": "rights/S09/manifest.sha256",
+    "fetch_seconds": 10
+  },
+  "coverage": {
+    "scope": "Reference pairs across the 66-book Protestant canon with a vote count; no verse text",
+    "books": 66,
+    "verses": null,
+    "tokens": 344799,
+    "counting_rule": "tab-separated rows after the header (From Verse, To Verse, Votes); 66 distinct OSIS book ids on each side; tokens here means rows"
+  },
+  "license_files": [
+    {
+      "path": "cross-references-page.html",
+      "sha256": "6674984c69a81692978007f81e48f0df1120bde8d594985e8440a460070e873e",
+      "says": "\"Unless otherwise indicated, all content is licensed under a Creative Commons Attribution License\" linking http://creativecommons.org/licenses/by/4.0/; \"All Scripture quotations, unless otherwise indicated, are taken from The Holy Bible, English Standard Version\" applies to the website's displayed verses, none of which are in the data file."
+    }
+  ],
+  "flags": [],
+  "upstream_dependencies": [
+    {
+      "component": "most reference pairs",
+      "source": "Treasury of Scripture Knowledge",
+      "license": "public domain"
+    },
+    {
+      "component": "votes",
+      "source": "OpenBible.info users, Topical Bible, Twitter Bible Search",
+      "license": "CC-BY-4.0",
+      "note": "Votes are not accuracy scores (S09)."
+    }
+  ],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "Three-column reference file under the page's CC BY statement, captured with the page; it contains OSIS references and integers only, so no ESV wording enters the corpus.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "Baseline cross-reference artifact for the acceptance item; the page HTML is kept because the licence statement is on the page, not in the zip."
+}
