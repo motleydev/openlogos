@@ -13,6 +13,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::reference::{BookId, Reference};
 
+pub mod reanchor;
+
+pub use reanchor::{ReanchorResult, Revision, TokenSpan, reanchor};
+
 /// Errors from parsing or building anchors.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
