@@ -506,6 +506,8 @@ dependencies = [
  "js-sys",
  "openlogos-conformance",
  "openlogos-core",
+ "openlogos-retrieval",
+ "openlogos-retrieval-sqlite",
  "openlogos-text",
  "serde",
  "serde-wasm-bindgen",

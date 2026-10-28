@@ -21,3 +21,9 @@ pub mod vectors;
 pub use engine::Engine;
 pub use links::LinkIndex;
 pub use pack::{PackBuilder, PackManifest};
+
+/// The SQLite library version compiled into this engine (`3.54.1`).
+#[must_use]
+pub fn sqlite_version() -> &'static str {
+    rusqlite::version()
+}

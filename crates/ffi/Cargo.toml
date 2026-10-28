@@ -22,6 +22,9 @@ required-features = ["bindgen"]
 [features]
 # Pulls uniffi's command-line generator into the binary above; off for every library build.
 bindgen = ["uniffi/cli"]
+# Links the embedded retrieval engine (ADR 0002) and exports `retrieval_smoke`; off by
+# default until the search crate's query API exists. B064 measures the size it adds (R3).
+retrieval = ["dep:openlogos-retrieval", "dep:openlogos-retrieval-sqlite"]
 
 [dependencies]
 openlogos-core = { workspace = true }
@@ -32,8 +35,11 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 # UniFFI serves Apple and Android only (src/native.rs); the wasm32 build must not see it.
+# The retrieval engine is native-only too: its wasm build is a separate decision (B064).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 uniffi = { workspace = true }
+openlogos-retrieval = { workspace = true, optional = true }
+openlogos-retrieval-sqlite = { workspace = true, optional = true }
 
 # The web surface (src/wasm.rs). `wasm-bindgen` must be the exact version of the
 # `wasm-bindgen-cli` that flake.nix provides (`wasm-bindgen --version`); js-sys and
