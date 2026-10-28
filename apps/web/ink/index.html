@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenLogos ink prototype (B039)</title>
+<!--
+  B039: a margin ink canvas beside a reading pane, no framework, no build. Strokes are
+  outlined by the Rust port of perfect-freehand inside the core's WebAssembly module
+  (inkOutline) and kept as the portable InkDocument record (inkDocumentJson validates it).
+  Pen, highlighter (one composite per stroke), stroke eraser, undo/redo, stylus/finger modes,
+  the palm rule of crates/ink/src/touch.rs mirrored in JS, and an input-to-visible measurement
+  (?autorun=1 for the synthesized pointer sequence the headless test drives; a hand run records
+  real events the same way). Served next to core-host/pkg by test/run-chrome.mjs.
+  Reading text is the BSB John 3:16–17 conformance fixture the core ships (S52, CC0), read
+  through conformanceFixturesJson() like the DOM reader; it anchors nothing yet.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: CanvasText; --muted: GrayText; --rule: color-mix(in srgb, CanvasText 18%, transparent);
+    --accent: color-mix(in srgb, CanvasText 70%, Canvas);
+    font-family: system-ui, sans-serif;
+  }
+  body { margin: 0; background: Canvas; color: var(--fg); overscroll-behavior: none; }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; padding: 4px 12px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  header strong { font-weight: 600; margin-inline-end: 8px; }
+  .group { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .group button { background: none; border: 0; border-inline-end: 1px solid var(--rule); color: inherit; min-width: 44px; min-height: 36px; padding: 0 10px; cursor: pointer; font: inherit; }
+  .group button:last-child { border-inline-end: 0; }
+  .group button[aria-pressed="true"] { background: color-mix(in srgb, CanvasText 14%, transparent); font-weight: 600; }
+  .group button:disabled { opacity: 0.4; cursor: default; }
+  header label { display: inline-flex; gap: 4px; align-items: center; }
+  input[type="color"] { width: 32px; height: 28px; border: 1px solid var(--rule); border-radius: 6px; padding: 0; background: none; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: calc(100vh - 53px); }
+  .pane { border-inline-end: 1px solid var(--rule); overflow: auto; min-width: 0; }
+  .pane .identity { position: sticky; top: 0; background: Canvas; display: flex; gap: 10px; align-items: baseline; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .pane .identity b { font-weight: 600; }
+  .pane .text { font-family: "New York", "Iowan Old Style", Georgia, serif; font-size: 20px; line-height: 1.5; margin: 0; padding: 20px; }
+  .pane .marker { font-size: 11px; color: var(--muted); vertical-align: 0.45em; line-height: 0; margin-inline-end: 0.15em; }
+  .pane .attribution { font-size: 12px; color: var(--muted); padding: 0 20px 20px; margin: 0; }
+  .margin { position: relative; min-width: 0; display: flex; flex-direction: column; }
+  .margin .identity { display: flex; gap: 10px; align-items: baseline; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .margin .identity b { font-weight: 600; }
+  .margin .identity .meta { margin-inline-start: auto; color: var(--muted); font-size: 12px; }
+  .sheet { position: relative; flex: 1; min-height: 0; background:
+      repeating-linear-gradient(to bottom, transparent 0 29px, color-mix(in srgb, CanvasText 8%, transparent) 29px 30px); }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .readout { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); padding: 6px 12px; border-top: 1px solid var(--rule); white-space: pre-wrap; max-height: 112px; overflow: auto; margin: 0; }
+  .status { font-size: 12px; color: var(--muted); padding: 6px 12px; border-top: 1px solid var(--rule); }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; grid-template-rows: 40% 1fr; } .pane { border-inline-end: 0; border-bottom: 1px solid var(--rule); } }
+</style>
+</head>
+<body>
+<header>
+  <strong>Margin ink</strong>
+  <span class="group" role="group" aria-label="Tool">
+    <button id="tool-pen" aria-pressed="true" data-tool="pen">Pen</button>
+    <button id="tool-highlighter" aria-pressed="false" data-tool="highlighter">Highlighter</button>
+    <button id="tool-eraser" aria-pressed="false" data-tool="eraser">Stroke eraser</button>
+  </span>
+  <span class="group" role="group" aria-label="Input mode">
+    <button id="mode-stylus" aria-pressed="true" data-mode="stylus" title="Only a pen draws; fingers scroll">Stylus</button>
+    <button id="mode-finger" aria-pressed="false" data-mode="finger" title="A finger draws in the margin">Finger</button>
+  </span>
+  <span class="group" role="group" aria-label="History">
+    <button id="undo" disabled>Undo</button>
+    <button id="redo" disabled>Redo</button>
+  </span>
+  <label>Colour <input type="color" id="color" value="#1d4ed8"></label>
+  <label>Width <input type="range" id="width" min="1" max="24" value="4" style="width:90px"></label>
+  <span class="group"><button id="export">Export JSON</button><button id="measure" title="Synthesized pen stroke with pressure; records input-to-visible">Measure</button></span>
+  <span id="core" style="margin-inline-start:auto;color:var(--muted)">core …</span>
+</header>
+<main>
+  <section class="pane" id="reading-pane" aria-label="Reading pane">
+    <div class="identity"><b>BSB</b><span>John 3:16–17</span><span style="margin-inline-start:auto;color:var(--muted)">fixture</span></div>
+    <p class="text" id="reading-text"></p>
+    <p class="attribution" id="reading-attribution">Fixture: Berean Standard Bible (CC0). The ink to the right anchors nothing yet.</p>
+  </section>
+  <section class="margin" aria-label="Margin sheet">
+    <div class="identity"><b>Margin</b><span>sheet over snapshot <code>fixture:snapshot:1</code></span><span class="meta" id="meta">0 strokes</span></div>
+    <div class="sheet"><canvas id="ink" aria-label="Ink canvas"></canvas></div>
+    <pre class="readout" id="readout">Draw with a pen, mouse or finger (Finger mode). Measure synthesizes a pressure stroke.</pre>
+  </section>
+</main>
+<p class="status" id="status">Loading the core…</p>
+<script type="module" src="ink.js"></script>
+</body>
+</html>

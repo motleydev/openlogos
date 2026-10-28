@@ -397,6 +397,7 @@ def main():
         ('workspace','examples/archive/workspace-1.0.json'),
         ('reading-snapshot','examples/reading-snapshot.json'),
         ('ink-document','examples/ink-document.json'),
+        ('ink-document','examples/archive/ink-document-1.0.json'),
         ('research-thread','examples/research-thread.json'),
         ('package-manifest','examples/archive/package-manifest-1.0.json'),
         ('anchor','examples/anchor.json'), ('verse-map','examples/verse-map.json'),
@@ -437,10 +438,15 @@ def main():
     assert (R/shared).is_file()
     source_ids={s['id'] for s in load('specs/sources.json')['sources']}
     assert len(source_ids)==len(load('specs/sources.json')['sources'])
-    for p in R.rglob('*.md'):
+    # Build output and installed packages are not part of the bundle (gitignored): a vendored
+    # package may ship its own AGENTS.md or cite other things called S29.
+    skipped={'node_modules','target','artifacts','.direnv','DerivedData','.build','dist'}
+    def bundle(pattern):
+        return (p for p in R.rglob(pattern) if not skipped & set(p.relative_to(R).parts[:-1]))
+    for p in bundle('*.md'):
         for sid in re.findall(r'\bS\d{2}\b',p.read_text()):
             assert sid in source_ids, 'Unknown research citation: ' + sid
-    for p in R.rglob('*'):
+    for p in bundle('*'):
         assert p.name not in {'AGENTS.md','CLAUDE.md'}, 'Auto-loaded instructions forbidden in this data bundle'
     manifest=load('examples/package-manifest.json')
     for artifact in manifest['artifacts']:
@@ -492,6 +498,19 @@ def main():
     sn=load('examples/reading-snapshot.json')
     ink=load('examples/ink-document.json')
     check_ink(sn,ink)
+    # B039: ink-document 1.1 adds optional per-sample tilt (altitude, azimuth; null when the
+    # device has none). A 1.1 point still names its pressure; a 1.0 point carries no tilt.
+    assert ink['schema_version']=='1.1' and any(p['altitude'] is not None for p in ink['strokes'][1]['points'])
+    old_ink=load('examples/archive/ink-document-1.0.json'); assert old_ink['schema_version']=='1.0'
+    check_ink(sn,old_ink)
+    tilt_no_pressure=copy.deepcopy(ink); del tilt_no_pressure['strokes'][1]['points'][0]['pressure']
+    expect_rejected(lambda:validate('ink-document',tilt_no_pressure),'1.1 ink sample with tilt but no pressure field')
+    tilt_missing=copy.deepcopy(ink); del tilt_missing['strokes'][0]['points'][0]['altitude']
+    expect_rejected(lambda:validate('ink-document',tilt_missing),'1.1 ink sample without the tilt fields')
+    old_with_tilt=copy.deepcopy(old_ink); old_with_tilt['strokes'][0]['points'][0]['altitude']=1.0
+    expect_rejected(lambda:validate('ink-document',old_with_tilt),'1.0 ink sample with 1.1 tilt')
+    steep=copy.deepcopy(ink); steep['strokes'][1]['points'][0]['altitude']=2.0
+    expect_rejected(lambda:validate('ink-document',steep),'ink altitude above pi/2')
     safe_path(sn['background']['path'])
     assert hashlib.sha256((R/'examples'/sn['background']['path']).read_bytes()).hexdigest()==sn['background']['sha256']
     thread=load('examples/research-thread.json')

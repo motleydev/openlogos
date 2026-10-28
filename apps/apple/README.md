@@ -91,6 +91,31 @@ just test-reader mac                        # the same natively in the macOS app
 measurements and what the two text views do with a range inside a grapheme cluster, is
 docs/evidence/B005.md.
 
+## The ink margin (B039)
+
+`OpenLogos/Sources/Ink/` is the B039 spike: a margin sheet beside the B005 reader (prototype
+view "B039 ink margin", `-OPENLOGOS_VIEW ink`). `InkCanvasEngine` keeps one `CAShapeLayer` per
+stroke whose path is the core's `inkOutline` (the perfect-freehand 1.2.3 port in crates/ink,
+through UniFFI; no Swift port) filled once with the non-zero rule at the stroke's opacity, so a
+highlighter never darkens over itself. `InkSheet` holds the UniFFI `InkDocument` record with
+undo/redo and stroke-eraser tombstones and exports it through `inkDocumentJson`.
+`InkTouchPolicy` mirrors the palm and finger/stylus arbiter of `crates/ink/src/touch.rs`
+(same cases in `Tests/ReaderTests/InkTests.swift`). The UIKit view takes coalesced touches,
+Pencil force, altitude and azimuth (the ink-document 1.1 tilt fields, null for a finger)
+and `majorRadius` for the palm rule; the AppKit view takes mouse and tablet events.
+`PencilKitProbe` is a `PKCanvasView` whose strokes are exported into the same record with every
+PencilKit limitation named on screen. Launch arguments: `-OPENLOGOS_INK_DEMO 1`,
+`-OPENLOGOS_INK_MEASURE 1` (in-process synthesized latency run), `-OPENLOGOS_INK_PENCILKIT 1`,
+`-OPENLOGOS_INK_PKDEMO 1`, `-OPENLOGOS_INK_PALM_RADIUS <pt>`, `-OPENLOGOS_LOG 1`.
+
+```sh
+just sim && scripts/b039-shots.sh ipad ipad-ink-1024-measure 1024 1 -OPENLOGOS_INK_DEMO 1 -OPENLOGOS_LOG 1
+scripts/b039-shots.sh mac mac-ink-1440-measure 1440 1 -OPENLOGOS_INK_DEMO 1   # run outside the Nix shell (BSD stat)
+xcodebuild … -only-testing:OpenLogosTests/InkTests test        # unit cases; OpenLogosUITests/InkUITests for the XCUITest drags
+```
+
+The measurements, the PencilKit export gaps and the Excalidraw comparison are docs/evidence/B039.md.
+
 ## CoreHost: the UniFFI Swift bindings test host (B061)
 
 `CoreHost/` is a SwiftPM package for macOS, not the app. It proves that the Swift bindings

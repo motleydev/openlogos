@@ -58,6 +58,15 @@ The Android app will use the same generated Kotlin with the `.so` from `cargo nd
 
 Release signing keys stay outside the repository and outside agent runs, as for Apple.
 
+## B039 note: the Android Ink API (Jetpack `androidx.ink`), from its documentation
+
+Not built here (no SDK or NDK). The assessment, with what the API exposes (raw `StrokeInput`
+batches with x, y, elapsed time, pressure, tilt, orientation and tool type; versioned stock
+brushes; meshes rather than outlines; Apache 2.0) and how it maps onto the ink-document
+schema, is docs/evidence/B039.md, "Android Ink API". The Compose host for the ink margin would
+be `InProgressStrokesView` for the live stroke and `CanvasStrokeRenderer` for the committed
+ones, with the core's `inkOutline` as the portable renderer beside them.
+
 ## B005 sketch: a Compose text surface over the same anchors
 
 Written for B005 (docs/evidence/B005.md, acceptance 4) from the platform's documented text

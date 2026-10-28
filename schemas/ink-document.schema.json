@@ -5,7 +5,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": "1.0"
+      "type": "string",
+      "enum": [
+        "1.0",
+        "1.1"
+      ]
     },
     "fixture_only": {
       "type": "boolean"
@@ -80,6 +84,24 @@
                 "elapsed_ms": {
                   "type": "number",
                   "minimum": 0
+                },
+                "altitude": {
+                  "description": "1.1 (B039): the stylus's angle above the surface in radians, 0 (flat) to pi/2 (perpendicular); null when the device reports none.",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1.5707963267948966
+                },
+                "azimuth": {
+                  "description": "1.1 (B039): the direction the stylus points in radians, 0 to 2*pi in the coordinate space; null when the device reports none.",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 6.283185307179586
                 }
               },
               "required": [
@@ -140,5 +162,71 @@
     "strokes",
     "deleted_stroke_ids",
     "viewport_transform"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "1.1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "strokes": {
+            "items": {
+              "properties": {
+                "points": {
+                  "items": {
+                    "required": [
+                      "altitude",
+                      "azimuth"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "1.0"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "strokes": {
+            "items": {
+              "properties": {
+                "points": {
+                  "items": {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "altitude"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "azimuth"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   ]
 }

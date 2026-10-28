@@ -747,6 +747,7 @@ dependencies = [
  "js-sys",
  "openlogos-conformance",
  "openlogos-core",
+ "openlogos-ink",
  "openlogos-retrieval",
  "openlogos-retrieval-sqlite",
  "openlogos-text",
@@ -762,6 +763,11 @@ dependencies = [
 [[package]]
 name = "openlogos-ink"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "openlogos-notes"

@@ -253,7 +253,7 @@ Status: `implementation_reference`.
 
 [perfect-freehand](https://github.com/steveruizok/perfect-freehand)
 
-MIT stroke geometry library; it is not a complete handwritten-note editor.
+MIT stroke geometry library; it is not a complete handwritten-note editor. B039 ported release 1.2.3 (npm gitHead f56f097e0e211fffa1601b93883e4d9f9dccf122, tarball sha256 060048047071b6ffb2170c8b867ba995f365ec811dc32435574d3d5f7625981f, published 2026-02-01) to crates/ink/src/freehand.rs with the MIT notice in the file header; crates/ink/golden/ holds the generator and vectors from that npm package.
 
 Status: `candidate_open`.
 
@@ -261,7 +261,7 @@ Status: `candidate_open`.
 
 [Excalidraw source and license](https://github.com/excalidraw/excalidraw/blob/master/LICENSE)
 
-MIT editor candidate; validate the selected package, assets and platform behavior.
+MIT editor candidate; validate the selected package, assets and platform behavior. B039 mounted @excalidraw/excalidraw 0.18.1 (published 2026-04-21; React peer dependency; 47 MB unpacked, 17 MB prod dist of which 13 MB fonts; its freedraw tool calls perfect-freehand 1.2.0) offline through esbuild (apps/web/ink/excalidraw): a freedraw element keeps points and pressures but no per-point time, tilt or brush version, stores one point per frame, deletes by whole-element tombstone, and exports open JSON/SVG/PNG; a complete editor, not a margin-ink layer (docs/evidence/B039.md).
 
 Status: `candidate_open`.
 

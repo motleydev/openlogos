@@ -49,6 +49,24 @@ Vault attachment layout separates Markdown notes, portable ink JSON, immutable s
 
 The baseline is an open stroke model with an open renderer, not a proprietary note format. A native adapter may improve platform input but cannot be the only way to edit/read saved notes. Preserve pressure, time, tilt where available, brush definition/version, color, opacity, width, eraser/mask operations, stroke IDs and z-order in versioned neutral records. Unsupported sensor data is null, not fabricated. Save native blobs only as optional fidelity caches; export portable geometry plus a flattened preview.
 
+### B039 findings
+
+The spike (docs/evidence/B039.md) settled what the table left open. perfect-freehand 1.2.3 is
+ported to `crates/ink` (MIT, attribution in the file, golden vectors from the npm package), so
+the open baseline is the core's own outline, rendered by each host as one non-zero fill per
+stroke; brushes are versioned ids (`pf-1.2.3/pen-1`, `pf-1.2.3/highlighter-1`) and a stroke
+whose brush a build does not know is shown by a labelled fallback, never silently reshaped.
+Excalidraw is a complete editor with its own document model (no per-point time, tilt or brush
+version; one stored point per frame; React and a 17 MB distribution) and is not the margin-ink
+layer; it stays an optional interoperability target. Native adapters export what they expose:
+PencilKit gives resampled control points with force, tilt and time offsets but not the raw
+touches, its brush geometry or its blob format; the Android Ink API gives the raw input batch
+with pressure and tilt. `schemas/ink-document.schema.json` 1.1 (B039, additive per ADR 0003)
+carries nullable `altitude` and `azimuth` in radians per sample so tilt is preserved where a
+device reports it and null elsewhere. The 25 ms p95 input-to-visible target is still unmeasured on hardware:
+B039 measured synthesized and WebDriver-driven input on the Mac mini and the iPad simulator
+only, and the palm rule's 20-point contact-radius threshold needs a device to calibrate.
+
 This is handwriting capture, not a promise of handwriting recognition. OCR/recognition is a separate optional derived layer with confidence and explicit consent for any remote processing. Original strokes are never replaced by recognized text.
 
 ## Ink interaction requirements

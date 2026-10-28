@@ -7,7 +7,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # since B064, the retrieval engine (SQLite compiled for wasm32 by sqlite-wasm-rs; the dev
 # shells point the `cc` crate at an unwrapped clang for it) and, since B021, the sync crate
 # with its pinned crypto crates (ADR 0004).
-wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-workspaces -p openlogos-notes -p openlogos-conformance -p openlogos-sync -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-ffi"
+wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-workspaces -p openlogos-notes -p openlogos-ink -p openlogos-conformance -p openlogos-sync -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-ffi"
 
 [private]
 default:
@@ -40,7 +40,7 @@ check-wasm:
 [group('2 · core')]
 fmt:
     cargo fmt --all
-    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -print0 | xargs -0 nixfmt
+    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -not -path '*/node_modules/*' -print0 | xargs -0 nixfmt
     just --fmt --unstable
 
 # Everything that must be clean before merging: formatting, clippy, shell, workflows, blueprint
@@ -48,7 +48,7 @@ fmt:
 lint:
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
-    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -print0 | xargs -0 nixfmt --check
+    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -not -path '*/node_modules/*' -print0 | xargs -0 nixfmt --check
     just --fmt --check --unstable
     LANG="${LANG:-C.UTF-8}" shellcheck scripts/*.sh
     actionlint
@@ -139,6 +139,16 @@ test-web: wasm-build
 [group('6 · web')]
 test-dom-reader *args:
     @scripts/dom-reader-test.sh {{ args }}
+
+# B039: the web ink prototype (apps/web/ink) runs its palm cases, latency runs and export in headless Chrome through WebDriver; extra arguments go to the runner, e.g. `just test-ink-web --shots artifacts/b039/shots`
+[group('6 · web')]
+test-ink-web *args:
+    @scripts/ink-web-test.sh {{ args }}
+
+# B039: bundle the Excalidraw comparison page (apps/web/ink/excalidraw, pinned npm package, esbuild from nixpkgs) into its gitignored dist/; then `just test-ink-web --page excalidraw`
+[group('6 · web')]
+ink-excalidraw-build:
+    @scripts/ink-excalidraw-build.sh
 
 # Build the app shell for an iPad simulator (unsigned), boot it, install and launch: `just sim` or `just sim "iPad mini (A17 Pro)"` (apple shell)
 [group('7 · apple app')]

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Excalidraw comparison (B039)</title>
+<!--
+  B039: the pinned @excalidraw/excalidraw 0.18.1 (MIT) mounted offline for comparison with the
+  ink prototype next door. Needs `scripts/ink-excalidraw-build.sh` once (npm ci + esbuild from
+  nixpkgs into dist/, gitignored). ?autorun=1 drives the same synthesized pen loop through the
+  freedraw tool, reads the freedraw elements back and reports export sizes; ?lang=he-IL shows
+  the RTL chrome. The editor's own assets (fonts, locales) load from dist/.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: Canvas; color: CanvasText; color-scheme: light dark; font-family: system-ui, sans-serif; }
+  header { height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent); font-size: 13px; }
+  #app { height: calc(100% - 45px); }
+  #missing { padding: 24px; font-size: 14px; }
+</style>
+</head>
+<body>
+<header><strong>Excalidraw 0.18.1 comparison</strong><span id="status">loading dist/entry.js …</span></header>
+<div id="app"><p id="missing" hidden>dist/ is missing: run <code>scripts/ink-excalidraw-build.sh</code> (npm ci + esbuild) first.</p></div>
+<script>
+  // esbuild output is an ES module; a missing bundle is reported rather than a blank page.
+  fetch("./dist/entry.js", { method: "HEAD" }).then((r) => {
+    if (!r.ok) throw new Error(String(r.status));
+    const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "./dist/entry.css"; document.head.appendChild(css);
+    const s = document.createElement("script"); s.type = "module"; s.src = "./dist/entry.js"; document.body.appendChild(s);
+    document.getElementById("status").textContent = "freedraw tool · synthesized pen via ?autorun=1 · RTL via ?lang=he-IL";
+  }).catch(() => { document.getElementById("missing").hidden = false; window.openlogosError = "dist/entry.js missing"; });
+</script>
+</body>
+</html>

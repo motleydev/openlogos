@@ -19,11 +19,13 @@
 //   -OPENLOGOS_SYNTH 1000                  verses in the synthetic set
 //   -OPENLOGOS_LOG 1                       append round trips and measurements to Documents/b005-*.jsonl
 //   -OPENLOGOS_APPEARANCE light|dark       macOS only: fix the app appearance for a capture
+//   B039 (view `ink`, Sources/Ink): -OPENLOGOS_INK_DEMO 1, -OPENLOGOS_INK_MEASURE 1,
+//   -OPENLOGOS_INK_PENCILKIT 1, -OPENLOGOS_INK_PKDEMO 1 (see InkMarginView.swift)
 // Dynamic Type comes from the system: -UIPreferredContentSizeCategoryName (scripts/sim.sh).
 import SwiftUI
 
 enum PrototypeView: String, CaseIterable, Identifiable {
-    case shell, read, three, collection, selection, search, margin, handoff, anchors
+    case shell, read, three, collection, selection, search, margin, handoff, anchors, ink
     var id: String { rawValue }
 
     /// The names specs/16 "Prototype and usability gate" uses.
@@ -38,6 +40,7 @@ enum PrototypeView: String, CaseIterable, Identifiable {
         case .margin: return "Margin capture"
         case .handoff: return "Obsidian handoff"
         case .anchors: return "B005 anchors (3 texts + note)"
+        case .ink: return "B039 ink margin"
         }
     }
 }
