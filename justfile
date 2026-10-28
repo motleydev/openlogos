@@ -40,7 +40,7 @@ check-wasm:
 [group('2 · core')]
 fmt:
     cargo fmt --all
-    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -print0 | xargs -0 nixfmt
+    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -not -path '*/node_modules/*' -print0 | xargs -0 nixfmt
     just --fmt --unstable
 
 # Everything that must be clean before merging: formatting, clippy, shell, workflows, blueprint
@@ -48,7 +48,7 @@ fmt:
 lint:
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
-    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -print0 | xargs -0 nixfmt --check
+    find . -name '*.nix' -not -path './target/*' -not -path './.direnv/*' -not -path '*/node_modules/*' -print0 | xargs -0 nixfmt --check
     just --fmt --check --unstable
     LANG="${LANG:-C.UTF-8}" shellcheck scripts/*.sh
     actionlint
