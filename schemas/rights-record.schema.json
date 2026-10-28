@@ -4,13 +4,26 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1.1"
+      ],
+      "description": "Absent on 1.0 records (B002 shape). 1.1 (B003) adds the optional acquisition, coverage, license_files, flags, upstream_dependencies, steward_proposal and notes fields; nothing from 1.0 changes meaning."
+    },
     "id": {
       "type": "string",
       "minLength": 1
     },
+    "source_id": {
+      "type": "string",
+      "pattern": "^S\\d{2}$",
+      "description": "Registry id in specs/sources.json."
+    },
     "artifact_sha256": {
       "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of the exact fetched bytes. For a multi-file artifact this is the SHA-256 of its MANIFEST.sha256 (one line per file, sorted), which pins every file hash."
     },
     "edition_id": {
       "type": "string",
@@ -133,6 +146,255 @@
         "string",
         "null"
       ]
+    },
+    "acquisition": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How and when the exact bytes were fetched (specs/03, Artifact).",
+      "properties": {
+        "upstream_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "release": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_on": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "fetched_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The commands or tool that produced the bytes, in words; no shell is executed from this field."
+        },
+        "storage": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the bytes live, outside the repository (corpus bytes are never committed)."
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Sparse-checkout patterns or file names taken from upstream."
+        },
+        "file_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "manifest_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Repository-relative path of the committed copy of MANIFEST.sha256, or null when only its hash is committed."
+        },
+        "fetch_seconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "upstream_url",
+        "commit",
+        "fetched_on",
+        "fetched_by",
+        "method",
+        "storage",
+        "manifest_sha256",
+        "manifest_path"
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "books": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "verses": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "counting_rule": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "scope",
+        "counting_rule"
+      ]
+    },
+    "license_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "says": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "says"
+        ]
+      }
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "provenance_research",
+              "restricted_module",
+              "share_alike",
+              "per_item_review",
+              "naming_condition",
+              "not_ingested"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "resolves_by": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What research or decision would clear the flag."
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ]
+      }
+    },
+    "upstream_dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "license": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "component",
+          "source",
+          "license"
+        ]
+      }
+    },
+    "steward_proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The agent's proposal. The human source steward signs by setting status, reviewer and reviewed_at; a proposal is not a signature.",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": [
+            "clear",
+            "flagged_provenance_research",
+            "restricted_module"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposed_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposed_on": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      },
+      "required": [
+        "decision",
+        "rationale",
+        "proposed_by",
+        "proposed_on"
+      ]
+    },
+    "notes": {
+      "type": "string"
     }
   },
   "required": [

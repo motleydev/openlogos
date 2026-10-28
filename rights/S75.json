@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S75",
+  "source_id": "S75",
+  "artifact_sha256": "e2d5df9af4baad9158b1786ff5d2aff42960cec264722c9a1ca7601bcd1324f6",
+  "edition_id": "gutenberg:45001+64392:calvin-institutes-allen",
+  "status": "unknown",
+  "license_identifier": "LicenseRef-Project-Gutenberg-License (public domain in the United States)",
+  "evidence_url": "https://www.gutenberg.org/ebooks/45001",
+  "license_artifact_sha256": "7318da7684a4b9e9cf55bd7d0eb0da19c16dec59117ff51cda2050f5f601f9e9",
+  "jurisdictions": [
+    "United States (public domain); check other jurisdictions"
+  ],
+  "attribution": "John Calvin, Institutes of the Christian Religion, translated by John Allen; Project Gutenberg eBooks #45001 and #64392 (public domain in the United States).",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://www.gutenberg.org/ebooks/45001",
+    "commit": null,
+    "release": "eBook #45001 (vol. 1 of 2, released 2014-02-24) and eBook #64392 (vol. 2 of 2, released 2021-01-26), plain text UTF-8",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "curl -sSL of the two text files and the two record pages",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S75-gutenberg-calvin-institutes/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "pg45001.txt (https://www.gutenberg.org/ebooks/45001.txt.utf-8)",
+      "pg64392.txt (https://www.gutenberg.org/ebooks/64392.txt.utf-8)",
+      "pg45001-record.html and pg64392-record.html (the bibliographic pages)"
+    ],
+    "file_count": 4,
+    "bytes": 4109437,
+    "manifest_sha256": "e2d5df9af4baad9158b1786ff5d2aff42960cec264722c9a1ca7601bcd1324f6",
+    "manifest_path": "rights/S75/manifest.sha256",
+    "fetch_seconds": 15
+  },
+  "coverage": {
+    "scope": "Complete Institutes (1559 text) in the John Allen translation, two volumes; the book.chapter.section grammar of B068 applies",
+    "books": 4,
+    "verses": null,
+    "tokens": null,
+    "counting_rule": "31,174 and 38,723 lines of plain text; section structure not parsed"
+  },
+  "license_files": [
+    {
+      "path": "pg45001.txt",
+      "sha256": "7318da7684a4b9e9cf55bd7d0eb0da19c16dec59117ff51cda2050f5f601f9e9",
+      "says": "Project Gutenberg header and licence: public domain in the United States; the Project Gutenberg name and header are subject to the trademark terms in the licence at the end of the file"
+    },
+    {
+      "path": "pg64392.txt",
+      "sha256": "a1e35c9f41d978f7b3257f9115b59acfd2a80c41ae11736628710b773cef1003",
+      "says": "same"
+    }
+  ],
+  "flags": [],
+  "upstream_dependencies": [
+    {
+      "component": "translation",
+      "source": "John Allen (1813), collated with the French",
+      "license": "public domain"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "Public domain in the United States with a clear digitizer; the second translation of the Institutes (Allen 1813, beside CCEL's Beveridge 1845 as the primary artifact), both public domain and both covered by the B068 book.chapter.section grammar.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "Second translation of the work, not a stand-in: the steward recorded CCEL's Beveridge (S11) as the primary Institutes artifact and this Allen text as the second translation. Strip the Project Gutenberg header and licence block from any derived edition or keep the licence intact, as the PG licence requires."
+}

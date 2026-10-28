@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S06",
+  "source_id": "S06",
+  "artifact_sha256": "30063eb00f1d81f1f56716ea95a07507f6d12b69ec0a5c37e1d05ae23b316faf",
+  "edition_id": "sblgnt:v1.2:2023-07-10",
+  "status": "unknown",
+  "license_identifier": "CC-BY-4.0",
+  "evidence_url": "https://github.com/Faithlife/SBLGNT/blob/d7f35adca9ec410e1d1499c63b4dd989d76c8d4d/LICENSE",
+  "license_artifact_sha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661",
+  "jurisdictions": [
+    "worldwide (CC BY 4.0)"
+  ],
+  "attribution": "Scripture quotations marked SBLGNT are from the SBL Greek New Testament. Copyright 2010 Society of Biblical Literature and Logos Bible Software. CC BY 4.0.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/Faithlife/SBLGNT",
+    "commit": "d7f35adca9ec410e1d1499c63b4dd989d76c8d4d",
+    "release": "v1.2 (2023-07-10, adds John 7:53-8:11) per README version history",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone) of the listed patterns; git fetch --depth 1 --filter=blob:none origin <commit>; git checkout FETCH_HEAD",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S06-sblgnt/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE",
+      "/README.md",
+      "/About.md",
+      "/.editorconfig",
+      "/.gitattributes",
+      "/data/ (sblgnt text and xml, sblgntapp text and xml)"
+    ],
+    "file_count": 114,
+    "bytes": 9824991,
+    "manifest_sha256": "30063eb00f1d81f1f56716ea95a07507f6d12b69ec0a5c37e1d05ae23b316faf",
+    "manifest_path": "rights/S06/manifest.sha256",
+    "fetch_seconds": 13
+  },
+  "coverage": {
+    "scope": "Greek New Testament, 27 books, with the SBLGNT apparatus",
+    "books": 27,
+    "verses": 7939,
+    "tokens": 137741,
+    "counting_rule": "27 files in data/sblgnt/text; lines shaped \"<book> c:v<TAB>text\" counted as verses; whitespace-separated fields of the text as tokens (punctuation attached, apparatus sigla included)"
+  },
+  "license_files": [
+    {
+      "path": "LICENSE",
+      "sha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661",
+      "says": "Creative Commons Attribution 4.0 International, full legal text"
+    },
+    {
+      "path": "README.md",
+      "sha256": "ebf71e533322af33cdfeba2a2c75d80e06d6ad05d776b8e2c5ac4df2cc792877",
+      "says": "\"The SBLGNT is licensed under a Creative Commons Attribution 4.0 International License. Copyright 2010 by the Society of Biblical Literature and Logos Bible Software.\""
+    }
+  ],
+  "flags": [],
+  "upstream_dependencies": [],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "CC BY 4.0 licence file at the pinned commit; same commit B006 used for the John 3:16 fixture (data/sblgnt/text/John.txt hash ada9643154a990ae2725ab847c6cfb576ce2c3bcd4945d47606e8a90c8d065f5 unchanged).",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "The commit was the master head on 28 October 2026 and is the one recorded in S06's finding. The apparatus (data/sblgntapp) is included under the same licence."
+}

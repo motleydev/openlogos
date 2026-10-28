@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S55",
+  "source_id": "S55",
+  "artifact_sha256": "a0bf7f774b2f8d0be9cee185f0f80ba1e57e3b0b8d80e3f7cf08543b07d6a9d1",
+  "edition_id": "clear-alignments:c99bd0a",
+  "status": "unknown",
+  "license_identifier": "CC-BY-4.0 AND MIT",
+  "evidence_url": "https://github.com/Clear-Bible/Alignments/blob/c99bd0ae6946775f932517656308ca19fc706921/LICENSE.md",
+  "license_artifact_sha256": "cfc25147479bacd15acd353836202d4ffde3ebb17640ac123228a49807e3d4a0",
+  "jurisdictions": [
+    "worldwide (CC BY 4.0)"
+  ],
+  "attribution": "Bible Word Alignments (https://github.com/Clear-Bible/Alignments), Clear Bible, Inc. / Biblica, CC BY 4.0; BSB alignments by BiblioNexus and Berean Bible; YLT alignments by GrapeCity.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/Clear-Bible/Alignments",
+    "commit": "c99bd0ae6946775f932517656308ca19fc706921",
+    "release": "main head on 2026-10-28",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone) of the listed patterns; fetch --depth 1 --filter=blob:none of the commit; checkout. A first, wider checkout that included data/legacy and the non-English folders was deleted and re-cloned narrowly because data/legacy carries a Lexham English Bible verse file (org_nt_LEB.txt) and its catalog names ESV, CSB, LEB and NET alignments; none of those bytes are in this checkout. data/catalog.tsv is a Git LFS object fetched through the LFS batch API and verified against its oid.",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S55-clear-alignments/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE.md",
+      "/README.md",
+      "/docs/",
+      "/data/catalog.tsv",
+      "/data/eng/ (BSB and YLT alignments and targets)",
+      "/data/sources/ (SBLGNT, BGNT, WLC, WLCM token tables)",
+      "/data/vref/",
+      "/data/languages/"
+    ],
+    "file_count": 40,
+    "bytes": 328378869,
+    "manifest_sha256": "a0bf7f774b2f8d0be9cee185f0f80ba1e57e3b0b8d80e3f7cf08543b07d6a9d1",
+    "manifest_path": "rights/S55/manifest.sha256",
+    "fetch_seconds": 45
+  },
+  "coverage": {
+    "scope": "English: BSB (SBLGNT-BSB NT 115,008 records; BGNT-BSB NT 115,992; WLCM-BSB OT 270,398) and YLT (SBLGNT-YLT NT 127,902; WLC-YLT OT 437,255), all manual, Scripture Burrito 0.3",
+    "books": 66,
+    "verses": null,
+    "tokens": 1066555,
+    "counting_rule": "len(records) of each data/eng/alignments/*/*.json; tokens here means alignment records summed over the five files; BSB is covered for both testaments"
+  },
+  "license_files": [
+    {
+      "path": "LICENSE.md",
+      "sha256": "cfc25147479bacd15acd353836202d4ffde3ebb17640ac123228a49807e3d4a0",
+      "says": "Code MIT (c) 2023 Clear Bible, Inc; data \"Bible Word Alignments (c) 2022 by Clear Bible, Inc\" CC BY 4.0"
+    },
+    {
+      "path": "data/eng/alignments/BSB/SBLGNT-BSB-manual.toml",
+      "sha256": "96c3463f0bc07d047a3ab89d3af8ed9df17875c01d06930e581602c17ba81a89",
+      "says": "source SBLGNT CC-BY-4.0; target BSB public domain; alignment CC-BY-4.0, manual, Scripture Burrito 0.3, team Biblica"
+    }
+  ],
+  "flags": [],
+  "upstream_dependencies": [
+    {
+      "component": "source tokens",
+      "source": "SBLGNT, Byzantine GNT (BGNT), WLC/WLCM",
+      "license": "CC-BY-4.0 / public domain"
+    },
+    {
+      "component": "target tokens",
+      "source": "BSB, YLT",
+      "license": "public domain"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "CC BY 4.0 alignment data over public-domain or CC BY texts; BSB is among the covered translations, which is what B067 needs for a gold set.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "The catalog lists ESV, CSB, LEB and NET alignments from the legacy layout; they were not fetched and their target texts are copyrighted."
+}

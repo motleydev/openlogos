@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.1",
+  "id": "rights:S07",
+  "source_id": "S07",
+  "artifact_sha256": "5e732216089b84f3499ac6904980b705642019ab1fd01ef08b1fec3f140b15bd",
+  "edition_id": "oshb-wlc:4.20:morphhb-3d15126",
+  "status": "unknown",
+  "license_identifier": "LicenseRef-WLC-Public-Domain AND CC-BY-4.0",
+  "evidence_url": "https://github.com/openscriptures/morphhb/blob/3d15126fb1ef74867fc1434be1942e837932691f/LICENSE.md",
+  "license_artifact_sha256": "9bf4a2890c25372e4c1dc750d550bfb4eacfbfcb63c53123b0628159370d1878",
+  "jurisdictions": [
+    "worldwide"
+  ],
+  "attribution": "Original work of the Open Scriptures Hebrew Bible available at https://github.com/openscriptures/morphhb (CC BY 4.0); underlying text: Westminster Leningrad Codex, public domain.",
+  "permissions": {
+    "local_read": "allow",
+    "redistribute": "allow",
+    "modify": "allow",
+    "public_index": "allow",
+    "model_prompt": "allow",
+    "model_train": "allow",
+    "translation_evaluate": "allow"
+  },
+  "reviewer": null,
+  "reviewed_at": null,
+  "acquisition": {
+    "upstream_url": "https://github.com/openscriptures/morphhb",
+    "commit": "3d15126fb1ef74867fc1434be1942e837932691f",
+    "release": "WLC 4.20 with OSHB morphology (master head on 2026-10-28)",
+    "fetched_on": "2026-10-28",
+    "fetched_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "method": "git init; sparse-checkout (no-cone); fetch --depth 1 --filter=blob:none of the commit; checkout",
+    "storage": "/Volumes/office-hub/openlogos/corpora/S07-morphhb/ (NAS, SMB; MANIFEST.sha256 beside the data)",
+    "paths": [
+      "/LICENSE.md",
+      "/README.md",
+      "/wlc/ (39 book files and VerseMap.xml)"
+    ],
+    "file_count": 42,
+    "bytes": 28641005,
+    "manifest_sha256": "5e732216089b84f3499ac6904980b705642019ab1fd01ef08b1fec3f140b15bd",
+    "manifest_path": "rights/S07/manifest.sha256",
+    "fetch_seconds": 15
+  },
+  "coverage": {
+    "scope": "Hebrew Bible, 39 books (Hebrew and Aramaic)",
+    "books": 39,
+    "verses": 23213,
+    "tokens": 306785,
+    "counting_rule": "<verse and <w start tags in wlc/*.xml excluding VerseMap.xml (w counts every <w element including ketiv/qere alternatives)"
+  },
+  "license_files": [
+    {
+      "path": "LICENSE.md",
+      "sha256": "9bf4a2890c25372e4c1dc750d550bfb4eacfbfcb63c53123b0628159370d1878",
+      "says": "\"This work is based on The Westminster Leningrad Codex, which is in the public domain.\" Morphology, lemma and id layer CC BY 4.0 with the attribution sentence \"Original work of the Open Scriptures Hebrew Bible available at https://github.com/openscriptures/morphhb\"."
+    }
+  ],
+  "flags": [],
+  "upstream_dependencies": [
+    {
+      "component": "text",
+      "source": "Westminster Leningrad Codex (Groves Center)",
+      "license": "public domain"
+    }
+  ],
+  "steward_proposal": {
+    "decision": "clear",
+    "rationale": "Public-domain text with a CC BY 4.0 markup layer, licence file at the pinned commit; upstream token ids are preserved as specs/03 asks.",
+    "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
+    "proposed_on": "2026-10-28"
+  },
+  "notes": "specs/03: do not normalize Hebrew on ingest; OSHB warns about NFC."
+}
