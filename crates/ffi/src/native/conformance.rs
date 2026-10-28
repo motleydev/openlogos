@@ -90,6 +90,9 @@ mod tests {
         assert_eq!(report.cases.len() as u32, report.passed);
         let fixtures: serde_json::Value =
             serde_json::from_str(&conformance_fixtures_json()).unwrap();
-        assert_eq!(fixtures.as_array().map(Vec::len), Some(5));
+        assert_eq!(
+            fixtures.as_array().map(Vec::len),
+            Some(core::FIXTURE_FILES.len())
+        );
     }
 }

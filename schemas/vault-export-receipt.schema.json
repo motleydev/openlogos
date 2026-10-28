@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:vault-export-receipt",
+  "title": "Vault export receipt",
+  "description": "The serialized form of openlogos_collections::VaultExportReceipt (specs/03-data-model.md; specs/15, Obsidian handoff): collection and item ids mapped to an opaque vault id, a relative resource-note path, the block id `ol-<item id>`, the last-export hash and the source revision quoted, with a disposition per entry (quoted, metadata_only, conflict, skipped) and a reason for anything but quoted. Paths are not identity. Schema 1.0.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{3,63}$"
+    },
+    "collection_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{3,63}$"
+    },
+    "collection_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "vault_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resource_folder": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.?(/|$))[^\\\\:\\u0000]+$"
+    },
+    "exported_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "writer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "app": {
+          "type": "string",
+          "minLength": 1
+        },
+        "core_api_version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "app",
+        "core_api_version"
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{3,63}$"
+          },
+          "item_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "resource_path": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.?(/|$))[^\\\\:\\u0000]+$"
+          },
+          "block_id": {
+            "type": "string",
+            "pattern": "^ol-[a-z0-9][a-z0-9-]{3,63}$"
+          },
+          "last_export_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "source_revision": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "quoted",
+              "metadata_only",
+              "conflict",
+              "skipped"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "item_id",
+          "item_revision",
+          "resource_path",
+          "block_id",
+          "last_export_sha256",
+          "disposition"
+        ],
+        "if": {
+          "properties": {
+            "disposition": {
+              "enum": [
+                "metadata_only",
+                "conflict",
+                "skipped"
+              ]
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "reason"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "collection_id",
+    "collection_revision",
+    "vault_id",
+    "resource_folder",
+    "exported_at",
+    "writer",
+    "entries"
+  ]
+}

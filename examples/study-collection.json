@@ -1,0 +1,259 @@
+{
+  "schema_version": "1.0",
+  "id": "col-john-3-fixture",
+  "title": "John 3:16 study (fixture)",
+  "owner_id": "fixture-device",
+  "target": {
+    "reference": "John.3.16",
+    "theme": null
+  },
+  "revision": 3,
+  "created_at": "2026-10-28T09:00:00Z",
+  "updated_at": "2026-10-28T10:00:00Z",
+  "groups": [
+    {
+      "id": "grp-text",
+      "title": "The text"
+    },
+    {
+      "id": "grp-notes",
+      "title": "Observations"
+    }
+  ],
+  "tags": [
+    "fixture"
+  ],
+  "items": [
+    {
+      "id": "item-excerpt",
+      "revision": 1,
+      "group_id": "grp-text",
+      "tags": [],
+      "added_at": "2026-10-28T09:00:00Z",
+      "kind": "source_excerpt",
+      "source": {
+        "work_id": "work:john",
+        "edition_id": "bsb",
+        "artifact_sha256": null,
+        "content_revision": "bsb-2024",
+        "locator": {
+          "reference": "John.3.16",
+          "work_locator": null,
+          "pdf": null
+        },
+        "anchor": {
+          "edition_id": "bsb",
+          "content_revision": "bsb-2024",
+          "segment_id": "John.3.16",
+          "range": {
+            "start": 11,
+            "end": 26
+          },
+          "tokens": [
+            {
+              "edition": "bsb",
+              "book": "John",
+              "chapter": 3,
+              "verse": 16,
+              "word": 4,
+              "suffix": null
+            },
+            {
+              "edition": "bsb",
+              "book": "John",
+              "chapter": 3,
+              "verse": 16,
+              "word": 5,
+              "suffix": null
+            },
+            {
+              "edition": "bsb",
+              "book": "John",
+              "chapter": 3,
+              "verse": 16,
+              "word": 6,
+              "suffix": null
+            }
+          ],
+          "quote": {
+            "exact": "loved the world",
+            "prefix": "For God so ",
+            "suffix": " that He gave His one and only S"
+          }
+        },
+        "rights": {
+          "rights_record_id": "fixture:rights:bsb",
+          "quotation": "allow",
+          "license_identifier": "CC0-1.0",
+          "attribution": "Berean Standard Bible"
+        },
+        "display": {
+          "title": "Berean Standard Bible",
+          "author": null,
+          "translator_or_editor": null
+        }
+      },
+      "text": "loved the world"
+    },
+    {
+      "id": "item-ref",
+      "revision": 1,
+      "group_id": "grp-text",
+      "tags": [],
+      "added_at": "2026-10-28T09:00:00Z",
+      "kind": "source_reference",
+      "source": {
+        "work_id": "work:john",
+        "edition_id": "bsb",
+        "artifact_sha256": null,
+        "content_revision": "bsb-2024",
+        "locator": {
+          "reference": "John.3.16",
+          "work_locator": null,
+          "pdf": null
+        },
+        "anchor": null,
+        "rights": {
+          "rights_record_id": "fixture:rights:bsb",
+          "quotation": "allow",
+          "license_identifier": "CC0-1.0",
+          "attribution": "Berean Standard Bible"
+        },
+        "display": {
+          "title": "Berean Standard Bible",
+          "author": null,
+          "translator_or_editor": null
+        }
+      }
+    },
+    {
+      "id": "item-restricted",
+      "revision": 2,
+      "group_id": "grp-text",
+      "tags": [
+        "restricted"
+      ],
+      "added_at": "2026-10-28T09:00:00Z",
+      "kind": "source_excerpt",
+      "source": {
+        "work_id": "work:john",
+        "edition_id": "fixture:edition-a",
+        "artifact_sha256": null,
+        "content_revision": "0",
+        "locator": {
+          "reference": "John.3.16",
+          "work_locator": null,
+          "pdf": null
+        },
+        "anchor": null,
+        "rights": {
+          "rights_record_id": "fixture:rights:1",
+          "quotation": "deny",
+          "license_identifier": null,
+          "attribution": null
+        },
+        "display": {
+          "title": "Fixture restricted edition",
+          "author": null,
+          "translator_or_editor": null
+        }
+      },
+      "text": null
+    },
+    {
+      "id": "item-pdf",
+      "revision": 1,
+      "group_id": null,
+      "tags": [],
+      "added_at": "2026-10-28T09:00:00Z",
+      "kind": "source_reference",
+      "source": {
+        "work_id": "work:fixture-commentary",
+        "edition_id": "fixture-commentary-scan",
+        "artifact_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "content_revision": "scan-1",
+        "locator": {
+          "reference": null,
+          "work_locator": "Comm.John.3.16",
+          "pdf": {
+            "page_index": 311,
+            "page_label": "298"
+          }
+        },
+        "anchor": null,
+        "rights": {
+          "rights_record_id": null,
+          "quotation": "unknown",
+          "license_identifier": null,
+          "attribution": null
+        },
+        "display": {
+          "title": "Fixture commentary",
+          "author": "Fixture author",
+          "translator_or_editor": null
+        }
+      }
+    },
+    {
+      "id": "item-obs",
+      "revision": 1,
+      "group_id": "grp-notes",
+      "tags": [],
+      "added_at": "2026-10-28T09:00:00Z",
+      "kind": "observation",
+      "text": "The verb is aorist: a completed act."
+    },
+    {
+      "id": "item-research",
+      "revision": 1,
+      "group_id": "grp-notes",
+      "tags": [],
+      "added_at": "2026-10-28T09:00:00Z",
+      "kind": "research_excerpt",
+      "generated_label": "Generated by fixture-provider/fixture-model on 2026-10-28; not a source quotation",
+      "text": "Fixture answer text.",
+      "thread_id": "thread-fixture",
+      "message_id": "msg-4",
+      "evidence": [
+        {
+          "evidence_id": "ev-1",
+          "source": {
+            "work_id": "work:john",
+            "edition_id": "bsb",
+            "artifact_sha256": null,
+            "content_revision": "bsb-2024",
+            "locator": {
+              "reference": "John.3.16",
+              "work_locator": null,
+              "pdf": null
+            },
+            "anchor": null,
+            "rights": {
+              "rights_record_id": "fixture:rights:bsb",
+              "quotation": "allow",
+              "license_identifier": "CC0-1.0",
+              "attribution": "Berean Standard Bible"
+            },
+            "display": {
+              "title": "Berean Standard Bible",
+              "author": null,
+              "translator_or_editor": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "item-margin",
+      "revision": 1,
+      "group_id": null,
+      "tags": [],
+      "added_at": "2026-10-28T09:00:00Z",
+      "kind": "margin_attachment",
+      "attachment_id": "att-fixture-1",
+      "media_type": "image/svg+xml",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "snapshot_id": "snapshot-fixture-1"
+    }
+  ]
+}

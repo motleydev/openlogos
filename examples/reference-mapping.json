@@ -1,0 +1,39 @@
+{
+  "from_scheme": "org",
+  "from": [
+    {
+      "book": "Ps",
+      "chapter": 13,
+      "verse": 6,
+      "subverse": null
+    }
+  ],
+  "to_scheme": "eng",
+  "to": [
+    {
+      "book": "Ps",
+      "chapter": 13,
+      "verse": 5,
+      "subverse": null
+    },
+    {
+      "book": "Ps",
+      "chapter": 13,
+      "verse": 6,
+      "subverse": null
+    }
+  ],
+  "status": "exact",
+  "absent": [],
+  "unknown": [],
+  "certainty": null,
+  "sources": [
+    "Hebrew Psalm 13:6 covers English 13:5 and 13:6.",
+    "Second part of Hebrew 13:6."
+  ],
+  "path": [
+    "org",
+    "eng"
+  ],
+  "notes": []
+}

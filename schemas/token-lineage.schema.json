@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:token-lineage",
+  "title": "Token id lineage",
+  "description": "The serialized form of openlogos_core::identity::IdLineage: the id_lineage table between two content revisions of one edition, rows of kind same (1 to 1, same id), split (1 to 2+), merge (2+ to 1), insert (0 to 1+) and delete (1+ to 0) (specs/19-search-and-retrieval.md, Token identity). Ids are never renumbered; an id in no row is unknown, not deleted. A pack table.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "edition_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "from_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "to_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "same",
+              "split",
+              "merge",
+              "insert",
+              "delete"
+            ]
+          },
+          "from": {
+            "type": "array",
+            "items": {
+              "$ref": "urn:open-bible-blueprint:anchor#/$defs/token_id"
+            }
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "$ref": "urn:open-bible-blueprint:anchor#/$defs/token_id"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "from",
+          "to"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "same"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "from": {
+                  "minItems": 1,
+                  "maxItems": 1
+                },
+                "to": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "split"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "from": {
+                  "minItems": 1,
+                  "maxItems": 1
+                },
+                "to": {
+                  "minItems": 2
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "merge"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "from": {
+                  "minItems": 2
+                },
+                "to": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "insert"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "from": {
+                  "minItems": 0,
+                  "maxItems": 0
+                },
+                "to": {
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "delete"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "from": {
+                  "minItems": 1
+                },
+                "to": {
+                  "minItems": 0,
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "edition_id",
+    "from_revision",
+    "to_revision",
+    "entries"
+  ]
+}

@@ -1,0 +1,355 @@
+{
+  "id": "omitted-and-bridged-verses",
+  "kind": "versification",
+  "description": "Verses an edition does not print and verses printed under one label. Two synthetic edition schemes make the behaviour explicit: fixture-shorter-ending prints Mark without 16:9-20 and John without 7:53-8:11, recorded as absent rows from org, so mapping into it reports those verses as absent (omitted) rather than unknown; fixture-tr-english follows the Textus Receptus in 1 John 5:7-8 (the Comma Johanneum), where the verse numbers match org but only part of each verse corresponds, recorded as partial rows. The segment table of a synthetic edition fixture-bridged prints Numbers 26:3-4 under one bridge label and Numbers 26:5 as two segments. Real editions carry their own tables; nothing here harmonizes them.",
+  "license": "CC0 (numbering facts and synthetic edition schemes; no copyrighted text)",
+  "source": "Mark 16:9-20 and John 7:53-8:11 are the two long passages critical editions mark as later additions; 1 John 5:7-8 differs between the Textus Receptus (KJV) and critical texts (SBLGNT). The edition schemes and the bridge are synthetic and named fixture-*.",
+  "rows": [
+    {
+      "from_scheme": "eng",
+      "from": "Mark.16.1-Mark.16.20",
+      "to_scheme": "org",
+      "to": "Mark.16.1-Mark.16.20",
+      "kind": "equal",
+      "source": "Mark 16 numbering agrees between English and org."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "John.7.53",
+      "to_scheme": "org",
+      "to": "John.7.53",
+      "kind": "equal",
+      "source": "John 7:53 numbering agrees."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "John.8.1-John.8.11",
+      "to_scheme": "org",
+      "to": "John.8.1-John.8.11",
+      "kind": "equal",
+      "source": "John 8:1-11 numbering agrees."
+    },
+    {
+      "from_scheme": "fixture-shorter-ending",
+      "from": "Mark.16.1-Mark.16.8",
+      "to_scheme": "org",
+      "to": "Mark.16.1-Mark.16.8",
+      "kind": "equal",
+      "source": "The synthetic edition prints Mark 16:1-8."
+    },
+    {
+      "from_scheme": "org",
+      "from": "Mark.16.9-Mark.16.20",
+      "to_scheme": "fixture-shorter-ending",
+      "to": null,
+      "kind": "absent",
+      "source": "The synthetic edition prints only the shorter ending: no text for Mark 16:9-20. Recorded from org so that mapping into the edition reports these verses as absent, not unknown."
+    },
+    {
+      "from_scheme": "org",
+      "from": "John.7.53",
+      "to_scheme": "fixture-shorter-ending",
+      "to": null,
+      "kind": "absent",
+      "source": "No text for John 7:53 in the synthetic edition."
+    },
+    {
+      "from_scheme": "org",
+      "from": "John.8.1-John.8.11",
+      "to_scheme": "fixture-shorter-ending",
+      "to": null,
+      "kind": "absent",
+      "source": "No text for John 8:1-11 in the synthetic edition."
+    },
+    {
+      "from_scheme": "fixture-tr-english",
+      "from": "1John.5.7",
+      "to_scheme": "org",
+      "to": "1John.5.7",
+      "kind": "partial",
+      "source": "In the Textus Receptus 1 John 5:7 carries the Comma Johanneum; only its opening clause corresponds to 5:7 of the critical text."
+    },
+    {
+      "from_scheme": "fixture-tr-english",
+      "from": "1John.5.8",
+      "to_scheme": "org",
+      "to": "1John.5.8",
+      "kind": "partial",
+      "source": "Textus Receptus 5:8 adds 'in earth'; the rest corresponds to critical 5:8."
+    },
+    {
+      "from_scheme": "fixture-tr-english",
+      "from": "1John.5.6",
+      "to_scheme": "org",
+      "to": "1John.5.6",
+      "kind": "equal",
+      "source": "1 John 5:6 corresponds."
+    }
+  ],
+  "cases": [
+    {
+      "name": "An omitted verse is unmapped into the edition",
+      "reference": "Mark.16.9",
+      "from": "org",
+      "to": "fixture-shorter-ending",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "org",
+        "fixture-shorter-ending"
+      ]
+    },
+    {
+      "name": "A printed verse maps into the edition",
+      "reference": "Mark.16.8",
+      "from": "org",
+      "to": "fixture-shorter-ending",
+      "status": "exact",
+      "targets": [
+        "Mark.16.8"
+      ],
+      "path": [
+        "org",
+        "fixture-shorter-ending"
+      ]
+    },
+    {
+      "name": "An omitted verse pivots to unmapped from English",
+      "reference": "John.8.3",
+      "from": "eng",
+      "to": "fixture-shorter-ending",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "eng",
+        "org",
+        "fixture-shorter-ending"
+      ]
+    },
+    {
+      "name": "The Comma Johanneum verse is partial",
+      "reference": "1John.5.7",
+      "from": "fixture-tr-english",
+      "to": "org",
+      "status": "partial",
+      "targets": [
+        "1John.5.7"
+      ],
+      "path": [
+        "fixture-tr-english",
+        "org"
+      ]
+    },
+    {
+      "name": "The partial row reads backwards as partial",
+      "reference": "1John.5.8",
+      "from": "org",
+      "to": "fixture-tr-english",
+      "status": "partial",
+      "targets": [
+        "1John.5.8"
+      ],
+      "path": [
+        "org",
+        "fixture-tr-english"
+      ]
+    }
+  ],
+  "set_cases": [
+    {
+      "name": "Omitted verses are reported absent, not unknown",
+      "references": [
+        "Mark.16.8",
+        "Mark.16.9",
+        "Mark.16.20"
+      ],
+      "from": "org",
+      "to": "fixture-shorter-ending",
+      "status": "partial",
+      "to_references": [
+        "Mark.16.8"
+      ],
+      "absent": [
+        "Mark.16.9",
+        "Mark.16.20"
+      ],
+      "unknown": [],
+      "path": [
+        "org",
+        "fixture-shorter-ending"
+      ]
+    },
+    {
+      "name": "A verse with no row at all is unknown",
+      "references": [
+        "Mark.16.8",
+        "Mark.17.1"
+      ],
+      "from": "org",
+      "to": "fixture-shorter-ending",
+      "status": "partial",
+      "to_references": [
+        "Mark.16.8"
+      ],
+      "absent": [],
+      "unknown": [
+        "Mark.17.1"
+      ],
+      "path": [
+        "org",
+        "fixture-shorter-ending"
+      ]
+    },
+    {
+      "name": "The whole omitted passage is unmapped with every verse absent",
+      "references": [
+        "Mark.16.9-Mark.16.20"
+      ],
+      "from": "org",
+      "to": "fixture-shorter-ending",
+      "status": "unmapped",
+      "to_references": [],
+      "absent": [
+        "Mark.16.9-Mark.16.20"
+      ],
+      "unknown": [],
+      "path": [
+        "org",
+        "fixture-shorter-ending"
+      ]
+    },
+    {
+      "name": "Pivoting from English into the edition keeps absent apart from unknown",
+      "references": [
+        "John.7.52",
+        "John.7.53",
+        "John.8.1"
+      ],
+      "from": "eng",
+      "to": "fixture-shorter-ending",
+      "status": "unmapped",
+      "to_references": [],
+      "absent": [
+        "John.7.53",
+        "John.8.1"
+      ],
+      "unknown": [
+        "John.7.52"
+      ],
+      "path": [
+        "eng",
+        "org",
+        "fixture-shorter-ending"
+      ]
+    },
+    {
+      "name": "Partial rows make the set partial",
+      "references": [
+        "1John.5.6",
+        "1John.5.7",
+        "1John.5.8"
+      ],
+      "from": "fixture-tr-english",
+      "to": "org",
+      "status": "partial",
+      "to_references": [
+        "1John.5.6-1John.5.8"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "fixture-tr-english",
+        "org"
+      ]
+    }
+  ],
+  "segment_tables": [
+    {
+      "edition_id": "fixture-bridged",
+      "scheme": "eng",
+      "segments": [
+        {
+          "segment_id": "Num.26.2",
+          "native_label": "2",
+          "verses": [
+            "Num.26.2"
+          ]
+        },
+        {
+          "segment_id": "Num.26.3-4",
+          "native_label": "3-4",
+          "verses": [
+            "Num.26.3",
+            "Num.26.4"
+          ]
+        },
+        {
+          "segment_id": "Num.26.5a",
+          "native_label": "5",
+          "verses": [
+            "Num.26.5"
+          ]
+        },
+        {
+          "segment_id": "Num.26.5b",
+          "native_label": "",
+          "verses": [
+            "Num.26.5"
+          ]
+        }
+      ]
+    }
+  ],
+  "segment_cases": [
+    {
+      "name": "A plain verse resolves to its own segment",
+      "edition_id": "fixture-bridged",
+      "reference": "Num.26.2",
+      "status": "exact",
+      "segment_ids": [
+        "Num.26.2"
+      ],
+      "native_labels": [
+        "2"
+      ],
+      "bridged": false
+    },
+    {
+      "name": "A bridged verse resolves to the bridge segment as partial",
+      "edition_id": "fixture-bridged",
+      "reference": "Num.26.4",
+      "status": "partial",
+      "segment_ids": [
+        "Num.26.3-4"
+      ],
+      "native_labels": [
+        "3-4"
+      ],
+      "bridged": true
+    },
+    {
+      "name": "A verse printed as two segments resolves to both",
+      "edition_id": "fixture-bridged",
+      "reference": "Num.26.5",
+      "status": "exact",
+      "segment_ids": [
+        "Num.26.5a",
+        "Num.26.5b"
+      ],
+      "native_labels": [
+        "5",
+        ""
+      ],
+      "bridged": false
+    },
+    {
+      "name": "A verse the edition does not print is unmapped",
+      "edition_id": "fixture-bridged",
+      "reference": "Num.26.6",
+      "status": "unmapped",
+      "segment_ids": [],
+      "native_labels": [],
+      "bridged": false
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:reference-mapping",
+  "title": "Reference mapping",
+  "description": "The serialized form of openlogos_core::versification::ReferenceMapping (specs/03-data-model.md, Reference and versification design): a many-to-many mapping between verse sets of two schemes with status exact, partial, ambiguous or unmapped, the source verses an explicit absent row covers, the source verses no row mentions, certainty, row provenance, the scheme path and notes.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "from_scheme": {
+      "type": "string",
+      "minLength": 1
+    },
+    "from": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:open-bible-blueprint:anchor#/$defs/reference"
+      }
+    },
+    "to_scheme": {
+      "type": "string",
+      "minLength": 1
+    },
+    "to": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:open-bible-blueprint:anchor#/$defs/reference"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "exact",
+        "partial",
+        "ambiguous",
+        "unmapped"
+      ]
+    },
+    "absent": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:open-bible-blueprint:anchor#/$defs/reference"
+      }
+    },
+    "unknown": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:open-bible-blueprint:anchor#/$defs/reference"
+      }
+    },
+    "certainty": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "path": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "from_scheme",
+    "from",
+    "to_scheme",
+    "to",
+    "status",
+    "absent",
+    "unknown",
+    "certainty",
+    "sources",
+    "path",
+    "notes"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "unmapped"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "to": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "exact",
+              "partial",
+              "ambiguous"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "to": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

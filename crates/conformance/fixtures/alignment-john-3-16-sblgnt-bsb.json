@@ -1,0 +1,715 @@
+{
+  "id": "alignment-john-3-16-sblgnt-bsb",
+  "kind": "alignment",
+  "description": "Standoff alignment records between the SBLGNT and the Berean Standard Bible for John 3:16, keyed to token ids, one record per correspondence: one-to-one, many-to-many (Οὕτως γὰρ with For … so; τὸν μονογενῆ with one and only), two explicit nulls (the articles ὁ and τὸν), one record of synthetic auto: origin with a confidence, and one English word (His) in no record at all, which is unaligned rather than null. The tokenization hashes are the SHA-256 of the `<token id>\\t<surface>\\n` lines of each token layer in id order; the stale case checks that a changed hash on either side invalidates the set. The apparatus siglum ⸀ before υἱὸν in the SBLGNT source file is not part of the text and is removed.",
+  "license": "SBLGNT: CC BY 4.0, Society of Biblical Literature and Logos Bible Software (https://sblgnt.com/). BSB: public domain (https://berean.bible/). Alignment records: CC0, written for this fixture.",
+  "source": "SBLGNT: S06, https://github.com/Faithlife/SBLGNT, data/sblgnt/text/John.txt at commit d7f35adca9ec410e1d1499c63b4dd989d76c8d4d (master on 28 October 2026; the former github.com/LogosBible/SBLGNT address redirects to this repository), file SHA-256 ada9643154a990ae2725ab847c6cfb576ce2c3bcd4945d47606e8a90c8d065f5, verse 3:16. BSB: S52, John 3:16 as in cross-verse-selection-john-3.",
+  "source_segment": {
+    "edition_id": "sblgnt",
+    "content_revision": "sblgnt-2010",
+    "segment_id": "John.3.16",
+    "text": "Οὕτως γὰρ ἠγάπησεν ὁ θεὸς τὸν κόσμον ὥστε τὸν υἱὸν τὸν μονογενῆ ἔδωκεν, ἵνα πᾶς ὁ πιστεύων εἰς αὐτὸν μὴ ἀπόληται ἀλλὰ ἔχῃ ζωὴν αἰώνιον.",
+    "scalar_len": 135,
+    "utf16_len": 135,
+    "grapheme_len": 135,
+    "tokenization_hash": "ffe406c2905782c9c322144e258412b048cb062adec9d74800aac8815d14df56",
+    "tokens": [
+      {
+        "id": "sblgnt:44003016001",
+        "start": 0,
+        "end": 5,
+        "surface": "Οὕτως"
+      },
+      {
+        "id": "sblgnt:44003016002",
+        "start": 6,
+        "end": 9,
+        "surface": "γὰρ"
+      },
+      {
+        "id": "sblgnt:44003016003",
+        "start": 10,
+        "end": 18,
+        "surface": "ἠγάπησεν"
+      },
+      {
+        "id": "sblgnt:44003016004",
+        "start": 19,
+        "end": 20,
+        "surface": "ὁ"
+      },
+      {
+        "id": "sblgnt:44003016005",
+        "start": 21,
+        "end": 25,
+        "surface": "θεὸς"
+      },
+      {
+        "id": "sblgnt:44003016006",
+        "start": 26,
+        "end": 29,
+        "surface": "τὸν"
+      },
+      {
+        "id": "sblgnt:44003016007",
+        "start": 30,
+        "end": 36,
+        "surface": "κόσμον"
+      },
+      {
+        "id": "sblgnt:44003016008",
+        "start": 37,
+        "end": 41,
+        "surface": "ὥστε"
+      },
+      {
+        "id": "sblgnt:44003016009",
+        "start": 42,
+        "end": 45,
+        "surface": "τὸν"
+      },
+      {
+        "id": "sblgnt:44003016010",
+        "start": 46,
+        "end": 50,
+        "surface": "υἱὸν"
+      },
+      {
+        "id": "sblgnt:44003016011",
+        "start": 51,
+        "end": 54,
+        "surface": "τὸν"
+      },
+      {
+        "id": "sblgnt:44003016012",
+        "start": 55,
+        "end": 63,
+        "surface": "μονογενῆ"
+      },
+      {
+        "id": "sblgnt:44003016013",
+        "start": 64,
+        "end": 71,
+        "surface": "ἔδωκεν,"
+      },
+      {
+        "id": "sblgnt:44003016014",
+        "start": 72,
+        "end": 75,
+        "surface": "ἵνα"
+      },
+      {
+        "id": "sblgnt:44003016015",
+        "start": 76,
+        "end": 79,
+        "surface": "πᾶς"
+      },
+      {
+        "id": "sblgnt:44003016016",
+        "start": 80,
+        "end": 81,
+        "surface": "ὁ"
+      },
+      {
+        "id": "sblgnt:44003016017",
+        "start": 82,
+        "end": 90,
+        "surface": "πιστεύων"
+      },
+      {
+        "id": "sblgnt:44003016018",
+        "start": 91,
+        "end": 94,
+        "surface": "εἰς"
+      },
+      {
+        "id": "sblgnt:44003016019",
+        "start": 95,
+        "end": 100,
+        "surface": "αὐτὸν"
+      },
+      {
+        "id": "sblgnt:44003016020",
+        "start": 101,
+        "end": 103,
+        "surface": "μὴ"
+      },
+      {
+        "id": "sblgnt:44003016021",
+        "start": 104,
+        "end": 112,
+        "surface": "ἀπόληται"
+      },
+      {
+        "id": "sblgnt:44003016022",
+        "start": 113,
+        "end": 117,
+        "surface": "ἀλλὰ"
+      },
+      {
+        "id": "sblgnt:44003016023",
+        "start": 118,
+        "end": 121,
+        "surface": "ἔχῃ"
+      },
+      {
+        "id": "sblgnt:44003016024",
+        "start": 122,
+        "end": 126,
+        "surface": "ζωὴν"
+      },
+      {
+        "id": "sblgnt:44003016025",
+        "start": 127,
+        "end": 135,
+        "surface": "αἰώνιον."
+      }
+    ]
+  },
+  "target_segment": {
+    "edition_id": "bsb",
+    "content_revision": "bsb-2024",
+    "segment_id": "John.3.16",
+    "text": "For God so loved the world that He gave His one and only Son, that everyone who believes in Him shall not perish but have eternal life.",
+    "scalar_len": 135,
+    "utf16_len": 135,
+    "grapheme_len": 135,
+    "tokenization_hash": "4df87bc77b7bddfe8218b6cbb07d1af74c0b6c97a29553e1d2545d8a8d3bece9",
+    "tokens": [
+      {
+        "id": "bsb:44003016001",
+        "start": 0,
+        "end": 3,
+        "surface": "For"
+      },
+      {
+        "id": "bsb:44003016002",
+        "start": 4,
+        "end": 7,
+        "surface": "God"
+      },
+      {
+        "id": "bsb:44003016003",
+        "start": 8,
+        "end": 10,
+        "surface": "so"
+      },
+      {
+        "id": "bsb:44003016004",
+        "start": 11,
+        "end": 16,
+        "surface": "loved"
+      },
+      {
+        "id": "bsb:44003016005",
+        "start": 17,
+        "end": 20,
+        "surface": "the"
+      },
+      {
+        "id": "bsb:44003016006",
+        "start": 21,
+        "end": 26,
+        "surface": "world"
+      },
+      {
+        "id": "bsb:44003016007",
+        "start": 27,
+        "end": 31,
+        "surface": "that"
+      },
+      {
+        "id": "bsb:44003016008",
+        "start": 32,
+        "end": 34,
+        "surface": "He"
+      },
+      {
+        "id": "bsb:44003016009",
+        "start": 35,
+        "end": 39,
+        "surface": "gave"
+      },
+      {
+        "id": "bsb:44003016010",
+        "start": 40,
+        "end": 43,
+        "surface": "His"
+      },
+      {
+        "id": "bsb:44003016011",
+        "start": 44,
+        "end": 47,
+        "surface": "one"
+      },
+      {
+        "id": "bsb:44003016012",
+        "start": 48,
+        "end": 51,
+        "surface": "and"
+      },
+      {
+        "id": "bsb:44003016013",
+        "start": 52,
+        "end": 56,
+        "surface": "only"
+      },
+      {
+        "id": "bsb:44003016014",
+        "start": 57,
+        "end": 61,
+        "surface": "Son,"
+      },
+      {
+        "id": "bsb:44003016015",
+        "start": 62,
+        "end": 66,
+        "surface": "that"
+      },
+      {
+        "id": "bsb:44003016016",
+        "start": 67,
+        "end": 75,
+        "surface": "everyone"
+      },
+      {
+        "id": "bsb:44003016017",
+        "start": 76,
+        "end": 79,
+        "surface": "who"
+      },
+      {
+        "id": "bsb:44003016018",
+        "start": 80,
+        "end": 88,
+        "surface": "believes"
+      },
+      {
+        "id": "bsb:44003016019",
+        "start": 89,
+        "end": 91,
+        "surface": "in"
+      },
+      {
+        "id": "bsb:44003016020",
+        "start": 92,
+        "end": 95,
+        "surface": "Him"
+      },
+      {
+        "id": "bsb:44003016021",
+        "start": 96,
+        "end": 101,
+        "surface": "shall"
+      },
+      {
+        "id": "bsb:44003016022",
+        "start": 102,
+        "end": 105,
+        "surface": "not"
+      },
+      {
+        "id": "bsb:44003016023",
+        "start": 106,
+        "end": 112,
+        "surface": "perish"
+      },
+      {
+        "id": "bsb:44003016024",
+        "start": 113,
+        "end": 116,
+        "surface": "but"
+      },
+      {
+        "id": "bsb:44003016025",
+        "start": 117,
+        "end": 121,
+        "surface": "have"
+      },
+      {
+        "id": "bsb:44003016026",
+        "start": 122,
+        "end": 129,
+        "surface": "eternal"
+      },
+      {
+        "id": "bsb:44003016027",
+        "start": 130,
+        "end": 135,
+        "surface": "life."
+      }
+    ]
+  },
+  "records": [
+    {
+      "source": [
+        "sblgnt:44003016001",
+        "sblgnt:44003016002"
+      ],
+      "target": [
+        "bsb:44003016001",
+        "bsb:44003016003"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016003"
+      ],
+      "target": [
+        "bsb:44003016004"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016004"
+      ],
+      "target": [],
+      "status": "null",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016005"
+      ],
+      "target": [
+        "bsb:44003016002"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016006",
+        "sblgnt:44003016007"
+      ],
+      "target": [
+        "bsb:44003016005",
+        "bsb:44003016006"
+      ],
+      "status": "aligned",
+      "origin": "auto:fixture-aligner@0",
+      "confidence": 0.97
+    },
+    {
+      "source": [
+        "sblgnt:44003016008"
+      ],
+      "target": [
+        "bsb:44003016007"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016009"
+      ],
+      "target": [],
+      "status": "null",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016010"
+      ],
+      "target": [
+        "bsb:44003016014"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016011",
+        "sblgnt:44003016012"
+      ],
+      "target": [
+        "bsb:44003016011",
+        "bsb:44003016012",
+        "bsb:44003016013"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016013"
+      ],
+      "target": [
+        "bsb:44003016008",
+        "bsb:44003016009"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016014"
+      ],
+      "target": [
+        "bsb:44003016015"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016015",
+        "sblgnt:44003016016",
+        "sblgnt:44003016017"
+      ],
+      "target": [
+        "bsb:44003016016",
+        "bsb:44003016017",
+        "bsb:44003016018"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016018",
+        "sblgnt:44003016019"
+      ],
+      "target": [
+        "bsb:44003016019",
+        "bsb:44003016020"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016020",
+        "sblgnt:44003016021"
+      ],
+      "target": [
+        "bsb:44003016021",
+        "bsb:44003016022",
+        "bsb:44003016023"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016022"
+      ],
+      "target": [
+        "bsb:44003016024"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016023"
+      ],
+      "target": [
+        "bsb:44003016025"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source": [
+        "sblgnt:44003016024",
+        "sblgnt:44003016025"
+      ],
+      "target": [
+        "bsb:44003016026",
+        "bsb:44003016027"
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    }
+  ],
+  "renderings": [
+    {
+      "name": "ἠγάπησεν renders as loved",
+      "source": "sblgnt:44003016003",
+      "targets": [
+        "bsb:44003016004"
+      ]
+    },
+    {
+      "name": "Οὕτως renders as For and so through the many-to-many record",
+      "source": "sblgnt:44003016001",
+      "targets": [
+        "bsb:44003016001",
+        "bsb:44003016003"
+      ]
+    },
+    {
+      "name": "the article ὁ renders as nothing",
+      "source": "sblgnt:44003016004",
+      "targets": []
+    },
+    {
+      "name": "μονογενῆ renders as one and only",
+      "source": "sblgnt:44003016012",
+      "targets": [
+        "bsb:44003016011",
+        "bsb:44003016012",
+        "bsb:44003016013"
+      ]
+    }
+  ],
+  "reverse": [
+    {
+      "name": "loved comes from ἠγάπησεν",
+      "target": "bsb:44003016004",
+      "sources": [
+        "sblgnt:44003016003"
+      ]
+    },
+    {
+      "name": "so comes from Οὕτως γὰρ",
+      "target": "bsb:44003016003",
+      "sources": [
+        "sblgnt:44003016001",
+        "sblgnt:44003016002"
+      ]
+    },
+    {
+      "name": "His comes from no record",
+      "target": "bsb:44003016010",
+      "sources": []
+    }
+  ],
+  "explicit_null": [
+    "sblgnt:44003016004",
+    "sblgnt:44003016009"
+  ],
+  "unaligned": [
+    "bsb:44003016010"
+  ],
+  "auto_records": 1,
+  "stale": {
+    "source_tokenization_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "target_tokenization_hash": "4df87bc77b7bddfe8218b6cbb07d1af74c0b6c97a29553e1d2545d8a8d3bece9",
+    "error": "tokenization_changed",
+    "side": "source"
+  },
+  "invalid": [
+    {
+      "name": "a null record with both sides",
+      "record": {
+        "source": [
+          "sblgnt:44003016004"
+        ],
+        "target": [
+          "bsb:44003016002"
+        ],
+        "status": "null",
+        "origin": "curated:openlogos-fixture",
+        "confidence": null
+      },
+      "error": "wrong_shape"
+    },
+    {
+      "name": "an aligned record with an empty side",
+      "record": {
+        "source": [
+          "sblgnt:44003016004"
+        ],
+        "target": [],
+        "status": "aligned",
+        "origin": "curated:openlogos-fixture",
+        "confidence": null
+      },
+      "error": "wrong_shape"
+    },
+    {
+      "name": "a record with no tokens",
+      "record": {
+        "source": [],
+        "target": [],
+        "status": "aligned",
+        "origin": "curated:x",
+        "confidence": null
+      },
+      "error": "empty"
+    },
+    {
+      "name": "an origin without a kind",
+      "record": {
+        "source": [
+          "sblgnt:44003016003"
+        ],
+        "target": [
+          "bsb:44003016004"
+        ],
+        "status": "aligned",
+        "origin": "eflomal",
+        "confidence": null
+      },
+      "error": "bad_origin"
+    },
+    {
+      "name": "an auto origin without a version",
+      "record": {
+        "source": [
+          "sblgnt:44003016003"
+        ],
+        "target": [
+          "bsb:44003016004"
+        ],
+        "status": "aligned",
+        "origin": "auto:eflomal",
+        "confidence": null
+      },
+      "error": "bad_origin"
+    },
+    {
+      "name": "a confidence above one",
+      "record": {
+        "source": [
+          "sblgnt:44003016003"
+        ],
+        "target": [
+          "bsb:44003016004"
+        ],
+        "status": "aligned",
+        "origin": "curated:openlogos-fixture",
+        "confidence": 1.5
+      },
+      "error": "confidence_out_of_range"
+    },
+    {
+      "name": "a target token of the source edition",
+      "record": {
+        "source": [
+          "sblgnt:44003016003"
+        ],
+        "target": [
+          "sblgnt:44003016003"
+        ],
+        "status": "aligned",
+        "origin": "curated:x",
+        "confidence": null
+      },
+      "error": "foreign_token"
+    }
+  ]
+}
