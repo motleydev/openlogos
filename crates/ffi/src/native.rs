@@ -13,6 +13,7 @@ uniffi::setup_scaffolding!();
 
 pub mod anchor;
 pub mod conformance;
+pub mod ink;
 pub mod reference;
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
@@ -23,6 +24,10 @@ pub use anchor::{
     TextQuoteSelector, TokenSpan, Utf16Range, anchor_to_utf16, reanchor, selection_to_anchors,
 };
 pub use conformance::{CaseResult, ConformanceReport, conformance_fixtures_json, run_conformance};
+pub use ink::{
+    InkDocument, InkError, InkOutlineOptions, InkPoint, InkStroke, InkTaper, InkTool,
+    InkViewportTransform, ink_document_json, ink_outline,
+};
 pub use reference::{
     Reference, ReferenceError, ReferenceRange, ReferenceSet, ReviewFlag, format_human, format_osis,
     parse_reference,

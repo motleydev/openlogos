@@ -30,6 +30,7 @@ retrieval = ["dep:openlogos-retrieval", "dep:openlogos-retrieval-sqlite"]
 openlogos-core = { workspace = true }
 openlogos-text = { workspace = true }
 openlogos-conformance = { workspace = true }
+openlogos-ink = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

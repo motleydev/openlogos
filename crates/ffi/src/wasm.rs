@@ -22,6 +22,7 @@ use openlogos_conformance::{ConformanceReport, Fixture};
 use openlogos_core::anchor::{Anchor, Revision, Segment, TokenId, split_selection};
 use openlogos_core::reference::{AliasTable, ReferenceSet, parse};
 use openlogos_core::versification::{SchemeId, VerseMap};
+use openlogos_ink::{Easing, EndOptions, InputPoint, StrokeOptions, Taper};
 use openlogos_text::{Utf16Range, scalar_to_utf16, utf16_to_scalar};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -116,7 +117,102 @@ export interface CaseResult { fixture: string; name: string; passed: boolean; ex
 export interface ConformanceReport { api_version: string; passed: number; failed: number; cases: CaseResult[] }
 /** What a failing call throws: an Error with the variant tag and the whole error object. */
 export interface CoreError extends Error { kind: string; details: unknown }
+/** perfect-freehand options for `inkOutline` (B039); every field optional, upstream defaults. `taper*`: false/absent none, true full, a number a distance. */
+export interface InkOutlineOptions { size?: number; thinning?: number; smoothing?: number; streamline?: number; simulatePressure?: boolean; last?: boolean; capStart?: boolean; capEnd?: boolean; taperStart?: boolean | number; taperEnd?: boolean | number }
+export type InkTool = "pen" | "highlighter";
+/** One sampled point of `schemas/ink-document.schema.json`; `pressure` is null when the device reported none. */
+export interface InkPoint { x: number; y: number; pressure: number | null; elapsed_ms: number }
+export interface InkStroke { id: string; tool: InkTool; brush_version: string; width: number; color: string; opacity: number; points: InkPoint[] }
+export interface InkViewportTransform { scale: number; translate_x: number; translate_y: number }
+/** The portable ink record, field names as the schema. */
+export interface InkDocument { schema_version: "1.0"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
 "#;
+
+/// `InkOutlineOptions` as a page passes it: upstream's camelCase names, every field optional.
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct InkOutlineOptionsJs {
+    size: Option<f64>,
+    thinning: Option<f64>,
+    smoothing: Option<f64>,
+    streamline: Option<f64>,
+    simulate_pressure: Option<bool>,
+    last: Option<bool>,
+    cap_start: Option<bool>,
+    cap_end: Option<bool>,
+    taper_start: Option<serde_json::Value>,
+    taper_end: Option<serde_json::Value>,
+}
+
+fn taper_from_js(value: Option<&serde_json::Value>) -> Taper {
+    match value {
+        Some(serde_json::Value::Bool(true)) => Taper::Full,
+        Some(serde_json::Value::Number(n)) => n.as_f64().map_or(Taper::None, Taper::Distance),
+        _ => Taper::None,
+    }
+}
+
+impl From<InkOutlineOptionsJs> for StrokeOptions {
+    fn from(o: InkOutlineOptionsJs) -> Self {
+        let d = StrokeOptions::default();
+        StrokeOptions {
+            size: o.size.unwrap_or(d.size),
+            thinning: o.thinning.unwrap_or(d.thinning),
+            smoothing: o.smoothing.unwrap_or(d.smoothing),
+            streamline: o.streamline.unwrap_or(d.streamline),
+            easing: Easing::Linear,
+            simulate_pressure: o.simulate_pressure.unwrap_or(d.simulate_pressure),
+            start: EndOptions {
+                cap: o.cap_start.unwrap_or(true),
+                taper: taper_from_js(o.taper_start.as_ref()),
+                easing: Easing::EaseOutQuad,
+            },
+            end: EndOptions {
+                cap: o.cap_end.unwrap_or(true),
+                taper: taper_from_js(o.taper_end.as_ref()),
+                easing: Easing::EaseOutCubic,
+            },
+            last: o.last.unwrap_or(d.last),
+        }
+    }
+}
+
+/// B039: the perfect-freehand outline of a stroke from `crates/ink`. `points` is a
+/// `Float64Array` of `x, y, pressure` triples (a pressure below zero means the device reported
+/// none; a trailing partial triple is ignored); the result is a `Float64Array` of `x, y` pairs
+/// of the closed polygon, to be filled once with the non-zero rule.
+#[wasm_bindgen(js_name = inkOutline)]
+pub fn ink_outline(
+    points: &[f64],
+    #[wasm_bindgen(unchecked_param_type = "InkOutlineOptions | undefined")] options: JsValue,
+) -> Result<Vec<f64>, JsValue> {
+    let options: InkOutlineOptionsJs = if options.is_undefined() || options.is_null() {
+        InkOutlineOptionsJs::default()
+    } else {
+        from_js("options", options)?
+    };
+    let input: Vec<InputPoint> = points
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| InputPoint::new(c[0], c[1], (c[2] >= 0.0).then_some(c[2])))
+        .collect();
+    Ok(openlogos_ink::get_stroke(&input, &options.into())
+        .into_iter()
+        .flat_map(|p| [p[0], p[1]])
+        .collect())
+}
+
+/// B039: validates an `InkDocument` object against the rules of
+/// `schemas/ink-document.schema.json` and `crates/ink` and returns it as JSON (pretty-printed,
+/// `null` for an unreported pressure). Throws a `CoreError` whose `kind` names the broken rule.
+#[wasm_bindgen(js_name = inkDocumentJson)]
+pub fn ink_document_json(
+    #[wasm_bindgen(unchecked_param_type = "InkDocument")] document: JsValue,
+) -> Result<String, JsValue> {
+    let document: openlogos_ink::InkDocument = from_js("document", document)?;
+    document.to_json().map_err(throw)
+}
 
 /// The core API version this module was built against ([`openlogos_core::API_VERSION`]).
 /// A host compares it with the version it was written for before calling anything else.
