@@ -352,9 +352,10 @@ pub enum LocatorError {
     },
 }
 
-/// Errors from [`parse_citation`].
+/// Errors from [`parse_citation`]. Serialized with the kind beside the inner error
+/// (`{"kind": "work", "detail": {"kind": "too_many_levels", ...}}`).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "kind", content = "detail", rename_all = "snake_case")]
 pub enum CitationError {
     /// A work was named but its locator did not parse.
     #[error("work citation: {0}")]

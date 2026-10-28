@@ -1,0 +1,109 @@
+{
+  "id": "section-maps-institutes-thayer",
+  "kind": "section_maps",
+  "description": "Section-map resolution of work citations to each installed edition: Calvin's Institutes in two translations (Beveridge 1845, Allen 1813) with equal, split, merge, partial and absent rows, a chapter citation resolved through its sections, and a page citation of Thayer's 1889 print edition resolved directly in that edition and, through the nearest canonical sections, in a later headword-keyed digitization that has no page milestones. The rows are structural (locator to segment id); no work text is included. Segment ids and the merge/absent cases are invented to exercise every kind, not facts about the editions.",
+  "license": "CC0 (structure only; the works are public domain)",
+  "source": "written for this fixture after specs/19 (Cross-resource links, item 2); mirrors the catalog fixture in crates/retrieval-sqlite",
+  "grammar_table": "builtin",
+  "schemes": [
+    { "id": "institutes", "work": "institutes", "title": "Calvin, Institutes of the Christian Religion (1559), book, chapter and section", "canonical": true, "kind": { "kind": "hierarchical" }, "levels": ["book", "chapter", "section"], "version": "1", "grammar_version": "b068-1" },
+    { "id": "thayer", "work": "thayer", "title": "Thayer, Greek-English Lexicon of the New Testament, headword", "canonical": true, "kind": { "kind": "hierarchical" }, "levels": ["headword"], "version": "1", "grammar_version": "b068-1" },
+    { "id": "thayer-1889-pages", "work": "thayer", "title": "Thayer, Greek-English Lexicon of the New Testament (1889 print edition), page", "canonical": false, "kind": { "kind": "page", "print_edition": "thayer-1889" }, "levels": ["page"], "version": "1", "grammar_version": "b068-1" },
+    { "id": "wcf", "work": "wcf", "title": "Westminster Confession of Faith (1647), chapter and section", "canonical": true, "kind": { "kind": "hierarchical" }, "levels": ["chapter", "section"], "version": "1", "grammar_version": "b068-1" }
+  ],
+  "rows": [
+    { "scheme": "institutes", "locator": "3.2.7", "edition": "institutes-beveridge", "segment": "b-3-2-7", "kind": "equal" },
+    { "scheme": "institutes", "locator": "3.2.8", "edition": "institutes-beveridge", "segment": "b-3-2-8-9", "kind": "merge" },
+    { "scheme": "institutes", "locator": "3.2.9", "edition": "institutes-beveridge", "segment": "b-3-2-8-9", "kind": "merge" },
+    { "scheme": "institutes", "locator": "4.20.32", "edition": "institutes-beveridge", "segment": null, "kind": "absent" },
+    { "scheme": "institutes", "locator": "3.2.7", "edition": "institutes-allen", "segment": "a-3-2-7a", "kind": "split" },
+    { "scheme": "institutes", "locator": "3.2.7", "edition": "institutes-allen", "segment": "a-3-2-7b", "kind": "split" },
+    { "scheme": "institutes", "locator": "3.2.8", "edition": "institutes-allen", "segment": "a-3-2-8", "kind": "partial" },
+    { "scheme": "thayer", "locator": "agapao", "edition": "thayer-1889", "segment": "e-0040", "kind": "equal" },
+    { "scheme": "thayer", "locator": "agape", "edition": "thayer-1889", "segment": "e-0041", "kind": "equal" },
+    { "scheme": "thayer", "locator": "agapetos", "edition": "thayer-1889", "segment": "e-0042", "kind": "equal" },
+    { "scheme": "thayer-1889-pages", "locator": "p.6", "edition": "thayer-1889", "segment": "e-0040", "kind": "partial" },
+    { "scheme": "thayer-1889-pages", "locator": "p.6", "edition": "thayer-1889", "segment": "e-0041", "kind": "equal" },
+    { "scheme": "thayer-1889-pages", "locator": "p.7", "edition": "thayer-1889", "segment": "e-0042", "kind": "equal" },
+    { "scheme": "thayer", "locator": "agapao", "edition": "thayer-ccel", "segment": "c-agapao", "kind": "equal" },
+    { "scheme": "thayer", "locator": "agape", "edition": "thayer-ccel", "segment": "c-agape", "kind": "equal" }
+  ],
+  "cases": [
+    {
+      "name": "equal in Beveridge, split in Allen",
+      "citation": "Inst. 3.2.7",
+      "installed": ["institutes-allen", "institutes-beveridge"],
+      "editions": [
+        { "edition": "institutes-allen", "outcome": "mapped", "kind": "split", "segments": ["a-3-2-7a", "a-3-2-7b"], "basis": { "kind": "direct" } },
+        { "edition": "institutes-beveridge", "outcome": "mapped", "kind": "equal", "segments": ["b-3-2-7"], "basis": { "kind": "direct" } }
+      ]
+    },
+    {
+      "name": "merge in Beveridge, unmapped in Allen (not the same as absent)",
+      "citation": "Institutes III.ii.9",
+      "installed": ["institutes-allen", "institutes-beveridge"],
+      "editions": [
+        { "edition": "institutes-allen", "outcome": "unmapped" },
+        { "edition": "institutes-beveridge", "outcome": "mapped", "kind": "merge", "segments": ["b-3-2-8-9"], "basis": { "kind": "direct" } }
+      ]
+    },
+    {
+      "name": "partial in Allen, merge in Beveridge",
+      "citation": "Institutes 3.2.8",
+      "installed": ["institutes-allen", "institutes-beveridge"],
+      "editions": [
+        { "edition": "institutes-allen", "outcome": "mapped", "kind": "partial", "segments": ["a-3-2-8"], "basis": { "kind": "direct" } },
+        { "edition": "institutes-beveridge", "outcome": "mapped", "kind": "merge", "segments": ["b-3-2-8-9"], "basis": { "kind": "direct" } }
+      ]
+    },
+    {
+      "name": "absent in Beveridge",
+      "citation": "Institutes IV.xx.32",
+      "installed": ["institutes-allen", "institutes-beveridge"],
+      "editions": [
+        { "edition": "institutes-allen", "outcome": "unmapped" },
+        { "edition": "institutes-beveridge", "outcome": "mapped", "kind": "absent", "segments": [], "basis": { "kind": "direct" } }
+      ]
+    },
+    {
+      "name": "a chapter citation resolves through its sections and says so",
+      "citation": "Institutes 3.2",
+      "installed": ["institutes-allen", "institutes-beveridge"],
+      "editions": [
+        { "edition": "institutes-allen", "outcome": "mapped", "kind": "partial", "segments": ["a-3-2-7a", "a-3-2-7b", "a-3-2-8"], "basis": { "kind": "subsections", "count": 3 } },
+        { "edition": "institutes-beveridge", "outcome": "mapped", "kind": "split", "segments": ["b-3-2-7", "b-3-2-8-9"], "basis": { "kind": "subsections", "count": 3 } }
+      ]
+    },
+    {
+      "name": "a page citation: direct in the print edition, nearest section in the other",
+      "citation": "Thayer p. 6",
+      "installed": ["thayer-1889", "thayer-ccel"],
+      "editions": [
+        { "edition": "thayer-1889", "outcome": "mapped", "kind": "partial", "segments": ["e-0040", "e-0041"], "basis": { "kind": "direct" } },
+        { "edition": "thayer-ccel", "outcome": "mapped", "kind": "partial", "segments": ["c-agapao", "c-agape"], "basis": { "kind": "nearest_section", "via": ["agapao", "agape"], "print_edition": "thayer-1889" } }
+      ]
+    },
+    {
+      "name": "only a different edition installed: the labeled fallback is the whole answer",
+      "citation": "Thayer p. 6",
+      "installed": ["thayer-ccel"],
+      "editions": [
+        { "edition": "thayer-ccel", "outcome": "mapped", "kind": "partial", "segments": ["c-agapao", "c-agape"], "basis": { "kind": "nearest_section", "via": ["agapao", "agape"], "print_edition": "thayer-1889" } }
+      ]
+    },
+    {
+      "name": "a page whose sections the other edition lacks is unmapped there",
+      "citation": "Thayer p. 7",
+      "installed": ["thayer-ccel"],
+      "editions": [
+        { "edition": "thayer-ccel", "outcome": "unmapped" }
+      ]
+    },
+    {
+      "name": "a work with nothing installed resolves to no edition",
+      "citation": "WCF 1.6",
+      "installed": [],
+      "editions": []
+    }
+  ]
+}

@@ -139,7 +139,7 @@ impl SectionTarget {
 
 /// Why a resolution landed where it did.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "basis", rename_all = "snake_case")]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ResolutionBasis {
     /// The edition's own section map has the locator.
     Direct,
@@ -181,7 +181,8 @@ pub enum SectionOutcome {
 pub struct EditionResolution {
     /// The edition.
     pub edition: String,
-    /// Its outcome.
+    /// Its outcome, serialized flat beside the edition (`outcome`, `kind`, `segments`, `basis`).
+    #[serde(flatten)]
     pub outcome: SectionOutcome,
 }
 
