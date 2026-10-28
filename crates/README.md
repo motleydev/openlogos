@@ -33,8 +33,11 @@ the crate version; its doc comment states the bump rule. The modules so far:
 | `core::versioning` (B006) | `SchemaVersion`, `Compatibility`, `ApiVersion`, `VersionSyntax` | `SchemaVersion::parse`/`compatibility`, `ApiVersion::parse`/`current`, `api_compatible(core, host)` |
 | `collections` (B006) | `StudyCollection`, `CollectionItem`, `ItemBody`, `SourceProvenance`, `RightsSnapshot`, `Locator`, `VaultExportReceipt`, `ReceiptEntry`, `Disposition`, `CollectionError`, `ReceiptError` | `StudyCollection::validate`, `CollectionItem::block_id`/`quotation_permitted`, `VaultExportReceipt::validate`/`validate_against`/`stale_items`/`orphaned_entries` |
 | `text::offsets` | `Utf16Range`, `GraphemeRange`, `OffsetUnit`, `OffsetError` | `scalar_to_utf16`, `utf16_to_scalar`, `scalar_to_grapheme`, `grapheme_to_scalar`, `snap_to_graphemes`, `slice_scalars`, `scalar_len`/`utf16_len`/`grapheme_len` |
-| `conformance` | `Fixture` and its parts (text, versification, references, from B006 lineage, alignment, reanchor, and from B062 workspace layout), `ConformanceReport`, `CaseResult` | `run_all()`, `fixtures()`, `fixtures_json()`, `FIXTURE_FILES` |
+| `conformance` | `Fixture` and its parts (text, versification, references, from B006 lineage, alignment, reanchor, from B062 workspace layout, and from B040 workspace migration and note authority), `ConformanceReport`, `CaseResult` | `run_all()`, `fixtures()`, `fixtures_json()`, `FIXTURE_FILES` |
 | `workspaces` (B062) | `Workspace`, `Pane`, `ScrollAnchor`, `LayoutProfile`, `LayoutProfiles`, `DeviceClass`, `TextSize`, `DerivedLayout`, `Column`, `NotesDockPlacement`, `ProfileSource`, `LayoutError` | `derive_profile(&workspace, class, width_pt, text_size)`, `with_profile(&workspace, class, profile)`, `check_profile(...)`, `DeviceClass::for_width_pt` |
+| `workspaces::migration` (B040) | `Step`, `STEPS`, `MigrationError` | `migrate_workspace(value, from, to)`, `migrate_workspace_to_current(value)` (ADR 0003: pure, forward, idempotent; 1.0 → 1.1) |
+| `workspaces::navigation` (B040) | `PaneIdentityError`, `Visit`, `PaneHistory`, `NavigationKind`, `NavigationEvent`, `Propagation`, `ReferenceHistoryEntry`, `WorkspaceNavigation`, `NavigationError` | `is_pane_id`, `check_pane_identity(&workspace)`, `link_groups(&workspace)`, `followers(&workspace, driver)`, `WorkspaceNavigation::apply`/`back_target`/`go_back` |
+| `notes` (B040) | `NoteBinding`, `Authority`, `SyncState`, `ConflictCause`, `OperationRecord`, `OperationKind`, `BindingEvent`, `Resolution`, `Effect`, `Transition`, `BindingError` | `apply(&binding, &event)`, `NoteBinding::validate`/`app_owned`/`vault_owned`, `is_note_id`, `is_relative_vault_path`, `is_sha256_hex`; `credentials::find_credential_shaped(&value)`, `is_credential_shaped_key`, `is_credential_shaped_value` |
 
 Everything public is plain data (owned `String`s and `Vec`s, no lifetimes or generics),
 `serde`-serializable, and each module has one `thiserror` enum, so the UniFFI and wasm-bindgen
@@ -49,7 +52,7 @@ Inside `nix develop .#core` (or after `direnv allow`):
 ```sh
 just test            # cargo nextest + doc tests, whole workspace
 just lint            # rustfmt, clippy -D warnings, nixfmt, shellcheck, actionlint, blueprint
-just check-wasm      # cargo check --target wasm32-unknown-unknown for core, text, collections, conformance and ffi
+just check-wasm      # cargo check --target wasm32-unknown-unknown for core, text, collections, workspaces, notes, conformance, retrieval and ffi
 just ci              # lint + test + check-wasm, as CI runs them in the shell
 just check           # nix flake check: the same checks as hermetic derivations
 cargo test -p openlogos-core          # one crate

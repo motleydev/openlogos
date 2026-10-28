@@ -106,6 +106,72 @@ def check_workspace(wp):
         if widths and not set(widths)<=set(profile['visible_pane_ids']): raise ValueError('Profile '+cls+' sizes a pane it does not show')
         if widths and abs(sum(widths.values())-1)>1e-8: raise ValueError('Profile '+cls+' widths do not sum to one')
         if not set(profile.get('collapsed_link_groups',[]))<=groups: raise ValueError('Profile '+cls+' collapses a link group no pane belongs to')
+# B040: no credential fields in portable state (specs/12, specs/03). Mirrors
+# openlogos_notes::credentials; a key is credential-shaped by its words, a string value by
+# its shape. The schemas of the four portable record kinds define no such property either.
+CREDENTIAL_WORDS={'password','passwd','passphrase','secret','secrets','apikey','credential','credentials','bearer','cookie','cookies','oauth','jwt','privatekey','clientsecret','accesskey'}
+CREDENTIAL_PAIRS={('api','key'),('private','key'),('client','secret'),('access','key'),('secret','key'),('signing','key'),('session','key')}
+TOKEN_ALLOW={'token_ids','tokens','token_count','token'}
+PORTABLE_SCHEMAS=['workspace','note-binding','reading-snapshot','research-thread']
+def key_words(key):
+    return [w.lower() for w in re.findall(r'[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+|[A-Z]+', key)]
+def is_credential_key(key):
+    words=key_words(key)
+    if CREDENTIAL_WORDS & set(words): return True
+    if any((a,b) in CREDENTIAL_PAIRS for a,b in zip(words,words[1:])): return True
+    if words and words[-1] in ('token','tokens'):
+        lower=key.lower()
+        return lower not in TOKEN_ALLOW and not lower.endswith('_token_count')
+    return False
+def is_credential_value(value):
+    v=value.strip()
+    if '-----BEGIN' in v and 'PRIVATE KEY-----' in v: return True
+    if len(v)>7 and v[:7].lower()=='bearer ': return True
+    return len(v)>=20 and v.startswith(('sk-','sk_live_','sk_test_','ghp_','gho_','xoxb-','xoxp-','AKIA'))
+def find_credentials(value, path=''):
+    found=[]
+    if isinstance(value, dict):
+        for k,v in value.items():
+            here=path+'/'+k
+            if is_credential_key(k): found.append(here)
+            found+=find_credentials(v, here)
+    elif isinstance(value, list):
+        for i,v in enumerate(value): found+=find_credentials(v, f'{path}/{i}')
+    elif isinstance(value, str) and is_credential_value(value): found.append(path)
+    return found
+def check_no_credentials(doc, label):
+    found=find_credentials(doc)
+    if found: raise ValueError(f'Credential-shaped field in {label}: '+', '.join(found))
+def schema_property_names(schema):
+    names=set()
+    if isinstance(schema, dict):
+        for k,v in schema.get('properties',{}).items():
+            names.add(k); names|=schema_property_names(v)
+        for key in ('items','then','else','if','additionalProperties'):
+            names|=schema_property_names(schema.get(key))
+        for key in ('allOf','anyOf','oneOf'):
+            for sub in schema.get(key,[]): names|=schema_property_names(sub)
+        for sub in schema.get('$defs',{}).values(): names|=schema_property_names(sub)
+    return names
+def check_schema_has_no_credential_properties(name):
+    bad=sorted(k for k in schema_property_names(load('schemas/'+name+'.schema.json')) if is_credential_key(k))
+    if bad: raise ValueError(f'Schema {name} defines credential-shaped properties: '+', '.join(bad))
+def check_binding(b):
+    # B040: one body authority per note; a path is not identity; states carry what they need.
+    if b['vault_path'] is not None: safe_path(b['vault_path'])
+    if (b['vault_path'] is None) != (b['vault_id'] is None): raise ValueError('Vault path and vault id come together')
+    if b['last_seen_sha256'] is not None and b['vault_path'] is None: raise ValueError('Last-seen hash without a vault path')
+    st=b['state']['state']
+    owner={'app_owned':'app','vault_owned':'vault','detached':'vault'}.get(st)
+    if owner and b['authority']!=owner: raise ValueError(f'State {st} under {b["authority"]} authority')
+    if st in ('vault_owned','conflict') and b['last_seen_sha256'] is None: raise ValueError(f'State {st} without a last-seen hash')
+    if st in ('vault_owned','conflict','detached') and b['vault_path'] is None: raise ValueError(f'State {st} without a vault path')
+    if st=='migrating' and b['state']['to']==b['authority']: raise ValueError('Migrating to the current authority')
+    if st=='migrating' and b['state']['to']=='vault' and b['vault_path'] is None: raise ValueError('Migrating to a vault without a path')
+    ops=[o['id'] for o in b.get('operations',[])]
+    if len(ops)!=len(set(ops)): raise ValueError('Repeated operation id')
+    for o in b.get('operations',[]):
+        if (o['kind']=='delete')!=(o.get('sha256') is None): raise ValueError('Only a delete has no hash: '+o['id'])
 def core_api_version():
     text=(R/'crates/core/src/lib.rs').read_text()
     m=re.search(r'pub const API_VERSION: &str = "([^"]+)"', text)
@@ -176,7 +242,7 @@ def check_receipt(rc, collection):
         if e['disposition']!='quoted' and not (e.get('reason') or '').strip(): raise ValueError('Non-quoted entry without a reason: '+e['item_id'])
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','workspace_layout'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','workspace_layout','workspace_migration','note_authority'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -203,7 +269,9 @@ def main():
         ('reference-mapping','examples/reference-mapping.json'),
         ('token-lineage','examples/token-lineage.json'), ('alignment','examples/alignment.json'),
         ('study-collection','examples/study-collection.json'),
-        ('vault-export-receipt','examples/vault-export-receipt.json')]
+        ('vault-export-receipt','examples/vault-export-receipt.json'),
+        ('note-binding','examples/note-binding.json'),
+        ('note-binding','examples/note-binding-conflict.json')]
     for s,p in pairs: validate(s,load(p))
     agents = load('specs/agents.json')['agents']
     tasks = load('specs/backlog.json')['tasks']
@@ -359,6 +427,70 @@ def main():
     expect_rejected(lambda:validate('verse-map',bad_map),'absent row with a target')
     bad_anchor=copy.deepcopy(anchor); bad_anchor['tokens'][0]['book']='Gen2'
     expect_rejected(lambda:validate('anchor',bad_anchor),'token id with an unknown book')
-    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity and workspace layout profiles.')
+    # B040: workspace migration, note bindings and no credential fields in portable state.
+    migration=load('crates/conformance/fixtures/workspace-migration-1-0-to-1-1.json')
+    assert migration['kind']=='workspace_migration'
+    for case in migration['cases']:
+        validate('workspace',case['input']); check_workspace(case['input'])
+        validate('workspace',case['expected']); check_workspace(case['expected'])
+        assert case['input']['schema_version']==case['from'] and case['expected']['schema_version']==case['to']
+        mirrored=copy.deepcopy(case['input']); mirrored['schema_version']='1.1'; mirrored.setdefault('layout_profiles',{})
+        assert mirrored==case['expected'], 'Migration fixture expectation is not the 1.0 -> 1.1 step'
+        assert [p['id'] for p in case['expected']['panes']]==[p['id'] for p in case['input']['panes']], 'Migration renumbered panes'
+    assert migration['cases'][0]['input']==old_wp, 'Migration fixture migrates the archived 1.0 example'
+    authority=load('crates/conformance/fixtures/note-authority-transitions.json')
+    assert authority['kind']=='note_authority'
+    for scenario in authority['scenarios']:
+        validate('note-binding',scenario['initial']); check_binding(scenario['initial'])
+        for step in scenario['steps']:
+            if 'binding' in step: validate('note-binding',step['binding']); check_binding(step['binding'])
+            assert ('binding' in step)!=('error' in step), 'A step ends in a binding or an error'
+            check_no_credentials(step,'note authority step '+scenario['name'])
+    binding=load('examples/note-binding.json'); check_binding(binding)
+    conflict=load('examples/note-binding-conflict.json'); check_binding(conflict)
+    assert binding['authority']=='vault' and binding['state']['state']=='vault_owned'
+    assert conflict['authority']=='app' and conflict['state']['state']=='conflict' and conflict['state']['app_sha256']!=conflict['state']['vault_sha256']
+    for name in PORTABLE_SCHEMAS: check_schema_has_no_credential_properties(name)
+    for label,doc in [('workspace',wp),('workspace 1.0',old_wp),('note-binding',binding),('note-binding conflict',conflict),('reading-snapshot',sn),('research-thread',thread)]:
+        check_no_credentials(doc,label)
+    leaked_wp=copy.deepcopy(wp); leaked_wp['provider_token']='fixture-forbidden'
+    expect_rejected(lambda:validate('workspace',leaked_wp),'token in a workspace (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_wp,'workspace'),'token in a workspace (check)')
+    leaked_pane=copy.deepcopy(wp); leaked_pane['panes'][0]['api_key']='fixture-forbidden'
+    expect_rejected(lambda:validate('workspace',leaked_pane),'api key on a pane (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_pane,'workspace'),'api key on a pane (check)')
+    leaked_value=copy.deepcopy(wp); leaked_value['title']='-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----'
+    expect_rejected(lambda:check_no_credentials(leaked_value,'workspace'),'private key block in an innocent field')
+    leaked_binding=copy.deepcopy(binding); leaked_binding['vault_password']='fixture-forbidden'
+    expect_rejected(lambda:validate('note-binding',leaked_binding),'password in a note binding (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_binding,'note-binding'),'password in a note binding (check)')
+    leaked_snapshot=copy.deepcopy(sn); leaked_snapshot['background']['credentials']={'user':'x'}
+    expect_rejected(lambda:validate('reading-snapshot',leaked_snapshot),'credentials object in a snapshot (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_snapshot,'reading-snapshot'),'credentials object in a snapshot (check)')
+    expect_rejected(lambda:check_no_credentials(leaked,'research-thread'),'api key in a research thread (check)')
+    leaked_thread=copy.deepcopy(thread); leaked_thread['messages'][0]['text']='Bearer fixture-forbidden-token-value'
+    expect_rejected(lambda:check_no_credentials(leaked_thread,'research-thread'),'bearer header in a message body')
+    bad_binding=copy.deepcopy(binding); bad_binding['authority']='app'
+    expect_rejected(lambda:validate('note-binding',bad_binding),'vault_owned under app authority (schema)')
+    expect_rejected(lambda:check_binding(bad_binding),'vault_owned under app authority (check)')
+    bad_binding=copy.deepcopy(binding); bad_binding['vault_path']='../outside.md'
+    expect_rejected(lambda:validate('note-binding',bad_binding),'binding path traversal (schema)')
+    expect_rejected(lambda:check_binding(bad_binding),'binding path traversal (check)')
+    bad_binding=copy.deepcopy(conflict); bad_binding['last_seen_sha256']=None
+    expect_rejected(lambda:validate('note-binding',bad_binding),'conflict without a last-seen hash (schema)')
+    expect_rejected(lambda:check_binding(bad_binding),'conflict without a last-seen hash (check)')
+    bad_binding=copy.deepcopy(binding); bad_binding['state']={'state':'migrating','to':'vault','preview_sha256':binding['app_sha256'],'backup_id':'rev-1'}
+    expect_rejected(lambda:check_binding(bad_binding),'migrating to the current authority')
+    bad_binding=copy.deepcopy(binding); bad_binding['state']={'state':'migrating','to':'app','preview_sha256':binding['app_sha256']}
+    expect_rejected(lambda:validate('note-binding',bad_binding),'migration without a backup')
+    bad_binding=copy.deepcopy(binding); bad_binding['note_id']='Study/John 3.md'
+    expect_rejected(lambda:validate('note-binding',bad_binding),'path used as note identity')
+    bad_binding=copy.deepcopy(binding); bad_binding['state']={'state':'conflict','app_sha256':binding['app_sha256'],'vault_sha256':binding['app_sha256']}
+    expect_rejected(lambda:validate('note-binding',bad_binding),'conflict without a cause')
+    bad_binding=copy.deepcopy(binding); bad_binding['operations'].append(dict(binding['operations'][0]))
+    expect_rejected(lambda:check_binding(bad_binding),'repeated operation id')
+    old_migrated=copy.deepcopy(old_wp); old_migrated['layout_profiles']={}
+    expect_rejected(lambda:validate('workspace',old_migrated),'migration output still declaring 1.0')
+    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, note-binding authority and workspace layout profiles.')
     print('Scope: blueprint structure only. No app, Nix build, cryptography, source clearance or Paperclip deployment has been tested.')
 if __name__=='__main__': main()
