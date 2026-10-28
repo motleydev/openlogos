@@ -8,7 +8,8 @@ enum ChromeMetrics {
     static let sharedBar: CGFloat = 44 // layout A, pointer and touch alike
     static let identityRowA: CGFloat = 36 // layout A inline pane label
     static let headerB: CGFloat = 44 // layout B explicit local header
-    static let passageRowB: CGFloat = 44 // layout B, compact width: the active pane's passage field row
+    static let passageRowB: CGFloat = 44 // layout B: the active pane's passage field row when its header is too narrow
+    static let passageInlineMinimumPaneWidth: CGFloat = 560 // below this, B's passage field takes its own row
     static let launcherWidth: CGFloat = 44 // layout B leading edge, regular widths
     static let launcherStrip: CGFloat = 44 // layout B bottom strip, compact width
     static let tabsRow: CGFloat = 36 // compact and medium: the panes that are not visible
@@ -17,6 +18,7 @@ enum ChromeMetrics {
     static let panePaddingCompact: CGFloat = 16
     static let drawerWidth: CGFloat = 360
     static let minimumTarget: CGFloat = 44
+    static let accessibilityPaneMinimum: CGFloat = 480 // a pane at accessibility type sizes
 
     static func panePadding(_ width: CGFloat) -> CGFloat {
         WidthClass(width: width) == .compact ? panePaddingCompact : panePaddingRegular
@@ -292,13 +294,16 @@ struct PaneIdentityRow: View {
     let pane: Pane
     let layout: LayoutVariant
     let isActive: Bool
-    var width: CGFloat = 1024
+    /// The pane's own width, which decides whether B's passage field fits beside the identity.
+    var paneWidth: CGFloat = 1024
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var height: CGFloat { layout == .a ? ChromeMetrics.identityRowA : ChromeMetrics.headerB }
-    /// Layout B at compact width or accessibility type: the active pane's passage field gets its
-    /// own row under the identity row rather than crowding it (counted in LayoutMetrics).
-    private var passageOnOwnRow: Bool { layout == .b && isActive && (WidthClass(width: width) == .compact || typeSize.isAccessibilitySize) }
+    /// Layout B in a narrow pane or at accessibility type: the active pane's passage field gets
+    /// its own row under the identity row rather than crowding it (counted in LayoutMetrics).
+    private var passageOnOwnRow: Bool {
+        layout == .b && isActive && (paneWidth < ChromeMetrics.passageInlineMinimumPaneWidth || typeSize.isAccessibilitySize)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -380,6 +385,7 @@ struct PaneIdentityRow: View {
 struct LinkStateControl: View {
     @ObservedObject var workspace: Workspace
     let pane: Pane
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Menu {
@@ -393,9 +399,13 @@ struct LinkStateControl: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: pane.link.symbol)
-                Text(pane.link.label)
+                // At accessibility sizes the word yields to the resource name; the glyph and
+                // the accessibility label keep the state explicit.
+                if !typeSize.isAccessibilitySize { Text(pane.link.label) }
             }
             .font(.caption)
+            .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 8)
             .frame(minHeight: 28)
             .background(Capsule().strokeBorder(.secondary.opacity(0.6), lineWidth: 1))

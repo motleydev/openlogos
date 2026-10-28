@@ -8,6 +8,7 @@ struct WorkspaceView: View {
     @EnvironmentObject var options: PrototypeOptions
     let size: CGSize
     @State private var rendered: [String: CGSize] = [:]
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var layout: LayoutVariant { options.layout }
     private var widthClass: WidthClass { WidthClass(width: size.width) }
@@ -21,6 +22,12 @@ struct WorkspaceView: View {
     /// one a transient drawer covers.
     private var visiblePanes: [Pane] {
         var count = min(workspace.panes.count, widthClass.visiblePanes)
+        // Pane minimum widths scale with the text (specs/21 §7): at accessibility sizes a pane
+        // needs about 480 points, so 1024 shows two panes plus a tab and 1440 keeps three.
+        if typeSize.isAccessibilitySize {
+            let side = layout == .b && !compact ? ChromeMetrics.launcherWidth : 0
+            count = min(count, max(1, Int((size.width - side) / ChromeMetrics.accessibilityPaneMinimum)))
+        }
         if drawerCoversPane { count = max(count - 1, 1) }
         if workspace.panes.count <= count { return Array(workspace.panes) }
         if widthClass == .regular && !drawerCoversPane { return Array(workspace.panes.prefix(count)) }
@@ -116,9 +123,17 @@ struct WorkspaceView: View {
         return workspace.drawerPinned ? min(ChromeMetrics.drawerWidth, paneWidth) : paneWidth
     }
 
+    /// The width of one visible pane column, as LayoutMetrics computes it.
+    private var paneColumnWidth: CGFloat {
+        let side = layout == .b && !compact ? ChromeMetrics.launcherWidth : 0
+        let drawer = !compact && workspace.drawer != .none ? drawerWidth + ChromeMetrics.divider : 0
+        let dividers = CGFloat(max(visiblePanes.count - 1, 0)) * ChromeMetrics.divider
+        return (size.width - side - drawer - dividers) / CGFloat(max(visiblePanes.count, 1))
+    }
+
     private func paneColumn(_ pane: Pane) -> some View {
         VStack(spacing: 0) {
-            PaneIdentityRow(workspace: workspace, pane: pane, layout: layout, isActive: pane.id == workspace.activePaneID, width: size.width)
+            PaneIdentityRow(workspace: workspace, pane: pane, layout: layout, isActive: pane.id == workspace.activePaneID, paneWidth: paneColumnWidth)
             PaneTextView(
                 workspace: workspace, pane: pane, state: options.state, width: size.width,
                 selectable: options.view == .selection && pane.id == "p1",

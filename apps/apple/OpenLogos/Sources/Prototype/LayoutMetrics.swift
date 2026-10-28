@@ -31,20 +31,24 @@ struct LayoutMetrics: Equatable {
         case .b:
             if widthClass == .compact {
                 bottom = ChromeMetrics.launcherStrip
-                // The one visible pane is the active one and carries the passage field row.
-                top = tabs + ChromeMetrics.headerB + ChromeMetrics.passageRowB
             } else {
                 side = ChromeMetrics.launcherWidth
-                top = tabs + ChromeMetrics.headerB
             }
+            top = tabs + ChromeMetrics.headerB
         }
         let dividers = CGFloat(max(visible - 1, 0)) * ChromeMetrics.divider
         let paneWidth = (size.width - side - dividers) / CGFloat(visible)
         let paneHeight = size.height - top - bottom
+        var regions = Array(repeating: CGSize(width: paneWidth, height: paneHeight), count: visible)
+        // Layout B: the active pane's header also holds the passage field; in a pane narrower
+        // than the inline minimum that field takes a row of its own (Chrome.swift).
+        if layout == .b, paneWidth < ChromeMetrics.passageInlineMinimumPaneWidth, !regions.isEmpty {
+            regions[0].height -= ChromeMetrics.passageRowB
+        }
         return LayoutMetrics(
             size: size, layout: layout, panes: panes, visiblePanes: visible,
             chromeHeight: top + bottom, chromeWidth: side,
-            paneTextRegions: Array(repeating: CGSize(width: paneWidth, height: paneHeight), count: visible)
+            paneTextRegions: regions
         )
     }
 
@@ -54,8 +58,8 @@ struct LayoutMetrics: Equatable {
         for size in PrototypeOptions.measurementSizes {
             for layout in LayoutVariant.allCases {
                 let m = designed(size: size, layout: layout, panes: panes)
-                let region = m.paneTextRegions.first ?? .zero
-                lines.append("| \(Int(size.width)) × \(Int(size.height)) | \(layout.rawValue) | \(m.visiblePanes) | \(m.visiblePanes) × \(format(region.width)) × \(format(region.height)) | \(format(m.readingArea)) | \(Int((m.readingFraction * 100).rounded()))% |")
+                let regions = m.paneTextRegions.map { "\(format($0.width)) × \(format($0.height))" }.joined(separator: ", ")
+                lines.append("| \(Int(size.width)) × \(Int(size.height)) | \(layout.rawValue) | \(m.visiblePanes) | \(regions) | \(format(m.readingArea)) | \(Int((m.readingFraction * 100).rounded()))% |")
             }
         }
         return lines.joined(separator: "\n")
