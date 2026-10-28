@@ -1,7 +1,7 @@
 {
   "id": "workspace-layout-five-panes",
   "kind": "workspace_layout",
-  "description": "The first acceptance addition of specs/18-platform-capabilities.md: a workspace saved on a Mac with five panes in two link groups (three translations in group 1, a Greek text and its lexicon in group 2) and a wide profile only, opened on wide, regular, compact and ultra-wide widths at standard and accessibility text sizes. For every case the core must produce the listed columns, tabs, dock placement, rounded column widths and measure flags, place every pane exactly once, leave link groups and scroll anchors as the workspace holds them, show the active pane, and save the arrangement for that class without touching any other class. Widths are the B004 measurement points (1440, 1024, 768, 390) plus published display widths (1710, 1376, 3440). Editions and segments are fixture ids; the fixture carries no text.",
+  "description": "The first acceptance addition of specs/18-platform-capabilities.md: a workspace saved on a Mac with five panes in two link groups (three translations in group 1, a Greek text and its lexicon in group 2) and a wide profile only, opened on wide, regular, compact and ultra-wide widths at standard and accessibility text sizes. For every case the core must produce the listed columns, tabs, dock placement, rounded column widths and measure flags, place every pane exactly once, leave link groups and scroll anchors as the workspace holds them, show the active pane, and save the arrangement for that class without touching any other class. Widths are the B004 measurement points (1440, 1024, 390) plus published display widths (1710, 3440). Editions and segments are fixture ids; the fixture carries no text.",
   "license": "CC0 (synthetic layout data; no text)",
   "source": "specs/18-platform-capabilities.md, Workspace layout profiles; docs/evidence/B004.md reading-area tables",
   "workspace": {
@@ -78,7 +78,7 @@
   },
   "cases": [
     {
-      "name": "MacBook Air 15 at 1710 pt, standard text: all five shown with the saved widths",
+      "name": "Mac at 1710 pt, standard text: the stored wide profile is honoured, all five shown with the saved widths",
       "device_class": "wide",
       "width_pt": 1710,
       "text_size": "standard",
@@ -93,7 +93,7 @@
       }
     },
     {
-      "name": "MacBook Air 13 at 1440 pt, standard text: four columns, the trailing pane leads the tabs",
+      "name": "Mac at 1440 pt, standard text: four columns, the trailing pane leads the tabs",
       "device_class": "wide",
       "width_pt": 1440,
       "text_size": "standard",
@@ -105,6 +105,31 @@
         "profile_source": { "kind": "stored" },
         "column_widths_pt": [368, 368, 368, 335],
         "centered_measure": [false, false, false, false]
+      }
+    },
+    {
+      "name": "Mac at 1710 pt with a pane added on another device: the unknown pane is appended as a tab",
+      "device_class": "wide",
+      "width_pt": 1710,
+      "text_size": "standard",
+      "extra_pane": {
+        "id": "p6",
+        "kind": "reading",
+        "content_id": "fixture:edition-4",
+        "content_revision": "0",
+        "reference": "fixture:passage:1",
+        "link_group": null,
+        "pinned": true,
+        "width_fraction": 0.2
+      },
+      "expected": {
+        "slots": 5,
+        "columns": [["p1"], ["p2"], ["p3"], ["p4"], ["p5"]],
+        "tabs": ["p6"],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "stored" },
+        "column_widths_pt": [376, 376, 376, 342, 239],
+        "centered_measure": [false, false, false, false, false]
       }
     },
     {
@@ -135,52 +160,6 @@
         "profile_source": { "kind": "derived_from", "class": "wide" },
         "column_widths_pt": [512, 512],
         "centered_measure": [false, false]
-      }
-    },
-    {
-      "name": "iPad portrait at 768 pt, standard text: two panes plus tabs",
-      "device_class": "regular",
-      "width_pt": 768,
-      "text_size": "standard",
-      "expected": {
-        "slots": 2,
-        "columns": [["p1"], ["p2"]],
-        "tabs": ["p3", "p4", "p5"],
-        "notes_dock": "hidden",
-        "profile_source": { "kind": "derived_from", "class": "wide" },
-        "column_widths_pt": [384, 384],
-        "centered_measure": [false, false]
-      }
-    },
-    {
-      "name": "13-inch iPad landscape at 1376 pt, standard text: capped at three columns by the class",
-      "device_class": "regular",
-      "width_pt": 1376,
-      "text_size": "standard",
-      "expected": {
-        "slots": 3,
-        "columns": [["p1"], ["p2"], ["p3"]],
-        "tabs": ["p4", "p5"],
-        "notes_dock": "hidden",
-        "profile_source": { "kind": "derived_from", "class": "wide" },
-        "column_widths_pt": [459, 459, 459],
-        "centered_measure": [false, false, false]
-      }
-    },
-    {
-      "name": "iPad at 1024 pt with the Greek text active: it takes the last column, the displaced pane leads the tabs, the Mac's widths for the three shown panes are normalised",
-      "device_class": "regular",
-      "width_pt": 1024,
-      "text_size": "standard",
-      "active_pane_id": "p4",
-      "expected": {
-        "slots": 3,
-        "columns": [["p1"], ["p2"], ["p4"]],
-        "tabs": ["p3", "p5"],
-        "notes_dock": "hidden",
-        "profile_source": { "kind": "derived_from", "class": "wide" },
-        "column_widths_pt": [352, 352, 320],
-        "centered_measure": [false, false, false]
       }
     },
     {

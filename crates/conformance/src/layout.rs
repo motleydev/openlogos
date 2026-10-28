@@ -5,8 +5,8 @@
 //! (specs/18-platform-capabilities.md, "Workspace layout profiles").
 
 use openlogos_workspaces::{
-    DerivedLayout, DeviceClass, LayoutProfile, NotesDockPlacement, ProfileSource, ScrollAnchor,
-    TextSize, Workspace, derive_profile, with_profile,
+    DerivedLayout, DeviceClass, LayoutProfile, NotesDockPlacement, Pane, ProfileSource,
+    ScrollAnchor, TextSize, Workspace, derive_profile, with_profile,
 };
 use serde::{Deserialize, Serialize};
 
@@ -71,6 +71,10 @@ pub struct LayoutCase {
     /// Overrides the workspace's active pane for this case.
     #[serde(default)]
     pub active_pane_id: Option<String>,
+    /// A pane appended to the workspace before deriving, as if added on another device
+    /// after the profile was saved; the profile does not know it.
+    #[serde(default)]
+    pub extra_pane: Option<Pane>,
     /// The layout the core must derive.
     pub expected: ExpectedLayout,
 }
@@ -132,6 +136,9 @@ fn other_profiles(
 pub(crate) fn run_workspace_layout(fixture: &WorkspaceLayoutFixture, r: &mut Recorder) {
     for case in &fixture.cases {
         let mut workspace = fixture.workspace.clone();
+        if let Some(extra) = &case.extra_pane {
+            workspace.panes.push(extra.clone());
+        }
         if let Some(active) = &case.active_pane_id {
             workspace.active_pane_id = active.clone();
         }
