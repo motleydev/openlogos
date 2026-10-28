@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "note_id": "note-psalm-23-fixture",
+  "authority": "app",
+  "vault_id": "vault-fixture-7f3a",
+  "vault_path": "OpenLogos/note-psalm-23-fixture.md",
+  "last_seen_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "state": {
+    "state": "conflict",
+    "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "vault_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cause": "external_edit"
+  },
+  "operations": [
+    {
+      "id": "op-fixture-0002",
+      "kind": "create",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "echoed": true
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "note_id": "note-john-3-fixture",
+  "authority": "vault",
+  "vault_id": "vault-fixture-7f3a",
+  "vault_path": "Study/John 3.md",
+  "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "state": {
+    "state": "vault_owned"
+  },
+  "operations": [
+    {
+      "id": "op-fixture-0001",
+      "kind": "write",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "echoed": true
+    }
+  ]
+}

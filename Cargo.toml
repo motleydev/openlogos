@@ -43,6 +43,7 @@ libsqlite3-sys = { version = "=0.39.1", features = ["bundled"] }
 sqlite-vec = "=0.1.9"
 roaring = "=0.11.5"
 unicode-normalization = "=0.1.26"
+# SHA-256 of pack files for the device catalog and the link index rebuild check (B068).
 # Native bindings only (crates/ffi, non-wasm targets); the uniffi-bindgen binary must be
 # built from this same version so the generated Swift and Kotlin match the scaffolding.
 uniffi = "=0.32.2"

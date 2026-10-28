@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:resolution-report",
+  "title": "Citation resolution report",
+  "description": "The packager's per-scheme citation resolution report for one pack (specs/19-search-and-retrieval.md, Cross-resource links, item 4): for every locator scheme the citations that resolved to a section map, that parsed into a known work but resolved nowhere, and that no grammar could read (counted under the extractor's scheme hint, or `unknown`); the configured minimum resolved rate per scheme; and whether every minimum was met. The serialized form of openlogos_retrieval::ResolutionReport. `passed` must equal `failures` being empty, and a scheme with a minimum fails exactly when resolved / total is below it (tools/validate.py checks both).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "pack_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "grammar_version": {
+      "type": "string",
+      "pattern": "^b[0-9]{3}-[0-9]+$"
+    },
+    "schemes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scheme": {
+            "type": "string",
+            "minLength": 1
+          },
+          "resolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unresolved_known_work": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unparsed": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "scheme",
+          "resolved",
+          "unresolved_known_work",
+          "unparsed"
+        ]
+      }
+    },
+    "minimums": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scheme": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minimum_resolved_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "scheme",
+          "minimum_resolved_rate"
+        ]
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "passed": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "pack_id",
+    "grammar_version",
+    "schemes",
+    "minimums",
+    "failures",
+    "passed"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "passed": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "failures": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "failures": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

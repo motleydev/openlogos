@@ -723,7 +723,10 @@ name = "openlogos-conformance"
 version = "0.1.0"
 dependencies = [
  "openlogos-core",
+ "openlogos-notes",
+ "openlogos-retrieval",
  "openlogos-text",
+ "openlogos-workspaces",
  "serde",
  "serde_json",
 ]
@@ -763,6 +766,12 @@ version = "0.1.0"
 [[package]]
 name = "openlogos-notes"
 version = "0.1.0"
+dependencies = [
+ "openlogos-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "openlogos-package"
@@ -787,6 +796,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "sqlite-vec",
  "sqlite-wasm-rs",
  "thiserror",
@@ -831,6 +841,11 @@ dependencies = [
 [[package]]
 name = "openlogos-workspaces"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "password-hash"

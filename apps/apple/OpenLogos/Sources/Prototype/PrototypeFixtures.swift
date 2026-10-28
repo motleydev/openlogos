@@ -53,6 +53,10 @@ struct PaneContent: Identifiable, Equatable {
     let isInstalled: Bool
     /// A resource whose rights allow reference-only capture (specs/21 §11 "Read-only").
     let isReferenceOnly: Bool
+    /// The edition id and content revision the core's anchors carry (B005). Fixture-backed
+    /// texts use the fixture's; the others name the prototype resource.
+    var editionId: String = ""
+    var contentRevision: String = "fixture"
 
     static func == (lhs: PaneContent, rhs: PaneContent) -> Bool { lhs.id == rhs.id }
 }
@@ -101,7 +105,9 @@ enum PrototypeFixtures {
             isRightToLeft: false,
             kind: .scripture,
             isInstalled: true,
-            isReferenceOnly: false
+            isReferenceOnly: false,
+            editionId: core?.editionId ?? "bsb",
+            contentRevision: core?.contentRevision ?? "fixture"
         )
     }()
 
@@ -117,9 +123,59 @@ enum PrototypeFixtures {
             isRightToLeft: true,
             kind: .scripture,
             isInstalled: true,
-            isReferenceOnly: false
+            isReferenceOnly: false,
+            editionId: core?.editionId ?? "wlc",
+            contentRevision: core?.contentRevision ?? "fixture"
         )
     }()
+
+    /// The conformance suite's study note (CC0): English with two pointed Hebrew words inside
+    /// bidi isolates and an emoji with a skin-tone modifier. B005 renders it in the notes dock
+    /// so a selection over isolates and a surrogate pair round-trips through the same surface.
+    static let studyNote: PaneContent = {
+        let core = FixtureTexts.passage(id: "bidi-isolation-note", heading: "Study note", rtl: false)
+        return PaneContent(
+            id: "bidi-note",
+            shortName: "Note",
+            fullTitle: "Study note (conformance fixture)",
+            license: core?.attribution ?? "CC0",
+            passage: "Note on Genesis 1:1",
+            verses: core?.verses ?? [],
+            isRightToLeft: false,
+            kind: .commentary,
+            isInstalled: true,
+            isReferenceOnly: false,
+            editionId: core?.editionId ?? "notes",
+            contentRevision: core?.contentRevision ?? "fixture"
+        )
+    }()
+
+    /// A synthetic 1,000-verse paragraph set for the B005 scroll measurement: the CC0 BSB John
+    /// 3:16–17 fixture verses repeated, numbered 1…n in chapters of 100 so every token id fits
+    /// its field. Labelled synthetic on screen; it is not Scripture in order.
+    static func synthetic(verses count: Int) -> PaneContent {
+        let source = bsbJohn3.verses
+        guard !source.isEmpty else { return bsbJohn3 }
+        let verses = (0..<count).map { index -> Passage.Verse in
+            let chapter = index / 100 + 1
+            let verse = index % 100 + 1
+            return Passage.Verse(id: "John.\(chapter).\(verse)", number: "\(index + 1)", text: source[index % source.count].text)
+        }
+        return PaneContent(
+            id: "synthetic-\(count)",
+            shortName: "Synthetic",
+            fullTitle: "Synthetic \(count)-verse set (BSB John 3:16–17 repeated)",
+            license: "CC0 1.0 (Berean Standard Bible), repeated for measurement",
+            passage: "Synthetic 1–\(count)",
+            verses: verses,
+            isRightToLeft: false,
+            kind: .scripture,
+            isInstalled: true,
+            isReferenceOnly: false,
+            editionId: "synthetic",
+            contentRevision: "b005"
+        )
+    }
 
     static let bsbGenesis1 = PaneContent(
         id: "bsb-gen-1",
@@ -134,7 +190,8 @@ enum PrototypeFixtures {
         isRightToLeft: false,
         kind: .scripture,
         isInstalled: true,
-        isReferenceOnly: false
+        isReferenceOnly: false,
+        editionId: "bsb"
     )
 
     static let kjvJohn3 = PaneContent(
@@ -150,7 +207,8 @@ enum PrototypeFixtures {
         isRightToLeft: false,
         kind: .scripture,
         isInstalled: true,
-        isReferenceOnly: false
+        isReferenceOnly: false,
+        editionId: "kjv"
     )
 
     /// The exact verse bytes of the Nestle 1904 pack B064 built (`text` table, verse ids
@@ -168,7 +226,8 @@ enum PrototypeFixtures {
         isRightToLeft: false,
         kind: .scripture,
         isInstalled: true,
-        isReferenceOnly: false
+        isReferenceOnly: false,
+        editionId: "n1904"
     )
 
     /// A commentary the workspace remembers but that is not installed: the unavailable-source
@@ -197,7 +256,8 @@ enum PrototypeFixtures {
         isRightToLeft: false,
         kind: .scripture,
         isInstalled: true,
-        isReferenceOnly: true
+        isReferenceOnly: true,
+        editionId: "borrowed"
     )
 
     // MARK: Invented interaction shapes

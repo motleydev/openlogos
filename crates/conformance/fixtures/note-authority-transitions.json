@@ -1,0 +1,1641 @@
+{
+  "description": "The note-authority state machine of specs/13 (B040) as five scenarios: an app-owned note published to a vault (create, echo suppression, duplicate operation, republish with the last-seen hash, an external edit kept as a conflict, choose app, unpublish); a vault-owned note (reindex on change, a stale write rejected into a conflict keeping both bodies, merge, write-through, delete); explicit migrations in both directions with preview and backup, cancel, commit and replay; a vault file that disappears (detached, read-only, relinked by reappearance and by hand, converted to app-owned); and a rename that updates the path without making a new note. Each step names the event, and either the effect and the binding after or the error kind that refuses it. Hashes, vault id and paths are fixture values; no note text.",
+  "id": "note-authority-transitions",
+  "kind": "note_authority",
+  "license": "CC0 (synthetic binding data; no text)",
+  "scenarios": [
+    {
+      "initial": {
+        "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "authority": "app",
+        "last_seen_sha256": null,
+        "note_id": "note-fixture-publish",
+        "schema_version": "1.0",
+        "state": {
+          "state": "app_owned"
+        },
+        "vault_id": "vault-fixture-7f3a",
+        "vault_path": "OpenLogos/note-fixture-publish.md"
+      },
+      "name": "app-owned note published to a vault",
+      "steps": [
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": false,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "effect": "create_vault_file",
+            "operation_id": "op-publish-1",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "event": {
+            "body_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "event": "write_to_vault",
+            "last_seen_sha256": null,
+            "operation_id": "op-publish-1"
+          },
+          "name": "publish creates the vault file"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "effect": "suppressed_echo",
+            "operation_id": "op-publish-1"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": "op-publish-1",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": null
+          },
+          "name": "the watcher's echo of the publish is suppressed by its id"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "effect": "duplicate",
+            "operation_id": "op-publish-1"
+          },
+          "event": {
+            "body_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "event": "write_to_vault",
+            "last_seen_sha256": null,
+            "operation_id": "op-publish-1"
+          },
+          "name": "replaying the publish is a no-op"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "effect": "none"
+          },
+          "event": {
+            "event": "app_saved",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "name": "the reader edits in the app"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": false,
+                "id": "op-publish-2",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "effect": "write_vault_file",
+            "operation_id": "op-publish-2",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "event": {
+            "body_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": "write_to_vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "operation_id": "op-publish-2"
+          },
+          "name": "republish carries the last-seen hash"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": false,
+                "id": "op-publish-2",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "cause": "external_edit",
+              "state": "conflict",
+              "vault_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "effect": "keep_both_bodies",
+            "vault_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "vault_path": null
+          },
+          "name": "the published copy is edited in Obsidian: both bodies kept"
+        },
+        {
+          "error": "invalid_transition",
+          "event": {
+            "body_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": "write_to_vault",
+            "last_seen_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "operation_id": "op-publish-3"
+          },
+          "name": "a republish is not allowed until the conflict is resolved"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": false,
+                "id": "op-publish-2",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": false,
+                "id": "op-resolve-1",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "effect": "write_vault_file",
+            "operation_id": "op-resolve-1",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "event": {
+            "event": "resolve",
+            "operation_id": "op-resolve-1",
+            "resolution": {
+              "choice": "choose_app"
+            }
+          },
+          "name": "the reader keeps the app body: it is written over the vault's"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": false,
+                "id": "op-publish-2",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": true,
+                "id": "op-resolve-1",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "effect": {
+            "effect": "suppressed_echo",
+            "operation_id": "op-resolve-1"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": "op-resolve-1",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": null
+          },
+          "name": "the echo of the resolution write is suppressed"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": false,
+                "id": "op-publish-2",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": true,
+                "id": "op-resolve-1",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": false,
+                "id": "op-unpublish",
+                "kind": "delete",
+                "sha256": null
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": null,
+            "vault_path": null
+          },
+          "effect": {
+            "effect": "delete_vault_file",
+            "operation_id": "op-unpublish",
+            "vault_path": "OpenLogos/note-fixture-publish.md"
+          },
+          "event": {
+            "event": "delete_from_vault",
+            "operation_id": "op-unpublish"
+          },
+          "name": "unpublish deletes the vault copy"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-publish",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-publish-1",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": false,
+                "id": "op-publish-2",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": true,
+                "id": "op-resolve-1",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": false,
+                "id": "op-unpublish",
+                "kind": "delete",
+                "sha256": null
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": null,
+            "vault_path": null
+          },
+          "effect": {
+            "effect": "duplicate",
+            "operation_id": "op-unpublish"
+          },
+          "event": {
+            "event": "delete_from_vault",
+            "operation_id": "op-unpublish"
+          },
+          "name": "replaying the unpublish is a no-op"
+        }
+      ]
+    },
+    {
+      "initial": {
+        "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "authority": "vault",
+        "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "note_id": "note-fixture-vault",
+        "schema_version": "1.0",
+        "state": {
+          "state": "vault_owned"
+        },
+        "vault_id": "vault-fixture-7f3a",
+        "vault_path": "Study/John 3.md"
+      },
+      "name": "vault-owned note with a stale write",
+      "steps": [
+        {
+          "error": "app_save_under_vault_authority",
+          "event": {
+            "event": "app_saved",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "name": "a save in the app is refused under vault authority"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-vault",
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "effect": "reindex",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": null
+          },
+          "name": "the file changes in the vault: the app reindexes"
+        },
+        {
+          "binding": {
+            "app_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-vault",
+            "schema_version": "1.0",
+            "state": {
+              "app_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "cause": "stale_write",
+              "state": "conflict",
+              "vault_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "attempted_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "effect": "stale_write_rejected",
+            "vault_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "event": {
+            "body_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "event": "write_to_vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "operation_id": "op-stale"
+          },
+          "name": "a write that last saw the old file is rejected into a conflict"
+        },
+        {
+          "binding": {
+            "app_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-vault",
+            "schema_version": "1.0",
+            "state": {
+              "app_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "cause": "stale_write",
+              "state": "conflict",
+              "vault_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "effect": "none"
+          },
+          "event": {
+            "event": "app_saved",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "name": "the reader keeps editing the app body during the conflict"
+        },
+        {
+          "binding": {
+            "app_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "authority": "vault",
+            "last_seen_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "note_id": "note-fixture-vault",
+            "schema_version": "1.0",
+            "state": {
+              "app_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "cause": "stale_write",
+              "state": "conflict",
+              "vault_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "app_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "effect": "keep_both_bodies",
+            "vault_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "vault_path": null
+          },
+          "name": "the vault changes again during the conflict: both still kept"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-vault",
+            "operations": [
+              {
+                "echoed": false,
+                "id": "op-merge",
+                "kind": "write",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "effect": "write_vault_file",
+            "operation_id": "op-merge",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": "Study/John 3.md"
+          },
+          "event": {
+            "event": "resolve",
+            "operation_id": "op-merge",
+            "resolution": {
+              "choice": "merge",
+              "merged_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "name": "a merge writes a third body"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-vault",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-merge",
+                "kind": "write",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "effect": "suppressed_echo",
+            "operation_id": "op-merge"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": "op-merge",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": null
+          },
+          "name": "the echo of the merge is suppressed"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-vault",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-merge",
+                "kind": "write",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": false,
+                "id": "op-write",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "effect": "write_vault_file",
+            "operation_id": "op-write",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": "Study/John 3.md"
+          },
+          "event": {
+            "body_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": "write_to_vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "operation_id": "op-write"
+          },
+          "name": "a write-through edit with the current hash"
+        },
+        {
+          "binding": {
+            "app_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "authority": "vault",
+            "last_seen_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "note_id": "note-fixture-vault",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-merge",
+                "kind": "write",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-write",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/John 3.md"
+          },
+          "effect": {
+            "effect": "reindex",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": "op-write",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "vault_path": null
+          },
+          "name": "an observation under our id but with another body is an external change"
+        },
+        {
+          "binding": {
+            "app_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-vault",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-merge",
+                "kind": "write",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-write",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": false,
+                "id": "op-delete",
+                "kind": "delete",
+                "sha256": null
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": null,
+            "vault_path": null
+          },
+          "effect": {
+            "effect": "delete_vault_file",
+            "operation_id": "op-delete",
+            "vault_path": "Study/John 3.md"
+          },
+          "event": {
+            "event": "delete_from_vault",
+            "operation_id": "op-delete"
+          },
+          "name": "deleting the note deletes the file; the app keeps the recoverable body"
+        },
+        {
+          "binding": {
+            "app_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-vault",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-merge",
+                "kind": "write",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-write",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              {
+                "echoed": false,
+                "id": "op-delete",
+                "kind": "delete",
+                "sha256": null
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": null,
+            "vault_path": null
+          },
+          "effect": {
+            "effect": "duplicate",
+            "operation_id": "op-delete"
+          },
+          "event": {
+            "event": "delete_from_vault",
+            "operation_id": "op-delete"
+          },
+          "name": "replaying the delete is a no-op"
+        },
+        {
+          "error": "no_vault_file",
+          "event": {
+            "event": "delete_from_vault",
+            "operation_id": "op-delete-2"
+          },
+          "name": "a second delete with a new id has nothing to delete"
+        }
+      ]
+    },
+    {
+      "initial": {
+        "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "authority": "app",
+        "last_seen_sha256": null,
+        "note_id": "note-fixture-migrate",
+        "schema_version": "1.0",
+        "state": {
+          "state": "app_owned"
+        },
+        "vault_id": null,
+        "vault_path": null
+      },
+      "name": "explicit migrations with preview and backup",
+      "steps": [
+        {
+          "error": "missing_vault",
+          "event": {
+            "backup_id": "rev-backup-1",
+            "event": "begin_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "vault",
+            "vault_id": null,
+            "vault_path": null
+          },
+          "name": "migrating to a vault needs a vault"
+        },
+        {
+          "error": "same_authority",
+          "event": {
+            "backup_id": "rev-backup-1",
+            "event": "begin_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "app",
+            "vault_id": null,
+            "vault_path": null
+          },
+          "name": "migrating to the current authority is refused"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-migrate",
+            "schema_version": "1.0",
+            "state": {
+              "backup_id": "rev-backup-1",
+              "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "state": "migrating",
+              "to": "vault"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "backup_id": "rev-backup-1",
+            "effect": "preview_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "vault"
+          },
+          "event": {
+            "backup_id": "rev-backup-1",
+            "event": "begin_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "vault",
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "name": "begin: preview and backup, authority unchanged"
+        },
+        {
+          "error": "invalid_transition",
+          "event": {
+            "event": "app_saved",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "name": "the body is frozen during the preview"
+        },
+        {
+          "error": "migration_in_progress",
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": null
+          },
+          "name": "an external change during the migration is refused"
+        },
+        {
+          "error": "preview_mismatch",
+          "event": {
+            "event": "commit_migration",
+            "operation_id": "op-commit-1",
+            "written_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "name": "committing another body than the preview is refused"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-migrate",
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "effect": "none"
+          },
+          "event": {
+            "event": "cancel_migration"
+          },
+          "name": "cancel returns to app-owned with nothing written"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-migrate",
+            "schema_version": "1.0",
+            "state": {
+              "backup_id": "rev-backup-2",
+              "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "state": "migrating",
+              "to": "vault"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "backup_id": "rev-backup-2",
+            "effect": "preview_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "vault"
+          },
+          "event": {
+            "backup_id": "rev-backup-2",
+            "event": "begin_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "vault",
+            "vault_id": null,
+            "vault_path": null
+          },
+          "name": "begin again"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": false,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "effect": "create_vault_file",
+            "operation_id": "op-commit-2",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "event": {
+            "event": "commit_migration",
+            "operation_id": "op-commit-2",
+            "written_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "name": "commit creates the file and moves authority to the vault"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": false,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "effect": "duplicate",
+            "operation_id": "op-commit-2"
+          },
+          "event": {
+            "event": "commit_migration",
+            "operation_id": "op-commit-2",
+            "written_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "name": "replaying the commit is a no-op"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "effect": "suppressed_echo",
+            "operation_id": "op-commit-2"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": "op-commit-2",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": null
+          },
+          "name": "the echo of the commit is suppressed"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "backup_id": "rev-backup-3",
+              "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "state": "migrating",
+              "to": "app"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "backup_id": "rev-backup-3",
+            "effect": "preview_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "app"
+          },
+          "event": {
+            "backup_id": "rev-backup-3",
+            "event": "begin_migration",
+            "preview_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "to": "app",
+            "vault_id": null,
+            "vault_path": null
+          },
+          "name": "begin migrating back to the app"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-commit-3",
+                "kind": "adopt",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "effect": "authority_changed",
+            "to": "app"
+          },
+          "event": {
+            "event": "commit_migration",
+            "operation_id": "op-commit-3",
+            "written_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "name": "commit moves authority to the app and leaves the file"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "app",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-commit-3",
+                "kind": "adopt",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "cause": "external_edit",
+              "state": "conflict",
+              "vault_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "effect": "keep_both_bodies",
+            "vault_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": null
+          },
+          "name": "an edit of the file is now a conflict, not an import"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-commit-3",
+                "kind": "adopt",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-take-vault",
+                "kind": "adopt",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "effect": "reindex",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "event": {
+            "event": "resolve",
+            "operation_id": "op-take-vault",
+            "resolution": {
+              "choice": "choose_vault"
+            }
+          },
+          "name": "the reader takes the vault body"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-migrate",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-commit-2",
+                "kind": "create",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-commit-3",
+                "kind": "adopt",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              {
+                "echoed": true,
+                "id": "op-take-vault",
+                "kind": "adopt",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/note-fixture-migrate.md"
+          },
+          "effect": {
+            "effect": "duplicate",
+            "operation_id": "op-take-vault"
+          },
+          "event": {
+            "event": "resolve",
+            "operation_id": "op-take-vault",
+            "resolution": {
+              "choice": "choose_vault"
+            }
+          },
+          "name": "replaying the resolution is a no-op"
+        }
+      ]
+    },
+    {
+      "initial": {
+        "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "authority": "vault",
+        "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "note_id": "note-fixture-detached",
+        "schema_version": "1.0",
+        "state": {
+          "state": "vault_owned"
+        },
+        "vault_id": "vault-fixture-7f3a",
+        "vault_path": "Study/Psalm 23.md"
+      },
+      "name": "vault file gone: detached, relinked, converted",
+      "steps": [
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-detached",
+            "schema_version": "1.0",
+            "state": {
+              "state": "detached"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/Psalm 23.md"
+          },
+          "effect": {
+            "effect": "file_missing"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": null,
+            "vault_path": null
+          },
+          "name": "the file is gone: detached"
+        },
+        {
+          "error": "detached_read_only",
+          "event": {
+            "event": "app_saved",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "name": "a detached note is read-only"
+        },
+        {
+          "error": "invalid_transition",
+          "event": {
+            "body_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": "write_to_vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "operation_id": "op-x"
+          },
+          "name": "a write is refused while detached"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-detached",
+            "schema_version": "1.0",
+            "state": {
+              "state": "detached"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Study/Psalm 23.md"
+          },
+          "effect": {
+            "effect": "unchanged"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": null,
+            "vault_path": null
+          },
+          "name": "still gone"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-detached",
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Archive/Psalm 23.md"
+          },
+          "effect": {
+            "effect": "path_updated",
+            "vault_path": "Archive/Psalm 23.md"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": "Archive/Psalm 23.md"
+          },
+          "name": "the file reappears moved, same body: the path is updated"
+        },
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-detached",
+            "schema_version": "1.0",
+            "state": {
+              "state": "detached"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Archive/Psalm 23.md"
+          },
+          "effect": {
+            "effect": "file_missing"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": null,
+            "vault_path": null
+          },
+          "name": "gone again"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-detached",
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Psalms/23.md"
+          },
+          "effect": {
+            "effect": "reindex",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "event": {
+            "event": "relink",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_id": null,
+            "vault_path": "Psalms/23.md"
+          },
+          "name": "relinked to an edited file: the vault wins"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-detached",
+            "schema_version": "1.0",
+            "state": {
+              "state": "detached"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Psalms/23.md"
+          },
+          "effect": {
+            "effect": "file_missing"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": null,
+            "vault_path": null
+          },
+          "name": "gone a third time"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "app",
+            "last_seen_sha256": null,
+            "note_id": "note-fixture-detached",
+            "schema_version": "1.0",
+            "state": {
+              "state": "app_owned"
+            },
+            "vault_id": null,
+            "vault_path": null
+          },
+          "effect": {
+            "effect": "authority_changed",
+            "to": "app"
+          },
+          "event": {
+            "event": "convert_detached_to_app"
+          },
+          "name": "the reader converts the note to app-owned with the app copy"
+        },
+        {
+          "error": "invalid_transition",
+          "event": {
+            "event": "relink",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_id": null,
+            "vault_path": "x.md"
+          },
+          "name": "relink is not defined for an app-owned note"
+        }
+      ]
+    },
+    {
+      "initial": {
+        "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "authority": "vault",
+        "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "note_id": "note-fixture-rename",
+        "schema_version": "1.0",
+        "state": {
+          "state": "vault_owned"
+        },
+        "vault_id": "vault-fixture-7f3a",
+        "vault_path": "Study/John 1.md"
+      },
+      "name": "a renamed file is the same note",
+      "steps": [
+        {
+          "binding": {
+            "app_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "authority": "vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "note_id": "note-fixture-rename",
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "effect": {
+            "effect": "path_updated",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "name": "a rename updates the path and nothing else"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-rename",
+            "operations": [
+              {
+                "echoed": false,
+                "id": "op-w",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "effect": {
+            "effect": "write_vault_file",
+            "operation_id": "op-w",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "event": {
+            "body_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": "write_to_vault",
+            "last_seen_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "operation_id": "op-w"
+          },
+          "name": "a write goes to the new path"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-rename",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-w",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "effect": {
+            "effect": "suppressed_echo",
+            "operation_id": "op-w"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": "op-w",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "name": "the echo arrives with the path"
+        },
+        {
+          "binding": {
+            "app_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authority": "vault",
+            "last_seen_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "note_id": "note-fixture-rename",
+            "operations": [
+              {
+                "echoed": true,
+                "id": "op-w",
+                "kind": "write",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ],
+            "schema_version": "1.0",
+            "state": {
+              "state": "vault_owned"
+            },
+            "vault_id": "vault-fixture-7f3a",
+            "vault_path": "Gospels/John 1.md"
+          },
+          "effect": {
+            "effect": "unchanged"
+          },
+          "event": {
+            "event": "vault_observed",
+            "operation_id": null,
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vault_path": "../outside.md"
+          },
+          "name": "a rename to an unsafe path is ignored"
+        }
+      ]
+    }
+  ],
+  "source": "specs/13-obsidian-and-ink.md, Ownership and scope, Direct vault integration; specs/03-data-model.md, NoteBinding; crates/notes/src/binding.rs"
+}

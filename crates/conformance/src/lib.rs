@@ -25,7 +25,17 @@ use openlogos_text::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub mod contracts;
 pub mod identity;
+pub mod layout;
+pub mod locators;
+
+pub use contracts::{
+    AuthorityScenario, AuthorityStep, MigrationCase, MigrationLayout, NoteAuthorityFixture,
+    WorkspaceMigrationFixture,
+};
+
+pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 
 pub use identity::{
     AlignedSegment, AlignmentFixture, ExpectedReanchor, FixtureAlignmentRecord, FixtureLineage,
@@ -33,9 +43,13 @@ pub use identity::{
     LineageFixture, ReanchorCase, ReanchorFixture, RenderingCase, ReverseCase, RevisionPair,
     StaleCase,
 };
+pub use locators::{
+    SectionMapCase, SectionMapFixture, UnifiedCase, WorkCitationCase, WorkCitationErrorCase,
+    WorkCitationFixture,
+};
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 10] = [
+pub const FIXTURE_FILES: [(&str, &str); 16] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -47,6 +61,10 @@ pub const FIXTURE_FILES: [(&str, &str); 10] = [
     (
         "bidi-isolation-note",
         include_str!("../fixtures/bidi-isolation-note.json"),
+    ),
+    (
+        "greek-diacritics-john-3-sblgnt",
+        include_str!("../fixtures/greek-diacritics-john-3-sblgnt.json"),
     ),
     (
         "psalm-9-10-numbering",
@@ -76,6 +94,26 @@ pub const FIXTURE_FILES: [(&str, &str); 10] = [
         "edition-revision-reanchor",
         include_str!("../fixtures/edition-revision-reanchor.json"),
     ),
+    (
+        "work-citations-builtin",
+        include_str!("../fixtures/work-citations-builtin.json"),
+    ),
+    (
+        "section-maps-institutes-thayer",
+        include_str!("../fixtures/section-maps-institutes-thayer.json"),
+    ),
+    (
+        "workspace-layout-five-panes",
+        include_str!("../fixtures/workspace-layout-five-panes.json"),
+    ),
+    (
+        "workspace-migration-1-0-to-1-1",
+        include_str!("../fixtures/workspace-migration-1-0-to-1-1.json"),
+    ),
+    (
+        "note-authority-transitions",
+        include_str!("../fixtures/note-authority-transitions.json"),
+    ),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -88,6 +126,8 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/cross-verse-selection-john-3.json"),
         ",",
         include_str!("../fixtures/bidi-isolation-note.json"),
+        ",",
+        include_str!("../fixtures/greek-diacritics-john-3-sblgnt.json"),
         ",",
         include_str!("../fixtures/psalm-9-10-numbering.json"),
         ",",
@@ -102,6 +142,16 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/alignment-john-3-16-sblgnt-bsb.json"),
         ",",
         include_str!("../fixtures/edition-revision-reanchor.json"),
+        ",",
+        include_str!("../fixtures/work-citations-builtin.json"),
+        ",",
+        include_str!("../fixtures/section-maps-institutes-thayer.json"),
+        ",",
+        include_str!("../fixtures/workspace-layout-five-panes.json"),
+        ",",
+        include_str!("../fixtures/workspace-migration-1-0-to-1-1.json"),
+        ",",
+        include_str!("../fixtures/note-authority-transitions.json"),
         "]"
     )
 }
@@ -456,6 +506,16 @@ pub enum Fixture {
     Alignment(Box<AlignmentFixture>),
     /// Anchors carried across a content revision.
     Reanchor(ReanchorFixture),
+    /// Work citations through the built-in locator grammars (B068).
+    WorkCitations(WorkCitationFixture),
+    /// Section-map resolution to installed editions (B068).
+    SectionMaps(SectionMapFixture),
+    /// A workspace opened on every device class (B062 layout profiles).
+    WorkspaceLayout(Box<WorkspaceLayoutFixture>),
+    /// A workspace document migrated between schema versions (B040, ADR 0003).
+    WorkspaceMigration(WorkspaceMigrationFixture),
+    /// Note bindings taken through the authority state machine (B040).
+    NoteAuthority(Box<NoteAuthorityFixture>),
 }
 
 impl Fixture {
@@ -469,6 +529,11 @@ impl Fixture {
             Fixture::Lineage(f) => &f.id,
             Fixture::Alignment(f) => &f.id,
             Fixture::Reanchor(f) => &f.id,
+            Fixture::WorkCitations(f) => &f.id,
+            Fixture::SectionMaps(f) => &f.id,
+            Fixture::WorkspaceLayout(f) => &f.id,
+            Fixture::WorkspaceMigration(f) => &f.id,
+            Fixture::NoteAuthority(f) => &f.id,
         }
     }
 }
@@ -570,6 +635,21 @@ pub fn run_all() -> ConformanceReport {
             Ok(Fixture::Lineage(fixture)) => identity::run_lineage(&fixture, &mut recorder),
             Ok(Fixture::Alignment(fixture)) => identity::run_alignment(&fixture, &mut recorder),
             Ok(Fixture::Reanchor(fixture)) => identity::run_reanchor(&fixture, &mut recorder),
+            Ok(Fixture::WorkCitations(fixture)) => {
+                locators::run_work_citations(&fixture, &mut recorder);
+            }
+            Ok(Fixture::SectionMaps(fixture)) => {
+                locators::run_section_maps(&fixture, &mut recorder);
+            }
+            Ok(Fixture::WorkspaceLayout(fixture)) => {
+                layout::run_workspace_layout(&fixture, &mut recorder);
+            }
+            Ok(Fixture::WorkspaceMigration(fixture)) => {
+                contracts::run_workspace_migration(&fixture, &mut recorder);
+            }
+            Ok(Fixture::NoteAuthority(fixture)) => {
+                contracts::run_note_authority(&fixture, &mut recorder);
+            }
             Err(error) => recorder.fail(
                 "fixture parses",
                 "a fixture of a known kind",

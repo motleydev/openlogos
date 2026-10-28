@@ -79,6 +79,99 @@ def check_thread(thread):
         if any(e not in evidence for e in m['evidence_ids']): raise ValueError('Fabricated evidence ID')
         seen.add(m['id'])
 
+PROFILE_LIMITS={'compact':1,'regular':3,'wide':6,'ultra-wide':6}
+def check_workspace(wp):
+    # B062: layout profiles place every pane exactly once and own no link state or anchor
+    # (specs/18-platform-capabilities.md, "Workspace layout profiles").
+    ids=[p['id'] for p in wp['panes']]
+    if len(set(ids))!=len(ids): raise ValueError('Duplicate pane IDs')
+    if wp['active_pane_id'] not in ids: raise ValueError('Active pane is not a pane')
+    if abs(sum(p['width_fraction'] for p in wp['panes'])-1)>1e-8: raise ValueError('Pane widths do not sum to one')
+    groups={p['link_group'] for p in wp['panes'] if p['link_group'] is not None}
+    for p in wp['panes']:
+        if p['pinned'] and p['link_group'] is not None: raise ValueError('Pinned pane inside a link group: '+p['id'])
+    for cls,profile in wp.get('layout_profiles',{}).items():
+        if cls not in PROFILE_LIMITS: raise ValueError('Unknown device class: '+cls)
+        placed=profile['visible_pane_ids']+profile['tab_order']
+        if sorted(placed)!=sorted(ids): raise ValueError('Profile '+cls+' does not place every pane exactly once')
+        collapsed=set(profile.get('collapsed_link_groups',[]))
+        group_of={p['id']:p['link_group'] for p in wp['panes']}
+        columns,seen=0,set()
+        for pid in profile['visible_pane_ids']:
+            g=group_of[pid]
+            if g in collapsed and g in seen: continue
+            columns+=1; seen.add(g)
+        if columns>PROFILE_LIMITS[cls]: raise ValueError('Profile '+cls+' shows more columns than its class allows')
+        widths=profile.get('widths',{})
+        if widths and not set(widths)<=set(profile['visible_pane_ids']): raise ValueError('Profile '+cls+' sizes a pane it does not show')
+        if widths and abs(sum(widths.values())-1)>1e-8: raise ValueError('Profile '+cls+' widths do not sum to one')
+        if not set(profile.get('collapsed_link_groups',[]))<=groups: raise ValueError('Profile '+cls+' collapses a link group no pane belongs to')
+# B040: no credential fields in portable state (specs/12, specs/03). Mirrors
+# openlogos_notes::credentials; a key is credential-shaped by its words, a string value by
+# its shape. The schemas of the four portable record kinds define no such property either.
+CREDENTIAL_WORDS={'password','passwd','passphrase','secret','secrets','apikey','credential','credentials','bearer','cookie','cookies','oauth','jwt','privatekey','clientsecret','accesskey'}
+CREDENTIAL_PAIRS={('api','key'),('private','key'),('client','secret'),('access','key'),('secret','key'),('signing','key'),('session','key')}
+TOKEN_ALLOW={'token_ids','tokens','token_count','token'}
+PORTABLE_SCHEMAS=['workspace','note-binding','reading-snapshot','research-thread']
+def key_words(key):
+    return [w.lower() for w in re.findall(r'[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+|[A-Z]+', key)]
+def is_credential_key(key):
+    words=key_words(key)
+    if CREDENTIAL_WORDS & set(words): return True
+    if any((a,b) in CREDENTIAL_PAIRS for a,b in zip(words,words[1:])): return True
+    if words and words[-1] in ('token','tokens'):
+        lower=key.lower()
+        return lower not in TOKEN_ALLOW and not lower.endswith('_token_count')
+    return False
+def is_credential_value(value):
+    v=value.strip()
+    if '-----BEGIN' in v and 'PRIVATE KEY-----' in v: return True
+    if len(v)>7 and v[:7].lower()=='bearer ': return True
+    return len(v)>=20 and v.startswith(('sk-','sk_live_','sk_test_','ghp_','gho_','xoxb-','xoxp-','AKIA'))
+def find_credentials(value, path=''):
+    found=[]
+    if isinstance(value, dict):
+        for k,v in value.items():
+            here=path+'/'+k
+            if is_credential_key(k): found.append(here)
+            found+=find_credentials(v, here)
+    elif isinstance(value, list):
+        for i,v in enumerate(value): found+=find_credentials(v, f'{path}/{i}')
+    elif isinstance(value, str) and is_credential_value(value): found.append(path)
+    return found
+def check_no_credentials(doc, label):
+    found=find_credentials(doc)
+    if found: raise ValueError(f'Credential-shaped field in {label}: '+', '.join(found))
+def schema_property_names(schema):
+    names=set()
+    if isinstance(schema, dict):
+        for k,v in schema.get('properties',{}).items():
+            names.add(k); names|=schema_property_names(v)
+        for key in ('items','then','else','if','additionalProperties'):
+            names|=schema_property_names(schema.get(key))
+        for key in ('allOf','anyOf','oneOf'):
+            for sub in schema.get(key,[]): names|=schema_property_names(sub)
+        for sub in schema.get('$defs',{}).values(): names|=schema_property_names(sub)
+    return names
+def check_schema_has_no_credential_properties(name):
+    bad=sorted(k for k in schema_property_names(load('schemas/'+name+'.schema.json')) if is_credential_key(k))
+    if bad: raise ValueError(f'Schema {name} defines credential-shaped properties: '+', '.join(bad))
+def check_binding(b):
+    # B040: one body authority per note; a path is not identity; states carry what they need.
+    if b['vault_path'] is not None: safe_path(b['vault_path'])
+    if (b['vault_path'] is None) != (b['vault_id'] is None): raise ValueError('Vault path and vault id come together')
+    if b['last_seen_sha256'] is not None and b['vault_path'] is None: raise ValueError('Last-seen hash without a vault path')
+    st=b['state']['state']
+    owner={'app_owned':'app','vault_owned':'vault','detached':'vault'}.get(st)
+    if owner and b['authority']!=owner: raise ValueError(f'State {st} under {b["authority"]} authority')
+    if st in ('vault_owned','conflict') and b['last_seen_sha256'] is None: raise ValueError(f'State {st} without a last-seen hash')
+    if st in ('vault_owned','conflict','detached') and b['vault_path'] is None: raise ValueError(f'State {st} without a vault path')
+    if st=='migrating' and b['state']['to']==b['authority']: raise ValueError('Migrating to the current authority')
+    if st=='migrating' and b['state']['to']=='vault' and b['vault_path'] is None: raise ValueError('Migrating to a vault without a path')
+    ops=[o['id'] for o in b.get('operations',[])]
+    if len(ops)!=len(set(ops)): raise ValueError('Repeated operation id')
+    for o in b.get('operations',[]):
+        if (o['kind']=='delete')!=(o.get('sha256') is None): raise ValueError('Only a delete has no hash: '+o['id'])
 def core_api_version():
     text=(R/'crates/core/src/lib.rs').read_text()
     m=re.search(r'pub const API_VERSION: &str = "([^"]+)"', text)
@@ -215,9 +308,21 @@ def check_sync_fixture(f):
         if not rec or rec[0]['revocation'] is not None: raise ValueError('Active device list names a revoked or unknown device')
     if f['expected_state']!=f['expected_state_after_compaction']: raise ValueError('Compaction must not change the merged state')
     if set(f['expected_compacted'])-set(f['expected_state']['deleted']): raise ValueError('Compacted entity without a tombstone')
+def check_report(report):
+    # Per-scheme minimums decide the failures, and passed follows from them (B068).
+    rates={s['scheme']:(s['resolved']/(s['resolved']+s['unresolved_known_work']+s['unparsed']) if (s['resolved']+s['unresolved_known_work']+s['unparsed']) else 1.0) for s in report['schemes']}
+    failing={m['scheme'] for m in report['minimums'] if m['scheme'] in rates and rates[m['scheme']]<m['minimum_resolved_rate']}
+    listed={f.split(':')[0] for f in report['failures']}
+    if failing!=listed: raise ValueError('Resolution report failures do not match its minimums')
+    if report['passed']!=(not report['failures']): raise ValueError('Resolution report passed flag disagrees with its failures')
+    canonical={}
+    for s in load('examples/locator-scheme.json')['schemes']:
+        if s['canonical']: canonical.setdefault(s['work'],[]).append(s['id'])
+    if any(len(v)!=1 for v in canonical.values()): raise ValueError('A work must have exactly one canonical locator scheme')
+
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','sync-merge'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -236,6 +341,7 @@ def main():
         ('rights-record','examples/rights-record.json'),
         ('research-provider-policy','specs/research-provider-policy.json'),
         ('workspace','examples/workspace.json'),
+        ('workspace','examples/archive/workspace-1.0.json'),
         ('reading-snapshot','examples/reading-snapshot.json'),
         ('ink-document','examples/ink-document.json'),
         ('research-thread','examples/research-thread.json'),
@@ -247,7 +353,11 @@ def main():
         ('vault-export-receipt','examples/vault-export-receipt.json'),
         ('sync-operation','examples/sync-operation.json'),
         ('device-enrollment','examples/device-enrollment.json'),
-        ('recovery-export','examples/recovery-export.json')]
+        ('recovery-export','examples/recovery-export.json'),
+        ('locator-scheme','examples/locator-scheme.json'),
+        ('resolution-report','examples/resolution-report.json'),
+        ('note-binding','examples/note-binding.json'),
+        ('note-binding','examples/note-binding-conflict.json')]
     for s,p in pairs: validate(s,load(p))
     agents = load('specs/agents.json')['agents']
     tasks = load('specs/backlog.json')['tasks']
@@ -304,9 +414,28 @@ def main():
     unsigned['fixture_only']=False
     expect_rejected(lambda:validate('package-manifest',unsigned),'unsigned production manifest')
     wp=load('examples/workspace.json')
-    assert len(wp['panes'])==3 and all(p['kind']=='reading' for p in wp['panes'])
-    assert wp['active_pane_id'] in {p['id'] for p in wp['panes']}
-    assert abs(sum(p['width_fraction'] for p in wp['panes'])-1)<1e-8
+    check_workspace(wp)
+    assert wp['schema_version']=='1.1' and len(wp['panes'])==5, 'Workspace example is the five-pane two-group workspace of specs/18'
+    assert len({p['link_group'] for p in wp['panes']})==2 and {'wide','regular'}<=set(wp['layout_profiles'])
+    old_wp=load('examples/archive/workspace-1.0.json')
+    check_workspace(old_wp)
+    assert old_wp['schema_version']=='1.0' and len(old_wp['panes'])==3 and 'layout_profiles' not in old_wp
+    dropped=copy.deepcopy(wp); dropped['layout_profiles']['wide']['visible_pane_ids'].remove('p5')
+    expect_rejected(lambda:check_workspace(dropped),'layout profile that drops a pane')
+    twice=copy.deepcopy(wp); twice['layout_profiles']['regular']['tab_order'].append('p1')
+    expect_rejected(lambda:check_workspace(twice),'layout profile that places a pane twice')
+    cross=copy.deepcopy(wp); cross['layout_profiles']['regular']['compact']={'visible_pane_ids':['p2'],'tab_order':['p1','p3','p4','p5'],'notes_dock_open':False}
+    expect_rejected(lambda:validate('workspace',cross),'layout profile that carries another class\'s layout')
+    foreign_class=copy.deepcopy(wp); foreign_class['layout_profiles']['desktop']=foreign_class['layout_profiles']['wide']
+    expect_rejected(lambda:validate('workspace',foreign_class),'layout profile for an unknown device class')
+    crowded=copy.deepcopy(wp); crowded['layout_profiles']['compact']={'visible_pane_ids':['p1','p2'],'tab_order':['p3','p4','p5'],'notes_dock_open':False}
+    expect_rejected(lambda:check_workspace(crowded),'compact profile with two columns')
+    stacked=copy.deepcopy(crowded); stacked['layout_profiles']['compact']['collapsed_link_groups']=['1']
+    check_workspace(stacked)  # the same two panes in one collapsed group are one column
+    old_with_profiles=copy.deepcopy(old_wp); old_with_profiles['layout_profiles']={}
+    expect_rejected(lambda:validate('workspace',old_with_profiles),'1.0 workspace with 1.1 profiles')
+    new_without_profiles=copy.deepcopy(wp); del new_without_profiles['layout_profiles']
+    expect_rejected(lambda:validate('workspace',new_without_profiles),'1.1 workspace without profiles')
     sn=load('examples/reading-snapshot.json')
     ink=load('examples/ink-document.json')
     check_ink(sn,ink)
@@ -449,6 +578,80 @@ def main():
     expect_rejected(lambda:validate('recovery-export',bad),'argon2 memory below the floor')
     bad=copy.deepcopy(sync_fixture); bad['deliveries'][0]['order'].append('op-'+'f'*64)
     expect_rejected(lambda:check_sync_fixture(bad),'delivery of an operation outside the fixture')
-    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, key material in sync records and malformed operations.')
+    report=load('examples/resolution-report.json'); check_report(report)
+    bad_report=copy.deepcopy(report); bad_report['passed']=True
+    expect_rejected(lambda:validate('resolution-report',bad_report),'resolution report passed with failures')
+    bad_report=copy.deepcopy(report); bad_report['minimums'][1]['minimum_resolved_rate']=0.5
+    expect_rejected(lambda:check_report(bad_report),'resolution report failure not implied by its minimums')
+    schemes=load('examples/locator-scheme.json')
+    bad_schemes=copy.deepcopy(schemes); del bad_schemes['schemes'][2]['kind']['print_edition']
+    expect_rejected(lambda:validate('locator-scheme',bad_schemes),'page scheme without a print edition')
+    bad_schemes=copy.deepcopy(schemes); bad_schemes['schemes'][2]['canonical']=True
+    expect_rejected(lambda:validate('locator-scheme',bad_schemes),'page scheme as a canonical scheme')
+    # B040: workspace migration, note bindings and no credential fields in portable state.
+    migration=load('crates/conformance/fixtures/workspace-migration-1-0-to-1-1.json')
+    assert migration['kind']=='workspace_migration'
+    for case in migration['cases']:
+        validate('workspace',case['input']); check_workspace(case['input'])
+        validate('workspace',case['expected']); check_workspace(case['expected'])
+        assert case['input']['schema_version']==case['from'] and case['expected']['schema_version']==case['to']
+        mirrored=copy.deepcopy(case['input']); mirrored['schema_version']='1.1'; mirrored.setdefault('layout_profiles',{})
+        assert mirrored==case['expected'], 'Migration fixture expectation is not the 1.0 -> 1.1 step'
+        assert [p['id'] for p in case['expected']['panes']]==[p['id'] for p in case['input']['panes']], 'Migration renumbered panes'
+    assert migration['cases'][0]['input']==old_wp, 'Migration fixture migrates the archived 1.0 example'
+    authority=load('crates/conformance/fixtures/note-authority-transitions.json')
+    assert authority['kind']=='note_authority'
+    for scenario in authority['scenarios']:
+        validate('note-binding',scenario['initial']); check_binding(scenario['initial'])
+        for step in scenario['steps']:
+            if 'binding' in step: validate('note-binding',step['binding']); check_binding(step['binding'])
+            assert ('binding' in step)!=('error' in step), 'A step ends in a binding or an error'
+            check_no_credentials(step,'note authority step '+scenario['name'])
+    binding=load('examples/note-binding.json'); check_binding(binding)
+    conflict=load('examples/note-binding-conflict.json'); check_binding(conflict)
+    assert binding['authority']=='vault' and binding['state']['state']=='vault_owned'
+    assert conflict['authority']=='app' and conflict['state']['state']=='conflict' and conflict['state']['app_sha256']!=conflict['state']['vault_sha256']
+    for name in PORTABLE_SCHEMAS: check_schema_has_no_credential_properties(name)
+    for label,doc in [('workspace',wp),('workspace 1.0',old_wp),('note-binding',binding),('note-binding conflict',conflict),('reading-snapshot',sn),('research-thread',thread)]:
+        check_no_credentials(doc,label)
+    leaked_wp=copy.deepcopy(wp); leaked_wp['provider_token']='fixture-forbidden'
+    expect_rejected(lambda:validate('workspace',leaked_wp),'token in a workspace (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_wp,'workspace'),'token in a workspace (check)')
+    leaked_pane=copy.deepcopy(wp); leaked_pane['panes'][0]['api_key']='fixture-forbidden'
+    expect_rejected(lambda:validate('workspace',leaked_pane),'api key on a pane (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_pane,'workspace'),'api key on a pane (check)')
+    leaked_value=copy.deepcopy(wp); leaked_value['title']='-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----'
+    expect_rejected(lambda:check_no_credentials(leaked_value,'workspace'),'private key block in an innocent field')
+    leaked_binding=copy.deepcopy(binding); leaked_binding['vault_password']='fixture-forbidden'
+    expect_rejected(lambda:validate('note-binding',leaked_binding),'password in a note binding (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_binding,'note-binding'),'password in a note binding (check)')
+    leaked_snapshot=copy.deepcopy(sn); leaked_snapshot['background']['credentials']={'user':'x'}
+    expect_rejected(lambda:validate('reading-snapshot',leaked_snapshot),'credentials object in a snapshot (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_snapshot,'reading-snapshot'),'credentials object in a snapshot (check)')
+    expect_rejected(lambda:check_no_credentials(leaked,'research-thread'),'api key in a research thread (check)')
+    leaked_thread=copy.deepcopy(thread); leaked_thread['messages'][0]['text']='Bearer fixture-forbidden-token-value'
+    expect_rejected(lambda:check_no_credentials(leaked_thread,'research-thread'),'bearer header in a message body')
+    bad_binding=copy.deepcopy(binding); bad_binding['authority']='app'
+    expect_rejected(lambda:validate('note-binding',bad_binding),'vault_owned under app authority (schema)')
+    expect_rejected(lambda:check_binding(bad_binding),'vault_owned under app authority (check)')
+    bad_binding=copy.deepcopy(binding); bad_binding['vault_path']='../outside.md'
+    expect_rejected(lambda:validate('note-binding',bad_binding),'binding path traversal (schema)')
+    expect_rejected(lambda:check_binding(bad_binding),'binding path traversal (check)')
+    bad_binding=copy.deepcopy(conflict); bad_binding['last_seen_sha256']=None
+    expect_rejected(lambda:validate('note-binding',bad_binding),'conflict without a last-seen hash (schema)')
+    expect_rejected(lambda:check_binding(bad_binding),'conflict without a last-seen hash (check)')
+    bad_binding=copy.deepcopy(binding); bad_binding['state']={'state':'migrating','to':'vault','preview_sha256':binding['app_sha256'],'backup_id':'rev-1'}
+    expect_rejected(lambda:check_binding(bad_binding),'migrating to the current authority')
+    bad_binding=copy.deepcopy(binding); bad_binding['state']={'state':'migrating','to':'app','preview_sha256':binding['app_sha256']}
+    expect_rejected(lambda:validate('note-binding',bad_binding),'migration without a backup')
+    bad_binding=copy.deepcopy(binding); bad_binding['note_id']='Study/John 3.md'
+    expect_rejected(lambda:validate('note-binding',bad_binding),'path used as note identity')
+    bad_binding=copy.deepcopy(binding); bad_binding['state']={'state':'conflict','app_sha256':binding['app_sha256'],'vault_sha256':binding['app_sha256']}
+    expect_rejected(lambda:validate('note-binding',bad_binding),'conflict without a cause')
+    bad_binding=copy.deepcopy(binding); bad_binding['operations'].append(dict(binding['operations'][0]))
+    expect_rejected(lambda:check_binding(bad_binding),'repeated operation id')
+    old_migrated=copy.deepcopy(old_wp); old_migrated['layout_profiles']={}
+    expect_rejected(lambda:validate('workspace',old_migrated),'migration output still declaring 1.0')
     print('Scope: blueprint structure only. No app, Nix build, cryptography, source clearance or Paperclip deployment has been tested.')
+    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums, note-binding authority, workspace layout profiles, key material in sync records and malformed operations.')
 if __name__=='__main__': main()

@@ -7,7 +7,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # since B064, the retrieval engine (SQLite compiled for wasm32 by sqlite-wasm-rs; the dev
 # shells point the `cc` crate at an unwrapped clang for it) and, since B021, the sync crate
 # with its pinned crypto crates (ADR 0004).
-wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-conformance -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-sync -p openlogos-ffi"
+wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-workspaces -p openlogos-notes -p openlogos-conformance -p openlogos-sync -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-ffi"
 
 [private]
 default:
@@ -135,6 +135,11 @@ test-wasm *args:
 test-web: wasm-build
     cd apps/web/core-host && npm test
 
+# B005: the DOM reader (apps/web/reader) round-trips its selection cases in headless Chrome through WebDriver; extra arguments go to the runner, e.g. `just test-dom-reader --shots artifacts/b005/shots --case cross-verse`
+[group('6 · web')]
+test-dom-reader *args:
+    @scripts/dom-reader-test.sh {{ args }}
+
 # Build the app shell for an iPad simulator (unsigned), boot it, install and launch: `just sim` or `just sim "iPad mini (A17 Pro)"` (apple shell)
 [group('7 · apple app')]
 sim device="":
@@ -149,6 +154,23 @@ sim-shot file="":
 [group('7 · apple app')]
 sim-stop:
     @scripts/sim.sh stop
+
+# B005: the TextKit 2 round-trip unit tests in the app on the iPad simulator `just sim` booted (apple shell); `just test-reader mac` runs them natively in the macOS app
+[group('7 · apple app')]
+test-reader platform="ipad":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd apps/apple/OpenLogos && xcodegen generate --quiet
+    if [ "{{ platform }}" = mac ]; then
+      xcodebuild -project OpenLogos.xcodeproj -scheme OpenLogosMac -configuration Debug -destination "platform=macOS,arch=arm64" -derivedDataPath ../../../artifacts/b005/DerivedData CODE_SIGNING_ALLOWED=NO -only-testing:OpenLogosMacTests test
+    else
+      xcodebuild -project OpenLogos.xcodeproj -scheme OpenLogos -configuration Debug -destination "id=$(cat ../../../artifacts/sim/device)" -derivedDataPath ../../../artifacts/sim/DerivedData CODE_SIGNING_ALLOWED=NO -only-testing:OpenLogosTests test
+    fi
+
+# B005: a picture of the TextKit 2 surface with one anchor case: `just b005-shot ipad cross-verse 1024` or `just b005-shot mac hebrew-elohim 1440` (apple shell)
+[group('7 · apple app')]
+b005-shot platform case width="1024":
+    @scripts/b005-shots.sh {{ platform }} "{{ platform }}-anchors-{{ width }}-{{ case }}" {{ width }} {{ case }}
 
 # A signed test build onto the shelf devices on the tailnet install from: `just ship ios` (apple shell; .envrc.local sets APPLE_TEAM_ID)
 [group('7 · apple app')]
