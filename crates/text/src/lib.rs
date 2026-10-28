@@ -8,21 +8,10 @@
 //! text. See specs/03-data-model.md, specs/19-search-and-retrieval.md and
 //! docs/adr/0001-rust-core-native-ui.md.
 
-/// The crate's package name, as Cargo records it.
-///
-/// Placeholder API so the skeleton has one documented item and one test per crate; the
-/// real surface arrives with the tasks named in the module documentation.
-#[must_use]
-pub fn crate_name() -> &'static str {
-    env!("CARGO_PKG_NAME")
-}
+pub mod offsets;
 
-#[cfg(test)]
-mod tests {
-    use super::crate_name;
-
-    #[test]
-    fn crate_is_part_of_the_openlogos_workspace() {
-        assert!(crate_name().starts_with("openlogos-"));
-    }
-}
+pub use offsets::{
+    GraphemeRange, OffsetError, OffsetUnit, Utf16Range, grapheme_len, grapheme_to_scalar,
+    scalar_len, scalar_to_grapheme, scalar_to_utf16, slice_scalars, snap_to_graphemes, utf16_len,
+    utf16_to_scalar,
+};

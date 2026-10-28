@@ -1,0 +1,303 @@
+{
+  "id": "psalm-9-10-numbering",
+  "kind": "versification",
+  "description": "Verse map rows for Psalms 9 and 10 between the English (eng), Masoretic/original (org) and Septuagint (lxx) numbering, stored as rows from each scheme to org as specs/19 requires, with Psalm 13:5-6 added as the nearest real merge case. Rows written as ranges expand verse by verse. The table is a fixture, not a complete versification: anything outside it is unmapped by design.",
+  "license": "CC0 (numbering facts; no copyrighted text)",
+  "source": "Each row carries its own source note; the eng and lxx scheme names follow Paratext usage.",
+  "rows": [
+    {
+      "from_scheme": "eng",
+      "from": "Ps.9.0",
+      "to_scheme": "org",
+      "to": "Ps.9.1",
+      "kind": "equal",
+      "source": "The Hebrew superscription of Psalm 9 is verse 1 in the MT (BHS/WLC); English editions print it unnumbered, and the Paratext eng scheme numbers an unnumbered title as verse 0. org is the Paratext/Copenhagen original scheme, which follows the Masoretic numbering with the superscription as verse 1 of Psalm 9."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Ps.9.1-Ps.9.20",
+      "to_scheme": "org",
+      "to": "Ps.9.2-Ps.9.21",
+      "kind": "equal",
+      "source": "English Psalm 9 has 20 verses, Hebrew 21: every English verse n is Hebrew verse n+1 (compare KJV/BSB Psalm 9 with WLC Psalm 9)."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Ps.10.1-Ps.10.18",
+      "to_scheme": "org",
+      "to": "Ps.10.1-Ps.10.18",
+      "kind": "equal",
+      "source": "Psalm 10 has no superscription in the MT, so English and Hebrew numbering agree (18 verses in both)."
+    },
+    {
+      "from_scheme": "lxx",
+      "from": "Ps.9.1-Ps.9.21",
+      "to_scheme": "org",
+      "to": "Ps.9.1-Ps.9.21",
+      "kind": "equal",
+      "source": "Rahlfs' Septuagint numbers the superscription as Psalm 9:1 like the MT, so Greek 9:1-21 is Hebrew 9:1-21."
+    },
+    {
+      "from_scheme": "lxx",
+      "from": "Ps.9.22-Ps.9.39",
+      "to_scheme": "org",
+      "to": "Ps.10.1-Ps.10.18",
+      "kind": "equal",
+      "source": "The Septuagint joins Hebrew Psalms 9 and 10 (one alphabetic acrostic) into Greek Psalm 9 of 39 verses: Greek 9:22-39 is Hebrew 10:1-18. Not verified against a printed Rahlfs here; the verse count (21 + 18 = 39) is consistent."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Ps.13.0",
+      "to_scheme": "org",
+      "to": "Ps.13.1",
+      "kind": "equal",
+      "source": "Psalm 13 superscription, same convention as Psalm 9. Included because Psalm 13 is the nearest real case of a verse boundary that moves inside a verse."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Ps.13.1-Ps.13.4",
+      "to_scheme": "org",
+      "to": "Ps.13.2-Ps.13.5",
+      "kind": "equal",
+      "source": "English Psalm 13:1-4 is Hebrew 13:2-5 (superscription offset)."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Ps.13.5",
+      "to_scheme": "org",
+      "to": "Ps.13.6",
+      "kind": "merge",
+      "source": "Hebrew Psalm 13:6 covers English 13:5 and 13:6 (KJV/BSB divide 'But I have trusted in Your loving devotion' from 'I will sing to the LORD'); English 13:5 is the first part of Hebrew 13:6. Mapping eng to org is therefore partial; org 13:6 to eng is exact with two targets."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Ps.13.6",
+      "to_scheme": "org",
+      "to": "Ps.13.6",
+      "kind": "merge",
+      "source": "English Psalm 13:6 is the second part of Hebrew 13:6; see the previous row."
+    }
+  ],
+  "cases": [
+    {
+      "name": "English 9:1 is Hebrew 9:2",
+      "reference": "Ps.9.1",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Ps.9.2"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "Hebrew 9:2 is English 9:1 (row read backwards)",
+      "reference": "Ps.9.2",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Ps.9.1"
+      ],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "Hebrew superscription 9:1 is the English title verse 0",
+      "reference": "Ps.9.1",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Ps.9.0"
+      ],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "English 9:20 is Hebrew 9:21",
+      "reference": "Ps.9.20",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Ps.9.21"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "English 10:1 is Hebrew 10:1",
+      "reference": "Ps.10.1",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Ps.10.1"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "English 9:1 pivots to Greek 9:2",
+      "reference": "Ps.9.1",
+      "from": "eng",
+      "to": "lxx",
+      "status": "exact",
+      "targets": [
+        "Ps.9.2"
+      ],
+      "path": [
+        "eng",
+        "org",
+        "lxx"
+      ]
+    },
+    {
+      "name": "English 10:1 pivots to Greek 9:22",
+      "reference": "Ps.10.1",
+      "from": "eng",
+      "to": "lxx",
+      "status": "exact",
+      "targets": [
+        "Ps.9.22"
+      ],
+      "path": [
+        "eng",
+        "org",
+        "lxx"
+      ]
+    },
+    {
+      "name": "Greek 9:39 pivots to English 10:18",
+      "reference": "Ps.9.39",
+      "from": "lxx",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Ps.10.18"
+      ],
+      "path": [
+        "lxx",
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "Greek 9:22 is Hebrew 10:1",
+      "reference": "Ps.9.22",
+      "from": "lxx",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Ps.10.1"
+      ],
+      "path": [
+        "lxx",
+        "org"
+      ]
+    },
+    {
+      "name": "English 13:5 is part of Hebrew 13:6",
+      "reference": "Ps.13.5",
+      "from": "eng",
+      "to": "org",
+      "status": "partial",
+      "targets": [
+        "Ps.13.6"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "Hebrew 13:6 is English 13:5 and 13:6 together",
+      "reference": "Ps.13.6",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Ps.13.5",
+        "Ps.13.6"
+      ],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "Psalm 11 is outside the table: unmapped, not identity",
+      "reference": "Ps.11.1",
+      "from": "eng",
+      "to": "org",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "no Vulgate rows: the pivot stops at org",
+      "reference": "Ps.9.1",
+      "from": "eng",
+      "to": "vul",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "eng",
+        "org",
+        "vul"
+      ]
+    },
+    {
+      "name": "Greek Psalm 10 is not in the table: unmapped",
+      "reference": "Ps.10.1",
+      "from": "lxx",
+      "to": "org",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "lxx",
+        "org"
+      ]
+    },
+    {
+      "name": "same scheme is identity",
+      "reference": "Ps.9.1",
+      "from": "eng",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Ps.9.1"
+      ],
+      "path": [
+        "eng"
+      ]
+    },
+    {
+      "name": "chapter-only reference is unmapped",
+      "reference": "Ps.9",
+      "from": "eng",
+      "to": "org",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    }
+  ]
+}

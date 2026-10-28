@@ -26,6 +26,13 @@ openlogos-ink = { path = "crates/ink" }
 openlogos-notes = { path = "crates/notes" }
 openlogos-sync = { path = "crates/sync" }
 
+# Third-party crates, pinned exactly so every platform's binding is generated from the same
+# code; `cargo update` is a reviewed change. Each one must build for wasm32-unknown-unknown.
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+thiserror = "=2.0.21"
+unicode-segmentation = "=1.13.3"
+
 # Shared lint policy; each crate opts in with `[lints] workspace = true`. Clippy itself
 # runs with `-D warnings` (justfile, nix flake check), so a warning here fails CI.
 [workspace.lints.rust]

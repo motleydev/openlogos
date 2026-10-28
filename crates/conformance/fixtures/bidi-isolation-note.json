@@ -1,0 +1,149 @@
+{
+  "id": "bidi-isolation-note",
+  "kind": "text",
+  "description": "An English study note embedding two pointed Hebrew words inside Unicode bidi isolates (U+2067 RLI and U+2068 FSI, each closed by U+2069 PDI), with a supplementary-plane emoji carrying a skin-tone modifier. The isolate characters are part of the text, count as one scalar and one UTF-16 unit each, and form their own grapheme clusters; the emoji is two scalars, four UTF-16 units and one cluster.",
+  "license": "Note text: CC0 (written for this fixture). Hebrew words: public domain (WLC), see hebrew-cantillation-genesis-1.",
+  "source": "written for this fixture",
+  "edition_id": "notes",
+  "content_revision": "fixture-1",
+  "segments": [
+    {
+      "segment_id": "note-1",
+      "text": "Genesis opens with ⁧בְּרֵאשִׁ֖ית⁩ (“in the beginning”); the tipcha sits under the shin. Compare ⁨אֱלֹהִ֑ים⁩ in the same verse 👍🏽.",
+      "scalar_len": 129,
+      "utf16_len": 131,
+      "grapheme_len": 118,
+      "tokens": []
+    }
+  ],
+  "selections": [
+    {
+      "name": "first Hebrew word without its isolates",
+      "segment_id": "note-1",
+      "scalar": {
+        "start": 20,
+        "end": 32
+      },
+      "utf16": {
+        "start": 20,
+        "end": 32
+      },
+      "grapheme": {
+        "start": 20,
+        "end": 26
+      },
+      "exact": "בְּרֵאשִׁ֖ית",
+      "tokens": []
+    },
+    {
+      "name": "first Hebrew word with RLI and PDI",
+      "segment_id": "note-1",
+      "scalar": {
+        "start": 19,
+        "end": 33
+      },
+      "utf16": {
+        "start": 19,
+        "end": 33
+      },
+      "grapheme": {
+        "start": 19,
+        "end": 27
+      },
+      "exact": "⁧בְּרֵאשִׁ֖ית⁩",
+      "tokens": []
+    },
+    {
+      "name": "the RLI alone",
+      "segment_id": "note-1",
+      "scalar": {
+        "start": 19,
+        "end": 20
+      },
+      "utf16": {
+        "start": 19,
+        "end": 20
+      },
+      "grapheme": {
+        "start": 19,
+        "end": 20
+      },
+      "exact": "⁧",
+      "tokens": []
+    },
+    {
+      "name": "second Hebrew word with FSI and PDI",
+      "segment_id": "note-1",
+      "scalar": {
+        "start": 96,
+        "end": 107
+      },
+      "utf16": {
+        "start": 96,
+        "end": 107
+      },
+      "grapheme": {
+        "start": 90,
+        "end": 97
+      },
+      "exact": "⁨אֱלֹהִ֑ים⁩",
+      "tokens": []
+    },
+    {
+      "name": "thumbs up with skin tone",
+      "segment_id": "note-1",
+      "scalar": {
+        "start": 126,
+        "end": 128
+      },
+      "utf16": {
+        "start": 126,
+        "end": 130
+      },
+      "grapheme": {
+        "start": 116,
+        "end": 117
+      },
+      "exact": "👍🏽",
+      "tokens": []
+    },
+    {
+      "name": "from 'Compare' to the end",
+      "segment_id": "note-1",
+      "scalar": {
+        "start": 88,
+        "end": 129
+      },
+      "utf16": {
+        "start": 88,
+        "end": 131
+      },
+      "grapheme": {
+        "start": 82,
+        "end": 118
+      },
+      "exact": "Compare ⁨אֱלֹהִ֑ים⁩ in the same verse 👍🏽.",
+      "tokens": []
+    },
+    {
+      "name": "between the emoji base and its modifier, snaps to the whole emoji",
+      "segment_id": "note-1",
+      "scalar": {
+        "start": 127,
+        "end": 128
+      },
+      "utf16": {
+        "start": 128,
+        "end": 130
+      },
+      "grapheme": null,
+      "exact": "🏽",
+      "tokens": [],
+      "snapped": {
+        "start": 126,
+        "end": 128
+      },
+      "note": "scalar offset inside the emoji cluster"
+    }
+  ]
+}

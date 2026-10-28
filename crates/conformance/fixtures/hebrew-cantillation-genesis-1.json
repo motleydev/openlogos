@@ -1,0 +1,282 @@
+{
+  "id": "hebrew-cantillation-genesis-1",
+  "kind": "text",
+  "description": "Genesis 1:1-2 from the Westminster Leningrad Codex as encoded by the Open Scriptures Hebrew Bible (WLC 4.20), byte-exact and not NFC-normalized: NFC would reorder the points and cantillation in both verses, so the fixture must be stored and compared as is. Tokens are the OSHB <w> elements; the maqqef (U+05BE) and sof pasuq (U+05C3) are <seg> elements kept in the text but not tokens. Offsets were computed with Python unicodedata at generation time, independently of the Rust implementation.",
+  "license": "Text: public domain (Westminster Leningrad Codex). OSHB markup: CC BY 4.0, https://github.com/openscriptures/morphhb",
+  "source": "https://raw.githubusercontent.com/openscriptures/morphhb/master/wlc/Gen.xml, verses Gen.1.1 and Gen.1.2",
+  "edition_id": "wlc",
+  "content_revision": "oshb-wlc-4.20",
+  "segments": [
+    {
+      "segment_id": "Gen.1.1",
+      "text": "בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים אֵ֥ת הַשָּׁמַ֖יִם וְאֵ֥ת הָאָֽרֶץ׃",
+      "scalar_len": 65,
+      "utf16_len": 65,
+      "grapheme_len": 35,
+      "tokens": [
+        {
+          "id": "wlc:01001001001",
+          "start": 0,
+          "end": 12
+        },
+        {
+          "id": "wlc:01001001002",
+          "start": 13,
+          "end": 20
+        },
+        {
+          "id": "wlc:01001001003",
+          "start": 21,
+          "end": 30
+        },
+        {
+          "id": "wlc:01001001004",
+          "start": 31,
+          "end": 35
+        },
+        {
+          "id": "wlc:01001001005",
+          "start": 36,
+          "end": 48
+        },
+        {
+          "id": "wlc:01001001006",
+          "start": 49,
+          "end": 55
+        },
+        {
+          "id": "wlc:01001001007",
+          "start": 56,
+          "end": 64
+        }
+      ]
+    },
+    {
+      "segment_id": "Gen.1.2",
+      "text": "וְהָאָ֗רֶץ הָיְתָ֥ה תֹ֨הוּ֙ וָבֹ֔הוּ וְחֹ֖שֶׁךְ עַל־פְּנֵ֣י תְה֑וֹם וְר֣וּחַ אֱלֹהִ֔ים מְרַחֶ֖פֶת עַל־פְּנֵ֥י הַמָּֽיִם׃",
+      "scalar_len": 120,
+      "utf16_len": 120,
+      "grapheme_len": 66,
+      "tokens": [
+        {
+          "id": "wlc:01001002001",
+          "start": 0,
+          "end": 10
+        },
+        {
+          "id": "wlc:01001002002",
+          "start": 11,
+          "end": 19
+        },
+        {
+          "id": "wlc:01001002003",
+          "start": 20,
+          "end": 27
+        },
+        {
+          "id": "wlc:01001002004",
+          "start": 28,
+          "end": 36
+        },
+        {
+          "id": "wlc:01001002005",
+          "start": 37,
+          "end": 47
+        },
+        {
+          "id": "wlc:01001002006",
+          "start": 48,
+          "end": 51
+        },
+        {
+          "id": "wlc:01001002007",
+          "start": 52,
+          "end": 59
+        },
+        {
+          "id": "wlc:01001002008",
+          "start": 60,
+          "end": 67
+        },
+        {
+          "id": "wlc:01001002009",
+          "start": 68,
+          "end": 76
+        },
+        {
+          "id": "wlc:01001002010",
+          "start": 77,
+          "end": 86
+        },
+        {
+          "id": "wlc:01001002011",
+          "start": 87,
+          "end": 97
+        },
+        {
+          "id": "wlc:01001002012",
+          "start": 98,
+          "end": 101
+        },
+        {
+          "id": "wlc:01001002013",
+          "start": 102,
+          "end": 109
+        },
+        {
+          "id": "wlc:01001002014",
+          "start": 110,
+          "end": 119
+        }
+      ]
+    }
+  ],
+  "selections": [
+    {
+      "name": "whole verse 1",
+      "segment_id": "Gen.1.1",
+      "scalar": {
+        "start": 0,
+        "end": 65
+      },
+      "utf16": {
+        "start": 0,
+        "end": 65
+      },
+      "grapheme": {
+        "start": 0,
+        "end": 35
+      },
+      "exact": "בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים אֵ֥ת הַשָּׁמַ֖יִם וְאֵ֥ת הָאָֽרֶץ׃",
+      "tokens": [
+        "wlc:01001001001",
+        "wlc:01001001002",
+        "wlc:01001001003",
+        "wlc:01001001004",
+        "wlc:01001001005",
+        "wlc:01001001006",
+        "wlc:01001001007"
+      ]
+    },
+    {
+      "name": "third word of 1:1 (Elohim, with etnachta)",
+      "segment_id": "Gen.1.1",
+      "scalar": {
+        "start": 21,
+        "end": 30
+      },
+      "utf16": {
+        "start": 21,
+        "end": 30
+      },
+      "grapheme": {
+        "start": 11,
+        "end": 16
+      },
+      "exact": "אֱלֹהִ֑ים",
+      "tokens": [
+        "wlc:01001001003"
+      ]
+    },
+    {
+      "name": "first two words of 1:1",
+      "segment_id": "Gen.1.1",
+      "scalar": {
+        "start": 0,
+        "end": 20
+      },
+      "utf16": {
+        "start": 0,
+        "end": 20
+      },
+      "grapheme": {
+        "start": 0,
+        "end": 10
+      },
+      "exact": "בְּרֵאשִׁ֖ית בָּרָ֣א",
+      "tokens": [
+        "wlc:01001001001",
+        "wlc:01001001002"
+      ]
+    },
+    {
+      "name": "maqqef only (U+05BE), not a token",
+      "segment_id": "Gen.1.2",
+      "scalar": {
+        "start": 51,
+        "end": 52
+      },
+      "utf16": {
+        "start": 51,
+        "end": 52
+      },
+      "grapheme": {
+        "start": 27,
+        "end": 28
+      },
+      "exact": "־",
+      "tokens": []
+    },
+    {
+      "name": "maqqef pair al-pene including the maqqef",
+      "segment_id": "Gen.1.2",
+      "scalar": {
+        "start": 48,
+        "end": 59
+      },
+      "utf16": {
+        "start": 48,
+        "end": 59
+      },
+      "grapheme": {
+        "start": 25,
+        "end": 31
+      },
+      "exact": "עַל־פְּנֵ֣י",
+      "tokens": [
+        "wlc:01001002006",
+        "wlc:01001002007"
+      ]
+    },
+    {
+      "name": "sof pasuq at the end of 1:2",
+      "segment_id": "Gen.1.2",
+      "scalar": {
+        "start": 119,
+        "end": 120
+      },
+      "utf16": {
+        "start": 119,
+        "end": 120
+      },
+      "grapheme": {
+        "start": 65,
+        "end": 66
+      },
+      "exact": "׃",
+      "tokens": []
+    },
+    {
+      "name": "between bet and its dagesh: inside a cluster, snaps outward to the whole first letter",
+      "segment_id": "Gen.1.1",
+      "scalar": {
+        "start": 1,
+        "end": 3
+      },
+      "utf16": {
+        "start": 1,
+        "end": 3
+      },
+      "grapheme": null,
+      "exact": "ְּ",
+      "tokens": [
+        "wlc:01001001001"
+      ],
+      "snapped": {
+        "start": 0,
+        "end": 3
+      },
+      "note": "scalar 1 and 3 are not grapheme boundaries; grapheme is null and snapped gives the enclosing cluster range"
+    }
+  ]
+}
