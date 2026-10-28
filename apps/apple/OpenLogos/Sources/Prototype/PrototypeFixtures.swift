@@ -2,8 +2,9 @@
 // screen. Only public-domain or CC licensed text appears: the core's conformance fixtures
 // (WLC Genesis 1:1–2, public domain; Berean Standard Bible John 3:16–17, CC0) through
 // FixtureTexts, plus the Berean Standard Bible for Genesis 1:1–2 (CC0), the King James Version
-// (public domain) and the Greek text of John 3:16–17 typed for the prototype in the public-
-// domain Byzantine text form. Nothing is fetched. Cross references, lexical data, search hits,
+// (1769 Blayney text, public domain) and the Nestle 1904 Greek of John 3:16–17 copied byte for
+// byte from the B064 N1904 pack (MACULA Greek, CC BY 4.0, source S73); no Greek is written from
+// memory anywhere in this file. Nothing is fetched. Cross references, lexical data, search hits,
 // collection items and vault paths are invented shapes for the interaction, not datasets, and
 // carry no claim of accuracy.
 import Foundation
@@ -153,7 +154,7 @@ enum PrototypeFixtures {
     )
 
     /// The exact verse bytes of the Nestle 1904 pack B064 built (`text` table, verse ids
-    /// 44003016 and 44003017), pasted unchanged; no Greek is typed from memory here.
+    /// 44003016 and 44003017), pasted unchanged; no Greek is written from memory here.
     static let greekJohn3 = PaneContent(
         id: "n1904-john-3",
         shortName: "N1904",
@@ -205,7 +206,7 @@ enum PrototypeFixtures {
 
     static let collectionItems: [CollectionItem] = [
         .init(id: "c1", kind: .passage, resource: "BSB", locator: "John 3:16", text: "For God so loved the world that He gave His one and only Son…", rights: .quotable),
-        .init(id: "c2", kind: .excerpt, resource: "N1904", locator: "John 3:16, μονογενῆ", text: "τὸν υἱὸν αὐτοῦ τὸν μονογενῆ", rights: .quotable),
+        .init(id: "c2", kind: .excerpt, resource: "N1904", locator: "John 3:16, μονογενῆ", text: "τὸν Υἱὸν τὸν μονογενῆ", rights: .quotable), // exact N1904 bytes of the verse above
         .init(id: "c3", kind: .observation, resource: "Me", locator: "on John 3:16", text: "\"One and only\" (BSB) versus \"only begotten\" (KJV): compare renderings before teaching this.", rights: .quotable),
         .init(id: "c4", kind: .crossReference, resource: "Borrowed ed.", locator: "1 John 4:9", text: "reference only: quotation not permitted in this edition", rights: .metadataOnly),
     ]
