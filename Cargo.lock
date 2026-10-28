@@ -501,6 +501,7 @@ version = "0.1.0"
 dependencies = [
  "openlogos-core",
  "openlogos-text",
+ "openlogos-workspaces",
  "serde",
  "serde_json",
 ]
