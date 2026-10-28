@@ -26,6 +26,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod identity;
+pub mod layout;
+
+pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 
 pub use identity::{
     AlignedSegment, AlignmentFixture, ExpectedReanchor, FixtureAlignmentRecord, FixtureLineage,
@@ -35,7 +38,7 @@ pub use identity::{
 };
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 10] = [
+pub const FIXTURE_FILES: [(&str, &str); 11] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -76,6 +79,10 @@ pub const FIXTURE_FILES: [(&str, &str); 10] = [
         "edition-revision-reanchor",
         include_str!("../fixtures/edition-revision-reanchor.json"),
     ),
+    (
+        "workspace-layout-five-panes",
+        include_str!("../fixtures/workspace-layout-five-panes.json"),
+    ),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -102,6 +109,8 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/alignment-john-3-16-sblgnt-bsb.json"),
         ",",
         include_str!("../fixtures/edition-revision-reanchor.json"),
+        ",",
+        include_str!("../fixtures/workspace-layout-five-panes.json"),
         "]"
     )
 }
@@ -456,6 +465,8 @@ pub enum Fixture {
     Alignment(Box<AlignmentFixture>),
     /// Anchors carried across a content revision.
     Reanchor(ReanchorFixture),
+    /// A workspace opened on every device class (B062 layout profiles).
+    WorkspaceLayout(Box<WorkspaceLayoutFixture>),
 }
 
 impl Fixture {
@@ -469,6 +480,7 @@ impl Fixture {
             Fixture::Lineage(f) => &f.id,
             Fixture::Alignment(f) => &f.id,
             Fixture::Reanchor(f) => &f.id,
+            Fixture::WorkspaceLayout(f) => &f.id,
         }
     }
 }
@@ -570,6 +582,9 @@ pub fn run_all() -> ConformanceReport {
             Ok(Fixture::Lineage(fixture)) => identity::run_lineage(&fixture, &mut recorder),
             Ok(Fixture::Alignment(fixture)) => identity::run_alignment(&fixture, &mut recorder),
             Ok(Fixture::Reanchor(fixture)) => identity::run_reanchor(&fixture, &mut recorder),
+            Ok(Fixture::WorkspaceLayout(fixture)) => {
+                layout::run_workspace_layout(&fixture, &mut recorder);
+            }
             Err(error) => recorder.fail(
                 "fixture parses",
                 "a fixture of a known kind",

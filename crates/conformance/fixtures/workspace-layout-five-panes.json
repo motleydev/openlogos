@@ -1,0 +1,212 @@
+{
+  "id": "workspace-layout-five-panes",
+  "kind": "workspace_layout",
+  "description": "The first acceptance addition of specs/18-platform-capabilities.md: a workspace saved on a Mac with five panes in two link groups (three translations in group 1, a Greek text and its lexicon in group 2) and a wide profile only, opened on wide, regular, compact and ultra-wide widths at standard and accessibility text sizes. For every case the core must produce the listed columns, tabs, dock placement, rounded column widths and measure flags, place every pane exactly once, leave link groups and scroll anchors as the workspace holds them, show the active pane, and save the arrangement for that class without touching any other class. Widths are the B004 measurement points (1440, 1024, 390) plus published display widths (1710, 3440). Editions and segments are fixture ids; the fixture carries no text.",
+  "license": "CC0 (synthetic layout data; no text)",
+  "source": "specs/18-platform-capabilities.md, Workspace layout profiles; docs/evidence/B004.md reading-area tables",
+  "workspace": {
+    "schema_version": "1.1",
+    "fixture_only": true,
+    "id": "fixture:workspace:mac-five-panes",
+    "title": "Five panes in two link groups, saved on a Mac",
+    "panes": [
+      {
+        "id": "p1",
+        "kind": "reading",
+        "content_id": "fixture:edition-1",
+        "content_revision": "0",
+        "reference": "fixture:passage:1",
+        "link_group": "1",
+        "pinned": false,
+        "width_fraction": 0.2,
+        "scroll_anchor": { "segment_id": "fixture:segment:1", "scalar": 0 }
+      },
+      {
+        "id": "p2",
+        "kind": "reading",
+        "content_id": "fixture:edition-2",
+        "content_revision": "0",
+        "reference": "fixture:passage:1",
+        "link_group": "1",
+        "pinned": false,
+        "width_fraction": 0.2,
+        "scroll_anchor": { "segment_id": "fixture:segment:1", "scalar": 12 }
+      },
+      {
+        "id": "p3",
+        "kind": "reading",
+        "content_id": "fixture:edition-3",
+        "content_revision": "0",
+        "reference": "fixture:passage:1",
+        "link_group": "1",
+        "pinned": false,
+        "width_fraction": 0.2,
+        "scroll_anchor": { "segment_id": "fixture:segment:1", "scalar": 7 }
+      },
+      {
+        "id": "p4",
+        "kind": "reading",
+        "content_id": "fixture:edition-greek",
+        "content_revision": "0",
+        "reference": "fixture:passage:1",
+        "link_group": "2",
+        "pinned": false,
+        "width_fraction": 0.2,
+        "scroll_anchor": { "segment_id": "fixture:segment:1-greek", "scalar": 3 }
+      },
+      {
+        "id": "p5",
+        "kind": "lexicon",
+        "content_id": "fixture:lexicon-1",
+        "content_revision": "0",
+        "reference": "fixture:passage:1",
+        "link_group": "2",
+        "pinned": false,
+        "width_fraction": 0.2
+      }
+    ],
+    "notes_dock_id": "fixture:note:1",
+    "active_pane_id": "p1",
+    "layout_profiles": {
+      "wide": {
+        "visible_pane_ids": ["p1", "p2", "p3", "p4", "p5"],
+        "tab_order": [],
+        "widths": { "p1": 0.22, "p2": 0.22, "p3": 0.22, "p4": 0.2, "p5": 0.14 },
+        "notes_dock_open": false
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "Mac at 1710 pt, standard text: the stored wide profile is honoured, all five shown with the saved widths",
+      "device_class": "wide",
+      "width_pt": 1710,
+      "text_size": "standard",
+      "expected": {
+        "slots": 5,
+        "columns": [["p1"], ["p2"], ["p3"], ["p4"], ["p5"]],
+        "tabs": [],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "stored" },
+        "column_widths_pt": [376, 376, 376, 342, 239],
+        "centered_measure": [false, false, false, false, false]
+      }
+    },
+    {
+      "name": "Mac at 1440 pt, standard text: four columns, the trailing pane leads the tabs",
+      "device_class": "wide",
+      "width_pt": 1440,
+      "text_size": "standard",
+      "expected": {
+        "slots": 4,
+        "columns": [["p1"], ["p2"], ["p3"], ["p4"]],
+        "tabs": ["p5"],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "stored" },
+        "column_widths_pt": [368, 368, 368, 335],
+        "centered_measure": [false, false, false, false]
+      }
+    },
+    {
+      "name": "Mac at 1710 pt with a pane added on another device: the unknown pane is appended as a tab",
+      "device_class": "wide",
+      "width_pt": 1710,
+      "text_size": "standard",
+      "extra_pane": {
+        "id": "p6",
+        "kind": "reading",
+        "content_id": "fixture:edition-4",
+        "content_revision": "0",
+        "reference": "fixture:passage:1",
+        "link_group": null,
+        "pinned": true,
+        "width_fraction": 0.2
+      },
+      "expected": {
+        "slots": 5,
+        "columns": [["p1"], ["p2"], ["p3"], ["p4"], ["p5"]],
+        "tabs": ["p6"],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "stored" },
+        "column_widths_pt": [376, 376, 376, 342, 239],
+        "centered_measure": [false, false, false, false, false]
+      }
+    },
+    {
+      "name": "iPad at 1024 pt, standard text: three translations shown, Greek and lexicon as tabs",
+      "device_class": "regular",
+      "width_pt": 1024,
+      "text_size": "standard",
+      "expected": {
+        "slots": 3,
+        "columns": [["p1"], ["p2"], ["p3"]],
+        "tabs": ["p4", "p5"],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "derived_from", "class": "wide" },
+        "column_widths_pt": [341, 341, 341],
+        "centered_measure": [false, false, false]
+      }
+    },
+    {
+      "name": "iPad at 1024 pt, accessibility text: two panes plus tabs",
+      "device_class": "regular",
+      "width_pt": 1024,
+      "text_size": "accessibility",
+      "expected": {
+        "slots": 2,
+        "columns": [["p1"], ["p2"]],
+        "tabs": ["p3", "p4", "p5"],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "derived_from", "class": "wide" },
+        "column_widths_pt": [512, 512],
+        "centered_measure": [false, false]
+      }
+    },
+    {
+      "name": "iPhone at 390 pt, standard text: the active pane plus four tabs",
+      "device_class": "compact",
+      "width_pt": 390,
+      "text_size": "standard",
+      "expected": {
+        "slots": 1,
+        "columns": [["p1"]],
+        "tabs": ["p2", "p3", "p4", "p5"],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "derived_from", "class": "wide" },
+        "column_widths_pt": [390],
+        "centered_measure": [false]
+      }
+    },
+    {
+      "name": "iPhone at 390 pt with the Greek text active: it is shown, the displaced pane leads the tabs",
+      "device_class": "compact",
+      "width_pt": 390,
+      "text_size": "standard",
+      "active_pane_id": "p4",
+      "expected": {
+        "slots": 1,
+        "columns": [["p4"]],
+        "tabs": ["p1", "p2", "p3", "p5"],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "derived_from", "class": "wide" },
+        "column_widths_pt": [390],
+        "centered_measure": [false]
+      }
+    },
+    {
+      "name": "Ultra-wide at 3440 pt, standard text: all five shown, wide columns centre their measure",
+      "device_class": "ultra-wide",
+      "width_pt": 3440,
+      "text_size": "standard",
+      "expected": {
+        "slots": 6,
+        "columns": [["p1"], ["p2"], ["p3"], ["p4"], ["p5"]],
+        "tabs": [],
+        "notes_dock": "hidden",
+        "profile_source": { "kind": "derived_from", "class": "wide" },
+        "column_widths_pt": [757, 757, 757, 688, 482],
+        "centered_measure": [true, true, true, true, false]
+      }
+    }
+  ]
+}
