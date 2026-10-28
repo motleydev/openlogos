@@ -261,7 +261,7 @@
             clippy = cargoCheck "clippy" "cargo clippy --workspace --all-targets --locked -- -D warnings";
             tests = cargoCheck "tests" "cargo test --workspace --locked";
             # The crates that run in the browser worker must stay free of native-only code.
-            wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-ffi";
+            wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-conformance -p openlogos-ffi";
             nixfmt = toolCheck "nixfmt" [
               pkgs.nixfmt
               pkgs.findutils

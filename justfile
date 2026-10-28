@@ -4,7 +4,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 # Crates that must build for the browser worker (ADR 0001), including the binding surface.
-wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-ffi"
+wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-conformance -p openlogos-ffi"
 
 [private]
 default:

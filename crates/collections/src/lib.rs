@@ -4,11 +4,26 @@
 //! reproducible, and reimport of what was exported. Obsidian is the sole first-class external
 //! writing integration, so the bounded vault handoff of specs/13-obsidian-and-ink.md and
 //! specs/15-reformed-study-and-collections.md is shaped here, not in the apps.
+//!
+//! This revision (B006) fixes the identity and provenance contracts: [`StudyCollection`],
+//! the source-bearing and non-source [`CollectionItem`] kinds, and [`VaultExportReceipt`].
+//! Export, reconciliation and reimport logic follow in B058/B060 on top of these types.
+//! The JSON forms are `schemas/study-collection.schema.json` and
+//! `schemas/vault-export-receipt.schema.json`.
+
+pub mod collection;
+pub mod receipt;
+
+pub use collection::{
+    CollectionError, CollectionItem, Display, EvidenceRef, Group, ITEM_ID_PATTERN, ItemBody,
+    Locator, PdfLocator, Quotation, RightsSnapshot, SourceProvenance, StudyCollection, StudyTarget,
+    is_item_id,
+};
+pub use receipt::{
+    Disposition, ReceiptEntry, ReceiptError, VaultExportReceipt, Writer, is_safe_vault_path,
+};
 
 /// The crate's package name, as Cargo records it.
-///
-/// Placeholder API so the skeleton has one documented item and one test per crate; the
-/// real surface arrives with the tasks named in the module documentation.
 #[must_use]
 pub fn crate_name() -> &'static str {
     env!("CARGO_PKG_NAME")
