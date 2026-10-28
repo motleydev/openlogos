@@ -182,12 +182,12 @@ pub struct InkDocument {
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum InkError {
     /// The document breaks a rule of the schema or of `crates/ink`'s validation.
-    #[error("{message}")]
+    #[error("{detail}")]
     Invalid {
         /// The serde tag of the rule (`duplicate_stroke_id`, `too_few_points`, ...).
         kind: String,
-        /// The rule in words.
-        message: String,
+        /// The rule in words (`detail`, not `message`: Kotlin's Throwable already owns that name).
+        detail: String,
     },
 }
 
@@ -199,7 +199,7 @@ impl From<document::InkError> for InkError {
             .unwrap_or_default();
         InkError::Invalid {
             kind,
-            message: error.to_string(),
+            detail: error.to_string(),
         }
     }
 }
@@ -350,7 +350,7 @@ mod tests {
             error,
             InkError::Invalid {
                 kind: "unknown_deleted_stroke".into(),
-                message: "deleted_stroke_ids names unknown stroke `nope`".into()
+                detail: "deleted_stroke_ids names unknown stroke `nope`".into()
             }
         );
     }
