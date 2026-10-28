@@ -805,7 +805,6 @@ dependencies = [
  "chacha20poly1305",
  "ed25519-dalek",
  "hkdf",
- "openlogos-core",
  "proptest",
  "rand_chacha",
  "rand_core",
