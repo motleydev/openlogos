@@ -42,6 +42,9 @@ targets:
       properties:
         CFBundleDisplayName: OpenLogos
         CFBundleName: OpenLogos
+        # XcodeGen would otherwise write a literal 1.0; the shelf shows these two.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -75,6 +78,8 @@ targets:
       properties:
         CFBundleDisplayName: OpenLogos
         CFBundleName: OpenLogos
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.reference
     settings:
       base:
