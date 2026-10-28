@@ -21,20 +21,27 @@ struct PaneTextView: View {
     let width: CGFloat
     /// Word-level selection on verse 1 of this pane (Selection view only).
     var selectable = false
+    /// A single pane caps its measure at about 55–75 Latin characters and centres the column
+    /// (specs/16 "Prose measure"); multi-pane views are narrower than the cap anyway.
+    var capMeasure = false
     var onCollect: ((String, String) -> Void)?
     var onStudy: (() -> Void)?
 
     @ScaledMetric(relativeTo: .title3) private var leading: CGFloat = 9
+    @ScaledMetric(relativeTo: .title3) private var measure: CGFloat = ChromeMetrics.measure
 
     var body: some View {
         GeometryReader { geometry in
+            let padding = ChromeMetrics.panePadding(width)
+            let columnWidth = capMeasure ? min(geometry.size.width, measure + 2 * padding) : geometry.size.width
             ScrollView {
-                content(paneWidth: geometry.size.width)
-                    .padding(.horizontal, ChromeMetrics.panePadding(width))
+                content(paneWidth: columnWidth)
+                    .padding(.horizontal, padding)
                     .padding(.vertical, 20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: columnWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity)
             }
-            .preference(key: ReadingAreaKey.self, value: [pane.id: geometry.size])
+            .preference(key: ReadingAreaKey.self, value: [pane.id: CGSize(width: columnWidth, height: geometry.size.height)])
         }
         .environment(\.layoutDirection, pane.content.isRightToLeft ? .rightToLeft : .leftToRight)
         .background(Color(white: 1, opacity: 0.001)) // a hit area for pane activation
@@ -58,7 +65,9 @@ struct PaneTextView: View {
                 } else {
                     paragraph(pane.content.verses)
                 }
-                Text("Fixture: \(pane.content.fullTitle). \(pane.content.license)")
+                Text(pane.content.license.hasPrefix(pane.content.fullTitle)
+                     ? "Fixture: \(pane.content.license)"
+                     : "Fixture: \(pane.content.fullTitle). \(pane.content.license)")
                     .font(.system(.caption, design: .serif))
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
@@ -106,23 +115,27 @@ struct SelectableVerse: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            WordFlow(spacing: 4, lineSpacing: leading) {
+            WordFlow(spacing: 0, lineSpacing: leading) {
                 Text(verse.number)
                     .font(.system(.caption2, design: .serif))
                     .foregroundStyle(.secondary)
                     .baselineOffset(7)
                     .accessibilityLabel("verse \(verse.number)")
                 ForEach(Array(wordList.enumerated()), id: \.offset) { index, word in
-                    let selected = workspace.selectedWordRange?.contains(index) ?? false
+                    let range = workspace.selectedWordRange
+                    let selected = range?.contains(index) ?? false
+                    // One contiguous range: each selected word's highlight spans the word gap
+                    // on both sides, so neighbours join into one bar per line, as the platform
+                    // selection does; handles mark the two ends.
                     Text(word)
                         .font(.system(.title3, design: .serif))
-                        .padding(.horizontal, 2)
-                        .background(
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(selected ? Color.primary.opacity(0.14) : .clear)
-                        )
-                        .overlay(alignment: .bottom) {
-                            Rectangle().fill(selected ? Color.primary : .clear).frame(height: 1.5)
+                        .padding(.horizontal, 2.5)
+                        .background(Rectangle().fill(selected ? Color.primary.opacity(0.14) : .clear))
+                        .overlay(alignment: .leading) {
+                            if selected, range?.lowerBound == index { SelectionHandle() }
+                        }
+                        .overlay(alignment: .trailing) {
+                            if selected, range?.upperBound == index { SelectionHandle() }
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { tap(index) }
@@ -150,6 +163,20 @@ struct SelectableVerse: View {
         } else {
             workspace.selectedWordRange = index...index
         }
+    }
+}
+
+/// The platform-style grab handle at each end of the range (a stand-in; the real reader has the
+/// system's handles).
+struct SelectionHandle: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            Circle().fill(Color.accentColor).frame(width: 9, height: 9)
+            Rectangle().fill(Color.accentColor).frame(width: 2)
+        }
+        .frame(width: 9)
+        .padding(.vertical, -5)
+        .accessibilityHidden(true)
     }
 }
 

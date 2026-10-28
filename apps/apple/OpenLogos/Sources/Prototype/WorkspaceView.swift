@@ -137,6 +137,7 @@ struct WorkspaceView: View {
             PaneTextView(
                 workspace: workspace, pane: pane, state: options.state, width: size.width,
                 selectable: options.view == .selection && pane.id == "p1",
+                capMeasure: visiblePanes.count == 1 && workspace.drawer == .none,
                 onCollect: { text, locator in workspace.collect(text: text, resource: pane.content, locator: locator) },
                 onStudy: { workspace.drawer = .study }
             )
@@ -170,9 +171,7 @@ struct WorkspaceView: View {
     private var focusBody: some View {
         ZStack(alignment: .topTrailing) {
             if let pane = workspace.activePane {
-                PaneTextView(workspace: workspace, pane: pane, state: options.state, width: size.width)
-                    .frame(maxWidth: 680)
-                    .frame(maxWidth: .infinity)
+                PaneTextView(workspace: workspace, pane: pane, state: options.state, width: size.width, capMeasure: true)
             }
             Button {
                 options.focusMode = false

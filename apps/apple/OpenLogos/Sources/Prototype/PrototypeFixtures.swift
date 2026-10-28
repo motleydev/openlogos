@@ -40,7 +40,11 @@ struct PaneContent: Identifiable, Equatable {
     let shortName: String
     let fullTitle: String
     let license: String
+    /// "Book label" plus a reference, e.g. "Κατὰ Ἰωάννην 3:16–17": the identity row truncates
+    /// the book label and never the reference.
     let passage: String
+    var bookLabel: String { passage.split(separator: " ").dropLast().joined(separator: " ") }
+    var reference: String { String(passage.split(separator: " ").last ?? "") }
     let verses: [Passage.Verse]
     let isRightToLeft: Bool
     let kind: Kind
@@ -135,7 +139,7 @@ enum PrototypeFixtures {
     static let kjvJohn3 = PaneContent(
         id: "kjv-john-3",
         shortName: "KJV",
-        fullTitle: "King James Version (1769)",
+        fullTitle: "King James Version (1769 Blayney text)",
         license: "public domain",
         passage: "John 3:16–17",
         verses: [
@@ -148,15 +152,17 @@ enum PrototypeFixtures {
         isReferenceOnly: false
     )
 
+    /// The exact verse bytes of the Nestle 1904 pack B064 built (`text` table, verse ids
+    /// 44003016 and 44003017), pasted unchanged; no Greek is typed from memory here.
     static let greekJohn3 = PaneContent(
-        id: "grk-john-3",
-        shortName: "GNT",
-        fullTitle: "Greek New Testament (fixture text, Byzantine text form)",
-        license: "public domain text form; typed for the prototype, unverified",
+        id: "n1904-john-3",
+        shortName: "N1904",
+        fullTitle: "Nestle 1904 Greek New Testament",
+        license: "Nestle 1904 Greek New Testament via CenterBLC/N1904 (MACULA Greek, CC BY 4.0), source S73",
         passage: "Κατὰ Ἰωάννην 3:16–17",
         verses: [
-            .init(id: "John.3.16", number: "16", text: "Οὕτως γὰρ ἠγάπησεν ὁ θεὸς τὸν κόσμον, ὥστε τὸν υἱὸν αὐτοῦ τὸν μονογενῆ ἔδωκεν, ἵνα πᾶς ὁ πιστεύων εἰς αὐτὸν μὴ ἀπόληται, ἀλλ᾽ ἔχῃ ζωὴν αἰώνιον."),
-            .init(id: "John.3.17", number: "17", text: "Οὐ γὰρ ἀπέστειλεν ὁ θεὸς τὸν υἱὸν αὐτοῦ εἰς τὸν κόσμον ἵνα κρίνῃ τὸν κόσμον, ἀλλ᾽ ἵνα σωθῇ ὁ κόσμος δι᾽ αὐτοῦ."),
+            .init(id: "John.3.16", number: "16", text: "Οὕτως γὰρ ἠγάπησεν ὁ Θεὸς τὸν κόσμον, ὥστε τὸν Υἱὸν τὸν μονογενῆ ἔδωκεν, ἵνα πᾶς ὁ πιστεύων εἰς αὐτὸν μὴ ἀπόληται ἀλλ’ ἔχῃ ζωὴν αἰώνιον."),
+            .init(id: "John.3.17", number: "17", text: "οὐ γὰρ ἀπέστειλεν ὁ Θεὸς τὸν Υἱὸν εἰς τὸν κόσμον ἵνα κρίνῃ τὸν κόσμον, ἀλλ’ ἵνα σωθῇ ὁ κόσμος δι’ αὐτοῦ."),
         ],
         isRightToLeft: false,
         kind: .scripture,
@@ -199,7 +205,7 @@ enum PrototypeFixtures {
 
     static let collectionItems: [CollectionItem] = [
         .init(id: "c1", kind: .passage, resource: "BSB", locator: "John 3:16", text: "For God so loved the world that He gave His one and only Son…", rights: .quotable),
-        .init(id: "c2", kind: .excerpt, resource: "GNT", locator: "John 3:16, μονογενῆ", text: "τὸν υἱὸν αὐτοῦ τὸν μονογενῆ", rights: .quotable),
+        .init(id: "c2", kind: .excerpt, resource: "N1904", locator: "John 3:16, μονογενῆ", text: "τὸν υἱὸν αὐτοῦ τὸν μονογενῆ", rights: .quotable),
         .init(id: "c3", kind: .observation, resource: "Me", locator: "on John 3:16", text: "\"One and only\" (BSB) versus \"only begotten\" (KJV): compare renderings before teaching this.", rights: .quotable),
         .init(id: "c4", kind: .crossReference, resource: "Borrowed ed.", locator: "1 John 4:9", text: "reference only: quotation not permitted in this edition", rights: .metadataOnly),
     ]

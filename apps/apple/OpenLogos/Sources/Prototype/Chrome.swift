@@ -20,6 +20,7 @@ enum ChromeMetrics {
     static let panePaddingRegular: CGFloat = 20
     static let panePaddingCompact: CGFloat = 16
     static let drawerWidth: CGFloat = 360
+    static let measure: CGFloat = 640 // single-pane prose column at normal type (about 65 Latin characters in the serif); scales with the text
     static let minimumTarget: CGFloat = 44
     static let accessibilityPaneMinimum: CGFloat = 480 // a pane at accessibility type sizes
 
@@ -336,10 +337,27 @@ struct PaneIdentityRow: View {
                     Text(pane.content.shortName)
                         .fontWeight(isActive ? .semibold : .regular)
                         .lineLimit(1)
-                    Text(pane.content.passage)
+                        .layoutPriority(1)
+                    if isActive {
+                        // The word, not the color, says which pane is active (specs/16).
+                        Text("Active")
+                            .font(.caption2).fontWeight(.semibold)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Capsule().strokeBorder(.primary, lineWidth: 1))
+                            .layoutPriority(2)
+                            .accessibilityHidden(true)
+                    }
+                    if !pane.content.bookLabel.isEmpty {
+                        Text(pane.content.bookLabel)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    Text(pane.content.reference)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                        .truncationMode(.tail)
+                        .fixedSize()
+                        .layoutPriority(2)
                 }
                 .font(layout == .a ? .subheadline : .body)
                 .frame(minHeight: ChromeMetrics.minimumTarget)

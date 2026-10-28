@@ -109,7 +109,7 @@ struct StudyDrawer: View {
                                 Text(PrototypeFixtures.lemma).font(.system(.body, design: .serif)).foregroundStyle(.secondary)
                                 Text(PrototypeFixtures.transliteration).font(.footnote).italic().foregroundStyle(.secondary)
                             }
-                            Text("Aligns to 1 token in GNT (fixture). " + PrototypeFixtures.morphologySummary).font(.footnote)
+                            Text("Aligns to 1 token in N1904 (fixture). " + PrototypeFixtures.morphologySummary).font(.footnote)
                             DisclosureGroup(isExpanded: $showCode) {
                                 Text("Morphology code \(PrototypeFixtures.morphologyCode). Strong's: optional reference field, not shown as identity.")
                                     .font(.caption).foregroundStyle(.secondary)
