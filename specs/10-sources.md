@@ -40,7 +40,7 @@ Status: `candidate_open`; no production artifact pinned yet.
 
 Repository states CC BY 4.0 with attribution/change recording. Inspect each chosen file and its upstream dependencies; useful for tagged texts, lexical data and mappings.
 
-Status: `candidate_open`; no production artifact pinned yet.
+Status: `acquired_flagged` (B003, 28 October 2026): TBESG, TBESH, TAGNT, TAHOT and TVTMS pinned at commit `be4191f0082aeedddb0eff0c02c966292b2bd641`, rights/S05.json; per-file upstreams (Online Bible BDB, NA27/28 text, MorphGNT grammar, ETCBC morphology) need provenance research before redistribution.
 
 ## S06 — SBL Greek New Testament
 
@@ -48,7 +48,7 @@ Status: `candidate_open`; no production artifact pinned yet.
 
 Current upstream describes CC BY 4.0. Pin exact text edition; critical editorial choices are not interchangeable with other Greek editions.
 
-Status: `candidate_open`; no production artifact pinned yet.
+Status: `acquired_clear` (B003): repository data pinned at commit `d7f35adca9ec410e1d1499c63b4dd989d76c8d4d`, CC BY 4.0, rights/S06.json.
 
 ## S07 — Open Scriptures Hebrew Bible
 
@@ -56,7 +56,7 @@ Status: `candidate_open`; no production artifact pinned yet.
 
 WLC underlying text is public domain; morphology/lemma layer is CC BY 4.0. Preserve upstream token IDs and normalization cautions.
 
-Status: `candidate_open`; no production artifact pinned yet.
+Status: `acquired_clear` (B003): `wlc/` pinned at commit `3d15126fb1ef74867fc1434be1942e837932691f`, rights/S07.json.
 
 ## S08 — unfoldingWord source-language resources
 
@@ -72,7 +72,7 @@ Status: `candidate_open`; no production artifact pinned yet.
 
 Roughly 340,000 links, primarily derived from Treasury of Scripture Knowledge, with additional sources/votes. Page links a CC BY license; ESV quotations on the site are separate. Import reference links/attribution only after recording the exact linked license. Votes are not accuracy scores.
 
-Status: `candidate_open`; no production artifact pinned yet.
+Status: `acquired_clear` (B003): cross-references.zip of 2026-10-26 with the page's CC BY 4.0 statement, 344,799 reference rows and no verse text, rights/S09.json.
 
 ## S10 — Perseus canonical Greek literature
 
@@ -88,7 +88,7 @@ Status: `per_item_review`; no production artifact pinned yet.
 
 Ancient/patristic discovery source. Many underlying books are US public domain, but site content/editions and permission statements are mixed. Do not blanket-import; seek a clearly licensed artifact or separate public-domain transcription.
 
-Status: `per_item_review`; no production artifact pinned yet.
+Status: `acquired_flagged` (B003): Calvin's Institutes (Beveridge) and the Westminster standards fetched as ThML and text with CCEL's copyright policy; flagged for digitization rights and (Confession) edition, rights/S11-ccel-calvin-institutes.json and rights/S11-ccel-westminster-standards.json.
 
 ## S12 — CrossWire SWORD and module rights
 
@@ -144,7 +144,7 @@ Status: `implementation_reference`; no production artifact pinned yet.
 
 Morphological analysis uses CC BY-SA 3.0; README references an older SBLGNT EULA whereas current SBLGNT upstream is CC BY 4.0. Resolve edition/version provenance and layered obligations, not one blanket license.
 
-Status: `per_item_review`; no production artifact pinned yet.
+Status: `acquired_restricted` (B003): version 6.12 pinned at commit `aaed91e57c8e4a8dc9a2383e129ca5e75fe6393d`; share-alike analysis and an out-of-date EULA statement, a restricted module, rights/S18.json.
 
 ## S19 — NixOS Android tooling
 
@@ -398,3 +398,28 @@ Checked 27 October 2026 through the research in reports/Bible corpus search arch
 **S73 — Nestle 1904 Greek New Testament in Text-Fabric (CenterBLC/N1904).** Text-Fabric 1.0.0 dataset (137,779 word slots; lemma, morphology, gloss, Strong's, nested word groups, clauses, sentences) converted by CBLC/ETCBC from MACULA Greek's Nestle 1904 lowfat trees (CC BY 4.0); the repository itself is MIT. Louw-Nida domain columns are UBS data and are not ingested. B064's R6 correctness oracle: fifty engine queries matched Text-Fabric 13.1.1 counts at commit def0fd230b9ab77c11c371b273d020b1a573c884. Source: https://github.com/CenterBLC/N1904 Additional reference: https://centerblc.github.io/N1904/about.html
 
 **S74 — sqlite-wasm-rs and sqlite-wasm-vfs (SQLite compiled for wasm32-unknown-unknown).** MIT crate that compiles the SQLite amalgamation (FTS5, RTREE, session on) for wasm32-unknown-unknown with a musl shim, exposes the full C API and is rusqlite 0.41's own wasm backend; sahpool (OPFS) and relaxed IndexedDB VFSs live in sqlite-wasm-vfs. B064 built the engine on it: 0.5.5 bundles SQLite 3.53.0 and works with wasm-bindgen 0.2.121; 0.6.x bundles 3.53.4 and needs wasm-bindgen 0.2.128. Neither reaches the 3.54 OPFS fix specs/19 requires without a custom source directory. Source: https://github.com/Spxg/sqlite-wasm-rs Additional reference: https://crates.io/crates/sqlite-wasm-rs
+
+**S75 — Project Gutenberg: Calvin's Institutes, John Allen translation.** eBooks #45001 (vol. 1, 2014) and #64392 (vol. 2, 2021), plain text, public domain in the United States under the Project Gutenberg licence. It is the Allen (1813) translation, not the Beveridge (1845) one B068 named; acquired by B003 as the licence-clean alternative text of the same work while the Beveridge digitization is researched. Source: https://www.gutenberg.org/ebooks/45001 Additional reference: https://www.gutenberg.org/ebooks/64392
+
+## B003 acquisition of the initial corpus (28 October 2026)
+
+The owner decided to acquire the whole licence-clean slate and to flag, rather than exclude, anything whose provenance needs more research; the owner signs by merging the pull request and, per record, by setting `status`, `reviewer` and `reviewed_at`. Every artifact's exact bytes live on the NAS under `/Volumes/office-hub/openlogos/corpora/<source>-<name>/` with a `MANIFEST.sha256` beside them; the repository holds the manifest's hash and a copy of the manifest under `rights/<record>/`, the record `rights/<record>.json` (schema rights-record 1.1) and the registry pin in specs/sources.json (schema 1.1). No corpus byte is committed. The statuses `acquired_clear`, `acquired_flagged` and `acquired_restricted` mean the bytes and the record exist and what the agent proposes; they are not clearance. The commands, sizes, timings and every flag are in docs/evidence/B003.md.
+
+| Source | Record | Licence | Proposed | Flag in one line |
+|---|---|---|---|---|
+| S52 Berean Standard Bible | rights/S52.json | public-domain dedication (2023-04-30) | clear | Berean name only on unaltered text |
+| S06 SBLGNT | rights/S06.json | CC BY 4.0 | clear | none |
+| S73 Nestle 1904 Text-Fabric | rights/S73.json | MIT over CC BY 4.0 | clear | Louw-Nida features not ingested |
+| S07 OSHB / WLC | rights/S07.json | public domain text, CC BY 4.0 markup | clear | none |
+| S47 MACULA Greek, MACULA Hebrew | rights/S47-macula-greek.json, rights/S47-macula-hebrew.json | CC BY 4.0 | clear | Louw-Nida and SDBH columns are a restricted module |
+| S09 OpenBible cross references | rights/S09.json | CC BY 4.0 | clear | none (votes are not accuracy scores) |
+| S55 Clear alignments | rights/S55.json | CC BY 4.0 data, MIT code | clear | legacy ESV/CSB/LEB/NET folders not fetched |
+| S75 Gutenberg Institutes (Allen) | rights/S75.json | public domain (US) | clear | not the Beveridge translation |
+| S05 STEPBible | rights/S05.json | CC BY 4.0 with per-file upstreams | flagged: provenance research | Online Bible BDB, NA text, MorphGNT grammar, ETCBC morphology |
+| S11 CCEL Institutes (Beveridge) | rights/S11-ccel-calvin-institutes.json | public-domain text, CCEL edition policy | flagged: provenance research | CCEL permission or an independent digitization |
+| S11 CCEL Westminster standards | rights/S11-ccel-westminster-standards.json | public-domain text, CCEL edition policy | flagged: provenance research | the Confession is the American revision, not 1646 |
+| S57 UBS dictionaries | rights/S57.json | CC BY-SA 4.0 | restricted module | share-alike |
+| S58 ETCBC BHSA | rights/S58.json | CC BY-NC 4.0 | restricted module | non-commercial, user-downloaded only |
+| S18 MorphGNT | rights/S18.json | CC BY-SA 3.0, old SBLGNT EULA cited | restricted module | share-alike; EULA mismatch |
+
+Not acquired: Thayer's Greek-English Lexicon (1889). The lexicon is public domain but no digitization with a stated digitizer and licence was identified without downloading an unknown-rights scan or module; the provenance search (Internet Archive scans of the 1889 Harper edition with their own OCR, or a transcription project that states its source and terms) is recorded in docs/evidence/B003.md as open. The World English Bible (S04) and the ancient works proposed above (Didache, a patristic text) were not part of the owner's slate and stay `candidate_open` and `per_item_review`.
