@@ -11,6 +11,7 @@ publish.workspace = true
 openlogos-core = { workspace = true }
 openlogos-text = { workspace = true }
 openlogos-workspaces = { workspace = true }
+openlogos-notes = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
