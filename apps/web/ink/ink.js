@@ -566,7 +566,8 @@ try {
   const verse = (s) => { const el = document.createElement("span"); el.className = "verse"; const sup = document.createElement("sup"); sup.className = "marker"; sup.textContent = s.segment_id.split(".").pop(); el.append(sup, s.text); return el; };
   const fill = (target) => { target.replaceChildren(); bsb.segments.forEach((s, i) => { if (i) target.append(" "); target.append(verse(s)); }); };
   fill($("reading-text"));
-  $("reading-attribution").textContent = `Fixture: ${(bsb.license || "Berean Standard Bible (CC0)").split(" http")[0]}. The ink to the right anchors nothing yet.`;
+  const license = (bsb.license || "Berean Standard Bible: public domain (CC0)").split(" ").filter((w) => !w.startsWith("http")).join(" ").replace(/[,;: ]+$/, "");
+  $("reading-attribution").textContent = `Fixture: ${license}. The ink to the right anchors nothing yet.`;
   // The same verses again, labelled, so the pane scrolls at every window size and the palm
   // case can check that a finger during a stroke does not move it.
   $("reading-text").insertAdjacentHTML("afterend", `<p class="attribution">The same fixture verses repeated so the pane scrolls.</p><p class="text" id="reading-text-repeat"></p>`);
