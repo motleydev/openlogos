@@ -14,8 +14,10 @@ use serde::{Deserialize, Serialize};
 use crate::reference::{BookId, Reference};
 
 pub mod reanchor;
+pub mod selection;
 
 pub use reanchor::{ReanchorResult, Revision, TokenSpan, reanchor};
+pub use selection::{Segment, split_selection};
 
 /// Errors from parsing or building anchors.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]

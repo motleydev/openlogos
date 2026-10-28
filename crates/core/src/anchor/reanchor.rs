@@ -64,20 +64,17 @@ pub fn reanchor(anchor: &Anchor, old: &Revision, new: &Revision) -> ReanchorResu
         .map(|q| q.exact.clone())
         .or_else(|| slice(&old.text, anchor.range));
 
-    // 1. Stable IDs.
-    if !anchor.tokens.is_empty() {
-        let spans: Vec<&TokenSpan> = anchor
-            .tokens
-            .iter()
-            .filter_map(|id| new.tokens.iter().find(|span| &span.id == id))
-            .collect();
-        if spans.len() == anchor.tokens.len() {
-            let range = ScalarRange {
-                start: spans.iter().map(|s| s.range.start).min().unwrap_or(0),
-                end: spans.iter().map(|s| s.range.end).max().unwrap_or(0),
-            };
-            return place(anchor, new, range, old_exact.as_deref());
-        }
+    // 1. Stable IDs. The anchor may cover part of its tokens or run past them into
+    // untokenized text (punctuation, sof pasuq), so its offsets relative to the token span
+    // in the old revision are carried onto the token span in the new one.
+    if !anchor.tokens.is_empty()
+        && let Some(new_span) = token_span(&anchor.tokens, &new.tokens)
+    {
+        let range = match token_span(&anchor.tokens, &old.tokens) {
+            Some(old_span) => shift_within(anchor.range, old_span, new_span, scalar_len(&new.text)),
+            None => new_span,
+        };
+        return place(anchor, new, range, old_exact.as_deref());
     }
 
     // 2. Exact quote with context, then exact quote alone.
@@ -110,6 +107,33 @@ pub fn reanchor(anchor: &Anchor, old: &Revision, new: &Revision) -> ReanchorResu
                 .collect(),
         ),
     }
+}
+
+/// The span from the first to the last of `ids` in `layout`, or `None` unless every id is there.
+fn token_span(ids: &[TokenId], layout: &[TokenSpan]) -> Option<ScalarRange> {
+    let spans: Vec<&TokenSpan> = ids
+        .iter()
+        .map(|id| layout.iter().find(|span| &span.id == id))
+        .collect::<Option<Vec<_>>>()?;
+    Some(ScalarRange {
+        start: spans.iter().map(|s| s.range.start).min()?,
+        end: spans.iter().map(|s| s.range.end).max()?,
+    })
+}
+
+/// `range`, positioned relative to `old_span`, moved to the same position relative to
+/// `new_span` and clamped to a text of `length` scalars.
+fn shift_within(
+    range: ScalarRange,
+    old_span: ScalarRange,
+    new_span: ScalarRange,
+    length: u32,
+) -> ScalarRange {
+    let lead = i64::from(range.start) - i64::from(old_span.start);
+    let trail = i64::from(old_span.end) - i64::from(range.end);
+    let start = (i64::from(new_span.start) + lead).clamp(0, i64::from(length)) as u32;
+    let end = (i64::from(new_span.end) - trail).clamp(i64::from(start), i64::from(length)) as u32;
+    ScalarRange { start, end }
 }
 
 /// The anchor at `range` in `new`, as exact or moved.
@@ -421,5 +445,48 @@ mod tests {
             serde_json::to_string(&ReanchorResult::Orphaned).unwrap(),
             "{\"status\":\"orphaned\"}"
         );
+    }
+
+    #[test]
+    fn stable_ids_keep_offsets_inside_and_beyond_the_tokens() {
+        let old = revision("r1", "so loved the world, that", true);
+        let new_text = "Indeed so loved the world, that";
+        let mut new = revision("r2", new_text, false);
+        new.tokens = tokenize("so loved the world, that")
+            .into_iter()
+            .map(|mut span| {
+                span.range.start += 7;
+                span.range.end += 7;
+                span
+            })
+            .collect();
+        // "oved the worl": starts inside "loved" and ends inside "world,".
+        let inside = anchor_on(&old, 4, 17, true, true);
+        assert_eq!(inside.tokens.len(), 3);
+        match reanchor(&inside, &old, &new) {
+            ReanchorResult::Moved(found) => {
+                assert_eq!(found.range, ScalarRange { start: 11, end: 24 });
+                assert_eq!(found.quote.unwrap().exact, "oved the worl");
+            }
+            other => panic!("{other:?}"),
+        }
+        // "world, " runs one scalar past its token into the following space.
+        let beyond = anchor_on(&old, 13, 20, true, true);
+        assert_eq!(beyond.tokens.len(), 1);
+        match reanchor(&beyond, &old, &new) {
+            ReanchorResult::Moved(found) => {
+                assert_eq!(found.range, ScalarRange { start: 20, end: 27 });
+                assert_eq!(found.quote.unwrap().exact, "world, ");
+            }
+            other => panic!("{other:?}"),
+        }
+        // Without an old token layout the whole token span is used.
+        let no_layout = revision("r1", "so loved the world, that", false);
+        match reanchor(&inside, &no_layout, &new) {
+            ReanchorResult::Moved(found) => {
+                assert_eq!(found.range, ScalarRange { start: 10, end: 26 })
+            }
+            other => panic!("{other:?}"),
+        }
     }
 }
