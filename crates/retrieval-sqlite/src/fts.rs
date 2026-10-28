@@ -28,9 +28,18 @@ unsafe fn fts5_api(db: *mut ffi::sqlite3) -> Result<*mut ffi::fts5_api, rusqlite
     // call; every pointer passed is valid for the statement's lifetime and the statement is
     // finalized on every path.
     unsafe {
-        let rc = ffi::sqlite3_prepare_v2(db, c"SELECT fts5(?1)".as_ptr(), -1, &mut stmt, ptr::null_mut());
+        let rc = ffi::sqlite3_prepare_v2(
+            db,
+            c"SELECT fts5(?1)".as_ptr(),
+            -1,
+            &mut stmt,
+            ptr::null_mut(),
+        );
         if rc != ffi::SQLITE_OK {
-            return Err(rusqlite::Error::SqliteFailure(ffi::Error::new(rc), Some("prepare fts5()".into())));
+            return Err(rusqlite::Error::SqliteFailure(
+                ffi::Error::new(rc),
+                Some("prepare fts5()".into()),
+            ));
         }
         let rc = ffi::sqlite3_bind_pointer(
             stmt,
@@ -93,7 +102,8 @@ unsafe extern "C" fn x_tokenize(
         let Ok(len) = c_int::try_from(token.key.len()) else {
             continue;
         };
-        let (Ok(start), Ok(end)) = (c_int::try_from(token.start), c_int::try_from(token.end)) else {
+        let (Ok(start), Ok(end)) = (c_int::try_from(token.start), c_int::try_from(token.end))
+        else {
             continue;
         };
         // SAFETY: `emit` is FTS5's callback; the key buffer outlives the call.
@@ -118,11 +128,23 @@ pub fn register_tokenizer(conn: &Connection) -> Result<(), rusqlite::Error> {
     unsafe {
         let api = fts5_api(conn.handle())?;
         let create = (*api).xCreateTokenizer.ok_or_else(|| {
-            rusqlite::Error::SqliteFailure(ffi::Error::new(ffi::SQLITE_ERROR), Some("fts5_api has no xCreateTokenizer".into()))
+            rusqlite::Error::SqliteFailure(
+                ffi::Error::new(ffi::SQLITE_ERROR),
+                Some("fts5_api has no xCreateTokenizer".into()),
+            )
         })?;
-        let rc = create(api, c"openlogos".as_ptr(), ptr::null_mut(), &mut vtable, None);
+        let rc = create(
+            api,
+            c"openlogos".as_ptr(),
+            ptr::null_mut(),
+            &mut vtable,
+            None,
+        );
         if rc != ffi::SQLITE_OK {
-            return Err(rusqlite::Error::SqliteFailure(ffi::Error::new(rc), Some("xCreateTokenizer".into())));
+            return Err(rusqlite::Error::SqliteFailure(
+                ffi::Error::new(rc),
+                Some("xCreateTokenizer".into()),
+            ));
         }
     }
     Ok(())
@@ -146,8 +168,13 @@ mod tests {
     }
 
     fn ids(conn: &Connection, q: &str) -> Vec<i64> {
-        let mut stmt = conn.prepare("SELECT rowid FROM t WHERE t MATCH ?1 ORDER BY rowid").unwrap();
-        stmt.query_map([q], |r| r.get(0)).unwrap().map(Result::unwrap).collect()
+        let mut stmt = conn
+            .prepare("SELECT rowid FROM t WHERE t MATCH ?1 ORDER BY rowid")
+            .unwrap();
+        stmt.query_map([q], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
     }
 
     #[test]
@@ -180,7 +207,11 @@ mod tests {
     fn highlight_offsets_point_at_the_original_bytes() {
         let conn = conn();
         let hl: String = conn
-            .query_row("SELECT highlight(t, 0, '[', ']') FROM t WHERE t MATCH 'λογος' AND rowid = 1", [], |r| r.get(0))
+            .query_row(
+                "SELECT highlight(t, 0, '[', ']') FROM t WHERE t MATCH 'λογος' AND rowid = 1",
+                [],
+                |r| r.get(0),
+            )
             .unwrap();
         assert_eq!(hl, "Ἐν ἀρχῇ ἦν ὁ [λόγος], καὶ ὁ [λόγος] ἦν πρὸς τὸν θεόν");
     }

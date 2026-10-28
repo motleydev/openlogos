@@ -45,7 +45,11 @@ impl VerseId {
     /// Builds a verse id from its parts; chapter and verse must each be below 1000.
     #[must_use]
     pub fn new(book: u8, chapter: u16, verse: u16) -> VerseId {
-        VerseId(u32::from(book) * 1_000_000 + u32::from(chapter % 1000) * 1000 + u32::from(verse % 1000))
+        VerseId(
+            u32::from(book) * 1_000_000
+                + u32::from(chapter % 1000) * 1000
+                + u32::from(verse % 1000),
+        )
     }
 
     /// USFM book number (Genesis 1, Matthew 41).
@@ -116,10 +120,16 @@ pub trait TextStore {
     /// The byte-exact display text of one verse, or `None` when the edition lacks it.
     fn verse_text(&self, edition: &str, verse: VerseId) -> Result<Option<String>>;
     /// All verses of one chapter in order.
-    fn chapter_text(&self, edition: &str, book: u8, chapter: u16) -> Result<Vec<(VerseId, String)>>;
+    fn chapter_text(&self, edition: &str, book: u8, chapter: u16)
+    -> Result<Vec<(VerseId, String)>>;
     /// Where a verse of this edition lands in another scheme, from the pack's `verse_map`.
     /// An empty result means unmapped, never identity.
-    fn map_verse(&self, edition: &str, verse: VerseId, to_scheme: &str) -> Result<Vec<VerseMapping>>;
+    fn map_verse(
+        &self,
+        edition: &str,
+        verse: VerseId,
+        to_scheme: &str,
+    ) -> Result<Vec<VerseMapping>>;
 }
 
 /// A keyword, phrase or Boolean query (specs/17 syntax, engine-specific parsing).
@@ -466,7 +476,12 @@ pub trait RelationStore {
     /// Breadth-first traversal with cycle detection and per-node deduplication.
     fn traverse(&self, start: &Locator, options: &TraversalOptions) -> Result<Vec<Reached>>;
     /// The most-cited locators of one work in the installed library.
-    fn most_cited(&self, work: &str, rel: Option<&str>, limit: usize) -> Result<Vec<(Locator, u64)>>;
+    fn most_cited(
+        &self,
+        work: &str,
+        rel: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<(Locator, u64)>>;
 }
 
 /// Vector storage precision (specs/19 item 5: float32 never ships to devices).

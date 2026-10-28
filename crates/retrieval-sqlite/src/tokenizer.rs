@@ -35,7 +35,17 @@ pub struct Token {
 
 /// Hebrew points and cantillation that disappear from the search key.
 fn is_hebrew_mark(c: char) -> bool {
-    matches!(c, '\u{0591}'..='\u{05BD}' | '\u{05BF}' | '\u{05C1}' | '\u{05C2}' | '\u{05C4}' | '\u{05C5}' | '\u{05C7}')
+    matches!(
+        c,
+        '\u{0591}'
+            ..='\u{05BD}'
+                | '\u{05BF}'
+                | '\u{05C1}'
+                | '\u{05C2}'
+                | '\u{05C4}'
+                | '\u{05C5}'
+                | '\u{05C7}'
+    )
 }
 
 /// Combining diacritics (Greek accents and breathings after NFD, Latin accents) that
@@ -133,7 +143,10 @@ mod tests {
         assert_eq!(normalize("ᾠδή"), "ωδη");
         assert_eq!(normalize("Ἰησοῦς Χριστός"), "ιησουσ χριστοσ");
         // Precomposed and decomposed input give the same key.
-        assert_eq!(normalize("\u{1F00}\u{03B3}"), normalize("\u{03B1}\u{0313}\u{03B3}"));
+        assert_eq!(
+            normalize("\u{1F00}\u{03B3}"),
+            normalize("\u{03B1}\u{0313}\u{03B3}")
+        );
     }
 
     #[test]
@@ -154,7 +167,10 @@ mod tests {
 
     #[test]
     fn latin_folds_case_and_accents() {
-        assert_eq!(normalize("The LORD's steadfast love"), "the lord s steadfast love");
+        assert_eq!(
+            normalize("The LORD's steadfast love"),
+            "the lord s steadfast love"
+        );
         assert_eq!(normalize("Évangile"), "evangile");
     }
 
