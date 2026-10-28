@@ -27,10 +27,13 @@ the crate version; its doc comment states the bump rule. The modules so far:
 | Module | Types | Functions |
 |---|---|---|
 | `core::reference` | `BookId`, `Reference`, `ReferenceRange`, `ReferenceSet`, `ReviewFlag`, `AliasTable`, `BookAliases`, `ReferenceError` | `parse(input, &AliasTable)`, `AliasTable::english()`, `to_osis()`/`to_human(&table)` on each |
-| `core::versification` | `SchemeId`, `VerseMapKind`, `VerseMapEntry`, `VerseMap`, `MappingStatus`, `MappingResult` | `VerseMap::map(&reference, &from, &to)`, pivoting through `org` |
-| `core::anchor` | `TokenId`, `ScalarRange`, `TextQuoteSelector`, `Anchor`, `TokenSpan`, `Revision`, `Segment`, `ReanchorResult`, `AnchorError` | `TokenId::parse`/`Display`, `TextQuoteSelector::from_text`, `split_selection(...)`, `reanchor(&anchor, &old, &new)` |
+| `core::versification` | `SchemeId`, `VerseMapKind`, `VerseMapEntry`, `VerseMap`, `MappingStatus`, `MappingResult`, `ReferenceMapping`, `SegmentTable`, `SegmentSpan`, `SegmentResolution` (B006) | `VerseMap::map(&reference, &from, &to)`, pivoting through `org`; `VerseMap::map_many(&refs, &from, &to)`; `SegmentTable::resolve(&reference)` |
+| `core::anchor` | `TokenId`, `ScalarRange`, `TextQuoteSelector`, `Anchor`, `TokenSpan`, `Revision`, `Segment`, `ReanchorResult`, `AnchorError` | `TokenId::parse`/`Display`, `TextQuoteSelector::from_text`, `split_selection(...)`, `reanchor(&anchor, &old, &new)`, `reanchor_across(&anchor, &old, &new, Option<&IdLineage>)` (B006) |
+| `core::identity` (B006) | `IdLineage`, `LineageEntry`, `LineageKind`, `LineageResult`, `LineageError`, `AlignmentSet`, `AlignmentRecord`, `AlignmentStatus`, `OriginKind`, `AlignmentError`, `MintError` | `mint_verse(edition, &reference, &morphemes)`, `suffix_for(index)`, `IdLineage::validate`/`map_tokens`, `AlignmentSet::validate`/`check_tokenization`/`forward`/`reverse`/`renderings`/`is_explicit_null` |
+| `core::versioning` (B006) | `SchemaVersion`, `Compatibility`, `ApiVersion`, `VersionSyntax` | `SchemaVersion::parse`/`compatibility`, `ApiVersion::parse`/`current`, `api_compatible(core, host)` |
+| `collections` (B006) | `StudyCollection`, `CollectionItem`, `ItemBody`, `SourceProvenance`, `RightsSnapshot`, `Locator`, `VaultExportReceipt`, `ReceiptEntry`, `Disposition`, `CollectionError`, `ReceiptError` | `StudyCollection::validate`, `CollectionItem::block_id`/`quotation_permitted`, `VaultExportReceipt::validate`/`validate_against`/`stale_items`/`orphaned_entries` |
 | `text::offsets` | `Utf16Range`, `GraphemeRange`, `OffsetUnit`, `OffsetError` | `scalar_to_utf16`, `utf16_to_scalar`, `scalar_to_grapheme`, `grapheme_to_scalar`, `snap_to_graphemes`, `slice_scalars`, `scalar_len`/`utf16_len`/`grapheme_len` |
-| `conformance` | `Fixture` and its parts, `ConformanceReport`, `CaseResult` | `run_all()`, `fixtures()`, `fixtures_json()`, `FIXTURE_FILES` |
+| `conformance` | `Fixture` and its parts (text, versification, references, and from B006 lineage, alignment, reanchor), `ConformanceReport`, `CaseResult` | `run_all()`, `fixtures()`, `fixtures_json()`, `FIXTURE_FILES` |
 
 Everything public is plain data (owned `String`s and `Vec`s, no lifetimes or generics),
 `serde`-serializable, and each module has one `thiserror` enum, so the UniFFI and wasm-bindgen
@@ -45,7 +48,7 @@ Inside `nix develop .#core` (or after `direnv allow`):
 ```sh
 just test            # cargo nextest + doc tests, whole workspace
 just lint            # rustfmt, clippy -D warnings, nixfmt, shellcheck, actionlint, blueprint
-just check-wasm      # cargo check --target wasm32-unknown-unknown for core, text and conformance
+just check-wasm      # cargo check --target wasm32-unknown-unknown for core, text, collections, conformance and ffi
 just ci              # lint + test + check-wasm, as CI runs them in the shell
 just check           # nix flake check: the same checks as hermetic derivations
 cargo test -p openlogos-core          # one crate

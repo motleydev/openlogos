@@ -1,0 +1,1142 @@
+{
+  "id": "edition-revision-reanchor",
+  "kind": "reanchor",
+  "description": "Anchors carried from one content revision to the next, in the order specs/03 fixes: stable token ids, then the id_lineage revision mapping, then the exact quote with its context, else orphaned. Three pairs: Genesis 1:1 (WLC) re-segmented into morphemes with the text unchanged, so a note on a split word keeps its range through the lineage; John 3:16 (BSB) edited so that one 'that' and 'one and' are deleted, where stable ids carry later notes across the shift, a lineage deletion orphans a note instead of letting its quote land on the later 'that', and a note on deleted words is orphaned; and a study note with pointed Hebrew, an emoji with a skin-tone modifier and bidi isolates, re-anchored by quote alone across an edit, with the expected UTF-16 range alongside the scalar range, and a variant where the quote recurs so the result is ambiguous. Expected offsets were computed in Python independently of the Rust implementation.",
+  "license": "WLC text: public domain; OSHB markup CC BY 4.0. BSB: public domain. Note text: CC0, written for this fixture. The edited John 3:16 and the next WLC revision are hypothetical.",
+  "source": "Genesis 1:1 as in hebrew-cantillation-genesis-1; John 3:16 as in cross-verse-selection-john-3; note text written for this fixture.",
+  "pairs": [
+    {
+      "id": "gen",
+      "edition_id": "wlc",
+      "segment_id": "Gen.1.1",
+      "old": {
+        "text": "בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים אֵ֥ת הַשָּׁמַ֖יִם וְאֵ֥ת הָאָֽרֶץ׃",
+        "scalar_len": 65,
+        "utf16_len": 65,
+        "grapheme_len": 35,
+        "tokens": [
+          {
+            "id": "wlc:01001001001",
+            "start": 0,
+            "end": 12
+          },
+          {
+            "id": "wlc:01001001002",
+            "start": 13,
+            "end": 20
+          },
+          {
+            "id": "wlc:01001001003",
+            "start": 21,
+            "end": 30
+          },
+          {
+            "id": "wlc:01001001004",
+            "start": 31,
+            "end": 35
+          },
+          {
+            "id": "wlc:01001001005",
+            "start": 36,
+            "end": 48
+          },
+          {
+            "id": "wlc:01001001006",
+            "start": 49,
+            "end": 55
+          },
+          {
+            "id": "wlc:01001001007",
+            "start": 56,
+            "end": 64
+          }
+        ],
+        "content_revision": "oshb-wlc-4.20"
+      },
+      "new": {
+        "text": "בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים אֵ֥ת הַשָּׁמַ֖יִם וְאֵ֥ת הָאָֽרֶץ׃",
+        "scalar_len": 65,
+        "utf16_len": 65,
+        "grapheme_len": 35,
+        "tokens": [
+          {
+            "id": "wlc:01001001001a",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "id": "wlc:01001001001b",
+            "start": 3,
+            "end": 12
+          },
+          {
+            "id": "wlc:01001001002",
+            "start": 13,
+            "end": 20
+          },
+          {
+            "id": "wlc:01001001003",
+            "start": 21,
+            "end": 30
+          },
+          {
+            "id": "wlc:01001001004",
+            "start": 31,
+            "end": 35
+          },
+          {
+            "id": "wlc:01001001005a",
+            "start": 36,
+            "end": 38
+          },
+          {
+            "id": "wlc:01001001005b",
+            "start": 38,
+            "end": 48
+          },
+          {
+            "id": "wlc:01001001006",
+            "start": 49,
+            "end": 55
+          },
+          {
+            "id": "wlc:01001001007",
+            "start": 56,
+            "end": 64
+          }
+        ],
+        "content_revision": "fixture-wlc-next"
+      },
+      "lineage": {
+        "from_revision": "oshb-wlc-4.20",
+        "to_revision": "fixture-wlc-next",
+        "entries": [
+          {
+            "kind": "split",
+            "from": [
+              "wlc:01001001001"
+            ],
+            "to": [
+              "wlc:01001001001a",
+              "wlc:01001001001b"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "wlc:01001001002"
+            ],
+            "to": [
+              "wlc:01001001002"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "wlc:01001001003"
+            ],
+            "to": [
+              "wlc:01001001003"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "wlc:01001001004"
+            ],
+            "to": [
+              "wlc:01001001004"
+            ]
+          },
+          {
+            "kind": "split",
+            "from": [
+              "wlc:01001001005"
+            ],
+            "to": [
+              "wlc:01001001005a",
+              "wlc:01001001005b"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "wlc:01001001006"
+            ],
+            "to": [
+              "wlc:01001001006"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "wlc:01001001007"
+            ],
+            "to": [
+              "wlc:01001001007"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "john",
+      "edition_id": "bsb",
+      "segment_id": "John.3.16",
+      "old": {
+        "text": "For God so loved the world that He gave His one and only Son, that everyone who believes in Him shall not perish but have eternal life.",
+        "scalar_len": 135,
+        "utf16_len": 135,
+        "grapheme_len": 135,
+        "tokens": [
+          {
+            "id": "bsb:44003016001",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "id": "bsb:44003016002",
+            "start": 4,
+            "end": 7
+          },
+          {
+            "id": "bsb:44003016003",
+            "start": 8,
+            "end": 10
+          },
+          {
+            "id": "bsb:44003016004",
+            "start": 11,
+            "end": 16
+          },
+          {
+            "id": "bsb:44003016005",
+            "start": 17,
+            "end": 20
+          },
+          {
+            "id": "bsb:44003016006",
+            "start": 21,
+            "end": 26
+          },
+          {
+            "id": "bsb:44003016007",
+            "start": 27,
+            "end": 31
+          },
+          {
+            "id": "bsb:44003016008",
+            "start": 32,
+            "end": 34
+          },
+          {
+            "id": "bsb:44003016009",
+            "start": 35,
+            "end": 39
+          },
+          {
+            "id": "bsb:44003016010",
+            "start": 40,
+            "end": 43
+          },
+          {
+            "id": "bsb:44003016011",
+            "start": 44,
+            "end": 47
+          },
+          {
+            "id": "bsb:44003016012",
+            "start": 48,
+            "end": 51
+          },
+          {
+            "id": "bsb:44003016013",
+            "start": 52,
+            "end": 56
+          },
+          {
+            "id": "bsb:44003016014",
+            "start": 57,
+            "end": 61
+          },
+          {
+            "id": "bsb:44003016015",
+            "start": 62,
+            "end": 66
+          },
+          {
+            "id": "bsb:44003016016",
+            "start": 67,
+            "end": 75
+          },
+          {
+            "id": "bsb:44003016017",
+            "start": 76,
+            "end": 79
+          },
+          {
+            "id": "bsb:44003016018",
+            "start": 80,
+            "end": 88
+          },
+          {
+            "id": "bsb:44003016019",
+            "start": 89,
+            "end": 91
+          },
+          {
+            "id": "bsb:44003016020",
+            "start": 92,
+            "end": 95
+          },
+          {
+            "id": "bsb:44003016021",
+            "start": 96,
+            "end": 101
+          },
+          {
+            "id": "bsb:44003016022",
+            "start": 102,
+            "end": 105
+          },
+          {
+            "id": "bsb:44003016023",
+            "start": 106,
+            "end": 112
+          },
+          {
+            "id": "bsb:44003016024",
+            "start": 113,
+            "end": 116
+          },
+          {
+            "id": "bsb:44003016025",
+            "start": 117,
+            "end": 121
+          },
+          {
+            "id": "bsb:44003016026",
+            "start": 122,
+            "end": 129
+          },
+          {
+            "id": "bsb:44003016027",
+            "start": 130,
+            "end": 135
+          }
+        ],
+        "content_revision": "bsb-2024"
+      },
+      "new": {
+        "text": "For God so loved the world, He gave His only Son, that everyone who believes in Him shall not perish but have eternal life.",
+        "scalar_len": 123,
+        "utf16_len": 123,
+        "grapheme_len": 123,
+        "tokens": [
+          {
+            "id": "bsb:44003016001",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "id": "bsb:44003016002",
+            "start": 4,
+            "end": 7
+          },
+          {
+            "id": "bsb:44003016003",
+            "start": 8,
+            "end": 10
+          },
+          {
+            "id": "bsb:44003016004",
+            "start": 11,
+            "end": 16
+          },
+          {
+            "id": "bsb:44003016005",
+            "start": 17,
+            "end": 20
+          },
+          {
+            "id": "bsb:44003016006",
+            "start": 21,
+            "end": 27
+          },
+          {
+            "id": "bsb:44003016008",
+            "start": 28,
+            "end": 30
+          },
+          {
+            "id": "bsb:44003016009",
+            "start": 31,
+            "end": 35
+          },
+          {
+            "id": "bsb:44003016010",
+            "start": 36,
+            "end": 39
+          },
+          {
+            "id": "bsb:44003016013",
+            "start": 40,
+            "end": 44
+          },
+          {
+            "id": "bsb:44003016014",
+            "start": 45,
+            "end": 49
+          },
+          {
+            "id": "bsb:44003016015",
+            "start": 50,
+            "end": 54
+          },
+          {
+            "id": "bsb:44003016016",
+            "start": 55,
+            "end": 63
+          },
+          {
+            "id": "bsb:44003016017",
+            "start": 64,
+            "end": 67
+          },
+          {
+            "id": "bsb:44003016018",
+            "start": 68,
+            "end": 76
+          },
+          {
+            "id": "bsb:44003016019",
+            "start": 77,
+            "end": 79
+          },
+          {
+            "id": "bsb:44003016020",
+            "start": 80,
+            "end": 83
+          },
+          {
+            "id": "bsb:44003016021",
+            "start": 84,
+            "end": 89
+          },
+          {
+            "id": "bsb:44003016022",
+            "start": 90,
+            "end": 93
+          },
+          {
+            "id": "bsb:44003016023",
+            "start": 94,
+            "end": 100
+          },
+          {
+            "id": "bsb:44003016024",
+            "start": 101,
+            "end": 104
+          },
+          {
+            "id": "bsb:44003016025",
+            "start": 105,
+            "end": 109
+          },
+          {
+            "id": "bsb:44003016026",
+            "start": 110,
+            "end": 117
+          },
+          {
+            "id": "bsb:44003016027",
+            "start": 118,
+            "end": 123
+          }
+        ],
+        "content_revision": "fixture-bsb-edited"
+      },
+      "lineage": {
+        "from_revision": "bsb-2024",
+        "to_revision": "fixture-bsb-edited",
+        "entries": [
+          {
+            "kind": "delete",
+            "from": [
+              "bsb:44003016007"
+            ],
+            "to": []
+          },
+          {
+            "kind": "delete",
+            "from": [
+              "bsb:44003016011"
+            ],
+            "to": []
+          },
+          {
+            "kind": "delete",
+            "from": [
+              "bsb:44003016012"
+            ],
+            "to": []
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016001"
+            ],
+            "to": [
+              "bsb:44003016001"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016002"
+            ],
+            "to": [
+              "bsb:44003016002"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016003"
+            ],
+            "to": [
+              "bsb:44003016003"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016004"
+            ],
+            "to": [
+              "bsb:44003016004"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016005"
+            ],
+            "to": [
+              "bsb:44003016005"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016006"
+            ],
+            "to": [
+              "bsb:44003016006"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016008"
+            ],
+            "to": [
+              "bsb:44003016008"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016009"
+            ],
+            "to": [
+              "bsb:44003016009"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016010"
+            ],
+            "to": [
+              "bsb:44003016010"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016013"
+            ],
+            "to": [
+              "bsb:44003016013"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016014"
+            ],
+            "to": [
+              "bsb:44003016014"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016015"
+            ],
+            "to": [
+              "bsb:44003016015"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016016"
+            ],
+            "to": [
+              "bsb:44003016016"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016017"
+            ],
+            "to": [
+              "bsb:44003016017"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016018"
+            ],
+            "to": [
+              "bsb:44003016018"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016019"
+            ],
+            "to": [
+              "bsb:44003016019"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016020"
+            ],
+            "to": [
+              "bsb:44003016020"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016021"
+            ],
+            "to": [
+              "bsb:44003016021"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016022"
+            ],
+            "to": [
+              "bsb:44003016022"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016023"
+            ],
+            "to": [
+              "bsb:44003016023"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016024"
+            ],
+            "to": [
+              "bsb:44003016024"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016025"
+            ],
+            "to": [
+              "bsb:44003016025"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016026"
+            ],
+            "to": [
+              "bsb:44003016026"
+            ]
+          },
+          {
+            "kind": "same",
+            "from": [
+              "bsb:44003016027"
+            ],
+            "to": [
+              "bsb:44003016027"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "note",
+      "edition_id": "notes",
+      "segment_id": "note-1",
+      "old": {
+        "text": "Compare אֱלֹהִ֑ים 👍🏽 and ⁧בְּרֵאשִׁ֖ית⁩ here.",
+        "scalar_len": 45,
+        "utf16_len": 47,
+        "grapheme_len": 34,
+        "tokens": [],
+        "content_revision": "fixture-1"
+      },
+      "new": {
+        "text": "NB: compare אֱלֹהִ֑ים 👍🏽 and ⁧בְּרֵאשִׁ֖ית⁩ here.",
+        "scalar_len": 49,
+        "utf16_len": 51,
+        "grapheme_len": 38,
+        "tokens": [],
+        "content_revision": "fixture-2"
+      },
+      "lineage": null
+    },
+    {
+      "id": "note-dup",
+      "edition_id": "notes",
+      "segment_id": "note-1",
+      "old": {
+        "text": "Compare אֱלֹהִ֑ים 👍🏽 and ⁧בְּרֵאשִׁ֖ית⁩ here.",
+        "scalar_len": 45,
+        "utf16_len": 47,
+        "grapheme_len": 34,
+        "tokens": [],
+        "content_revision": "fixture-1"
+      },
+      "new": {
+        "text": "NB: compare אֱלֹהִ֑ים 👍🏽 and אֱלֹהִ֑ים 👍🏽 here.",
+        "scalar_len": 47,
+        "utf16_len": 51,
+        "grapheme_len": 37,
+        "tokens": [],
+        "content_revision": "fixture-3"
+      },
+      "lineage": null
+    }
+  ],
+  "cases": [
+    {
+      "name": "gen: a note on a word that was split keeps its range through the lineage",
+      "pair": "gen",
+      "scalar": {
+        "start": 0,
+        "end": 12
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "exact",
+        "scalar": {
+          "start": 0,
+          "end": 12
+        },
+        "utf16": {
+          "start": 0,
+          "end": 12
+        },
+        "exact": "בְּרֵאשִׁ֖ית",
+        "tokens": [
+          "wlc:01001001001a",
+          "wlc:01001001001b"
+        ]
+      }
+    },
+    {
+      "name": "gen: without the lineage the same note still finds its quote",
+      "pair": "gen",
+      "scalar": {
+        "start": 0,
+        "end": 12
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": false,
+      "expected": {
+        "status": "exact",
+        "scalar": {
+          "start": 0,
+          "end": 12
+        },
+        "utf16": {
+          "start": 0,
+          "end": 12
+        },
+        "exact": "בְּרֵאשִׁ֖ית",
+        "tokens": [
+          "wlc:01001001001a",
+          "wlc:01001001001b"
+        ]
+      }
+    },
+    {
+      "name": "gen: a morpheme-level selection inside the split word keeps its offsets",
+      "pair": "gen",
+      "scalar": {
+        "start": 3,
+        "end": 12
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "exact",
+        "scalar": {
+          "start": 3,
+          "end": 12
+        },
+        "utf16": {
+          "start": 3,
+          "end": 12
+        },
+        "exact": "רֵאשִׁ֖ית",
+        "tokens": [
+          "wlc:01001001001b"
+        ]
+      }
+    },
+    {
+      "name": "gen: a note on kept ids is exact",
+      "pair": "gen",
+      "scalar": {
+        "start": 21,
+        "end": 35
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "exact",
+        "scalar": {
+          "start": 21,
+          "end": 35
+        },
+        "utf16": {
+          "start": 21,
+          "end": 35
+        },
+        "exact": "אֱלֹהִ֑ים אֵ֥ת",
+        "tokens": [
+          "wlc:01001001003",
+          "wlc:01001001004"
+        ]
+      }
+    },
+    {
+      "name": "john: stable ids carry a note across an edit earlier in the verse",
+      "pair": "john",
+      "scalar": {
+        "start": 67,
+        "end": 88
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 55,
+          "end": 76
+        },
+        "utf16": {
+          "start": 55,
+          "end": 76
+        },
+        "exact": "everyone who believes",
+        "tokens": [
+          "bsb:44003016016",
+          "bsb:44003016017",
+          "bsb:44003016018"
+        ]
+      }
+    },
+    {
+      "name": "john: a note before the edit is exact",
+      "pair": "john",
+      "scalar": {
+        "start": 4,
+        "end": 16
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "exact",
+        "scalar": {
+          "start": 4,
+          "end": 16
+        },
+        "utf16": {
+          "start": 4,
+          "end": 16
+        },
+        "exact": "God so loved",
+        "tokens": [
+          "bsb:44003016002",
+          "bsb:44003016003",
+          "bsb:44003016004"
+        ]
+      }
+    },
+    {
+      "name": "john: the lineage orphans a note on a deleted word although the same word recurs",
+      "pair": "john",
+      "scalar": {
+        "start": 27,
+        "end": 31
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "orphaned"
+      }
+    },
+    {
+      "name": "john: without the lineage the quote alone would move the note to the later 'that'",
+      "pair": "john",
+      "scalar": {
+        "start": 27,
+        "end": 31
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": false,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 50,
+          "end": 54
+        },
+        "utf16": {
+          "start": 50,
+          "end": 54
+        },
+        "exact": "that",
+        "tokens": [
+          "bsb:44003016015"
+        ]
+      }
+    },
+    {
+      "name": "john: a note on partly deleted words falls through to the quote and is orphaned",
+      "pair": "john",
+      "scalar": {
+        "start": 44,
+        "end": 56
+      },
+      "with_tokens": true,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "orphaned"
+      }
+    },
+    {
+      "name": "john: a quote-only note survives the shift",
+      "pair": "john",
+      "scalar": {
+        "start": 122,
+        "end": 135
+      },
+      "with_tokens": false,
+      "with_quote": true,
+      "use_lineage": true,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 110,
+          "end": 123
+        },
+        "utf16": {
+          "start": 110,
+          "end": 123
+        },
+        "exact": "eternal life.",
+        "tokens": [
+          "bsb:44003016026",
+          "bsb:44003016027"
+        ]
+      }
+    },
+    {
+      "name": "john: a note with neither tokens nor quote is found from the old text",
+      "pair": "john",
+      "scalar": {
+        "start": 96,
+        "end": 112
+      },
+      "with_tokens": false,
+      "with_quote": false,
+      "use_lineage": true,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 84,
+          "end": 100
+        },
+        "utf16": {
+          "start": 84,
+          "end": 100
+        },
+        "exact": "shall not perish",
+        "tokens": [
+          "bsb:44003016021",
+          "bsb:44003016022",
+          "bsb:44003016023"
+        ]
+      }
+    },
+    {
+      "name": "note: emoji and Hebrew move with the inserted prefix",
+      "pair": "note",
+      "scalar": {
+        "start": 8,
+        "end": 20
+      },
+      "with_tokens": false,
+      "with_quote": true,
+      "use_lineage": false,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 12,
+          "end": 24
+        },
+        "utf16": {
+          "start": 12,
+          "end": 26
+        },
+        "exact": "אֱלֹהִ֑ים 👍🏽",
+        "tokens": []
+      }
+    },
+    {
+      "name": "note: a selection ending inside the bidi isolate moves too",
+      "pair": "note",
+      "scalar": {
+        "start": 21,
+        "end": 38
+      },
+      "with_tokens": false,
+      "with_quote": true,
+      "use_lineage": false,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 25,
+          "end": 42
+        },
+        "utf16": {
+          "start": 27,
+          "end": 44
+        },
+        "exact": "and ⁧בְּרֵאשִׁ֖ית",
+        "tokens": []
+      }
+    },
+    {
+      "name": "note: the emoji alone, two scalars and four UTF-16 units, moves",
+      "pair": "note",
+      "scalar": {
+        "start": 18,
+        "end": 20
+      },
+      "with_tokens": false,
+      "with_quote": true,
+      "use_lineage": false,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 22,
+          "end": 24
+        },
+        "utf16": {
+          "start": 22,
+          "end": 26
+        },
+        "exact": "👍🏽",
+        "tokens": []
+      }
+    },
+    {
+      "name": "note-dup: a quote that now occurs twice without its context is ambiguous",
+      "pair": "note-dup",
+      "scalar": {
+        "start": 8,
+        "end": 20
+      },
+      "with_tokens": false,
+      "with_quote": true,
+      "use_lineage": false,
+      "expected": {
+        "status": "ambiguous",
+        "candidates": [
+          {
+            "start": 12,
+            "end": 24
+          },
+          {
+            "start": 29,
+            "end": 41
+          }
+        ]
+      }
+    },
+    {
+      "name": "note-dup: a quote that still occurs once is moved, not ambiguous",
+      "pair": "note-dup",
+      "scalar": {
+        "start": 40,
+        "end": 45
+      },
+      "with_tokens": false,
+      "with_quote": true,
+      "use_lineage": false,
+      "expected": {
+        "status": "moved",
+        "scalar": {
+          "start": 42,
+          "end": 47
+        },
+        "utf16": {
+          "start": 46,
+          "end": 51
+        },
+        "exact": "here.",
+        "tokens": []
+      }
+    }
+  ]
+}

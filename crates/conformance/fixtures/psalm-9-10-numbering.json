@@ -299,5 +299,124 @@
         "org"
       ]
     }
+  ],
+  "set_cases": [
+    {
+      "name": "English Psalm 9 as a set is Hebrew 9:2-21",
+      "references": [
+        "Ps.9.1-Ps.9.20"
+      ],
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "to_references": [
+        "Ps.9.2-Ps.9.21"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "Hebrew Psalm 9 with its title is the English title verse plus 9:1-20",
+      "references": [
+        "Ps.9.1-Ps.9.21"
+      ],
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "to_references": [
+        "Ps.9.0",
+        "Ps.9.1-Ps.9.20"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "English Psalms 9 and 10 together pivot to Greek Psalm 9",
+      "references": [
+        "Ps.9.1-Ps.9.20",
+        "Ps.10.1-Ps.10.18"
+      ],
+      "from": "eng",
+      "to": "lxx",
+      "status": "exact",
+      "to_references": [
+        "Ps.9.2-Ps.9.39"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "eng",
+        "org",
+        "lxx"
+      ]
+    },
+    {
+      "name": "Hebrew 13:6 maps to the two English verses it covers",
+      "references": [
+        "Ps.13.6"
+      ],
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "to_references": [
+        "Ps.13.5",
+        "Ps.13.6"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "English 13:5-6 together reach Hebrew 13:6 but the rows only say partial",
+      "references": [
+        "Ps.13.5",
+        "Ps.13.6"
+      ],
+      "from": "eng",
+      "to": "org",
+      "status": "partial",
+      "to_references": [
+        "Ps.13.6"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "Greek Psalm 10 is not in the table and is unknown",
+      "references": [
+        "Ps.9.39",
+        "Ps.10.1"
+      ],
+      "from": "lxx",
+      "to": "eng",
+      "status": "partial",
+      "to_references": [
+        "Ps.10.18"
+      ],
+      "absent": [],
+      "unknown": [
+        "Ps.10.1"
+      ],
+      "path": [
+        "lxx",
+        "org",
+        "eng"
+      ]
+    }
   ]
 }
