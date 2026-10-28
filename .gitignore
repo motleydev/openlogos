@@ -39,6 +39,8 @@ local.properties
 node_modules/
 dist/
 .cache/
+# wasm-pack output of scripts/wasm-bindings.sh
+apps/web/core-host/pkg/
 
 # --- Python (pipelines/ml) ------------------------------------------------
 __pycache__/

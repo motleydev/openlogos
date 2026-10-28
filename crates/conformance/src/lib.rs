@@ -267,6 +267,20 @@ pub struct VersificationFixture {
     pub cases: Vec<MappingCase>,
 }
 
+impl VersificationFixture {
+    /// The rows expanded verse by verse into a [`VerseMap`], for a host that wants to map
+    /// with the fixture table itself. The first row that does not expand is the error;
+    /// [`run_all`] reports every such row as a failing case instead.
+    pub fn verse_map(&self) -> Result<VerseMap, String> {
+        let table = AliasTable::english();
+        let mut entries = Vec::new();
+        for row in &self.rows {
+            entries.extend(expand_row(row, &table)?);
+        }
+        Ok(VerseMap::new(entries))
+    }
+}
+
 /// One citation and its expected parse.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReferenceCase {

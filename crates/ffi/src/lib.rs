@@ -13,6 +13,9 @@ pub mod native;
 #[doc(hidden)]
 pub use native::UniFfiTag;
 
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
+
 /// The core API version this binding surface was built against.
 #[must_use]
 pub fn core_api_version() -> &'static str {
