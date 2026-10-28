@@ -1,0 +1,9 @@
+# Build-script environment for the C sources the workspace compiles (sqlite-vec, the bundled
+# SQLite). sqlite-vec only uses its NEON distance kernels when SQLITE_VEC_ENABLE_NEON is
+# defined, and its build script does not define it; benchmark R5 (docs/evidence/B064.md)
+# measures the difference. The `cc` crate reads CFLAGS_<target> for each cross target.
+[env]
+CFLAGS_aarch64_apple_darwin = "-DSQLITE_VEC_ENABLE_NEON"
+CFLAGS_aarch64_apple_ios = "-DSQLITE_VEC_ENABLE_NEON"
+CFLAGS_aarch64_apple_ios_sim = "-DSQLITE_VEC_ENABLE_NEON"
+CFLAGS_aarch64_linux_android = "-DSQLITE_VEC_ENABLE_NEON"

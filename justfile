@@ -3,8 +3,10 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-# Crates that must build for the browser worker (ADR 0001), including the binding surface.
-wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-conformance -p openlogos-ffi"
+# Crates that must build for the browser worker (ADR 0001), including the binding surface and,
+# since B064, the retrieval engine (SQLite compiled for wasm32 by sqlite-wasm-rs; the dev
+# shells point the `cc` crate at an unwrapped clang for it).
+wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-conformance -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-ffi"
 
 [private]
 default:
@@ -54,6 +56,15 @@ lint:
 # Exactly what CI runs inside the dev shell (CI also runs `just check`)
 [group('2 · core')]
 ci: lint test check-wasm
+
+# B064 retrieval benchmarks (docs/evidence/B064.md): R5 vectors and R9 relations on synthetic data under `dir`, R6 if `tf` names an N1904 Text-Fabric folder (tf/1.0.0); extra arguments go to every subcommand
+[group('2 · core')]
+bench-retrieval dir="target/bench-retrieval" tf="" *args:
+    cargo build --release -p openlogos-retrieval-sqlite --bin openlogos-retrieval-bench
+    mkdir -p {{ dir }}
+    if [ -n "{{ tf }}" ]; then target/release/openlogos-retrieval-bench ingest-tf "{{ tf }}" {{ dir }}/n1904.sqlite && target/release/openlogos-retrieval-bench r6 {{ dir }}/n1904.sqlite crates/retrieval-sqlite/bench/r6-queries.json --json {{ dir }}/r6-engine.json {{ args }}; fi
+    target/release/openlogos-retrieval-bench r5 {{ dir }}/r5 {{ args }}
+    target/release/openlogos-retrieval-bench r9 {{ dir }}/r9 {{ args }}
 
 # Validate the blueprint data (schemas, backlog DAG, source IDs); needs the pipeline or ops shell
 [group('3 · blueprint')]
@@ -122,3 +133,43 @@ test-wasm *args:
 [group('6 · web')]
 test-web: wasm-build
     cd apps/web/core-host && npm test
+
+# Build the app shell for an iPad simulator (unsigned), boot it, install and launch: `just sim` or `just sim "iPad mini (A17 Pro)"` (apple shell)
+[group('7 · apple app')]
+sim device="":
+    @scripts/sim.sh run "{{ device }}"
+
+# A screenshot of the running simulator into artifacts/sim/shots/ (or the file named)
+[group('7 · apple app')]
+sim-shot file="":
+    @scripts/sim.sh shot "{{ file }}"
+
+# Shut down the simulator `just sim` booted
+[group('7 · apple app')]
+sim-stop:
+    @scripts/sim.sh stop
+
+# A signed test build onto the shelf devices on the tailnet install from: `just ship ios` (apple shell; .envrc.local sets APPLE_TEAM_ID)
+[group('7 · apple app')]
+ship platform:
+    @scripts/ship.sh {{ platform }}
+
+# What this Mac still needs before it can ship, with the fix for each
+[group('7 · apple app')]
+ship-check:
+    @scripts/ship.sh check
+
+# Serve the shelf from this Mac at login (launchd) and share it with the tailnet (Tailscale Serve, own HTTPS port)
+[group('7 · apple app')]
+shelf-install:
+    @scripts/ship.sh install
+
+# Stop serving the shelf (its builds stay in its folder)
+[group('7 · apple app')]
+shelf-uninstall:
+    @scripts/ship.sh uninstall
+
+# Negative test: can THIS user read signing identities, ASC keys or profiles? Exits 1 if so (specs/20 wants agents isolated)
+[group('7 · apple app')]
+signing-isolation-check:
+    @scripts/signing-isolation-check.sh

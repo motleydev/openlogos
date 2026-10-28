@@ -107,6 +107,45 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   else
     warn "Xcode does not match ops/xcode-version.txt (details above)" "install the recorded version from https://developer.apple.com/download/ or 'xcode-select -s' it"
   fi
+  # The Mac mini lanes (B063): `just sim` needs a simulator runtime and xcodegen, `just ship`
+  # an accepted license, Tailscale and .envrc.local. Warnings, not failures: the Rust core
+  # does not need any of them.
+  if command -v xcodebuild >/dev/null 2>&1; then
+    if xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
+      ok "Xcode license accepted and first launch done"
+    else
+      warn "Xcode license not accepted or first launch pending" "run 'sudo xcodebuild -license accept' and 'sudo xcodebuild -runFirstLaunch'"
+    fi
+    runtime="$(xcrun simctl list runtimes 2>/dev/null | awk '/^iOS/ { print $1, $2; exit }')"
+    if [[ -n "$runtime" ]]; then
+      ok "simulator runtime $runtime ('just sim')"
+    else
+      warn "no iOS simulator runtime installed" "Xcode → Settings → Components: add an iOS runtime, or 'xcodebuild -downloadPlatform iOS'"
+    fi
+  fi
+  if have xcodegen; then
+    ok "xcodegen $(xcodegen --version 2>/dev/null | awk '{print $NF}') (apps/apple/OpenLogos/project.yml)"
+  elif [[ "$shell_name" == "apple" ]]; then
+    fail "xcodegen missing" "it comes from the apple shell: 'direnv reload'"
+  else
+    ok "xcodegen not needed in the '$shell_name' shell (the apple shell carries it)"
+  fi
+  if have tailscale || [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+    ts_cli="$(command -v tailscale || echo /Applications/Tailscale.app/Contents/MacOS/Tailscale)"
+    ts_name="$("$ts_cli" status --json 2>/dev/null | jq -r '.Self.DNSName // empty' 2>/dev/null || true)"
+    if [[ -n "$ts_name" ]]; then
+      ok "tailscale $("$ts_cli" version 2>/dev/null | head -n 1), connected as ${ts_name%.}"
+    else
+      warn "tailscale is installed but not connected ('just ship' publishes over it)" "open Tailscale and sign in"
+    fi
+  else
+    warn "tailscale is not installed (the shelf 'just ship' publishes to is served over it)" "https://tailscale.com/download/mac, then 'just shelf-install'"
+  fi
+  if [[ -f .envrc.local ]]; then
+    ok ".envrc.local present (APPLE_TEAM_ID and the shelf settings for 'just ship')"
+  else
+    warn "no .envrc.local ('just ship' needs APPLE_TEAM_ID from it)" "cp .envrc.local.example .envrc.local and fill it in; 'just sim' works without"
+  fi
 fi
 
 section "Android (needed only for the Android app)"

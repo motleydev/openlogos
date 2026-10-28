@@ -75,6 +75,7 @@
           ./Cargo.toml
           ./Cargo.lock
           ./rustfmt.toml
+          ./.cargo # build-script environment for the C sources (sqlite-vec NEON)
           ./crates
         ];
       };
@@ -109,7 +110,9 @@
           # Xcode's clang and linker must be the ones that see Apple SDKs, and a Nix
           # clang in front of them breaks iOS and simulator builds. Xcode is the one
           # declared external prerequisite (specs/06-nix-operations.md); the shells
-          # verify it rather than claim hermeticity.
+          # verify it rather than claim hermeticity. mkShellNoCC is not enough on its
+          # own: rust-overlay's rustc propagates a Nix clang wrapper and cctools, so
+          # `darwinHook` below takes them off PATH again (B063).
           mkShell = if pkgs.stdenv.isDarwin then pkgs.mkShellNoCC else pkgs.mkShell;
 
           shell =
@@ -125,7 +128,13 @@
                 packages = repoTools ++ packages;
                 # Marker that scripts/doctor.sh uses to tell which dev shell is active.
                 OPENLOGOS_DEVSHELL = name;
+                # C sources compiled for wasm32 (SQLite inside crates/retrieval-sqlite, B064)
+                # need a clang without the Nix wrapper: the wrapper adds hardening flags the
+                # wasm32 target rejects (-fzero-call-used-regs) and Xcode's clang has no
+                # wasm32 back end. The `cc` crate reads this variable for that target only.
+                CC_wasm32_unknown_unknown = "${pkgs.llvmPackages.clang-unwrapped}/bin/clang";
                 shellHook = ''
+                  ${lib.optionalString pkgs.stdenv.isDarwin darwinHook}
                   ${hook}
                   if [ -z "''${CI:-}" ]; then
                     echo "openlogos ${name} shell ready. Run 'just' to see every workflow, 'just doctor' to check your machine."
@@ -135,9 +144,37 @@
               // env
             );
 
-          # A Nix shell on macOS may point these at Nix's SDK; Xcode needs its own.
-          # Same guard as sudoku-color's build scripts.
-          dropNixSdk = ''
+          # Every Darwin shell: no Nix compiler, linker or SDK in front of Xcode's.
+          # - rust-overlay's rustc propagates a Nix clang wrapper and cctools (`cc`,
+          #   `clang`, `ld`, `lipo`, ...) so cargo can link on a bare host. They link Apple
+          #   targets against Nix's macOS SDK, which the iOS simulator rejects, so they are
+          #   removed from PATH; /usr/bin's Xcode shims take over. scripts/apple-bindings.sh
+          #   still names Xcode's clang per target explicitly, so it works either way.
+          # - A Nix shell may point DEVELOPER_DIR/SDKROOT at Nix's SDK; Xcode needs its own.
+          #   Same guard as sudoku-color's build scripts.
+          darwinHook = ''
+            kept=""
+            IFS=: read -r -a entries <<<"$PATH"
+            for entry in "''${entries[@]}"; do
+              case "$entry" in
+                /nix/store/*-clang-wrapper-*/bin | /nix/store/*-clang-[0-9]*/bin | /nix/store/*-cctools-*/bin) continue ;;
+              esac
+              kept="''${kept:+$kept:}$entry"
+            done
+            PATH="$kept"
+            export PATH
+            unset kept entries entry
+            # The wrappers' setup hooks also export tool names and flags. xcodebuild reads
+            # environment variables as build settings (LD=ld makes it link with ld
+            # directly and fail; MACOSX_DEPLOYMENT_TARGET=14.0 would override the project's),
+            # and cargo's cc crate reads CC. None of them belong in a shell without a Nix
+            # compiler.
+            for variable in CC CXX LD AR AS NM OBJCOPY OBJDUMP RANLIB READELF SIZE STRINGS STRIP \
+              MACOSX_DEPLOYMENT_TARGET LD_DYLD_PATH ZERO_AR_DATE NIX_CC NIX_BINTOOLS \
+              NIX_CFLAGS_COMPILE NIX_LDFLAGS NIX_HARDENING_ENABLE NIX_ENFORCE_NO_NATIVE \
+              NIX_IGNORE_LD_THROUGH_GCC NIX_DONT_SET_RPATH NIX_NO_SELF_RPATH; do
+              unset "$variable" "''${variable}_FOR_BUILD"
+            done
             for variable in DEVELOPER_DIR SDKROOT; do
               if [[ "''${!variable:-}" == /nix/store/* ]]; then unset "$variable"; fi
             done
@@ -202,9 +239,10 @@
             # (specs/20-orchestration-and-build-hosts.md).
             apple = shell {
               name = "apple";
-              packages = rustTools;
+              packages = rustTools ++ [
+                pkgs.xcodegen # apps/apple/OpenLogos/project.yml -> OpenLogos.xcodeproj (gitignored)
+              ];
               hook = ''
-                ${dropNixSdk}
                 # Warns on mismatch; the shell still opens so the problem can be fixed from inside it.
                 scripts/xcode-check.sh || true
               '';
@@ -261,6 +299,10 @@
             clippy = cargoCheck "clippy" "cargo clippy --workspace --all-targets --locked -- -D warnings";
             tests = cargoCheck "tests" "cargo test --workspace --locked";
             # The crates that run in the browser worker must stay free of native-only code.
+            # openlogos-retrieval-sqlite builds for wasm32 too (B064) but compiles SQLite with
+            # an unwrapped clang (see CC_wasm32_unknown_unknown in the shells); inside this
+            # sandboxed build that compiler is not wired yet, so `just check-wasm` covers it
+            # and this check does not.
             wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-collections -p openlogos-conformance -p openlogos-ffi";
             nixfmt = toolCheck "nixfmt" [
               pkgs.nixfmt
