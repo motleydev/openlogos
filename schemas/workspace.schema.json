@@ -5,7 +5,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": "1.0"
+      "type": "string",
+      "enum": [
+        "1.0",
+        "1.1"
+      ]
     },
     "fixture_only": {
       "type": "boolean"
@@ -66,6 +70,28 @@
             "type": "number",
             "exclusiveMinimum": 0,
             "maximum": 1
+          },
+          "scroll_anchor": {
+            "description": "1.1: where the pane is scrolled to, as the segment at the top of the viewport and the scalar offset within it. Lives on the pane so no layout profile can lose it.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "segment_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scalar": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "segment_id",
+              "scalar"
+            ]
           }
         },
         "required": [
@@ -89,6 +115,69 @@
     "active_pane_id": {
       "type": "string",
       "minLength": 1
+    },
+    "layout_profiles": {
+      "description": "1.1: one layout profile per device class (specs/18-platform-capabilities.md). A class with no entry is derived from the nearest stored class. Each profile places every pane of the workspace exactly once, as visible or as a tab; it never carries link state, scroll anchors or another class's layout.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "compact": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/layout_profile"
+            },
+            {
+              "properties": {
+                "visible_pane_ids": {
+                  "maxItems": 1
+                }
+              }
+            }
+          ]
+        },
+        "regular": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/layout_profile"
+            },
+            {
+              "properties": {
+                "visible_pane_ids": {
+                  "maxItems": 3
+                }
+              }
+            }
+          ]
+        },
+        "wide": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/layout_profile"
+            },
+            {
+              "properties": {
+                "visible_pane_ids": {
+                  "maxItems": 6
+                }
+              }
+            }
+          ]
+        },
+        "ultra-wide": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/layout_profile"
+            },
+            {
+              "properties": {
+                "visible_pane_ids": {
+                  "maxItems": 6
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "required": [
@@ -99,5 +188,104 @@
     "panes",
     "notes_dock_id",
     "active_pane_id"
-  ]
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "1.1"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "layout_profiles"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "1.0"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "layout_profiles"
+          ]
+        },
+        "properties": {
+          "panes": {
+            "items": {
+              "not": {
+                "required": [
+                  "scroll_anchor"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "layout_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visible_pane_ids": {
+          "description": "Panes shown as columns on this class, in visual order. The class caps the length; the width at open time may show fewer, in which case the trailing ones lead the tabs.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "tab_order": {
+          "description": "The remaining panes, in tab order. visible_pane_ids plus tab_order is every pane of the workspace exactly once.",
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "widths": {
+          "description": "Optional width fractions for visible panes, summing to one; absent means equal columns.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1
+          }
+        },
+        "notes_dock_open": {
+          "type": "boolean"
+        },
+        "collapsed_link_groups": {
+          "description": "Link groups shown as one column on this class (wide and ultra-wide); members stack as tabs inside the column.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "visible_pane_ids",
+        "tab_order",
+        "notes_dock_open"
+      ]
+    }
+  },
+  "description": "A saved reading workspace: panes with their resource, passage, link state and scroll anchor, plus per-device-class layout profiles. Schema 1.1 (B062) adds scroll_anchor on a pane and layout_profiles; a 1.0 file has neither and every class is derived (specs/18-platform-capabilities.md, Workspace layout profiles)."
 }
