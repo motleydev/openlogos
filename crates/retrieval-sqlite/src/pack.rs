@@ -149,6 +149,9 @@ pub struct PackBuilder {
     container_kinds: Vec<String>,
     /// `(kind index, parent id, first, last)` per container id (1-based ids).
     containers: Vec<(usize, Option<u32>, u32, u32)>,
+    /// Exact slot lists of the containers whose slots are not one contiguous range, by
+    /// container id − 1; `None` means the container is its hull span.
+    container_slots: Vec<Option<Vec<u32>>>,
     vector_dims: HashMap<String, (u32, Quantization)>,
 }
 
@@ -199,6 +202,7 @@ impl PackBuilder {
             verses_of_tokens: Vec::new(),
             container_kinds: Vec::new(),
             containers: Vec::new(),
+            container_slots: Vec::new(),
             vector_dims: HashMap::new(),
         })
     }
@@ -262,6 +266,23 @@ impl PackBuilder {
         last: u32,
     ) -> u32 {
         self.containers.push((kind, parent, first, last));
+        self.container_slots.push(None);
+        self.containers.len() as u32
+    }
+
+    /// Adds a discontinuous container: `slots` are its exact token positions, ascending. The
+    /// `container` row stores the hull span (used by ANCESTOR); the innermost-container maps
+    /// (used by PEER, XPEER and unit scopes) use the exact slots.
+    pub fn add_container_with_slots(
+        &mut self,
+        kind: usize,
+        parent: Option<u32>,
+        slots: &[u32],
+    ) -> u32 {
+        let first = slots.first().copied().unwrap_or(0);
+        let last = slots.last().copied().unwrap_or(0);
+        self.containers.push((kind, parent, first, last));
+        self.container_slots.push(Some(slots.to_vec()));
         self.containers.len() as u32
     }
 
@@ -403,6 +424,7 @@ impl PackBuilder {
             verses_of_tokens,
             container_kinds,
             containers,
+            container_slots,
             ..
         } = self;
         let n_tokens = verses_of_tokens.len() as u32;
@@ -467,22 +489,37 @@ impl PackBuilder {
             let mut insert_map = conn
                 .prepare("INSERT INTO token_container(kind_id, container_ids) VALUES (?1, ?2)")?;
             for kind in 0..container_kinds.len() {
-                // Largest spans first so smaller (inner) containers overwrite them.
-                let mut of_kind: Vec<(u32, u32, u32)> = containers
+                // Largest containers first so smaller (inner) ones overwrite them; size is the
+                // exact slot count when known, the hull length otherwise.
+                let mut of_kind: Vec<(u32, u32, u32, usize)> = containers
                     .iter()
                     .enumerate()
                     .filter(|(_, c)| c.0 == kind)
-                    .map(|(id, c)| (id as u32 + 1, c.2, c.3))
+                    .map(|(id, c)| {
+                        let size = container_slots[id]
+                            .as_ref()
+                            .map_or((c.3 - c.2 + 1) as usize, Vec::len);
+                        (id as u32 + 1, c.2, c.3, size)
+                    })
                     .collect();
-                of_kind.sort_by_key(|(_, first, last)| std::cmp::Reverse(last - first));
+                of_kind.sort_by_key(|(_, _, _, size)| std::cmp::Reverse(*size));
                 let mut innermost = vec![0u32; n_tokens as usize];
-                for (id, first, last) in of_kind {
-                    for slot in innermost
-                        .iter_mut()
-                        .take(last as usize + 1)
-                        .skip(first as usize)
-                    {
-                        *slot = id;
+                for (id, first, last, _) in of_kind {
+                    match &container_slots[id as usize - 1] {
+                        Some(slots) => {
+                            for s in slots {
+                                innermost[*s as usize] = id;
+                            }
+                        }
+                        None => {
+                            for slot in innermost
+                                .iter_mut()
+                                .take(last as usize + 1)
+                                .skip(first as usize)
+                            {
+                                *slot = id;
+                            }
+                        }
                     }
                 }
                 let mut bytes = Vec::with_capacity(innermost.len() * 4);

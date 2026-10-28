@@ -162,9 +162,13 @@ fn read_otype(path: &Path) -> io::Result<Vec<(u32, u32, String)>> {
     Ok(ranges)
 }
 
-/// Reads `oslots.tf`: for every non-slot node, its slot hull `(first, last)` and whether the
-/// slot set was contiguous.
-fn read_oslots(path: &Path, max_slot: u32) -> io::Result<HashMap<u32, (u32, u32, bool)>> {
+/// One node's slots: the hull `(first, last)` and, only when the slots are not one contiguous
+/// range, the exact ascending slot list.
+type Slots = (u32, u32, Option<Vec<u32>>);
+
+/// Reads `oslots.tf`: for every non-slot node, its slot hull and exact slots when
+/// discontinuous.
+fn read_oslots(path: &Path, max_slot: u32) -> io::Result<HashMap<u32, Slots>> {
     let text = fs::read_to_string(path)?;
     let mut map = HashMap::new();
     let mut node = max_slot;
@@ -176,7 +180,7 @@ fn read_oslots(path: &Path, max_slot: u32) -> io::Result<HashMap<u32, (u32, u32,
         node = n;
         let mut first = u32::MAX;
         let mut last = 0;
-        let mut covered = 0u64;
+        let mut ranges: Vec<(u32, u32)> = Vec::new();
         for part in slots.split(',') {
             let (a, b) = match part.split_once('-') {
                 Some((a, b)) => (a.parse::<u32>().unwrap_or(0), b.parse::<u32>().unwrap_or(0)),
@@ -187,10 +191,16 @@ fn read_oslots(path: &Path, max_slot: u32) -> io::Result<HashMap<u32, (u32, u32,
             };
             first = first.min(a);
             last = last.max(b);
-            covered += u64::from(b - a + 1);
+            ranges.push((a, b));
         }
-        let contiguous = covered == u64::from(last - first + 1);
-        map.insert(node, (first, last, contiguous));
+        let covered: u64 = ranges.iter().map(|(a, b)| u64::from(b - a + 1)).sum();
+        let exact = if covered == u64::from(last - first + 1) {
+            None
+        } else {
+            ranges.sort_unstable();
+            Some(ranges.iter().flat_map(|(a, b)| *a..=*b).collect())
+        };
+        map.insert(node, (first, last, exact));
     }
     Ok(map)
 }
@@ -274,7 +284,8 @@ pub fn build_n1904_pack(
         report.verses += 1;
     }
 
-    // Containers: hull spans, parents by span nesting across the ingested kinds.
+    // Containers: hull spans with exact slots where discontinuous, parents by span nesting
+    // across the ingested kinds.
     let mut spans: Vec<(u32, u32, usize, u32)> = Vec::new(); // (first, last, kind index, tf node)
     for (kind_index, kind) in N1904_CONTAINERS.iter().enumerate() {
         let kind_id = builder.add_container_kind(kind);
@@ -284,9 +295,9 @@ pub fn build_n1904_pack(
                 continue;
             }
             for node in *first_node..=*last_node {
-                if let Some((first, last, contiguous)) = oslots.get(&node) {
+                if let Some((first, last, exact)) = oslots.get(&node) {
                     spans.push((*first - 1, *last - 1, kind_index, node));
-                    if !contiguous {
+                    if exact.is_some() {
                         report.discontinuous += 1;
                     }
                 }
@@ -298,7 +309,7 @@ pub fn build_n1904_pack(
     spans.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)).then(a.2.cmp(&b.2)));
     let mut stack: Vec<(u32, u32, u32)> = Vec::new(); // (last, container id, first)
     let mut counts = vec![0u64; N1904_CONTAINERS.len()];
-    for (first, last, kind, _node) in &spans {
+    for (first, last, kind, node) in &spans {
         while let Some((top_last, _, top_first)) = stack.last() {
             if *first > *top_last || *last > *top_last || *first < *top_first {
                 stack.pop();
@@ -307,7 +318,13 @@ pub fn build_n1904_pack(
             }
         }
         let parent = stack.last().map(|(_, id, _)| *id);
-        let id = builder.add_container(*kind, parent, *first, *last);
+        let id = match oslots.get(node).and_then(|(_, _, exact)| exact.as_ref()) {
+            Some(slots) => {
+                let zero_based: Vec<u32> = slots.iter().map(|s| s - 1).collect();
+                builder.add_container_with_slots(*kind, parent, &zero_based)
+            }
+            None => builder.add_container(*kind, parent, *first, *last),
+        };
         counts[*kind] += 1;
         stack.push((*last, id, *first));
     }
@@ -439,7 +456,7 @@ mod tests {
         let dir = temp_path("ingest-ranges").parent().unwrap().to_path_buf();
         fs::write(dir.join("oslots.tf"), "@edge\n\n5\t1-3,7\n2-2\n").unwrap();
         let map = read_oslots(&dir.join("oslots.tf"), 4).unwrap();
-        assert_eq!(map[&5], (1, 7, false));
-        assert_eq!(map[&6], (2, 2, true));
+        assert_eq!(map[&5], (1, 7, Some(vec![1, 2, 3, 7])));
+        assert_eq!(map[&6], (2, 2, None));
     }
 }

@@ -6,8 +6,8 @@
 //! crate; this function is deliberately a single smoke call.
 
 use openlogos_retrieval::{
-    Locator, QueryVector, RelationStore, TextIndex, TextQuery, TextStore, TokenEngine, TokenPattern, TokenQuery,
-    VectorIndex, VerseId,
+    Locator, QueryVector, RelationStore, TextIndex, TextQuery, TextStore, TokenEngine,
+    TokenPattern, TokenQuery, VectorIndex, VerseId,
 };
 use openlogos_retrieval_sqlite::Engine;
 
@@ -36,7 +36,11 @@ pub struct RetrievalSmoke {
 /// and runs one query of each kind for `query` (a word, searched as text and as lemma).
 /// Errors are returned as text: the smoke test is diagnostic, not an API.
 #[uniffi::export]
-pub fn retrieval_smoke(pack_path: String, link_index_path: String, query: String) -> Result<RetrievalSmoke, String> {
+pub fn retrieval_smoke(
+    pack_path: String,
+    link_index_path: String,
+    query: String,
+) -> Result<RetrievalSmoke, String> {
     let run = || -> openlogos_retrieval::Result<RetrievalSmoke> {
         let mut engine = Engine::new()?.with_link_index(std::path::Path::new(&link_index_path))?;
         let info = engine.attach_pack(std::path::Path::new(&pack_path))?;
@@ -52,7 +56,10 @@ pub fn retrieval_smoke(pack_path: String, link_index_path: String, query: String
             })?
             .len() as u64;
         let lemma_hits = engine
-            .token_search(&TokenQuery::single(&info.edition, TokenPattern::one("lemma", &query)))?
+            .token_search(&TokenQuery::single(
+                &info.edition,
+                TokenPattern::one("lemma", &query),
+            ))?
             .count;
         let first_verse = engine
             .chapter_text(&info.edition, 1, 1)?
@@ -62,8 +69,12 @@ pub fn retrieval_smoke(pack_path: String, link_index_path: String, query: String
         let nearest = match engine.vector_sets()?.first() {
             Some(set) => {
                 let query = match set.quantization {
-                    openlogos_retrieval::Quantization::Int8 => QueryVector::Int8(vec![0; set.dimensions as usize]),
-                    openlogos_retrieval::Quantization::Binary => QueryVector::Binary(vec![0; set.dimensions as usize / 8]),
+                    openlogos_retrieval::Quantization::Int8 => {
+                        QueryVector::Int8(vec![0; set.dimensions as usize])
+                    }
+                    openlogos_retrieval::Quantization::Binary => {
+                        QueryVector::Binary(vec![0; set.dimensions as usize / 8])
+                    }
                 };
                 engine.nearest(&set.name, &query, 5)?.len() as u64
             }

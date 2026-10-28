@@ -64,3 +64,10 @@ opt-level = "z"
 lto = "fat"
 codegen-units = 1
 strip = true
+
+# sqlite-vec's distance loops are the whole cost of brute-force vector search (benchmark
+# R5). At opt-level "z" the int8 kernels run about 20× slower than at -O3 while the object
+# is a few KB either way (docs/evidence/B064.md), so this one C package is built for speed.
+# .cargo/config.toml adds its NEON kernels on the arm64 targets.
+[profile.release.package.sqlite-vec]
+opt-level = 3

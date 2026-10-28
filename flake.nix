@@ -75,6 +75,7 @@
           ./Cargo.toml
           ./Cargo.lock
           ./rustfmt.toml
+          ./.cargo # build-script environment for the C sources (sqlite-vec NEON)
           ./crates
         ];
       };
