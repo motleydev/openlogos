@@ -310,13 +310,14 @@ impl LinkIndex {
     fn load_frontier(&self, frontier: &[Locator]) -> Result<()> {
         self.conn
             .execute_batch(
-                "CREATE TEMP TABLE IF NOT EXISTS frontier(work INTEGER NOT NULL, locator TEXT NOT NULL);
+                "CREATE TEMP TABLE IF NOT EXISTS frontier(work INTEGER NOT NULL, locator TEXT NOT NULL,
+                     PRIMARY KEY(work, locator)) WITHOUT ROWID;
                  DELETE FROM frontier;",
             )
             .map_err(storage)?;
         let mut insert = self
             .conn
-            .prepare_cached("INSERT INTO frontier(work, locator) VALUES (?1, ?2)")
+            .prepare_cached("INSERT OR IGNORE INTO frontier(work, locator) VALUES (?1, ?2)")
             .map_err(storage)?;
         let mut works: HashMap<&str, Option<i64>> = HashMap::new();
         for node in frontier {
@@ -337,7 +338,9 @@ impl LinkIndex {
 
     /// The edges leaving (or entering) the frontier nodes, at most `fan_out` per node by
     /// descending weight (`row_number()` over a partition per node), with the frontier node
-    /// of each edge.
+    /// of each edge. `CROSS JOIN` pins the frontier as the outer loop: without it the planner,
+    /// which has no statistics for a temp table, may scan all of `link` and probe the frontier
+    /// (measured in B064 as 1.3 s per hop against 1 ms).
     fn expand_frontier(
         &self,
         direction: Direction,
@@ -351,7 +354,7 @@ impl LinkIndex {
         let sql = format!(
             "SELECT sw.name, x.src_locator, r.name, dw.name, x.dst_locator, x.weight, x.provenance, ow.name FROM (
                  SELECT l.*, row_number() OVER (PARTITION BY l.{column}_work, l.{column}_locator ORDER BY l.weight DESC) AS rn
-                 FROM frontier f JOIN link l ON l.{column}_work = f.work AND l.{column}_locator = f.locator
+                 FROM frontier f CROSS JOIN link l ON l.{column}_work = f.work AND l.{column}_locator = f.locator
                  WHERE (?1 IS NULL OR l.rel = ?1)
              ) x JOIN work sw ON sw.id = x.src_work JOIN work dw ON dw.id = x.dst_work
              JOIN rel r ON r.id = x.rel JOIN work ow ON ow.id = x.source_work
