@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenLogos DOM reader (B005 spike)</title>
+<!--
+  The semantic-DOM reading surface the web interface will be built on (docs/adr/0001, B005):
+  plain HTML text with the browser's own selection, the Rust core as WebAssembly behind
+  reader.js. No framework, no build step: served next to the wasm-pack output of
+  `just wasm-build` (apps/web/core-host/pkg). Only fixture text from the core appears:
+  BSB John 3:16–17 (CC0), WLC Genesis 1:1–2 (public domain), SBLGNT John 3:16 (CC BY 4.0,
+  from the alignment fixture), and the CC0 study note with bidi isolates.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: CanvasText; --muted: GrayText; --rule: color-mix(in srgb, CanvasText 18%, transparent);
+    --mark: color-mix(in srgb, gold 45%, transparent);
+    font-family: "New York", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  }
+  body { margin: 0; background: Canvas; color: var(--fg); }
+  header { display: flex; gap: 16px; align-items: center; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--rule); font: 15px/1 system-ui, sans-serif; }
+  header strong { font-weight: 600; }
+  header .field { border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; color: var(--muted); min-width: 240px; }
+  main { display: grid; grid-template-columns: repeat(var(--panes, 3), minmax(0, 1fr)) var(--dock, 360px); min-height: calc(100vh - 45px); }
+  .pane, .dock { border-inline-end: 1px solid var(--rule); min-width: 0; display: flex; flex-direction: column; }
+  .pane:last-child { border-inline-end: 0; }
+  .identity { display: flex; gap: 10px; align-items: baseline; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--rule); font: 13px/1 system-ui, sans-serif; white-space: nowrap; overflow: hidden; }
+  .identity b { font-weight: 600; }
+  .identity .ref { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+  .identity .link { margin-inline-start: auto; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 10px; }
+  .text { font-size: 20px; line-height: 1.5; margin: 0; padding: 20px 20px 8px; unicode-bidi: plaintext; }
+  .text[dir="rtl"] { text-align: right; }
+  .marker { font-size: 11px; color: var(--muted); user-select: text; vertical-align: 0.45em; line-height: 0; margin-inline-end: 0.15em; }
+  .attribution { font-size: 12px; color: var(--muted); padding: 8px 20px 20px; margin: 0; }
+  .readout { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); padding: 8px 20px 12px; margin: 0; white-space: pre-wrap; word-break: break-word; }
+  .readout.differs { color: crimson; }
+  .actions { display: inline-flex; margin: 8px 20px 0; border: 1px solid var(--rule); border-radius: 10px; font: 13px system-ui, sans-serif; }
+  .actions[hidden] { display: none; }
+  .actions button { background: none; border: 0; color: inherit; min-width: 44px; min-height: 44px; padding: 0 12px; cursor: pointer; }
+  .dock { padding-bottom: 12px; }
+  .dock h2 { font: 600 15px/1 system-ui, sans-serif; margin: 0; height: 44px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--rule); }
+  .dock .text { font-size: 17px; padding: 12px; }
+  .dock .readout, .dock .attribution { padding-inline: 12px; }
+  .status { font: 12px system-ui, sans-serif; color: var(--muted); padding: 8px 16px; border-top: 1px solid var(--rule); }
+  ::highlight(openlogos-anchor) { background-color: var(--mark); text-decoration: underline; text-decoration-color: darkorange; }
+  .overlay { position: absolute; background: var(--mark); pointer-events: none; border-bottom: 1px solid darkorange; }
+  @media (max-width: 1000px) { main { --panes: 2; --dock: 320px; } .pane:nth-of-type(3) { display: none; } }
+  @media (max-width: 700px) { main { --panes: 1; --dock: 0px; } .pane:nth-of-type(2), .dock { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <strong>Read</strong>
+  <span class="field">John 3:16</span>
+  <span id="core" style="margin-inline-start:auto;color:var(--muted)">core …</span>
+</header>
+<main id="main"></main>
+<p class="status" id="status">Loading the core…</p>
+<script type="module" src="reader.js"></script>
+</body>
+</html>

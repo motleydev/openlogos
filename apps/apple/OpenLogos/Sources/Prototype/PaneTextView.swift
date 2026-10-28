@@ -1,9 +1,10 @@
-// A pane's reading surface: monochrome Scripture in the system serif with Dynamic Type, scaled
-// leading, subordinate verse numbers, the resource's own layout direction (Hebrew right to left
-// inside a left-to-right workspace), native text selection, and the loading, unavailable and
-// read-only states (specs/21 §1, §7, §11). The word-level selection used by the Selection view
-// is a flow of tappable words because SwiftUI Text does not expose its selected range; the
-// production reader (B062) extends the native edit menu instead (specs/21 §3).
+// A pane's reading surface: the TextKit 2 text view (Sources/Reader, B005) showing monochrome
+// Scripture in the system serif with Dynamic Type, scaled leading, subordinate verse numbers,
+// the resource's own layout direction (Hebrew right to left inside a left-to-right workspace),
+// the platform's own selection with the project actions in its edit menu, plus the loading,
+// unavailable and read-only states (specs/21 §1, §7, §11). Every selection goes through the
+// core and back (AnchorRoundTrip); the pane shows the anchors it got beneath the text, with the
+// B004 action strip, so the round trip is visible in every screenshot.
 import SwiftUI
 
 /// Reports the text region's size so the reading-area overlay can sum it (LayoutMetrics).
@@ -19,7 +20,7 @@ struct PaneTextView: View {
     let pane: Pane
     let state: PrototypeState
     let width: CGFloat
-    /// Word-level selection on verse 1 of this pane (Selection view only).
+    /// Kept for the Selection view: the pane whose selection the study drawer describes.
     var selectable = false
     /// A single pane caps its measure at about 55–75 Latin characters and centres the column
     /// (specs/16 "Prose measure"); multi-pane views are narrower than the cap anyway.
@@ -27,156 +28,106 @@ struct PaneTextView: View {
     var onCollect: ((String, String) -> Void)?
     var onStudy: (() -> Void)?
 
-    @ScaledMetric(relativeTo: .title3) private var leading: CGFloat = 9
     @ScaledMetric(relativeTo: .title3) private var measure: CGFloat = ChromeMetrics.measure
 
     var body: some View {
         GeometryReader { geometry in
             let padding = ChromeMetrics.panePadding(width)
             let columnWidth = capMeasure ? min(geometry.size.width, measure + 2 * padding) : geometry.size.width
-            ScrollView {
-                content(paneWidth: columnWidth)
-                    .padding(.horizontal, padding)
-                    .padding(.vertical, 20)
-                    .frame(maxWidth: columnWidth, alignment: .leading)
-                    .frame(maxWidth: .infinity)
-            }
-            .preference(key: ReadingAreaKey.self, value: [pane.id: CGSize(width: columnWidth, height: geometry.size.height)])
+            content(paneWidth: columnWidth, padding: padding)
+                .frame(width: columnWidth, height: geometry.size.height)
+                .frame(maxWidth: .infinity)
+                .preference(key: ReadingAreaKey.self, value: [pane.id: CGSize(width: columnWidth, height: geometry.size.height)])
         }
-        .environment(\.layoutDirection, pane.content.isRightToLeft ? .rightToLeft : .leftToRight)
         .background(Color(white: 1, opacity: 0.001)) // a hit area for pane activation
-        .onTapGesture { workspace.activate(pane.id) }
+        .simultaneousGesture(TapGesture().onEnded { workspace.activate(pane.id) })
     }
 
-    @ViewBuilder private func content(paneWidth: CGFloat) -> some View {
+    @ViewBuilder private func content(paneWidth: CGFloat, padding: CGFloat) -> some View {
         if !pane.content.isInstalled {
-            UnavailableSourceView(content: pane.content)
+            ScrollView { UnavailableSourceView(content: pane.content).padding(padding) }
         } else if state == .loading && pane.id == workspace.activePaneID {
-            LoadingLines()
+            ScrollView { LoadingLines().padding(padding) }
         } else {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 0) {
                 if pane.content.isReferenceOnly {
                     StateNotice(symbol: "lock", text: "Reference only: this edition can be read and cited, not quoted. Collect adds the reference without text.")
+                        .padding(.horizontal, padding)
+                        .padding(.top, 12)
                 }
-                if selectable, let first = pane.content.verses.first {
-                    // The strip stacks icon over label when the pane (not the window) is narrow.
-                    SelectableVerse(workspace: workspace, pane: pane, verse: first, compact: paneWidth < 440, onCollect: onCollect, onStudy: onStudy)
-                    paragraph(Array(pane.content.verses.dropFirst()))
-                } else {
-                    paragraph(pane.content.verses)
-                }
-                Text(pane.content.license.hasPrefix(pane.content.fullTitle)
-                     ? "Fixture: \(pane.content.license)"
-                     : "Fixture: \(pane.content.fullTitle). \(pane.content.license)")
-                    .font(.system(.caption, design: .serif))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 8)
-            }
-            .textSelection(.enabled)
-        }
-    }
-
-    private func paragraph(_ verses: [Passage.Verse]) -> some View {
-        verses.enumerated().reduce(Text("")) { paragraph, element in
-            let (index, verse) = element
-            let separator = index == 0 ? Text("") : Text(" ")
-            let body = Text(verse.text)
-            guard !verse.number.isEmpty else { return paragraph + separator + body }
-            let number = Text(verse.number)
-                .font(.system(.caption2, design: .serif))
-                .foregroundStyle(.secondary)
-                .baselineOffset(7)
-            return paragraph + separator + number + Text("\u{2009}") + body
-        }
-        .font(.system(.title3, design: .serif))
-        .lineSpacing(leading)
-        .multilineTextAlignment(.leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// One verse as tappable words: tap selects, tap another extends, and the project actions appear
-/// under the verse rather than over it (specs/21 §3; native Copy stays on the paragraph above).
-struct SelectableVerse: View {
-    @ObservedObject var workspace: Workspace
-    let pane: Pane
-    let verse: Passage.Verse
-    var compact = false
-    var onCollect: ((String, String) -> Void)?
-    var onStudy: (() -> Void)?
-    @ScaledMetric(relativeTo: .title3) private var leading: CGFloat = 9
-
-    private var wordList: [String] { words(of: verse.text) }
-
-    private var selectedText: String {
-        guard let range = workspace.selectedWordRange else { return "" }
-        return wordList[range.clamped(to: 0...(wordList.count - 1))].joined(separator: " ")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            WordFlow(spacing: 0, lineSpacing: leading) {
-                Text(verse.number)
-                    .font(.system(.caption2, design: .serif))
-                    .foregroundStyle(.secondary)
-                    .baselineOffset(7)
-                    .accessibilityLabel("verse \(verse.number)")
-                ForEach(Array(wordList.enumerated()), id: \.offset) { index, word in
-                    let range = workspace.selectedWordRange
-                    let selected = range?.contains(index) ?? false
-                    // One contiguous range: each selected word's highlight spans the word gap
-                    // on both sides, so neighbours join into one bar per line, as the platform
-                    // selection does; handles mark the two ends.
-                    Text(word)
-                        .font(.system(.title3, design: .serif))
-                        .padding(.horizontal, 2.5)
-                        .background(Rectangle().fill(selected ? Color.primary.opacity(0.14) : .clear))
-                        .overlay(alignment: .leading) {
-                            if selected, range?.lowerBound == index { SelectionHandle() }
-                        }
-                        .overlay(alignment: .trailing) {
-                            if selected, range?.upperBound == index { SelectionHandle() }
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { tap(index) }
-                        .accessibilityAddTraits(selected ? .isSelected : [])
-                        .accessibilityHint("Selects this word; tap another word to extend")
-                }
-            }
-            if workspace.selectedWordRange != nil {
-                SelectionActions(
-                    selectedText: selectedText,
-                    compact: compact,
-                    onHighlight: {
-                        workspace.confirmation = .init(message: "Highlighted \"\(selectedText)\" with Emphasis", detail: "Undo · Change highlight")
-                    },
-                    onCollect: { onCollect?(selectedText, "\(pane.content.passage.split(separator: "–").first ?? ""), \"\(selectedText)\"") },
-                    onStudy: { onStudy?() }
+                ReaderTextView(
+                    paneID: pane.id,
+                    content: ReaderContent(content: pane.content),
+                    horizontalPadding: padding,
+                    command: workspace.commands[pane.id],
+                    onSelection: { selection in workspace.setSelection(selection, in: pane.id) },
+                    onAction: { action, selection in perform(action, selection) },
+                    onMeasurement: { summary in workspace.measurement = summary }
                 )
+                .accessibilityLabel("\(pane.content.fullTitle), \(pane.content.passage)")
+                if let selection = workspace.selection, selection.paneID == pane.id {
+                    SelectionActions(
+                        selectedText: selection.text,
+                        compact: paneWidth < 440,
+                        onHighlight: { perform(.highlight, selection) },
+                        onCollect: { perform(.collect, selection) },
+                        onStudy: { perform(.study, selection) }
+                    )
+                    .padding(.horizontal, padding)
+                    .padding(.top, 6)
+                    AnchorReadout(selection: selection)
+                        .padding(.horizontal, padding)
+                        .padding(.vertical, 8)
+                }
+                if pane.id == "p1", let measurement = workspace.measurement {
+                    Text(measurement)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, padding)
+                        .padding(.vertical, 8)
+                        .accessibilityLabel("Measurement")
+                }
             }
         }
     }
 
-    private func tap(_ index: Int) {
-        if let range = workspace.selectedWordRange, range.count == 1 || !range.contains(index) {
-            workspace.selectedWordRange = min(range.lowerBound, index)...max(range.upperBound, index)
-        } else {
-            workspace.selectedWordRange = index...index
+    /// The project actions, from the edit menu or the strip (specs/21 §3).
+    private func perform(_ action: SelectionAction, _ selection: ReaderSelection?) {
+        let text = selection?.text ?? ""
+        switch action {
+        case .highlight:
+            workspace.confirmation = .init(message: "Highlighted \"\(text)\" with Emphasis", detail: "Undo · Change highlight")
+        case .collect:
+            let locator = "\(pane.content.passage.split(separator: "–").first ?? ""), \"\(text)\""
+            if let onCollect { onCollect(text, locator) } else { workspace.collect(text: text, resource: pane.content, locator: locator) }
+        case .study:
+            if let onStudy { onStudy() } else { workspace.drawer = .study }
+        default:
+            workspace.confirmation = .init(message: "\(action.rawValue): prototype action for \"\(text)\"", detail: nil)
         }
     }
 }
 
-/// The platform-style grab handle at each end of the range (a stand-in; the real reader has the
-/// system's handles).
-struct SelectionHandle: View {
+/// What the core made of the selection: one line per anchor (segment, scalar range, exact
+/// text, token count) and the round-trip verdict. Monospaced, secondary, selectable.
+struct AnchorReadout: View {
+    let selection: ReaderSelection
+
     var body: some View {
-        VStack(spacing: 0) {
-            Circle().fill(Color.accentColor).frame(width: 9, height: 9)
-            Rectangle().fill(Color.accentColor).frame(width: 2)
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(selection.anchors.enumerated()), id: \.offset) { _, anchor in
+                Text("\(anchor.segmentId) scalars [\(anchor.range.start), \(anchor.range.end)) → “\(anchor.quote?.exact ?? "")” · \(anchor.tokens.isEmpty ? "no tokens" : anchor.tokens.count == 1 ? anchor.tokens[0] : "\(anchor.tokens[0]) … \(anchor.tokens[anchor.tokens.count - 1]) (\(anchor.tokens.count))")")
+            }
+            Text("\(selection.identical ? "round trip identical" : "ROUND TRIP DIFFERS") · UTF-16 display [\(selection.displayRange.location), \(selection.displayRange.location + selection.displayRange.length)) → core [\(selection.coreRange.location), \(selection.coreRange.location + selection.coreRange.length)) → \(selection.highlights.count) highlight\(selection.highlights.count == 1 ? "" : "s")\(selection.snapped ? " · widened to grapheme clusters" : "") · \(String(format: "%.2f", selection.elapsedMilliseconds)) ms")
+                .foregroundStyle(selection.identical ? Color.secondary : Color.red)
         }
-        .frame(width: 9)
-        .padding(.vertical, -5)
-        .accessibilityHidden(true)
+        .font(.system(.caption2, design: .monospaced))
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .textSelection(.enabled)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Anchors: \(selection.summary)")
     }
 }
 
@@ -194,11 +145,9 @@ struct SelectionActions: View {
             action("Collect", "tray.and.arrow.down", onCollect).keyboardShortcut("c", modifiers: [.command, .shift])
             action("Study", "text.magnifyingglass", onStudy).keyboardShortcut("s", modifiers: [.command, .shift])
             Menu {
-                Button("Copy with reference", systemImage: "doc.on.doc") {}
-                Button("Open in pane", systemImage: "rectangle.split.2x1") {}
-                Button("Search for this", systemImage: "magnifyingglass") {}
-                Button("Short observation…", systemImage: "text.bubble") {}
-                Button("Compare renderings", systemImage: "rectangle.split.3x1") {}
+                ForEach(SelectionAction.more, id: \.rawValue) { item in
+                    Button(item.rawValue, systemImage: item.symbol) {}
+                }
             } label: {
                 actionLabel("More", "ellipsis")
             }
@@ -233,43 +182,6 @@ struct SelectionActions: View {
         .frame(minWidth: ChromeMetrics.minimumTarget, minHeight: ChromeMetrics.minimumTarget)
         .padding(.horizontal, compact ? 8 : 10)
         .contentShape(Rectangle())
-    }
-}
-
-/// A left-to-right wrapping flow for the tappable words.
-struct WordFlow: Layout {
-    var spacing: CGFloat = 4
-    var lineSpacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0, y: CGFloat = 0, lineHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > maxWidth, x > 0 {
-                x = 0
-                y += lineHeight + lineSpacing
-                lineHeight = 0
-            }
-            x += size.width + spacing
-            lineHeight = max(lineHeight, size.height)
-        }
-        return CGSize(width: maxWidth == .infinity ? x : maxWidth, height: y + lineHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX, y = bounds.minY, lineHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX, x > bounds.minX {
-                x = bounds.minX
-                y += lineHeight + lineSpacing
-                lineHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
-            x += size.width + spacing
-            lineHeight = max(lineHeight, size.height)
-        }
     }
 }
 

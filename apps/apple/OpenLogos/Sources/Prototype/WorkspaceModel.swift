@@ -25,7 +25,14 @@ final class Workspace: ObservableObject {
     /// A transient confirmation line ("Added to John 3 study (5)") with its undo.
     @Published var confirmation: Confirmation?
     @Published var passageFieldText: String
-    @Published var selectedWordRange: ClosedRange<Int>?
+    /// The current text selection, as the core anchored it (B005); one pane at a time.
+    @Published var selection: ReaderSelection?
+    /// Pending commands for the reading surfaces, by pane id (and "note" for the notes dock).
+    @Published var commands: [String: ReaderCommand] = [:]
+    /// The B005 measurement summary, shown under the first pane once it has run.
+    @Published var measurement: String?
+    /// A note the notes dock shows in a reading surface (the B005 bidi study note).
+    @Published var notePane: PaneContent?
 
     struct Confirmation: Equatable {
         let message: String
@@ -89,6 +96,19 @@ final class Workspace: ObservableObject {
         )
     }
 
+    /// A surface reports its selection; a selection in one pane clears another's.
+    func setSelection(_ selection: ReaderSelection?, in paneID: String) {
+        if let selection {
+            self.selection = selection
+        } else if self.selection?.paneID == paneID {
+            self.selection = nil
+        }
+    }
+
+    func send(_ kind: ReaderCommand.Kind, to paneID: String) {
+        commands[paneID] = ReaderCommand.make(kind)
+    }
+
     func undoLastCapture() {
         guard !collectionItems.isEmpty else { return }
         collectionItems.removeLast()
@@ -144,8 +164,23 @@ extension Workspace {
                 Pane(id: "p2", content: f.greekJohn3, link: .group(1)),
                 Pane(id: "p3", content: f.kjvJohn3, link: .pinned),
             ])
-            ws.selectedWordRange = wordRange(of: f.selectedWords, in: f.bsbJohn3.verses.first?.text ?? "")
+            ws.send(.selectPhrase(f.selectedWords), to: "p1")
             ws.drawer = state == .empty ? .none : .study
+            return ws
+        case .anchors:
+            // B005: three texts the conformance fixtures and the N1904 pack cover (English,
+            // pointed Hebrew right to left, Greek with diacritics) and the bidi study note in a
+            // pinned notes dock; `-OPENLOGOS_CASE` and `-OPENLOGOS_PERF` drive the surfaces.
+            let synthetic = UserDefaults.standard.bool(forKey: "OPENLOGOS_PERF")
+            let count = max(10, UserDefaults.standard.integer(forKey: "OPENLOGOS_SYNTH"))
+            let ws = Workspace(panes: [
+                Pane(id: "p1", content: synthetic ? f.synthetic(verses: count == 10 ? 1000 : count) : f.bsbJohn3, link: .group(1)),
+                Pane(id: "p2", content: f.wlcGenesis1, link: .group(1)),
+                Pane(id: "p3", content: f.greekJohn3, link: .pinned),
+            ])
+            ws.notePane = f.studyNote
+            ws.drawer = .notes
+            ws.drawerPinned = true
             return ws
         case .search:
             return Workspace(panes: [Pane(id: "p1", content: f.bsbJohn3, link: .pinned)], passage: "\"one and only\"")
