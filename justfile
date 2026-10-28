@@ -3,8 +3,10 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-# Crates that must build for the browser worker (ADR 0001), including the binding surface.
-wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-ffi"
+# Crates that must build for the browser worker (ADR 0001), including the binding surface and,
+# since B064, the retrieval engine (SQLite compiled for wasm32 by sqlite-wasm-rs; the dev
+# shells point the `cc` crate at an unwrapped clang for it).
+wasm_crates := "-p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-retrieval -p openlogos-retrieval-sqlite -p openlogos-ffi"
 
 [private]
 default:
@@ -54,6 +56,15 @@ lint:
 # Exactly what CI runs inside the dev shell (CI also runs `just check`)
 [group('2 · core')]
 ci: lint test check-wasm
+
+# B064 retrieval benchmarks (docs/evidence/B064.md): R5 vectors and R9 relations on synthetic data under `dir`, R6 if `tf` names an N1904 Text-Fabric folder (tf/1.0.0); extra arguments go to every subcommand
+[group('2 · core')]
+bench-retrieval dir="target/bench-retrieval" tf="" *args:
+    cargo build --release -p openlogos-retrieval-sqlite --bin openlogos-retrieval-bench
+    mkdir -p {{ dir }}
+    if [ -n "{{ tf }}" ]; then target/release/openlogos-retrieval-bench ingest-tf "{{ tf }}" {{ dir }}/n1904.sqlite && target/release/openlogos-retrieval-bench r6 {{ dir }}/n1904.sqlite crates/retrieval-sqlite/bench/r6-queries.json --json {{ dir }}/r6-engine.json {{ args }}; fi
+    target/release/openlogos-retrieval-bench r5 {{ dir }}/r5 {{ args }}
+    target/release/openlogos-retrieval-bench r9 {{ dir }}/r9 {{ args }}
 
 # Validate the blueprint data (schemas, backlog DAG, source IDs); needs the pipeline or ops shell
 [group('3 · blueprint')]

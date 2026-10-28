@@ -14,6 +14,8 @@ uniffi::setup_scaffolding!();
 pub mod anchor;
 pub mod conformance;
 pub mod reference;
+#[cfg(feature = "retrieval")]
+pub mod retrieval;
 pub mod versification;
 
 pub use anchor::{

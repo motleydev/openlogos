@@ -75,6 +75,7 @@
           ./Cargo.toml
           ./Cargo.lock
           ./rustfmt.toml
+          ./.cargo # build-script environment for the C sources (sqlite-vec NEON)
           ./crates
         ];
       };
@@ -127,6 +128,11 @@
                 packages = repoTools ++ packages;
                 # Marker that scripts/doctor.sh uses to tell which dev shell is active.
                 OPENLOGOS_DEVSHELL = name;
+                # C sources compiled for wasm32 (SQLite inside crates/retrieval-sqlite, B064)
+                # need a clang without the Nix wrapper: the wrapper adds hardening flags the
+                # wasm32 target rejects (-fzero-call-used-regs) and Xcode's clang has no
+                # wasm32 back end. The `cc` crate reads this variable for that target only.
+                CC_wasm32_unknown_unknown = "${pkgs.llvmPackages.clang-unwrapped}/bin/clang";
                 shellHook = ''
                   ${lib.optionalString pkgs.stdenv.isDarwin darwinHook}
                   ${hook}
@@ -293,6 +299,10 @@
             clippy = cargoCheck "clippy" "cargo clippy --workspace --all-targets --locked -- -D warnings";
             tests = cargoCheck "tests" "cargo test --workspace --locked";
             # The crates that run in the browser worker must stay free of native-only code.
+            # openlogos-retrieval-sqlite builds for wasm32 too (B064) but compiles SQLite with
+            # an unwrapped clang (see CC_wasm32_unknown_unknown in the shells); inside this
+            # sandboxed build that compiler is not wired yet, so `just check-wasm` covers it
+            # and this check does not.
             wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-ffi";
             nixfmt = toolCheck "nixfmt" [
               pkgs.nixfmt
