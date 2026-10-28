@@ -15,6 +15,9 @@
 
 use std::sync::OnceLock;
 
+#[cfg(feature = "retrieval")]
+pub mod retrieval;
+
 use openlogos_conformance::{ConformanceReport, Fixture};
 use openlogos_core::anchor::{Anchor, Revision, Segment, TokenId, split_selection};
 use openlogos_core::reference::{AliasTable, ReferenceSet, parse};

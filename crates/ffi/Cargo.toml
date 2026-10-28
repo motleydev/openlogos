@@ -35,7 +35,6 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 # UniFFI serves Apple and Android only (src/native.rs); the wasm32 build must not see it.
-# The retrieval engine is native-only too: its wasm build is a separate decision (B064).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 uniffi = { workspace = true }
 openlogos-retrieval = { workspace = true, optional = true }
@@ -48,6 +47,9 @@ openlogos-retrieval-sqlite = { workspace = true, optional = true }
 wasm-bindgen = "=0.2.121"
 js-sys = "=0.3.98"
 serde-wasm-bindgen = "=0.6.5"
+# The `retrieval` feature on the web: SQLite inside the module through sqlite-wasm-rs (B064).
+openlogos-retrieval = { workspace = true, optional = true }
+openlogos-retrieval-sqlite = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 serde_json = { workspace = true }
