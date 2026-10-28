@@ -15,7 +15,9 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use openlogos_sync::enrollment::{EnrollmentRequest, Roster};
-use openlogos_sync::envelope::{Argon2Params, PayloadContext, SealedPayload, open_payload, seal_payload};
+use openlogos_sync::envelope::{
+    Argon2Params, PayloadContext, SealedPayload, open_payload, seal_payload,
+};
 use openlogos_sync::keys::{DeviceId, DeviceSecrets, OpId, RecoverySecret, VaultId};
 use openlogos_sync::log::{Change, Draft, OpLog, Operation, Outcome, State};
 use openlogos_sync::recovery::RecoveryExport;
@@ -72,13 +74,30 @@ fn build() -> Built {
     let phone = DeviceSecrets::generate(&mut rng);
     let laptop = DeviceSecrets::generate(&mut rng);
     let recovery = RecoverySecret::generate(&mut rng);
-    let (mut roster, key1) =
-        Roster::found(&mut rng, vault.clone(), &ipad, "Study iPad", &recovery.public_hex(), NOW).unwrap();
+    let (mut roster, key1) = Roster::found(
+        &mut rng,
+        vault.clone(),
+        &ipad,
+        "Study iPad",
+        &recovery.public_hex(),
+        NOW,
+    )
+    .unwrap();
     roster
-        .approve(&mut rng, &EnrollmentRequest::new(vault.clone(), &phone, "Phone", NOW), &ipad, NOW)
+        .approve(
+            &mut rng,
+            &EnrollmentRequest::new(vault.clone(), &phone, "Phone", NOW),
+            &ipad,
+            NOW,
+        )
         .unwrap();
     roster
-        .approve(&mut rng, &EnrollmentRequest::new(vault.clone(), &laptop, "Old laptop", NOW), &ipad, NOW)
+        .approve(
+            &mut rng,
+            &EnrollmentRequest::new(vault.clone(), &laptop, "Old laptop", NOW),
+            &ipad,
+            NOW,
+        )
         .unwrap();
     roster
         .link_principal("https://id.example.family", "a1b2c3", &ipad, NOW)
@@ -114,7 +133,10 @@ fn build() -> Built {
             payload_hash: sealed.as_ref().map(|s| s.hash().unwrap()),
         }
         .sign(device);
-        assert!(matches!(log.apply(op.clone(), roster), Ok(Outcome::Applied { .. })));
+        assert!(matches!(
+            log.apply(op.clone(), roster),
+            Ok(Outcome::Applied { .. })
+        ));
         if let Some(s) = sealed {
             payloads.insert(op.op_id.clone(), s);
         }
@@ -124,7 +146,15 @@ fn build() -> Built {
     let note = |n: u32| Change::NoteBody {
         note_id: format!("note-john-3-16-{n:02}"),
     };
-    let body1 = make(&mut rng, &mut log, &ipad, note(1), Some(vec![]), Some(b"God so loved: agape, not eros."), &roster);
+    let body1 = make(
+        &mut rng,
+        &mut log,
+        &ipad,
+        note(1),
+        Some(vec![]),
+        Some(b"God so loved: agape, not eros."),
+        &roster,
+    );
     let hl = make(
         &mut rng,
         &mut log,
@@ -167,7 +197,15 @@ fn build() -> Built {
         Some(b"God so loved (phone draft)."),
         &roster,
     );
-    let note2 = make(&mut rng, &mut log, &ipad, note(2), None, Some(b"scratch"), &roster);
+    let note2 = make(
+        &mut rng,
+        &mut log,
+        &ipad,
+        note(2),
+        None,
+        Some(b"scratch"),
+        &roster,
+    );
     let tomb = make(
         &mut rng,
         &mut log,
@@ -200,8 +238,15 @@ fn build() -> Built {
         .unwrap();
     roster.verify().unwrap();
 
-    let export = RecoveryExport::create(&mut rng, &roster, &recovery, b"example passphrase", Argon2Params::default(), NOW)
-        .unwrap();
+    let export = RecoveryExport::create(
+        &mut rng,
+        &roster,
+        &recovery,
+        b"example passphrase",
+        Argon2Params::default(),
+        NOW,
+    )
+    .unwrap();
 
     let expected_state = log.materialize();
     let mut forward = ops.iter().map(|o| o.op_id.clone()).collect::<Vec<_>>();
@@ -289,9 +334,18 @@ fn root() -> PathBuf {
 
 fn targets(built: &Built) -> Vec<(PathBuf, Value)> {
     vec![
-        (root().join("examples/device-enrollment.json"), serde_json::to_value(&built.roster).unwrap()),
-        (root().join("examples/sync-operation.json"), serde_json::to_value(&built.batch).unwrap()),
-        (root().join("examples/recovery-export.json"), serde_json::to_value(&built.export).unwrap()),
+        (
+            root().join("examples/device-enrollment.json"),
+            serde_json::to_value(&built.roster).unwrap(),
+        ),
+        (
+            root().join("examples/sync-operation.json"),
+            serde_json::to_value(&built.batch).unwrap(),
+        ),
+        (
+            root().join("examples/recovery-export.json"),
+            serde_json::to_value(&built.export).unwrap(),
+        ),
         (
             root().join("crates/conformance/fixtures/sync-operation-log-merge.json"),
             serde_json::to_value(&built.fixture).unwrap(),
@@ -312,9 +366,15 @@ fn examples_and_fixture_are_what_the_seed_produces() {
         return;
     }
     for (path, value) in targets(&built) {
-        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        let text =
+            std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
         let on_disk: Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(on_disk, value, "{} differs from the seed's output", path.display());
+        assert_eq!(
+            on_disk,
+            value,
+            "{} differs from the seed's output",
+            path.display()
+        );
     }
 }
 
@@ -330,21 +390,34 @@ fn the_records_verify_and_the_fixture_converges() {
     // Every batch operation verifies against the roster and every payload hash matches.
     let mut log = OpLog::new(built.batch.vault_id.clone());
     for op in &built.batch.operations {
-        assert!(matches!(log.apply(op.clone(), &built.roster), Ok(Outcome::Applied { .. })), "{}", op.op_id);
+        assert!(
+            matches!(
+                log.apply(op.clone(), &built.roster),
+                Ok(Outcome::Applied { .. })
+            ),
+            "{}",
+            op.op_id
+        );
         if let Some(hash) = &op.payload_hash {
             assert_eq!(&built.batch.payloads[&op.op_id].hash().unwrap(), hash);
         }
     }
     // The export opens and its key reads a payload.
     let (recovered, key) = built.export.open(b"example passphrase").unwrap();
-    assert_eq!(recovered.public_hex(), built.roster.recovery.recovery_public);
+    assert_eq!(
+        recovered.public_hex(),
+        built.roster.recovery.recovery_public
+    );
     let first = &built.batch.operations[0];
     let context = PayloadContext {
         vault_id: &built.batch.vault_id,
         device_id: &first.device_id,
         device_sequence: first.device_sequence,
     };
-    assert!(open_payload(&key, &context, &built.batch.payloads[&first.op_id]).is_err(), "epoch 2 key does not open an epoch 1 payload");
+    assert!(
+        open_payload(&key, &context, &built.batch.payloads[&first.op_id]).is_err(),
+        "epoch 2 key does not open an epoch 1 payload"
+    );
 
     // The fixture: every delivery order converges on the expected state.
     let f = &built.fixture;
@@ -357,7 +430,11 @@ fn the_records_verify_and_the_fixture_converges() {
         assert!(log.pending().is_empty(), "{}", delivery.name);
         assert_eq!(log.materialize(), f.expected_state, "{}", delivery.name);
     }
-    assert_eq!(f.expected_state.notes["note-john-3-16-01"].len(), 2, "two sibling bodies");
+    assert_eq!(
+        f.expected_state.notes["note-john-3-16-01"].len(),
+        2,
+        "two sibling bodies"
+    );
     assert!(f.expected_state.deleted.contains("note-john-3-16-02"));
     let mut log = OpLog::new(f.roster.vault_id.clone());
     for op in &f.operations {
@@ -365,6 +442,12 @@ fn the_records_verify_and_the_fixture_converges() {
     }
     assert_eq!(log.compact(&f.active_devices), f.expected_compacted);
     assert_eq!(log.materialize(), f.expected_state_after_compaction);
-    assert_eq!(f.expected_state_after_compaction, f.expected_state, "compaction changes no state");
-    assert!(log.operations().all(|op| op.change.entity_id() != "note-john-3-16-02"));
+    assert_eq!(
+        f.expected_state_after_compaction, f.expected_state,
+        "compaction changes no state"
+    );
+    assert!(
+        log.operations()
+            .all(|op| op.change.entity_id() != "note-john-3-16-02")
+    );
 }
