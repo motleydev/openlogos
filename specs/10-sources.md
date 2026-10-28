@@ -253,7 +253,7 @@ Status: `implementation_reference`.
 
 [perfect-freehand](https://github.com/steveruizok/perfect-freehand)
 
-MIT stroke geometry library; it is not a complete handwritten-note editor.
+MIT stroke geometry library; it is not a complete handwritten-note editor. B039 ported release 1.2.3 (npm gitHead f56f097e0e211fffa1601b93883e4d9f9dccf122, tarball sha256 060048047071b6ffb2170c8b867ba995f365ec811dc32435574d3d5f7625981f, published 2026-02-01) to crates/ink/src/freehand.rs with the MIT notice in the file header; crates/ink/golden/ holds the generator and vectors from that npm package.
 
 Status: `candidate_open`.
 

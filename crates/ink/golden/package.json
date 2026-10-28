@@ -1,0 +1,13 @@
+{
+  "name": "@openlogos/ink-golden",
+  "version": "0.1.0",
+  "private": true,
+  "description": "B039: generates crates/ink/golden/vectors.json from the pinned npm perfect-freehand so the Rust port in crates/ink/src/freehand.rs is checked against upstream",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "dependencies": {
+    "perfect-freehand": "1.2.3"
+  }
+}
