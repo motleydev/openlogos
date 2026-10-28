@@ -27,4 +27,4 @@ nix run nixpkgs#esbuild -- entry.jsx --bundle --format=esm --splitting --outdir=
 cp -R node_modules/@excalidraw/excalidraw/dist/prod/fonts dist/fonts
 cp -R node_modules/@excalidraw/excalidraw/dist/prod/locales dist/locales 2>/dev/null || true
 du -sh dist | awk '{print "dist: "$1}'
-ls -la dist/entry.js dist/entry.css 2>/dev/null | awk '{print $5" "$9}'
+for f in dist/entry.js dist/entry.css; do printf '%s %s bytes\n' "$f" "$(wc -c <"$f" | tr -d ' ')"; done
