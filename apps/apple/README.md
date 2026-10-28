@@ -101,7 +101,7 @@ highlighter never darkens over itself. `InkSheet` holds the UniFFI `InkDocument`
 undo/redo and stroke-eraser tombstones and exports it through `inkDocumentJson`.
 `InkTouchPolicy` mirrors the palm and finger/stylus arbiter of `crates/ink/src/touch.rs`
 (same cases in `Tests/ReaderTests/InkTests.swift`). The UIKit view takes coalesced touches,
-Pencil force, altitude and azimuth (tilt is kept beside the record: schema 1.0 has no field)
+Pencil force, altitude and azimuth (the ink-document 1.1 tilt fields, null for a finger)
 and `majorRadius` for the palm rule; the AppKit view takes mouse and tablet events.
 `PencilKitProbe` is a `PKCanvasView` whose strokes are exported into the same record with every
 PencilKit limitation named on screen. Launch arguments: `-OPENLOGOS_INK_DEMO 1`,

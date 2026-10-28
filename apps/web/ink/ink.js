@@ -6,7 +6,8 @@
 //   - brush.rs: PEN_1 and HIGHLIGHTER_1 options, the one-composite-per-stroke highlighter rule
 //     (a stroke's outline is filled once at its opacity; it never darkens over itself).
 //   - touch.rs: the palm and finger/stylus arbiter (TouchArbiter below, same case names).
-//   - document.rs: null pressure when the device reports none (a mouse; a touch or pen whose
+//   - document.rs (schema 1.1): null pressure when the device reports none, altitude and
+//     azimuth from a pen's altitudeAngle/azimuthAngle (radians) and null otherwise (a mouse; a touch or pen whose
 //     pressure is the 0.5 placeholder with no real sensor: pointer events cannot tell a real
 //     0.5 from the placeholder, so a pen's pressure is kept only when it varies).
 //
@@ -75,7 +76,7 @@ export class TouchArbiter {
 // MARK: Document and history
 
 const doc = {
-  schema_version: "1.0", fixture_only: true, id: "web-ink-1", snapshot_id: "fixture:snapshot:1", coordinate_space_id: "fixture:coordinates:1",
+  schema_version: "1.1", fixture_only: true, id: "web-ink-1", snapshot_id: "fixture:snapshot:1", coordinate_space_id: "fixture:coordinates:1",
   strokes: [], deleted_stroke_ids: [], viewport_transform: { scale: 1, translate_x: 0, translate_y: 0 },
 };
 const undoStack = [];
@@ -212,6 +213,14 @@ function pressureOf(event) {
   return event.pointerType === "pen" ? Math.min(1, Math.max(0, event.pressure)) : null;
 }
 
+/** Tilt (schema 1.1): PointerEvent.altitudeAngle (0..π/2) and azimuthAngle (0..2π) exist in
+ *  Chromium 86+ and Safari; a pen reports them, anything else gets null. A pen whose angles
+ *  are the spec defaults (π/2, 0) on every sample is treated like placeholder pressure below. */
+function tiltOf(event) {
+  if (event.pointerType !== "pen" || typeof event.altitudeAngle !== "number") return [null, null];
+  return [Math.min(Math.PI / 2, Math.max(0, event.altitudeAngle)), ((event.azimuthAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)];
+}
+
 function beginStroke(event, sample) {
   if (state.tool === "eraser") { eraseAt(canvasPoint(event)); return; }
   const brush = BRUSHES[state.tool];
@@ -231,8 +240,9 @@ function addSample(event, sample) {
   for (const e of events) {
     const { x, y } = canvasPoint(e);
     const pressure = pressureOf(e);
+    const [altitude, azimuth] = tiltOf(e);
     if (pressure != null) { if (live.firstPressure == null) live.firstPressure = pressure; else if (pressure !== live.firstPressure) live.pressureVaries = true; }
-    live.stroke.points.push({ x, y, pressure, elapsed_ms: Math.max(0, e.timeStamp - live.started) });
+    live.stroke.points.push({ x, y, pressure, elapsed_ms: Math.max(0, e.timeStamp - live.started), altitude, azimuth });
     if (live.count < 4096) {
       const i = live.count * 3;
       live.buffer[i] = x; live.buffer[i + 1] = y; live.buffer[i + 2] = live.hasPressure && live.brush.usesPressure && pressure != null ? pressure : -1;
@@ -253,6 +263,10 @@ function endStroke(event, cancelled) {
   if (stroke.points.every((p) => p.pressure != null) && stroke.points.length > 3) {
     const first = stroke.points[0].pressure;
     if (stroke.points.every((p) => p.pressure === first)) for (const p of stroke.points) p.pressure = null;
+  }
+  // Likewise tilt that never left the spec defaults (altitude π/2, azimuth 0) is no sensor.
+  if (stroke.points.every((p) => p.altitude != null && Math.abs(p.altitude - Math.PI / 2) < 1e-9 && p.azimuth === 0)) {
+    for (const p of stroke.points) { p.altitude = null; p.azimuth = null; }
   }
   // Monotonic time (coalesced events can carry equal or earlier stamps).
   let t = 0;
@@ -527,7 +541,7 @@ export async function livePalmCase() {
 function demoStrokes() {
   const rect = canvas.getBoundingClientRect();
   const w = rect.width, h = rect.height;
-  const mk = (id, tool, color, width, pts, pressure) => ({ id, tool, brush_version: BRUSHES[tool].version, width, color, opacity: BRUSHES[tool].opacity, points: pts.map(([x, y], i) => ({ x: x * w, y: y * h, pressure: pressure ? pressure(i / (pts.length - 1)) : null, elapsed_ms: i * 8 })) });
+  const mk = (id, tool, color, width, pts, pressure) => ({ id, tool, brush_version: BRUSHES[tool].version, width, color, opacity: BRUSHES[tool].opacity, points: pts.map(([x, y], i) => ({ x: x * w, y: y * h, pressure: pressure ? pressure(i / (pts.length - 1)) : null, elapsed_ms: i * 8, altitude: null, azimuth: null })) });
   const curve = (n, f) => Array.from({ length: n }, (_, i) => f(i / (n - 1)));
   doc.strokes.push(mk("demo-hl", "highlighter", "#facc15", 14, curve(24, (t) => [0.08 + t * 0.55, 0.14 + Math.sin(t * 3) * 0.004]), null));
   doc.strokes.push(mk("demo-word", "pen", "#1d4ed8", 3.5, curve(90, (t) => [0.1 + t * 0.5, 0.3 + Math.sin(t * Math.PI * 6) * 0.03 * (1 - t * 0.3) + t * 0.02]), (t) => 0.3 + 0.6 * Math.sin(t * Math.PI)));
@@ -544,17 +558,19 @@ function demoStrokes() {
 try {
   await init();
   $("core").textContent = `core ${core.apiVersion()} · wasm`;
-  $("reading-text").innerHTML = [
-    ["16", "For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life."],
-    ["17", "For God didn’t send his Son into the world to judge the world, but that the world should be saved through him."],
-    ["18", "He who believes in him is not judged. He who doesn’t believe has been judged already, because he has not believed in the name of the one and only Son of God."],
-    ["19", "This is the judgment, that the light has come into the world, and men loved the darkness rather than the light; for their works were evil."],
-    ["20", "For everyone who does evil hates the light, and doesn’t come to the light, lest his works would be exposed."],
-    ["21", "But he who does the truth comes to the light, that his works may be revealed, that they have been done in God."],
-  ].map(([n, t]) => `<span class="verse"><sup class="marker">${n}</sup>${t}</span>`).join(" ");
+  // The reading pane shows the core's BSB John 3:16–17 conformance fixture (S52, CC0): the
+  // only text bytes on screen come from a registered source, as in the DOM reader.
+  const fixtures = JSON.parse(core.conformanceFixturesJson());
+  const bsb = fixtures.find((f) => f.id === "cross-verse-selection-john-3" && f.kind === "text");
+  if (!bsb) throw new Error("the BSB fixture is missing from the core");
+  const verse = (s) => { const el = document.createElement("span"); el.className = "verse"; const sup = document.createElement("sup"); sup.className = "marker"; sup.textContent = s.segment_id.split(".").pop(); el.append(sup, s.text); return el; };
+  const fill = (target) => { target.replaceChildren(); bsb.segments.forEach((s, i) => { if (i) target.append(" "); target.append(verse(s)); }); };
+  fill($("reading-text"));
+  $("reading-attribution").textContent = `Fixture: ${(bsb.license || "Berean Standard Bible (CC0)").split(" http")[0]}. The ink to the right anchors nothing yet.`;
   // The same verses again, labelled, so the pane scrolls at every window size and the palm
   // case can check that a finger during a stroke does not move it.
-  $("reading-text").insertAdjacentHTML("afterend", `<p class="attribution">The passage repeated so the pane scrolls (placeholder).</p><p class="text">${$("reading-text").innerHTML}</p>`);
+  $("reading-text").insertAdjacentHTML("afterend", `<p class="attribution">The same fixture verses repeated so the pane scrolls.</p><p class="text" id="reading-text-repeat"></p>`);
+  fill($("reading-text-repeat"));
   resize();
   new ResizeObserver(resize).observe(canvas.parentElement);
   if (params.get("demo") !== "0") { demoStrokes(); repaintCommitted(); paint(); }

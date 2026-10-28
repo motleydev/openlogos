@@ -14,8 +14,11 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-/// The schema version this crate writes (`schema_version` const in the schema).
-pub const SCHEMA_VERSION: &str = "1.0";
+/// The schema version this crate writes. 1.1 (B039) added optional per-sample tilt; a 1.0
+/// document reads with `None` tilt (ADR 0003 `older_minor`) and is written back as 1.1.
+pub const SCHEMA_VERSION: &str = "1.1";
+/// The versions this crate reads.
+pub const READABLE_SCHEMA_VERSIONS: [&str; 2] = ["1.0", "1.1"];
 
 /// The drawing tool of a stroke.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -39,6 +42,13 @@ pub struct InkPoint {
     pub pressure: Option<f64>,
     /// Milliseconds since the stroke's first point.
     pub elapsed_ms: f64,
+    /// 1.1: the stylus's angle above the surface in radians, `0..=π/2`; `None` when the device
+    /// reports none (absent in a 1.0 file).
+    #[serde(default)]
+    pub altitude: Option<f64>,
+    /// 1.1: the direction the stylus points in radians, `0..=2π`; `None` when unreported.
+    #[serde(default)]
+    pub azimuth: Option<f64>,
 }
 
 /// One stroke: the tool and brush that made it, its paint, and the points as sampled.
@@ -190,7 +200,7 @@ impl InkDocument {
     /// # Errors
     /// The first rule the document breaks.
     pub fn validate(&self) -> Result<(), InkError> {
-        if self.schema_version != SCHEMA_VERSION {
+        if !READABLE_SCHEMA_VERSIONS.contains(&self.schema_version.as_str()) {
             return Err(InkError::SchemaVersion {
                 found: self.schema_version.clone(),
                 expected: SCHEMA_VERSION.to_owned(),
@@ -231,13 +241,16 @@ impl InkDocument {
         Ok(())
     }
 
-    /// The document as schema-conformant JSON, after [`Self::validate`].
+    /// The document as schema-conformant JSON at [`SCHEMA_VERSION`], after [`Self::validate`]
+    /// (a 1.0 document comes out as 1.1 with `null` tilt: the reader fills the defaults).
     ///
     /// # Errors
     /// A validation error; serialisation itself cannot fail for these types.
     pub fn to_json(&self) -> Result<String, InkError> {
         self.validate()?;
-        Ok(serde_json::to_string_pretty(self).unwrap_or_default())
+        let mut written = self.clone();
+        written.schema_version = SCHEMA_VERSION.to_owned();
+        Ok(serde_json::to_string_pretty(&written).unwrap_or_default())
     }
 }
 
@@ -277,6 +290,16 @@ impl Stroke {
                 && !(0.0..=1.0).contains(&p)
             {
                 return Err(out_of_range("pressure", p));
+            }
+            if let Some(a) = point.altitude
+                && !(0.0..=std::f64::consts::FRAC_PI_2).contains(&a)
+            {
+                return Err(out_of_range("altitude", a));
+            }
+            if let Some(a) = point.azimuth
+                && !(0.0..=std::f64::consts::TAU).contains(&a)
+            {
+                return Err(out_of_range("azimuth", a));
             }
             if point.elapsed_ms.is_nan() || point.elapsed_ms < 0.0 {
                 return Err(out_of_range("elapsed_ms", point.elapsed_ms));
@@ -320,12 +343,16 @@ mod tests {
                     y: 0.0,
                     pressure: None,
                     elapsed_ms: 0.0,
+                    altitude: None,
+                    azimuth: None,
                 },
                 InkPoint {
                     x: 10.0,
                     y: 4.0,
                     pressure: Some(0.5),
                     elapsed_ms: 16.0,
+                    altitude: Some(1.1),
+                    azimuth: Some(0.4),
                 },
             ],
         }
@@ -338,6 +365,8 @@ mod tests {
         assert!(doc.fixture_only);
         assert_eq!(doc.strokes[0].tool, Tool::Highlighter);
         assert_eq!(doc.strokes[0].points[0].pressure, Some(0.5));
+        assert_eq!(doc.strokes[0].points[0].altitude, None);
+        assert_eq!(doc.strokes[1].points[0].altitude, Some(1.05));
         doc.validate().expect("the example is valid");
         let back: serde_json::Value = serde_json::from_str(&doc.to_json().unwrap()).unwrap();
         let original: serde_json::Value = serde_json::from_str(EXAMPLE).unwrap();
@@ -357,6 +386,24 @@ mod tests {
             Value::Object(o) => Value::Object(o.into_iter().map(|(k, v)| (k, canon(v))).collect()),
             other => other,
         }
+    }
+
+    const ARCHIVED: &str = include_str!("../../../examples/archive/ink-document-1.0.json");
+
+    #[test]
+    fn a_1_0_document_reads_with_null_tilt_and_is_written_as_1_1() {
+        let doc: InkDocument = serde_json::from_str(ARCHIVED).expect("1.0 example parses");
+        assert_eq!(doc.schema_version, "1.0");
+        assert_eq!(doc.strokes[0].points[0].altitude, None);
+        doc.validate().expect("1.0 is readable");
+        let json = doc.to_json().unwrap();
+        assert!(json.contains("\"schema_version\": \"1.1\""));
+        assert!(json.contains("\"altitude\": null"));
+        let mut steep = doc.clone();
+        steep.strokes[0].points[0].altitude = Some(2.0);
+        assert!(
+            matches!(steep.validate(), Err(InkError::OutOfRange { field, .. }) if field == "altitude")
+        );
     }
 
     #[test]

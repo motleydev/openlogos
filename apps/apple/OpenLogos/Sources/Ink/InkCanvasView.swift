@@ -182,7 +182,7 @@ final class InkCanvasEngine {
             for i in samples.indices { samples[i].pressure = nil }
         }
         if let stroke = sheet.makeStroke(samples: samples) {
-            sheet.commit(stroke, tilt: samples.map { ($0.altitude, $0.azimuth) })
+            sheet.commit(stroke)
             syncLayers()
         }
     }

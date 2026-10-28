@@ -120,12 +120,12 @@ export interface CoreError extends Error { kind: string; details: unknown }
 /** perfect-freehand options for `inkOutline` (B039); every field optional, upstream defaults. `taper*`: false/absent none, true full, a number a distance. */
 export interface InkOutlineOptions { size?: number; thinning?: number; smoothing?: number; streamline?: number; simulatePressure?: boolean; last?: boolean; capStart?: boolean; capEnd?: boolean; taperStart?: boolean | number; taperEnd?: boolean | number }
 export type InkTool = "pen" | "highlighter";
-/** One sampled point of `schemas/ink-document.schema.json`; `pressure` is null when the device reported none. */
-export interface InkPoint { x: number; y: number; pressure: number | null; elapsed_ms: number }
+/** One sampled point of `schemas/ink-document.schema.json`; `pressure` is null when the device reported none; `altitude`/`azimuth` (1.1, radians) likewise, and absent in a 1.0 file. */
+export interface InkPoint { x: number; y: number; pressure: number | null; elapsed_ms: number; altitude?: number | null; azimuth?: number | null }
 export interface InkStroke { id: string; tool: InkTool; brush_version: string; width: number; color: string; opacity: number; points: InkPoint[] }
 export interface InkViewportTransform { scale: number; translate_x: number; translate_y: number }
 /** The portable ink record, field names as the schema. */
-export interface InkDocument { schema_version: "1.0"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
+export interface InkDocument { schema_version: "1.0" | "1.1"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
 "#;
 
 /// `InkOutlineOptions` as a page passes it: upstream's camelCase names, every field optional.

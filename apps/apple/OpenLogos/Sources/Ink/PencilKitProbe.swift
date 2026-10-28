@@ -75,7 +75,10 @@ enum PencilKitExport {
             let forces = control.map(\.force)
             let hasForce = forces.contains { $0 > 0 }
             if hasForce { withForce += 1 }
-            if control.contains(where: { $0.altitude != 0 || $0.azimuth != 0 }) { withTilt += 1 }
+            // PencilKit reports altitude and azimuth on every control point, 0 where the input
+            // had none (a finger): tilt is recorded only when some point reports a non-zero one.
+            let hasTilt = control.contains { $0.altitude != 0 || $0.azimuth != 0 }
+            if hasTilt { withTilt += 1 }
             if stroke.mask != nil { masks += 1 }
             if stroke.ink.inkType == .marker { markers += 1 }
             let tool: InkTool = stroke.ink.inkType == .marker ? .highlighter : .pen
@@ -85,9 +88,13 @@ enum PencilKitExport {
             let meanOpacity = control.map { Double($0.opacity) }.reduce(0, +) / Double(control.count)
             let points = control.map { p -> InkPoint in
                 let location = p.location.applying(stroke.transform)
+                var azimuth = Double(p.azimuth).truncatingRemainder(dividingBy: 2 * .pi)
+                if azimuth < 0 { azimuth += 2 * .pi }
                 return InkPoint(x: location.x, y: location.y,
                                 pressure: hasForce ? min(1, max(0, Double(p.force) / assumedMaximumForce)) : nil,
-                                elapsedMs: max(0, p.timeOffset * 1000))
+                                elapsedMs: max(0, p.timeOffset * 1000),
+                                altitude: hasTilt ? min(.pi / 2, max(0, Double(p.altitude))) : nil,
+                                azimuth: hasTilt ? azimuth : nil)
             }
             strokes.append(InkStroke(id: "pk-\(index + 1)", tool: tool,
                                      brushVersion: "pencilkit/\(stroke.ink.inkType.rawValue)",
@@ -95,7 +102,7 @@ enum PencilKitExport {
                                      opacity: min(1, max(0, Double(alpha) * (tool == .highlighter ? 1 : meanOpacity))),
                                      points: points))
         }
-        var document = InkDocument(schemaVersion: "1.0", fixtureOnly: true, id: id, snapshotId: "fixture:snapshot:1",
+        var document = InkDocument(schemaVersion: "1.1", fixtureOnly: true, id: id, snapshotId: "fixture:snapshot:1",
                                    coordinateSpaceId: "fixture:coordinates:1", strokes: strokes, deletedStrokeIds: [],
                                    viewportTransform: InkViewportTransform(scale: 1, translateX: 0, translateY: 0))
         // Monotonic time: PencilKit control points are resampled and can repeat an offset.
@@ -109,7 +116,7 @@ enum PencilKitExport {
         }
         let blob = drawing.dataRepresentation()
         notes.append("PencilKit export: \(strokes.count) strokes, \(strokes.reduce(0) { $0 + $1.points.count }) control points (PKStrokePath, not raw touches)")
-        notes.append("force > 0 on \(withForce) strokes (finger and simulator report 0 → pressure null); tilt on \(withTilt) strokes (no schema 1.0 field; dropped)")
+        notes.append("force > 0 on \(withForce) strokes (finger and simulator report 0 → pressure null); tilt on \(withTilt) strokes (recorded as altitude/azimuth, schema 1.1; null elsewhere)")
         notes.append("marker strokes → highlighter: \(markers); eraser masks (UIBezierPath, bitmap eraser) on \(masks) strokes: not representable, stroke kept whole")
         notes.append("brush_version is PencilKit's inkType (\(Set(drawing.strokes.map { $0.ink.inkType.rawValue }).sorted().joined(separator: ", "))): its geometry is opaque, so these strokes re-render with our fallback brush and are labelled")
         notes.append("native blob PKDrawing.dataRepresentation(): \(blob.count) bytes, opaque format, kept only as the optional fidelity cache")

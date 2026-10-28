@@ -61,8 +61,9 @@ version; one stored point per frame; React and a 17 MB distribution) and is not 
 layer; it stays an optional interoperability target. Native adapters export what they expose:
 PencilKit gives resampled control points with force, tilt and time offsets but not the raw
 touches, its brush geometry or its blob format; the Android Ink API gives the raw input batch
-with pressure and tilt. Schema 1.0 has no tilt field; a 1.1 may add nullable altitude and
-azimuth per point. The 25 ms p95 input-to-visible target is still unmeasured on hardware:
+with pressure and tilt. `schemas/ink-document.schema.json` 1.1 (B039, additive per ADR 0003)
+carries nullable `altitude` and `azimuth` in radians per sample so tilt is preserved where a
+device reports it and null elsewhere. The 25 ms p95 input-to-visible target is still unmeasured on hardware:
 B039 measured synthesized and WebDriver-driven input on the Mac mini and the iPad simulator
 only, and the palm rule's 20-point contact-radius threshold needs a device to calibrate.
 

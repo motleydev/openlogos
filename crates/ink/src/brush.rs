@@ -179,6 +179,8 @@ mod tests {
                 y: 50.0 + f64::from(i % 3),
                 pressure,
                 elapsed_ms: f64::from(i) * 8.0,
+                altitude: None,
+                azimuth: None,
             })
             .collect();
         Stroke {

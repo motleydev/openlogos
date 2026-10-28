@@ -147,8 +147,8 @@ struct InkSample {
     var pressure: Double?
     /// Platform event time (CACurrentMediaTime clock) in seconds.
     var time: TimeInterval
-    /// Tilt, where the device reports it (Apple Pencil): kept beside the record because
-    /// schema 1.0 has no field for it (a gap B039 records), not fabricated otherwise.
+    /// Tilt in radians where the device reports it (Apple Pencil); schema 1.1 fields, null
+    /// otherwise. Altitude `0...π/2`; azimuth folded into `0..<2π`.
     var altitude: Double?
     var azimuth: Double?
 }
@@ -225,15 +225,13 @@ final class InkSheet: ObservableObject {
     private var undoStack: [HistoryOp] = []
     private var redoStack: [HistoryOp] = []
     private var counter = 0
-    /// Tilt per stroke id, beside the record (schema 1.0 has no tilt field).
-    private(set) var tilt: [String: [(altitude: Double?, azimuth: Double?)]] = [:]
 
     enum HistoryOp { case add(String), erase(String), redoAdd(InkStroke) }
 
     static let highlighterWidthFactor = 3.0
 
     init(id: String = "ipad-ink-1") {
-        document = InkDocument(schemaVersion: "1.0", fixtureOnly: true, id: id, snapshotId: "fixture:snapshot:1",
+        document = InkDocument(schemaVersion: "1.1", fixtureOnly: true, id: id, snapshotId: "fixture:snapshot:1",
                                coordinateSpaceId: "fixture:coordinates:1", strokes: [], deletedStrokeIds: [],
                                viewportTransform: InkViewportTransform(scale: 1, translateX: 0, translateY: 0))
     }
@@ -265,19 +263,20 @@ final class InkSheet: ObservableObject {
         let points = samples.map { s -> InkPoint in
             let t = max(last, max(0, (s.time - first.time) * 1000))
             last = t
-            return InkPoint(x: s.x, y: s.y, pressure: s.pressure, elapsedMs: t)
+            return InkPoint(x: s.x, y: s.y, pressure: s.pressure, elapsedMs: t,
+                            altitude: s.altitude.map { min(.pi / 2, max(0, $0)) },
+                            azimuth: s.azimuth.map { var a = $0.truncatingRemainder(dividingBy: 2 * .pi); if a < 0 { a += 2 * .pi }; return a })
         }
         return InkStroke(id: "stroke-\(counter)", tool: brush.tool, brushVersion: brush.rawValue, width: strokeWidth,
                          color: hex(color), opacity: brush.opacity, points: points)
     }
 
-    func commit(_ stroke: InkStroke, tilt tiltSamples: [(Double?, Double?)] = []) {
+    func commit(_ stroke: InkStroke) {
         document.strokes.append(stroke)
-        if tiltSamples.contains(where: { $0.0 != nil }) { tilt[stroke.id] = tiltSamples.map { (altitude: $0.0, azimuth: $0.1) } }
         undoStack.append(.add(stroke.id))
         redoStack.removeAll()
         bump()
-        readout = "stroke \(stroke.id): \(stroke.tool == .pen ? "pen" : "highlighter") \(stroke.points.count) points, width \(stroke.width), pressure \(stroke.points.first?.pressure == nil ? "null" : "recorded"), \(stroke.brushVersion)\(tilt[stroke.id] == nil ? "" : ", tilt kept beside the record")"
+        readout = "stroke \(stroke.id): \(stroke.tool == .pen ? "pen" : "highlighter") \(stroke.points.count) points, width \(stroke.width), pressure \(stroke.points.first?.pressure == nil ? "null" : "recorded"), \(stroke.brushVersion)\(stroke.points.contains { $0.altitude != nil } ? ", tilt recorded" : ", tilt null")"
     }
 
     /// Stroke eraser: the topmost live stroke whose centre line passes within its half width (+4 pt).
@@ -352,7 +351,7 @@ final class InkSheet: ObservableObject {
         func mk(_ id: String, _ brush: InkBrush, _ color: String, _ width: Double, _ pts: [(Double, Double)], _ pressure: ((Double) -> Double)?) -> InkStroke {
             let n = Double(pts.count - 1)
             return InkStroke(id: id, tool: brush.tool, brushVersion: brush.rawValue, width: width, color: color, opacity: brush.opacity,
-                             points: pts.enumerated().map { i, p in InkPoint(x: p.0 * w, y: p.1 * h, pressure: pressure?(Double(i) / n), elapsedMs: Double(i) * 8) })
+                             points: pts.enumerated().map { i, p in InkPoint(x: p.0 * w, y: p.1 * h, pressure: pressure?(Double(i) / n), elapsedMs: Double(i) * 8, altitude: nil, azimuth: nil) })
         }
         func curve(_ n: Int, _ f: (Double) -> (Double, Double)) -> [(Double, Double)] { (0..<n).map { f(Double($0) / Double(n - 1)) } }
         document.strokes.append(mk("demo-hl", .highlighter, "#FACC15", 14, curve(24) { t in (0.08 + t * 0.55, 0.12 + sin(t * 3) * 0.004) }, nil))

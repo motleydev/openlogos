@@ -12,7 +12,8 @@
   the palm rule of crates/ink/src/touch.rs mirrored in JS, and an input-to-visible measurement
   (?autorun=1 for the synthesized pointer sequence the headless test drives; a hand run records
   real events the same way). Served next to core-host/pkg by test/run-chrome.mjs.
-  Reading text is the public-domain WEB John 3:16–17 placeholder; it anchors nothing.
+  Reading text is the BSB John 3:16–17 conformance fixture the core ships (S52, CC0), read
+  through conformanceFixturesJson() like the DOM reader; it anchors nothing yet.
 -->
 <style>
   :root {
@@ -73,9 +74,9 @@
 </header>
 <main>
   <section class="pane" id="reading-pane" aria-label="Reading pane">
-    <div class="identity"><b>WEB</b><span>John 3:16–17</span><span style="margin-inline-start:auto;color:var(--muted)">placeholder text</span></div>
+    <div class="identity"><b>BSB</b><span>John 3:16–17</span><span style="margin-inline-start:auto;color:var(--muted)">fixture</span></div>
     <p class="text" id="reading-text"></p>
-    <p class="attribution">World English Bible (public domain). Placeholder for the B005 reader; the ink to the right anchors nothing yet.</p>
+    <p class="attribution" id="reading-attribution">Fixture: Berean Standard Bible (CC0). The ink to the right anchors nothing yet.</p>
   </section>
   <section class="margin" aria-label="Margin sheet">
     <div class="identity"><b>Margin</b><span>sheet over snapshot <code>fixture:snapshot:1</code></span><span class="meta" id="meta">0 strokes</span></div>

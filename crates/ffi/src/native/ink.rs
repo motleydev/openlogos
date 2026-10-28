@@ -121,6 +121,10 @@ pub struct InkPoint {
     pub pressure: Option<f64>,
     /// Milliseconds since the stroke's first point.
     pub elapsed_ms: f64,
+    /// Stylus altitude in radians (`0..=π/2`), or none (schema 1.1).
+    pub altitude: Option<f64>,
+    /// Stylus azimuth in radians (`0..=2π`), or none (schema 1.1).
+    pub azimuth: Option<f64>,
 }
 
 /// One stroke of an ink document (`strokes[]` in the schema).
@@ -229,6 +233,8 @@ impl From<InkDocument> for document::InkDocument {
                             y: p.y,
                             pressure: p.pressure,
                             elapsed_ms: p.elapsed_ms,
+                            altitude: p.altitude,
+                            azimuth: p.azimuth,
                         })
                         .collect(),
                 })
@@ -308,9 +314,11 @@ mod tests {
             y: 10.0,
             pressure,
             elapsed_ms: t,
+            altitude: pressure.map(|_| 1.2),
+            azimuth: None,
         };
         let mut doc = InkDocument {
-            schema_version: "1.0".into(),
+            schema_version: "1.1".into(),
             fixture_only: true,
             id: "ink-1".into(),
             snapshot_id: "snap-1".into(),
@@ -333,6 +341,7 @@ mod tests {
         };
         let json = ink_document_json(doc.clone()).unwrap();
         assert!(json.contains("\"pressure\": null"));
+        assert!(json.contains("\"altitude\": 1.2") && json.contains("\"azimuth\": null"));
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["strokes"][0]["tool"], "pen");
         doc.deleted_stroke_ids.push("nope".into());
