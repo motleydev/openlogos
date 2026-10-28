@@ -548,6 +548,7 @@ name = "openlogos-conformance"
 version = "0.1.0"
 dependencies = [
  "openlogos-core",
+ "openlogos-notes",
  "openlogos-retrieval",
  "openlogos-text",
  "openlogos-workspaces",
@@ -590,6 +591,12 @@ version = "0.1.0"
 [[package]]
 name = "openlogos-notes"
 version = "0.1.0"
+dependencies = [
+ "openlogos-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "openlogos-package"

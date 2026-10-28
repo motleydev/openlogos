@@ -13,9 +13,23 @@
 //! ("Workspace layout profiles"); [`with_profile`] saves one class's arrangement without
 //! touching another's. Everything is plain data and pure functions, so the same code runs in
 //! Swift, Kotlin and WebAssembly hosts through the conformance suite.
+//!
+//! B040 adds [`navigation`] (pane identity rules, link groups, per-pane history and
+//! transaction-scoped propagation) and [`migration`] (the ADR 0003 schema migrations,
+//! starting with 1.0 → 1.1).
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+pub mod migration;
+pub mod navigation;
+
+pub use migration::{MigrationError, STEPS, Step, migrate_workspace, migrate_workspace_to_current};
+pub use navigation::{
+    NavigationError, NavigationEvent, NavigationKind, PANE_ID_MAX_LEN, PaneHistory,
+    PaneIdentityError, Propagation, ReferenceHistoryEntry, Visit, WorkspaceNavigation,
+    check_pane_identity, followers, is_pane_id, link_groups,
+};
 
 /// The crate's package name, as Cargo records it.
 #[must_use]

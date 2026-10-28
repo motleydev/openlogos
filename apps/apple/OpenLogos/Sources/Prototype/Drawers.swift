@@ -58,11 +58,10 @@ struct StudyDrawer: View {
     @State private var showCode = false
     @State private var preview: CrossReferenceFixture?
 
+    /// What the surface selected, as the core quoted it; the fixture phrase until there is one.
     private var selected: String {
-        guard let pane = workspace.panes.first(where: { $0.id == "p1" }), let verse = pane.content.verses.first,
-              let range = workspace.selectedWordRange else { return PrototypeFixtures.selectedWords }
-        let list = words(of: verse.text)
-        return list[range.clamped(to: 0...(list.count - 1))].joined(separator: " ")
+        guard let selection = workspace.selection, !selection.text.isEmpty else { return PrototypeFixtures.selectedWords }
+        return selection.text
     }
 
     var body: some View {
@@ -318,6 +317,23 @@ struct NotesDock: View {
             if state == .conflict {
                 ConflictView()
             } else {
+                if let note = workspace.notePane {
+                    // B005: the conformance study note (English, Hebrew in bidi isolates, an
+                    // emoji with a skin-tone modifier) in the same TextKit 2 surface as the panes.
+                    ReaderTextView(
+                        paneID: "note",
+                        content: ReaderContent(content: note),
+                        horizontalPadding: 12,
+                        command: workspace.commands["note"],
+                        onSelection: { selection in workspace.setSelection(selection, in: "note") }
+                    )
+                    .frame(minHeight: 200)
+                    .accessibilityLabel("\(note.fullTitle)")
+                    if let selection = workspace.selection, selection.paneID == "note" {
+                        AnchorReadout(selection: selection).padding(.horizontal, 12)
+                    }
+                    Divider()
+                }
                 HStack(spacing: 4) {
                     KindBadge(text: "John 3:16 · BSB")
                     KindBadge(text: "John 3:16 · KJV")
