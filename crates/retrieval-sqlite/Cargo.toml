@@ -10,12 +10,23 @@ publish.workspace = true
 [dependencies]
 openlogos-core = { workspace = true }
 openlogos-retrieval = { workspace = true }
-rusqlite = { workspace = true }
-libsqlite3-sys = { workspace = true }
-sqlite-vec = { workspace = true }
 roaring = { workspace = true }
 unicode-normalization = { workspace = true }
 thiserror = { workspace = true }
+
+# Native targets: SQLite compiled from the bundled amalgamation, sqlite-vec linked statically.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rusqlite = { workspace = true }
+sqlite-vec = { workspace = true }
+
+# wasm32 (B064 item 2 spike): the same rusqlite API over sqlite-wasm-rs, which compiles the
+# amalgamation for wasm32-unknown-unknown with FTS5 on and exposes the C API the tokenizer
+# registration needs. 0.5.x is the last line whose wasm-bindgen requirement (^0.2.104) is
+# compatible with the 0.2.121 the web bindings pin; 0.6 needs ^0.2.128. sqlite-vec is not
+# built for wasm here: its C file includes libc headers the wasm32 target has no sysroot for.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+rusqlite = { version = "=0.41.0", default-features = false, features = ["ffi-sqlite-wasm-rs", "cache"] }
+sqlite-wasm-rs = "=0.5.5"
 # The bench binary reads query lists and writes results as JSON.
 serde = { workspace = true }
 serde_json = { workspace = true }

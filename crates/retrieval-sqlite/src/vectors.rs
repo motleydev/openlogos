@@ -4,14 +4,22 @@
 
 #![allow(unsafe_code)]
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Once;
 
 use openlogos_retrieval::{Quantization, QueryVector, RetrievalError, VectorHit};
 use rusqlite::{Connection, params};
 
+#[cfg(not(target_arch = "wasm32"))]
 static INSTALL: Once = Once::new();
 
-/// Registers `sqlite3_vec_init` with `sqlite3_auto_extension`. Idempotent.
+/// No-op on wasm32: sqlite-vec is not compiled for that target in this spike.
+#[cfg(target_arch = "wasm32")]
+pub fn install_vec_extension() {}
+
+/// Registers `sqlite3_vec_init` with `sqlite3_auto_extension`. Idempotent. On wasm32 the
+/// extension is not linked (see Cargo.toml) and vector sets report `LayerUnavailable`.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn install_vec_extension() {
     INSTALL.call_once(|| {
         // SAFETY: sqlite3_vec_init is the extension's documented entry point, compiled from the
