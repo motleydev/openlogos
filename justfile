@@ -140,6 +140,11 @@ test-web: wasm-build
 test-dom-reader *args:
     @scripts/dom-reader-test.sh {{ args }}
 
+# B039: the web ink prototype (apps/web/ink) runs its palm cases, latency runs and export in headless Chrome through WebDriver; extra arguments go to the runner, e.g. `just test-ink-web --shots artifacts/b039/shots`
+[group('6 · web')]
+test-ink-web *args:
+    @scripts/ink-web-test.sh {{ args }}
+
 # Build the app shell for an iPad simulator (unsigned), boot it, install and launch: `just sim` or `just sim "iPad mini (A17 Pro)"` (apple shell)
 [group('7 · apple app')]
 sim device="":
