@@ -61,13 +61,7 @@
       "says": "same"
     }
   ],
-  "flags": [
-    {
-      "kind": "per_item_review",
-      "text": "Not the Beveridge translation: Project Gutenberg's Institutes are the John Allen translation (1813). B068 named Beveridge 1845; this is the licence-clean alternative text of the same work until a clean Beveridge digitization is found (see S11 flag).",
-      "resolves_by": "Steward decides whether the Allen translation may stand in for Beveridge in the first corpus, or waits on the Beveridge research."
-    }
-  ],
+  "flags": [],
   "upstream_dependencies": [
     {
       "component": "translation",
@@ -77,9 +71,9 @@
   ],
   "steward_proposal": {
     "decision": "clear",
-    "rationale": "Public domain in the United States with a clear digitizer; acquired as the licence-clean fallback for the ancient-work slot, flagged only because the translator differs from the one named.",
+    "rationale": "Public domain in the United States with a clear digitizer; the second translation of the Institutes (Allen 1813, beside CCEL's Beveridge 1845 as the primary artifact), both public domain and both covered by the B068 book.chapter.section grammar.",
     "proposed_by": "b003 agent (Claude Fable 5.1) for the source steward",
     "proposed_on": "2026-10-28"
   },
-  "notes": "Strip the Project Gutenberg header and licence block from any derived edition or keep the licence intact, as the PG licence requires."
+  "notes": "Second translation of the work, not a stand-in: the steward recorded CCEL's Beveridge (S11) as the primary Institutes artifact and this Allen text as the second translation. Strip the Project Gutenberg header and licence block from any derived edition or keep the licence intact, as the PG licence requires."
 }

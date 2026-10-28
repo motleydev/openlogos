@@ -399,7 +399,7 @@ Checked 27 October 2026 through the research in reports/Bible corpus search arch
 
 **S74 — sqlite-wasm-rs and sqlite-wasm-vfs (SQLite compiled for wasm32-unknown-unknown).** MIT crate that compiles the SQLite amalgamation (FTS5, RTREE, session on) for wasm32-unknown-unknown with a musl shim, exposes the full C API and is rusqlite 0.41's own wasm backend; sahpool (OPFS) and relaxed IndexedDB VFSs live in sqlite-wasm-vfs. B064 built the engine on it: 0.5.5 bundles SQLite 3.53.0 and works with wasm-bindgen 0.2.121; 0.6.x bundles 3.53.4 and needs wasm-bindgen 0.2.128. Neither reaches the 3.54 OPFS fix specs/19 requires without a custom source directory. Source: https://github.com/Spxg/sqlite-wasm-rs Additional reference: https://crates.io/crates/sqlite-wasm-rs
 
-**S75 — Project Gutenberg: Calvin's Institutes, John Allen translation.** eBooks #45001 (vol. 1, 2014) and #64392 (vol. 2, 2021), plain text, public domain in the United States under the Project Gutenberg licence. It is the Allen (1813) translation, not the Beveridge (1845) one B068 named; acquired by B003 as the licence-clean alternative text of the same work while the Beveridge digitization is researched. Source: https://www.gutenberg.org/ebooks/45001 Additional reference: https://www.gutenberg.org/ebooks/64392
+**S75 — Project Gutenberg: Calvin's Institutes, John Allen translation.** eBooks #45001 (vol. 1, 2014) and #64392 (vol. 2, 2021), plain text, public domain in the United States under the Project Gutenberg licence. The Allen (1813) translation; acquired by B003 as the second translation of the Institutes beside CCEL's Beveridge 1845 (S11, the primary artifact), both public domain and both covered by the B068 book.chapter.section grammar. Source: https://www.gutenberg.org/ebooks/45001 Additional reference: https://www.gutenberg.org/ebooks/64392
 
 ## B003 acquisition of the initial corpus (28 October 2026)
 
@@ -414,9 +414,9 @@ The owner decided to acquire the whole licence-clean slate and to flag, rather t
 | S47 MACULA Greek, MACULA Hebrew | rights/S47-macula-greek.json, rights/S47-macula-hebrew.json | CC BY 4.0 | clear | Louw-Nida and SDBH columns are a restricted module |
 | S09 OpenBible cross references | rights/S09.json | CC BY 4.0 | clear | none (votes are not accuracy scores) |
 | S55 Clear alignments | rights/S55.json | CC BY 4.0 data, MIT code | clear | legacy ESV/CSB/LEB/NET folders not fetched |
-| S75 Gutenberg Institutes (Allen) | rights/S75.json | public domain (US) | clear | not the Beveridge translation |
+| S75 Gutenberg Institutes (Allen) | rights/S75.json | public domain (US) | clear | none; second translation beside the Beveridge primary |
 | S05 STEPBible | rights/S05.json | CC BY 4.0 with per-file upstreams | flagged: provenance research | Online Bible BDB, NA text, MorphGNT grammar, ETCBC morphology |
-| S11 CCEL Institutes (Beveridge) | rights/S11-ccel-calvin-institutes.json | public-domain text, CCEL edition policy | flagged: provenance research | CCEL permission or an independent digitization |
+| S11 CCEL Institutes (Beveridge), primary | rights/S11-ccel-calvin-institutes.json | public-domain text, CCEL edition policy | flagged: provenance research | CCEL permission or an independent digitization |
 | S11 CCEL Westminster standards | rights/S11-ccel-westminster-standards.json | public-domain text, CCEL edition policy | flagged: provenance research | the Confession is the American revision, not 1646 |
 | S57 UBS dictionaries | rights/S57.json | CC BY-SA 4.0 | restricted module | share-alike |
 | S58 ETCBC BHSA | rights/S58.json | CC BY-NC 4.0 | restricted module | non-commercial, user-downloaded only |

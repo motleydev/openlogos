@@ -760,7 +760,7 @@
       "title": "Project Gutenberg: Calvin's Institutes, John Allen translation",
       "url": "https://www.gutenberg.org/ebooks/45001",
       "secondary_url": "https://www.gutenberg.org/ebooks/64392",
-      "finding": "Project Gutenberg eBooks #45001 (vol. 1, 2014) and #64392 (vol. 2, 2021): the Institutes in the John Allen translation, public domain in the United States under the Project Gutenberg licence. Not the Beveridge translation B068 named; B003 acquired it on 28 October 2026 as the licence-clean alternative text of the same work while the Beveridge edition's digitization provenance is researched (S11). rights/S75.json.",
+      "finding": "Project Gutenberg eBooks #45001 (vol. 1, 2014) and #64392 (vol. 2, 2021): the Institutes in the John Allen translation, public domain in the United States under the Project Gutenberg licence. B003 acquired it on 28 October 2026 as the second translation of the Institutes beside CCEL's Beveridge 1845 (S11, the primary artifact); both are public domain and both carry the B068 book.chapter.section grammar. rights/S75.json.",
       "status": "acquired_clear",
       "pinned_artifact": {
         "rights_records": [

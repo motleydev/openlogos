@@ -66,7 +66,7 @@
     {
       "kind": "provenance_research",
       "text": "Digitization rights: the ThML header marks the text \"Public Domain\" (Beveridge died 1863; the 1845 translation is public domain), but CCEL's site policy limits its editions to personal, educational or non-profit use and asks for permission to republish or use commercially, and the header does not name the print edition that was transcribed. A clean redistributable Beveridge text needs either CCEL's permission or a separately provenanced digitization.",
-      "resolves_by": "Ask CCEL for permission for this edition; or identify the 1845/1846 Calvin Translation Society print volumes on the Internet Archive and produce or locate an independent transcription; the John Allen translation on Project Gutenberg (S75) is a licence-clean alternative text of the same work in the meantime."
+      "resolves_by": "Ask CCEL for permission for this edition; or identify the 1845/1846 Calvin Translation Society print volumes on the Internet Archive and produce or locate an independent transcription. This remains the primary Institutes artifact; the Allen translation (S75) is the second translation, not a replacement."
     }
   ],
   "upstream_dependencies": [
