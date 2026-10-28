@@ -1,0 +1,125 @@
+{
+  "entries": [
+    {
+      "from_scheme": "eng",
+      "from": {
+        "book": "Ps",
+        "chapter": 9,
+        "verse": 0,
+        "subverse": null
+      },
+      "to_scheme": "org",
+      "to": {
+        "book": "Ps",
+        "chapter": 9,
+        "verse": 1,
+        "subverse": null
+      },
+      "kind": "equal",
+      "source": "English editions print the Psalm 9 superscription unnumbered (eng verse 0); the MT numbers it verse 1."
+    },
+    {
+      "from_scheme": "eng",
+      "from": {
+        "book": "Ps",
+        "chapter": 9,
+        "verse": 1,
+        "subverse": null
+      },
+      "to_scheme": "org",
+      "to": {
+        "book": "Ps",
+        "chapter": 9,
+        "verse": 2,
+        "subverse": null
+      },
+      "kind": "equal",
+      "source": "Every English Psalm 9 verse n is Hebrew n+1."
+    },
+    {
+      "from_scheme": "eng",
+      "from": {
+        "book": "Ps",
+        "chapter": 13,
+        "verse": 5,
+        "subverse": null
+      },
+      "to_scheme": "org",
+      "to": {
+        "book": "Ps",
+        "chapter": 13,
+        "verse": 6,
+        "subverse": null
+      },
+      "kind": "merge",
+      "source": "Hebrew Psalm 13:6 covers English 13:5 and 13:6."
+    },
+    {
+      "from_scheme": "eng",
+      "from": {
+        "book": "Ps",
+        "chapter": 13,
+        "verse": 6,
+        "subverse": null
+      },
+      "to_scheme": "org",
+      "to": {
+        "book": "Ps",
+        "chapter": 13,
+        "verse": 6,
+        "subverse": null
+      },
+      "kind": "merge",
+      "source": "Second part of Hebrew 13:6."
+    },
+    {
+      "from_scheme": "eng",
+      "from": {
+        "book": "Mal",
+        "chapter": 4,
+        "verse": 1,
+        "subverse": null
+      },
+      "to_scheme": "org",
+      "to": {
+        "book": "Mal",
+        "chapter": 3,
+        "verse": 19,
+        "subverse": null
+      },
+      "kind": "equal",
+      "source": "Hebrew Malachi has three chapters: English 4:1-6 is Hebrew 3:19-24."
+    },
+    {
+      "from_scheme": "org",
+      "from": {
+        "book": "Mark",
+        "chapter": 16,
+        "verse": 9,
+        "subverse": null
+      },
+      "to_scheme": "fixture-shorter-ending",
+      "to": null,
+      "kind": "absent",
+      "source": "Synthetic edition scheme that prints only the shorter ending of Mark: no text for Mark 16:9."
+    },
+    {
+      "from_scheme": "eng",
+      "from": {
+        "book": "Ps",
+        "chapter": 97,
+        "verse": 1,
+        "subverse": null
+      },
+      "to_scheme": "org",
+      "to": {
+        "book": "Ps",
+        "chapter": 97,
+        "verse": 1,
+        "subverse": "b"
+      },
+      "kind": "partial",
+      "source": "Synthetic partial row: only part of the verse corresponds; the sub-verse grain names which."
+    }
+  ]
+}

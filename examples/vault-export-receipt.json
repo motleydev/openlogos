@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "id": "rcpt-fixture-0001",
+  "collection_id": "col-john-3-fixture",
+  "collection_revision": 3,
+  "vault_id": "vault-fixture-7f3a",
+  "resource_folder": "OpenLogos",
+  "exported_at": "2026-10-28T10:05:00Z",
+  "writer": {
+    "app": "openlogos-obsidian 0.0.0-fixture",
+    "core_api_version": "0.1.1"
+  },
+  "entries": [
+    {
+      "item_id": "item-excerpt",
+      "item_revision": 1,
+      "resource_path": "John 3-16 study/item-excerpt.md",
+      "block_id": "ol-item-excerpt",
+      "last_export_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_revision": "bsb-2024",
+      "disposition": "quoted",
+      "reason": null
+    },
+    {
+      "item_id": "item-ref",
+      "item_revision": 1,
+      "resource_path": "John 3-16 study/item-ref.md",
+      "block_id": "ol-item-ref",
+      "last_export_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_revision": "bsb-2024",
+      "disposition": "metadata_only",
+      "reason": "source_reference items carry a reference, not quoted text"
+    },
+    {
+      "item_id": "item-restricted",
+      "item_revision": 2,
+      "resource_path": "John 3-16 study/item-restricted.md",
+      "block_id": "ol-item-restricted",
+      "last_export_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_revision": "0",
+      "disposition": "metadata_only",
+      "reason": "quotation denied by rights record fixture:rights:1"
+    },
+    {
+      "item_id": "item-pdf",
+      "item_revision": 1,
+      "resource_path": "John 3-16 study/item-pdf.md",
+      "block_id": "ol-item-pdf",
+      "last_export_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_revision": "scan-1",
+      "disposition": "metadata_only",
+      "reason": "quotation rights unknown; page locator exported"
+    },
+    {
+      "item_id": "item-obs",
+      "item_revision": 1,
+      "resource_path": "John 3-16 study/item-obs.md",
+      "block_id": "ol-item-obs",
+      "last_export_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_revision": null,
+      "disposition": "skipped",
+      "reason": "observations are written into the index note, not as resource blocks"
+    },
+    {
+      "item_id": "item-research",
+      "item_revision": 1,
+      "resource_path": "John 3-16 study/item-research.md",
+      "block_id": "ol-item-research",
+      "last_export_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_revision": null,
+      "disposition": "conflict",
+      "reason": "managed block edited in the vault since the last export; left as is"
+    }
+  ]
+}

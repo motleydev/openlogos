@@ -5,7 +5,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": "1.0"
+      "type": "string",
+      "enum": [
+        "1.0",
+        "1.1"
+      ]
     },
     "fixture_only": {
       "type": "boolean"
@@ -108,6 +112,43 @@
           ]
         }
       ]
+    },
+    "core_api_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "edition_revisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "edition_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tokenization_hash": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "edition_id",
+          "content_revision",
+          "tokenization_hash"
+        ]
+      }
     }
   },
   "required": [
@@ -139,6 +180,47 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "1.1"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "core_api_version",
+          "edition_revisions"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "1.0"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "core_api_version"
+              ]
+            },
+            {
+              "required": [
+                "edition_revisions"
+              ]
+            }
+          ]
+        }
+      }
     }
-  ]
+  ],
+  "description": "A corpus pack's provenance manifest. Schema 1.1 adds core_api_version (the openlogos_core::API_VERSION the pack's tables were written against) and edition_revisions (content revision and tokenization hash per edition, which alignments and lineage tables are checked against). A 1.0 manifest has neither; a 1.1 reader fills them as unknown (docs/adr/0003-identity-and-schema-versioning.md)."
 }

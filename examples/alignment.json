@@ -1,0 +1,569 @@
+{
+  "source_edition": "sblgnt",
+  "source_revision": "sblgnt-2010",
+  "source_tokenization_hash": "ffe406c2905782c9c322144e258412b048cb062adec9d74800aac8815d14df56",
+  "target_edition": "bsb",
+  "target_revision": "bsb-2024",
+  "target_tokenization_hash": "4df87bc77b7bddfe8218b6cbb07d1af74c0b6c97a29553e1d2545d8a8d3bece9",
+  "records": [
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 1,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 2,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 1,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 3,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 3,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 4,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 4,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [],
+      "status": "null",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 5,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 2,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 6,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 7,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 5,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 6,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "auto:fixture-aligner@0",
+      "confidence": 0.97
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 8,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 7,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 9,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [],
+      "status": "null",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 10,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 14,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 11,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 12,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 11,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 12,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 13,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 13,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 8,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 9,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 14,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 15,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 15,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 16,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 17,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 16,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 17,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 18,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 18,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 19,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 19,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 20,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 20,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 21,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 21,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 22,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 23,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 22,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 24,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 23,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 25,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    },
+    {
+      "source_token_ids": [
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 24,
+          "suffix": null
+        },
+        {
+          "edition": "sblgnt",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 25,
+          "suffix": null
+        }
+      ],
+      "target_token_ids": [
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 26,
+          "suffix": null
+        },
+        {
+          "edition": "bsb",
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "word": 27,
+          "suffix": null
+        }
+      ],
+      "status": "aligned",
+      "origin": "curated:openlogos-fixture",
+      "confidence": null
+    }
+  ]
+}

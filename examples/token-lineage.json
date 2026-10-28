@@ -1,0 +1,120 @@
+{
+  "edition_id": "wlc",
+  "from_revision": "oshb-wlc-4.20",
+  "to_revision": "fixture-wlc-next",
+  "entries": [
+    {
+      "kind": "same",
+      "from": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 2,
+          "suffix": null
+        }
+      ],
+      "to": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 2,
+          "suffix": null
+        }
+      ]
+    },
+    {
+      "kind": "split",
+      "from": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 1,
+          "suffix": null
+        }
+      ],
+      "to": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 1,
+          "suffix": "a"
+        },
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 1,
+          "suffix": "b"
+        }
+      ]
+    },
+    {
+      "kind": "merge",
+      "from": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 6,
+          "suffix": "a"
+        },
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 6,
+          "suffix": "b"
+        }
+      ],
+      "to": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 6,
+          "suffix": null
+        }
+      ]
+    },
+    {
+      "kind": "insert",
+      "from": [],
+      "to": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 8,
+          "suffix": null
+        }
+      ]
+    },
+    {
+      "kind": "delete",
+      "from": [
+        {
+          "edition": "wlc",
+          "book": "Gen",
+          "chapter": 1,
+          "verse": 1,
+          "word": 7,
+          "suffix": null
+        }
+      ],
+      "to": []
+    }
+  ]
+}

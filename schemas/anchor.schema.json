@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:anchor",
+  "title": "Anchor",
+  "description": "The serialized form of openlogos_core::anchor::Anchor (specs/03-data-model.md, Notes and synchronization): a scalar-value range in one segment of one edition revision, the token ids under it and a W3C TextQuoteSelector. Offsets count Unicode scalar values; UTF-16 and grapheme forms are adapters, never stored. Also defines token_id and reference for the other schemas.",
+  "$defs": {
+    "token_id": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "edition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "book": {
+          "type": "string",
+          "enum": [
+            "Gen",
+            "Exod",
+            "Lev",
+            "Num",
+            "Deut",
+            "Josh",
+            "Judg",
+            "Ruth",
+            "1Sam",
+            "2Sam",
+            "1Kgs",
+            "2Kgs",
+            "1Chr",
+            "2Chr",
+            "Ezra",
+            "Neh",
+            "Esth",
+            "Job",
+            "Ps",
+            "Prov",
+            "Eccl",
+            "Song",
+            "Isa",
+            "Jer",
+            "Lam",
+            "Ezek",
+            "Dan",
+            "Hos",
+            "Joel",
+            "Amos",
+            "Obad",
+            "Jonah",
+            "Mic",
+            "Nah",
+            "Hab",
+            "Zeph",
+            "Hag",
+            "Zech",
+            "Mal",
+            "Matt",
+            "Mark",
+            "Luke",
+            "John",
+            "Acts",
+            "Rom",
+            "1Cor",
+            "2Cor",
+            "Gal",
+            "Eph",
+            "Phil",
+            "Col",
+            "1Thess",
+            "2Thess",
+            "1Tim",
+            "2Tim",
+            "Titus",
+            "Phlm",
+            "Heb",
+            "Jas",
+            "1Pet",
+            "2Pet",
+            "1John",
+            "2John",
+            "3John",
+            "Jude",
+            "Rev"
+          ]
+        },
+        "chapter": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "verse": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999
+        },
+        "word": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "suffix": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z]+$"
+        }
+      },
+      "required": [
+        "edition",
+        "book",
+        "chapter",
+        "verse",
+        "word",
+        "suffix"
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "book": {
+          "type": "string",
+          "enum": [
+            "Gen",
+            "Exod",
+            "Lev",
+            "Num",
+            "Deut",
+            "Josh",
+            "Judg",
+            "Ruth",
+            "1Sam",
+            "2Sam",
+            "1Kgs",
+            "2Kgs",
+            "1Chr",
+            "2Chr",
+            "Ezra",
+            "Neh",
+            "Esth",
+            "Job",
+            "Ps",
+            "Prov",
+            "Eccl",
+            "Song",
+            "Isa",
+            "Jer",
+            "Lam",
+            "Ezek",
+            "Dan",
+            "Hos",
+            "Joel",
+            "Amos",
+            "Obad",
+            "Jonah",
+            "Mic",
+            "Nah",
+            "Hab",
+            "Zeph",
+            "Hag",
+            "Zech",
+            "Mal",
+            "Matt",
+            "Mark",
+            "Luke",
+            "John",
+            "Acts",
+            "Rom",
+            "1Cor",
+            "2Cor",
+            "Gal",
+            "Eph",
+            "Phil",
+            "Col",
+            "1Thess",
+            "2Thess",
+            "1Tim",
+            "2Tim",
+            "Titus",
+            "Phlm",
+            "Heb",
+            "Jas",
+            "1Pet",
+            "2Pet",
+            "1John",
+            "2John",
+            "3John",
+            "Jude",
+            "Rev"
+          ]
+        },
+        "chapter": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "verse": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "subverse": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "required": [
+        "book",
+        "chapter",
+        "verse",
+        "subverse"
+      ]
+    },
+    "scalar_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "text_quote_selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exact": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "suffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "exact",
+        "prefix",
+        "suffix"
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "edition_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "segment_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "range": {
+      "$ref": "#/$defs/scalar_range"
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/token_id"
+      }
+    },
+    "quote": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/text_quote_selector"
+        }
+      ]
+    }
+  },
+  "required": [
+    "edition_id",
+    "content_revision",
+    "segment_id",
+    "range",
+    "tokens",
+    "quote"
+  ]
+}
