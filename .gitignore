@@ -57,3 +57,7 @@ apps/apple/CoreHost/Sources/OpenLogosCore/OpenLogosCore.swift
 apps/apple/CoreHost/Frameworks/
 apps/apple/CoreHost/.build/
 apps/android/CoreHost/generated/
+
+# --- App shell (apps/apple/OpenLogos): XcodeGen output; project.yml is the project (B063) ----
+apps/apple/OpenLogos/OpenLogos.xcodeproj/
+apps/apple/OpenLogos/Generated/

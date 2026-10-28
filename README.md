@@ -20,6 +20,7 @@ The implementation skeleton (B002) follows the layout in `specs/06-nix-operation
 2. Clone, `cd` in and run `direnv allow`. The default shell is `.#core`; `nix develop .#web`, `.#android`, `.#apple` (macOS only), `.#pipeline` and `.#ops` serve the other areas. The first entry downloads the pinned Rust toolchain.
 3. `just doctor` checks the machine and says how to fix anything missing; `just setup` installs the git hooks.
 4. `just test` runs the workspace tests; `just` lists every workflow; `just ci` is what CI runs in the shell and `just check` (`nix flake check`) runs the same checks hermetically.
+5. On a Mac with Xcode (the Mac mini lanes, B063): `just sim` builds the app shell for an iPad simulator with no signing and launches it, `just sim-shot` takes a screenshot; `just ship ios` makes a signed ad hoc build and puts it on a shelf served over Tailscale, after `cp .envrc.local.example .envrc.local` (team ID, optional App Store Connect key, shelf settings) and `just shelf-install` once. `just ship-check` lists what is still missing. Both scripts enter `nix develop .#apple` by themselves.
 
 `crates/README.md` and `apps/*/README.md` name each area's commands. Xcode and the Android SDK are external prerequisites that the shells verify rather than provide; `apps/apple/README.md` and `apps/android/README.md` say what to install. `docs/evidence/` records the commands that were run on real machines and their results.
 
