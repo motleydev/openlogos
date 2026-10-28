@@ -1,10 +1,10 @@
 //! The binding surface for native and web hosts. Everything Swift, Kotlin, TypeScript and the
 //! Tauri shell can call lives here and nowhere else: UniFFI exports for Apple and Android
-//! (B061) and wasm-bindgen exports for the web reader and the Obsidian plugin (B064), both
+//! and wasm-bindgen exports for the web reader and the Obsidian plugin (B061), both
 //! generated from the same versioned API over crates/core and its siblings. Bindings are
 //! versioned with the core; a breaking core change updates every platform in one change set
 //! (docs/adr/0001-rust-core-native-ui.md). This crate contains no domain logic. The UniFFI
-//! surface lives in [`native`]; the wasm-bindgen surface (B064) in its own module.
+//! surface lives in [`native`]; the wasm-bindgen surface (B061 item 3) in its own `wasm` module.
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native;
