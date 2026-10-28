@@ -8,6 +8,7 @@
 //! iPad, Mac, phone, web, Android and in the Obsidian plugin are the whole point
 //! (docs/adr/0001-rust-core-native-ui.md).
 
+pub mod anchor;
 pub mod reference;
 pub mod versification;
 
