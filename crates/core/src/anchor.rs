@@ -16,7 +16,7 @@ use crate::reference::{BookId, Reference};
 pub mod reanchor;
 pub mod selection;
 
-pub use reanchor::{ReanchorResult, Revision, TokenSpan, reanchor};
+pub use reanchor::{ReanchorResult, Revision, TokenSpan, reanchor, reanchor_across};
 pub use selection::{Segment, split_selection};
 
 /// Errors from parsing or building anchors.

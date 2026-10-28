@@ -1,15 +1,17 @@
 //! Finding an anchor again after the text under it changed.
 //!
-//! The order is the one specs/03-data-model.md fixes: stable token IDs first, then the exact
-//! quote with its context, and never silently attaching to the nearest different passage.
-//! When more than one place matches the result is [`ReanchorResult::Ambiguous`] with every
-//! candidate, and when nothing matches it is [`ReanchorResult::Orphaned`]; both wait for the
-//! user. The revision-mapping step (`id_lineage`) belongs to the package crate and slots in
-//! between the two steps here once it exists.
+//! The order is the one specs/03-data-model.md fixes: stable token IDs first, then the
+//! revision mapping (`id_lineage`), then the exact quote with its context, and never silently
+//! attaching to the nearest different passage. When more than one place matches the result
+//! is [`ReanchorResult::Ambiguous`] with every candidate, and when nothing matches it is
+//! [`ReanchorResult::Orphaned`]; both wait for the user. [`reanchor`] runs without a lineage
+//! table; [`reanchor_across`] takes the table a pack ships between two revisions.
 
 use serde::{Deserialize, Serialize};
 
 use super::{Anchor, ScalarRange, TextQuoteSelector, TokenId, scalar_len};
+use crate::identity::IdLineage;
+use crate::versification::MappingStatus;
 
 /// A token and where it sits in a segment's text.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,6 +60,27 @@ pub enum ReanchorResult {
 /// [`ReanchorResult::Ambiguous`]; none is [`ReanchorResult::Orphaned`].
 #[must_use]
 pub fn reanchor(anchor: &Anchor, old: &Revision, new: &Revision) -> ReanchorResult {
+    reanchor_across(anchor, old, new, None)
+}
+
+/// Re-targets `anchor` from revision `old` to revision `new`, using the `id_lineage` table
+/// between the two revisions when the pack ships one.
+///
+/// 1. Stable ids, as [`reanchor`].
+/// 2. Revision mapping: if `lineage` maps every one of the anchor's token ids to successors
+///    (a `same`, `split` or `merge` row each) and every successor is in `new.tokens`, the
+///    new range spans the successors. If the lineage says every one of the anchor's tokens
+///    was deleted, the anchor is [`ReanchorResult::Orphaned`] without trying the quote: the
+///    same words elsewhere would be a different passage. A lineage that mentions only some
+///    of the tokens, or none, falls through.
+/// 3. Exact quote with context, then exact quote alone, as [`reanchor`].
+#[must_use]
+pub fn reanchor_across(
+    anchor: &Anchor,
+    old: &Revision,
+    new: &Revision,
+    lineage: Option<&IdLineage>,
+) -> ReanchorResult {
     let old_exact = anchor
         .quote
         .as_ref()
@@ -77,7 +100,28 @@ pub fn reanchor(anchor: &Anchor, old: &Revision, new: &Revision) -> ReanchorResu
         return place(anchor, new, range, old_exact.as_deref());
     }
 
-    // 2. Exact quote with context, then exact quote alone.
+    // 2. Revision mapping through the lineage table.
+    if !anchor.tokens.is_empty()
+        && let Some(lineage) = lineage
+    {
+        let mapped = lineage.map_tokens(&anchor.tokens);
+        if mapped.status == MappingStatus::Exact
+            && let Some(new_span) = token_span(&mapped.tokens, &new.tokens)
+        {
+            let range = match token_span(&anchor.tokens, &old.tokens) {
+                Some(old_span) => {
+                    shift_within(anchor.range, old_span, new_span, scalar_len(&new.text))
+                }
+                None => new_span,
+            };
+            return place(anchor, new, range, old_exact.as_deref());
+        }
+        if mapped.deleted.len() == anchor.tokens.len() {
+            return ReanchorResult::Orphaned;
+        }
+    }
+
+    // 3. Exact quote with context, then exact quote alone.
     let quote = match &anchor.quote {
         Some(quote) => quote.clone(),
         None => match TextQuoteSelector::from_text(&old.text, anchor.range) {
@@ -432,6 +476,127 @@ mod tests {
             reanchor(&empty, &old, &revision("r2", "short", false)),
             ReanchorResult::Orphaned
         );
+    }
+
+    /// A lineage from r1 to r2 in which the word at `index` (1-based) was split into two
+    /// morphemes `a` and `b`, the word at `deleted` was deleted, and the rest are `same`.
+    fn lineage(words: u32, split: u32, deleted: u32) -> IdLineage {
+        use crate::identity::{LineageEntry, LineageKind};
+        let id = |word: u32, suffix: Option<&str>| {
+            TokenId::new("t", BookId::John, 3, 16, word, suffix).unwrap()
+        };
+        let mut entries = Vec::new();
+        for word in 1..=words {
+            entries.push(if word == split {
+                LineageEntry {
+                    kind: LineageKind::Split,
+                    from: vec![id(word, None)],
+                    to: vec![id(word, Some("a")), id(word, Some("b"))],
+                }
+            } else if word == deleted {
+                LineageEntry {
+                    kind: LineageKind::Delete,
+                    from: vec![id(word, None)],
+                    to: Vec::new(),
+                }
+            } else {
+                LineageEntry {
+                    kind: LineageKind::Same,
+                    from: vec![id(word, None)],
+                    to: vec![id(word, None)],
+                }
+            });
+        }
+        IdLineage {
+            edition_id: "t".to_owned(),
+            from_revision: "r1".to_owned(),
+            to_revision: "r2".to_owned(),
+            entries,
+        }
+    }
+
+    #[test]
+    fn lineage_maps_split_tokens_before_the_quote_is_tried() {
+        // r1: "so loved the world"; r2 splits "loved" into "lov" + "ed" with new ids
+        // 2a and 2b, and the text changes so the quote alone would fail.
+        let old = revision("r1", "so loved the world", true);
+        let mut new = revision("r2", "so lov ed the cosmos", false);
+        let mk = |word, suffix: Option<&str>, start, end| TokenSpan {
+            id: TokenId::new("t", BookId::John, 3, 16, word, suffix).unwrap(),
+            range: ScalarRange { start, end },
+        };
+        new.tokens = vec![
+            mk(1, None, 0, 2),
+            mk(2, Some("a"), 3, 6),
+            mk(2, Some("b"), 7, 9),
+            mk(3, None, 10, 13),
+            mk(4, None, 14, 20),
+        ];
+        let anchor = anchor_on(&old, 3, 8, true, true); // "loved"
+        assert_eq!(anchor.tokens.len(), 1);
+        // Without the lineage the ids are gone and the quote has changed: orphaned.
+        assert_eq!(reanchor(&anchor, &old, &new), ReanchorResult::Orphaned);
+        let table = lineage(4, 2, 0);
+        match reanchor_across(&anchor, &old, &new, Some(&table)) {
+            ReanchorResult::Moved(found) => {
+                assert_eq!(found.range, ScalarRange { start: 3, end: 9 });
+                assert_eq!(found.quote.unwrap().exact, "lov ed");
+                assert_eq!(found.tokens.len(), 2);
+                assert_eq!(found.content_revision, "r2");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn lineage_deletion_orphans_even_when_the_words_recur() {
+        // r1: "a b a b" tokens 1..4; the note is on the first "a" (token 1), which r2
+        // deletes while the same word still occurs later.
+        let old = revision("r1", "a b a b", true);
+        let mut new = revision("r2", "b a b", false);
+        let mk = |word, start, end| TokenSpan {
+            id: TokenId::new("t", BookId::John, 3, 16, word, None).unwrap(),
+            range: ScalarRange { start, end },
+        };
+        new.tokens = vec![mk(2, 0, 1), mk(3, 2, 3), mk(4, 4, 5)];
+        let anchor = anchor_on(&old, 0, 1, true, true);
+        let table = lineage(4, 0, 1);
+        assert_eq!(
+            reanchor_across(&anchor, &old, &new, Some(&table)),
+            ReanchorResult::Orphaned
+        );
+        // Without the lineage the quote step finds the later "a" with context " b" twice
+        // in "a b a b"-shaped text, or once here: that single hit is a different passage,
+        // which only the lineage can rule out.
+        assert!(matches!(
+            reanchor(&anchor, &old, &new),
+            ReanchorResult::Moved(_) | ReanchorResult::Ambiguous(_)
+        ));
+    }
+
+    #[test]
+    fn a_partial_lineage_falls_through_to_the_quote() {
+        let old = revision("r1", OLD, true);
+        let new_text = format!("Indeed {OLD}");
+        let new = revision("r2", &new_text, false); // no token layer in r2
+        let anchor = anchor_on(&old, 11, 26, true, true); // "loved the world", 3 tokens
+        // The lineage knows one of the three tokens and nothing about the others.
+        let mut table = lineage(1, 0, 0);
+        table.entries[0].from = vec![anchor.tokens[0].clone()];
+        table.entries[0].to = vec![anchor.tokens[0].clone()];
+        match reanchor_across(&anchor, &old, &new, Some(&table)) {
+            ReanchorResult::Moved(found) => {
+                assert_eq!(found.range, ScalarRange { start: 18, end: 33 });
+                assert!(found.tokens.is_empty());
+            }
+            other => panic!("{other:?}"),
+        }
+        // Same ids present in the new layout: step 1 wins and the lineage is not consulted.
+        let same = revision("r2", OLD, true);
+        assert!(matches!(
+            reanchor_across(&anchor, &old, &same, Some(&lineage(12, 0, 4))),
+            ReanchorResult::Exact(_)
+        ));
     }
 
     #[test]
