@@ -1,0 +1,21 @@
+[package]
+name = "openlogos-retrieval-sqlite"
+description = "SQLite implementation of the ADR 0002 retrieval traits: FTS5, roaring token engine, edge tables, sqlite-vec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+openlogos-core = { workspace = true }
+openlogos-retrieval = { workspace = true }
+rusqlite = { workspace = true }
+libsqlite3-sys = { workspace = true }
+sqlite-vec = { workspace = true }
+roaring = { workspace = true }
+unicode-normalization = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

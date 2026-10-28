@@ -26,6 +26,7 @@ openlogos-ink = { path = "crates/ink" }
 openlogos-notes = { path = "crates/notes" }
 openlogos-sync = { path = "crates/sync" }
 openlogos-conformance = { path = "crates/conformance" }
+openlogos-retrieval-sqlite = { path = "crates/retrieval-sqlite" }
 
 # Third-party crates, pinned exactly so every platform's binding is generated from the same
 # code; `cargo update` is a reviewed change. Each one must build for wasm32-unknown-unknown.
@@ -33,6 +34,15 @@ serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 thiserror = "=2.0.21"
 unicode-segmentation = "=1.13.3"
+# Embedded retrieval engine (crates/retrieval-sqlite, ADR 0002, measured in B064). SQLite is
+# compiled from the amalgamation that libsqlite3-sys bundles (FTS5 on); sqlite-vec is the
+# vector extension's C source compiled and linked statically; roaring is the posting-list
+# format of the token engine; unicode-normalization feeds the shared Greek/Hebrew tokenizer.
+rusqlite = { version = "=0.41.0", features = ["bundled"] }
+libsqlite3-sys = { version = "=0.39.1", features = ["bundled"] }
+sqlite-vec = "=0.1.9"
+roaring = "=0.11.5"
+unicode-normalization = "=0.1.26"
 # Native bindings only (crates/ffi, non-wasm targets); the uniffi-bindgen binary must be
 # built from this same version so the generated Swift and Kotlin match the scaffolding.
 uniffi = "=0.32.2"
