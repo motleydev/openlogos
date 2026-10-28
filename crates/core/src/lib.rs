@@ -8,6 +8,8 @@
 //! iPad, Mac, phone, web, Android and in the Obsidian plugin are the whole point
 //! (docs/adr/0001-rust-core-native-ui.md).
 
+pub mod reference;
+
 /// Version of the core API that bindings (UniFFI, wasm-bindgen) are generated against.
 ///
 /// Follows the workspace package version for now; B061 decides how breaking core changes are
