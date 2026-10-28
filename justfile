@@ -122,3 +122,18 @@ test-wasm *args:
 [group('6 · web')]
 test-web: wasm-build
     cd apps/web/core-host && npm test
+
+# Build the app shell for an iPad simulator (unsigned), boot it, install and launch: `just sim` or `just sim "iPad mini (A17 Pro)"` (apple shell)
+[group('7 · apple app')]
+sim device="":
+    @scripts/sim.sh run "{{ device }}"
+
+# A screenshot of the running simulator into artifacts/sim/shots/ (or the file named)
+[group('7 · apple app')]
+sim-shot file="":
+    @scripts/sim.sh shot "{{ file }}"
+
+# Shut down the simulator `just sim` booted
+[group('7 · apple app')]
+sim-stop:
+    @scripts/sim.sh stop
