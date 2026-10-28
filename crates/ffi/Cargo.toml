@@ -7,8 +7,32 @@ rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
 [dependencies]
 openlogos-core = { workspace = true }
 
+# The web surface (src/wasm.rs). `wasm-bindgen` must be the exact version of the
+# `wasm-bindgen-cli` that flake.nix provides (`wasm-bindgen --version`); js-sys and
+# wasm-bindgen-test are the releases cut alongside it.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+openlogos-text = { workspace = true }
+openlogos-conformance = { path = "../conformance" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+wasm-bindgen = "=0.2.121"
+js-sys = "=0.3.98"
+serde-wasm-bindgen = "=0.6.5"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+serde_json = { workspace = true }
+wasm-bindgen-test = "=0.3.71"
+
 [lints]
 workspace = true
+
+# `scripts/wasm-bindings.sh` runs the pinned wasm-opt from the Nix shell itself and
+# records sizes before and after; wasm-pack must not download its own binaryen.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

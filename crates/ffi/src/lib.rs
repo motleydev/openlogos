@@ -6,6 +6,9 @@
 //! (docs/adr/0001-rust-core-native-ui.md). This crate contains no domain logic. Neither UniFFI
 //! nor wasm-bindgen is a dependency yet: B002 only establishes the crate.
 
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
+
 /// The core API version this binding surface was built against.
 #[must_use]
 pub fn core_api_version() -> &'static str {

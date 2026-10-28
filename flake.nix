@@ -151,11 +151,14 @@
               packages = rustTools ++ [ python ];
             };
 
+            # Also carries the validator's Python, like `core`, so `just ci` runs here too
+            # (B061: the web bindings are built and tested from this shell).
             web = shell {
               name = "web";
               packages = rustTools ++ [
+                python
                 pkgs.nodejs_24 # current LTS line for apps/web tooling and tests
-                pkgs.wasm-bindgen-cli # must match the wasm-bindgen crate version once B064 adds it
+                pkgs.wasm-bindgen-cli # the wasm-bindgen crate in crates/ffi is pinned to this exact version
                 pkgs.wasm-pack
                 pkgs.binaryen # wasm-opt, for the size budgets
               ];
@@ -258,7 +261,7 @@
             clippy = cargoCheck "clippy" "cargo clippy --workspace --all-targets --locked -- -D warnings";
             tests = cargoCheck "tests" "cargo test --workspace --locked";
             # The crates that run in the browser worker must stay free of native-only code.
-            wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-conformance";
+            wasm = cargoCheck "wasm" "cargo check --locked --target wasm32-unknown-unknown -p openlogos-core -p openlogos-text -p openlogos-conformance -p openlogos-ffi";
             nixfmt = toolCheck "nixfmt" [
               pkgs.nixfmt
               pkgs.findutils
