@@ -240,6 +240,74 @@ def check_receipt(rc, collection):
         permitted=item['kind']=='source_excerpt' and item.get('text') is not None and item['source']['rights']['quotation']=='allow'
         if e['disposition']=='quoted' and not permitted: raise ValueError('Quoted block without permission: '+e['item_id'])
         if e['disposition']!='quoted' and not (e.get('reason') or '').strip(): raise ValueError('Non-quoted entry without a reason: '+e['item_id'])
+def device_id_for(signing_public_hex):
+    return 'dev-'+hashlib.sha256(bytes.fromhex(signing_public_hex)).hexdigest()[:32]
+def check_sync_batch(batch):
+    # B021: globally unique op ids, contiguous per-device sequences, payload hashes that match.
+    ids=[op['op_id'] for op in batch['operations']]
+    if len(ids)!=len(set(ids)): raise ValueError('Duplicate operation id in batch')
+    by_device={}
+    for op in batch['operations']:
+        if op['vault_id']!=batch['vault_id']: raise ValueError('Operation of another vault in batch: '+op['op_id'])
+        if op['op_id'] in op['parents']: raise ValueError('Operation lists itself as a parent: '+op['op_id'])
+        by_device.setdefault(op['device_id'],[]).append(op['device_sequence'])
+        if op['payload_hash'] is not None and batch['payloads'] is not None:
+            sealed=batch['payloads'].get(op['op_id'])
+            if sealed is None: raise ValueError('Operation commits to a payload the batch lacks: '+op['op_id'])
+            digest=hashlib.sha256(bytes.fromhex(sealed['nonce'])+bytes.fromhex(sealed['ciphertext'])).hexdigest()
+            if digest!=op['payload_hash']: raise ValueError('Payload hash mismatch: '+op['op_id'])
+            if sealed['key_epoch']!=op['key_epoch']: raise ValueError('Payload sealed at another epoch: '+op['op_id'])
+    for p in batch['payloads'] or {}:
+        if p not in ids: raise ValueError('Payload without its operation: '+p)
+    for device,seqs in by_device.items():
+        seqs=sorted(seqs)
+        if seqs!=list(range(seqs[0],seqs[0]+len(seqs))): raise ValueError(f'Sequence gap or repeat for {device}: {seqs}')
+def check_roster(r):
+    # B021: device ids bound to signing keys, one founder, approvers enrolled no later, one wrap per epoch.
+    ids=[d['device']['device_id'] for d in r['devices']]
+    if len(ids)!=len(set(ids)): raise ValueError('Duplicate device in roster')
+    records={d['device']['device_id']:d for d in r['devices']}
+    if sum(1 for d in r['devices'] if d['approval']['by']=='founder')!=1: raise ValueError('Roster must have exactly one founder')
+    for d in r['devices']:
+        pub=d['device']
+        if pub['device_id']!=device_id_for(pub['signing_public']): raise ValueError('Device id is not the hash of its signing key: '+pub['device_id'])
+        if pub['signing_public']==pub['exchange_public']: raise ValueError('Signing and exchange keys must differ: '+pub['device_id'])
+        a=d['approval']
+        if a['by']=='device':
+            approver=records.get(a['device_id'])
+            if approver is None: raise ValueError('Approval by a device not in the roster: '+pub['device_id'])
+            if approver['enrolled_epoch']>d['enrolled_epoch']: raise ValueError('Approval by a device enrolled later: '+pub['device_id'])
+        rev=d['revocation']
+        last=r['key_epoch'] if rev is None else rev['epoch_after']-1
+        if rev is not None:
+            if rev['by'] not in records or rev['by']==pub['device_id']: raise ValueError('Revocation by an unknown device or by itself: '+pub['device_id'])
+            if rev['epoch_after']>r['key_epoch']: raise ValueError('Revocation names a future epoch: '+pub['device_id'])
+        epochs=[w['key_epoch'] for w in d['wrapped_keys']]
+        if epochs!=list(range(d['enrolled_epoch'],last+1)): raise ValueError(f'{pub["device_id"]} holds keys for epochs {epochs}, expected {d["enrolled_epoch"]}..{last}')
+        for w in d['wrapped_keys']:
+            if w['recipient']['kind']!='device' or w['recipient']['device_id']!=pub['device_id']: raise ValueError('Wrapped key for another recipient: '+pub['device_id'])
+    rec=r['recovery']
+    if [w['key_epoch'] for w in rec['wrapped_keys']]!=list(range(1,r['key_epoch']+1)): raise ValueError('Recovery must hold every epoch')
+    for w in rec['wrapped_keys']:
+        if w['recipient']['kind']!='recovery' or w['recipient']['recovery_public']!=rec['recovery_public']: raise ValueError('Recovery wrap for another identity')
+    if r['principal'] is not None and r['principal']['linked_by'] not in records: raise ValueError('Principal linked by an unknown device')
+def check_recovery_export(e):
+    check_roster(e['roster'])
+    if e['roster']['vault_id']!=e['vault_id']: raise ValueError('Recovery export carries another vault\'s roster')
+    if e['roster']['recovery']['recovery_public']!=e['recovery_public']: raise ValueError('Recovery public key differs from the roster\'s')
+    if not (e['key_epoch']==e['roster']['key_epoch']==e['wrapped_vault_key']['key_epoch']): raise ValueError('Recovery export epochs disagree')
+    if e['wrapped_vault_key']['recipient']!={'kind':'recovery','recovery_public':e['recovery_public']}: raise ValueError('Recovery export key not wrapped to the recovery identity')
+def check_sync_fixture(f):
+    ids={op['op_id'] for op in f['operations']}
+    check_sync_batch({'vault_id':f['roster']['vault_id'],'operations':f['operations'],'payloads':None})
+    check_roster(f['roster'])
+    for d in f['deliveries']:
+        if set(d['order'])-ids: raise ValueError('Delivery names an operation outside the fixture: '+d['name'])
+    for device in f['active_devices']:
+        rec=[d for d in f['roster']['devices'] if d['device']['device_id']==device]
+        if not rec or rec[0]['revocation'] is not None: raise ValueError('Active device list names a revoked or unknown device')
+    if f['expected_state']!=f['expected_state_after_compaction']: raise ValueError('Compaction must not change the merged state')
+    if set(f['expected_compacted'])-set(f['expected_state']['deleted']): raise ValueError('Compacted entity without a tombstone')
 def check_report(report):
     # Per-scheme minimums decide the failures, and passed follows from them (B068).
     rates={s['scheme']:(s['resolved']/(s['resolved']+s['unresolved_known_work']+s['unparsed']) if (s['resolved']+s['unresolved_known_work']+s['unparsed']) else 1.0) for s in report['schemes']}
@@ -254,13 +322,14 @@ def check_report(report):
 
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
         if f['id']!=path.stem: raise ValueError('Fixture id differs from file name: '+path.name)
         if f['kind'] not in kinds: raise ValueError('Unknown fixture kind: '+f['kind'])
         if not f['description'] or not f['license']: raise ValueError('Fixture without description or license: '+path.name)
+        if f['kind']=='sync-merge': check_sync_fixture(f)
         count+=1
     return count
 
@@ -282,6 +351,9 @@ def main():
         ('token-lineage','examples/token-lineage.json'), ('alignment','examples/alignment.json'),
         ('study-collection','examples/study-collection.json'),
         ('vault-export-receipt','examples/vault-export-receipt.json'),
+        ('sync-operation','examples/sync-operation.json'),
+        ('device-enrollment','examples/device-enrollment.json'),
+        ('recovery-export','examples/recovery-export.json'),
         ('locator-scheme','examples/locator-scheme.json'),
         ('resolution-report','examples/resolution-report.json'),
         ('note-binding','examples/note-binding.json'),
@@ -441,6 +513,71 @@ def main():
     expect_rejected(lambda:validate('verse-map',bad_map),'absent row with a target')
     bad_anchor=copy.deepcopy(anchor); bad_anchor['tokens'][0]['book']='Gen2'
     expect_rejected(lambda:validate('anchor',bad_anchor),'token id with an unknown book')
+    # B021: vault identity and encrypted sync records.
+    batch=load('examples/sync-operation.json'); check_sync_batch(batch)
+    roster=load('examples/device-enrollment.json'); check_roster(roster)
+    export=load('examples/recovery-export.json'); check_recovery_export(export)
+    assert roster['key_epoch']==2 and any(d['revocation'] for d in roster['devices']), 'Roster example must show a revocation and rotation'
+    assert len(batch['operations'])==8 and any(op['payload_hash'] is None for op in batch['operations'])
+    assert all(len(set(op['parents']))==len(op['parents']) for op in batch['operations'])
+    sync_fixture=load('crates/conformance/fixtures/sync-operation-log-merge.json')
+    assert sync_fixture['roster']==roster and len(sync_fixture['deliveries'])==4
+    leaked=copy.deepcopy(roster); leaked['devices'][0]['signing_secret']='00'*32
+    expect_rejected(lambda:validate('device-enrollment',leaked),'private key in roster')
+    leaked=copy.deepcopy(roster); leaked['devices'][0]['device']['exchange_secret']='00'*32
+    expect_rejected(lambda:validate('device-enrollment',leaked),'private exchange key in device record')
+    leaked=copy.deepcopy(roster); leaked['vault_key']='00'*32
+    expect_rejected(lambda:validate('device-enrollment',leaked),'raw vault key in roster')
+    leaked=copy.deepcopy(roster); leaked['recovery']['wrapped_keys'][0]['plaintext_key']='00'*32
+    expect_rejected(lambda:validate('device-enrollment',leaked),'plaintext key beside a wrap')
+    leaked=copy.deepcopy(batch); leaked['access_token']='bearer fixture-forbidden'
+    expect_rejected(lambda:validate('sync-operation',leaked),'bearer token in sync batch')
+    leaked=copy.deepcopy(batch); leaked['operations'][0]['body']='plaintext note'
+    expect_rejected(lambda:validate('sync-operation',leaked),'plaintext body on an operation header')
+    leaked=copy.deepcopy(batch); next(iter(leaked['payloads'].values()))['plaintext']='note'
+    expect_rejected(lambda:validate('sync-operation',leaked),'plaintext beside a sealed payload')
+    leaked=copy.deepcopy(export); leaked['recovery_secret']='00'*32
+    expect_rejected(lambda:validate('recovery-export',leaked),'recovery secret in recovery export')
+    leaked=copy.deepcopy(export); leaked['passphrase']='hunter2'
+    expect_rejected(lambda:validate('recovery-export',leaked),'passphrase in recovery export')
+    leaked=copy.deepcopy(export); leaked['roster']['devices'][0]['wrapped_keys'][0]['vault_key']='00'*32
+    expect_rejected(lambda:validate('recovery-export',leaked),'raw vault key inside the export roster')
+    bad=copy.deepcopy(batch); del bad['operations'][1]['parents']
+    expect_rejected(lambda:validate('sync-operation',bad),'operation without parents')
+    bad=copy.deepcopy(batch); bad['operations'][1]['parents']=[bad['operations'][1]['op_id']]
+    expect_rejected(lambda:check_sync_batch(bad),'operation that is its own parent')
+    bad=copy.deepcopy(batch); bad['operations'].append(copy.deepcopy(bad['operations'][0]))
+    expect_rejected(lambda:check_sync_batch(bad),'duplicate operation id')
+    bad=copy.deepcopy(batch); bad['operations'][1]['device_sequence']=9
+    expect_rejected(lambda:check_sync_batch(bad),'device sequence gap')
+    bad=copy.deepcopy(batch); bad['operations'][0]['device_sequence']=0
+    expect_rejected(lambda:validate('sync-operation',bad),'device sequence 0')
+    bad=copy.deepcopy(batch); bad['operations'][0]['payload_hash']='00'*32
+    expect_rejected(lambda:check_sync_batch(bad),'payload hash mismatch')
+    bad=copy.deepcopy(batch); bad['operations'][0]['change']={'kind':'note_rename','note_id':'note-john-3-16-01'}
+    expect_rejected(lambda:validate('sync-operation',bad),'unknown change kind')
+    bad=copy.deepcopy(batch); bad['operations'][0]['change']={'kind':'tag_add','entity_id':'note-john-3-16-01','tag_id':'Love & Grace'}
+    expect_rejected(lambda:validate('sync-operation',bad),'tag name instead of a tag id')
+    bad=copy.deepcopy(batch); bad['operations'][0]['signature']=bad['operations'][0]['signature'][:-2]
+    expect_rejected(lambda:validate('sync-operation',bad),'truncated signature')
+    bad=copy.deepcopy(roster); bad['devices'][1]['device']['device_id']='dev-'+'0'*32
+    expect_rejected(lambda:check_roster(bad),'device id not derived from the signing key')
+    bad=copy.deepcopy(roster); bad['devices'][2]['wrapped_keys'].append(dict(bad['devices'][0]['wrapped_keys'][1],recipient={'kind':'device','device_id':bad['devices'][2]['device']['device_id']}))
+    expect_rejected(lambda:check_roster(bad),'revoked device holding the rotated key')
+    bad=copy.deepcopy(roster); bad['devices'][0]['wrapped_keys'].pop()
+    expect_rejected(lambda:check_roster(bad),'active device missing the current epoch')
+    bad=copy.deepcopy(roster); bad['devices'][1]['approval']={'by':'device','device_id':bad['devices'][2]['device']['device_id'],'signature':'00'*64}; bad['devices'][2]['enrolled_epoch']=2
+    expect_rejected(lambda:check_roster(bad),'approval by a device enrolled later')
+    bad=copy.deepcopy(roster); bad['devices'][0]['approval']={'by':'recovery'}
+    expect_rejected(lambda:check_roster(bad),'roster without a founder')
+    bad=copy.deepcopy(roster); bad['principal']={'issuer':'mailto:someone@example.org','subject':'someone@example.org','linked_at':'2026-10-28T09:00:00Z','linked_by':bad['devices'][0]['device']['device_id']}
+    expect_rejected(lambda:validate('device-enrollment',bad),'principal that is an email, not an https issuer')
+    bad=copy.deepcopy(export); bad['key_epoch']=1
+    expect_rejected(lambda:check_recovery_export(bad),'recovery export epochs disagree')
+    bad=copy.deepcopy(export); bad['protected_secret']['argon2id']['m_cost']=1
+    expect_rejected(lambda:validate('recovery-export',bad),'argon2 memory below the floor')
+    bad=copy.deepcopy(sync_fixture); bad['deliveries'][0]['order'].append('op-'+'f'*64)
+    expect_rejected(lambda:check_sync_fixture(bad),'delivery of an operation outside the fixture')
     report=load('examples/resolution-report.json'); check_report(report)
     bad_report=copy.deepcopy(report); bad_report['passed']=True
     expect_rejected(lambda:validate('resolution-report',bad_report),'resolution report passed with failures')
@@ -515,6 +652,6 @@ def main():
     expect_rejected(lambda:check_binding(bad_binding),'repeated operation id')
     old_migrated=copy.deepcopy(old_wp); old_migrated['layout_profiles']={}
     expect_rejected(lambda:validate('workspace',old_migrated),'migration output still declaring 1.0')
-    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums, note-binding authority and workspace layout profiles.')
     print('Scope: blueprint structure only. No app, Nix build, cryptography, source clearance or Paperclip deployment has been tested.')
+    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums, note-binding authority, workspace layout profiles, key material in sync records and malformed operations.')
 if __name__=='__main__': main()

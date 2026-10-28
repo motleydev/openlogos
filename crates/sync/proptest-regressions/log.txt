@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 6807a17786429ad58e18f6fe98bbf25e69aad0e497369436e6beb4d79122ea45 # shrinks to steps = [Make(0, Tombstone { entity_id: "note-0002" }), Make(0, NoteBody { note_id: "note-0001" }), Make(0, NoteBody { note_id: "note-0001" })], keys = [0, 0, 0, 0, 0, 9181498, 1357738468, 2814067510, 3484845538, 3261169924, 1512965845, 2900870476, 3060191278, 2925122280, 1742755189, 2918309140, 1533188199, 946778721, 528201928, 1323652779, 430651644, 4143316740, 3791750281, 371992152, 2947149831, 2607407546, 4208237959, 3046248385, 1426401338, 1887466215, 3307615456, 2014657816, 1289415247, 3842674256, 2421121068, 2804533718, 3136511232, 80205409, 3066495171, 2922930539]

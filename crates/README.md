@@ -15,7 +15,7 @@ lists them together.
 | `workspaces` | pane trees, link groups, layout profiles |
 | `ink` | portable stroke geometry and snapshot contracts |
 | `notes` | app/vault note authority and merge contracts |
-| `sync` | encrypted operation log and conflict resolution |
+| `sync` | encrypted operation log and conflict resolution (B021: `keys`, `envelope`, `log`, `enrollment`, `recovery`; docs/adr/0004-vault-identity-and-sync.md) |
 | `ffi` | UniFFI and wasm-bindgen surfaces, versioned API (B061, B064) |
 | `conformance` | cross-platform fixtures and expected results |
 

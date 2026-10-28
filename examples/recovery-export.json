@@ -1,0 +1,175 @@
+{
+  "created_at": "2026-10-28T09:00:00Z",
+  "key_epoch": 2,
+  "protected_secret": {
+    "argon2id": {
+      "m_cost": 19456,
+      "p_cost": 1,
+      "t_cost": 2
+    },
+    "ciphertext": "eebe00b096ac195dabe3a8a333a8a7ba60b27de27f39a6326c9c7670544cb680593f95365f288a9d2ccf5f83e80ff1e2",
+    "nonce": "188733b66fb10eece88c63719660604284d963e3991a902f",
+    "salt": "2dc4bc1e8b629699b2ec698df18ea0cf"
+  },
+  "recovery_public": "04cabcbc3f28d20244852bb3cc0bb50962d042ac4df12721fbf9b92e8777ca1e",
+  "roster": {
+    "devices": [
+      {
+        "approval": {
+          "by": "founder",
+          "signature": "a8fd23ed1a0ba9081f89a1533dc8ad50f02909d98a252069d54148d10ee132837150d8908f00d121901968e9212ed84b2d74bf92c43ee83d103720c28692c50b"
+        },
+        "device": {
+          "device_id": "dev-3ca093961b331dd206b4ebeae583d354",
+          "exchange_public": "04f544f257ecd2b2bfd503db58e54e48b4a114df1a33757eccab53a0b8c6737e",
+          "signing_public": "69e9c831dbd7b05dfd1f5a54e5a42771daafeb7d7eba51240e98ddfd88930f8e"
+        },
+        "display_name": "Study iPad",
+        "enrolled_at": "2026-10-28T09:00:00Z",
+        "enrolled_epoch": 1,
+        "revocation": null,
+        "wrapped_keys": [
+          {
+            "ciphertext": "6d6d62d0d218149c1404e8f88ee995e684795853dedcf19b3269e79974da7a264313bc1d33650943aee30fdcc1299f40",
+            "ephemeral_public": "533b06cccab2b54a81e62662004c07732ce8d5375ef5da024f4f9331f3583309",
+            "key_epoch": 1,
+            "nonce": "ff917b844954b1d4c8d9cb311c2040726e1fb2a8edf8b434",
+            "recipient": {
+              "device_id": "dev-3ca093961b331dd206b4ebeae583d354",
+              "kind": "device"
+            }
+          },
+          {
+            "ciphertext": "2493af64e35a0f15d18abc84582aa57b02432d64f1f9305ff50813c09f9c183d37e40c57b0433bb27a07df3f5465bfe7",
+            "ephemeral_public": "513f6d78f611868a627f94650e4a6dc81d2e81537e7918674c3312bc7d9dc12f",
+            "key_epoch": 2,
+            "nonce": "adbd58b533a5507bcfece2f64e662d5c56891abd43e21a19",
+            "recipient": {
+              "device_id": "dev-3ca093961b331dd206b4ebeae583d354",
+              "kind": "device"
+            }
+          }
+        ]
+      },
+      {
+        "approval": {
+          "by": "device",
+          "device_id": "dev-3ca093961b331dd206b4ebeae583d354",
+          "signature": "374368ac0e690ffea991418d23fdf44c62c6f894b8bdaea62321fd8b0244d3495be4a930c9fdf4c45c8e33c95b48d08e3b42ebc57777cd22fc64f99086de9c01"
+        },
+        "device": {
+          "device_id": "dev-566e5d542e8af119bfc7022f7fdfd3d8",
+          "exchange_public": "fc87081bb6d6428f73af9adbdc509630f3f7a050471b593d6420bc09a8808e65",
+          "signing_public": "4140b32623e4e3bb061ba94c8df124b0f161857fc4a58a884a7d8e05f055639d"
+        },
+        "display_name": "Phone",
+        "enrolled_at": "2026-10-28T09:00:00Z",
+        "enrolled_epoch": 1,
+        "revocation": null,
+        "wrapped_keys": [
+          {
+            "ciphertext": "1d7156bcff14ba137495dd3327ff3d5f359eedd823f8ee600ae66abac685c939d08caf52e5f730168aa0ad8868dc9511",
+            "ephemeral_public": "454fff799b9bdfab5db29205d894ba640d19df27f1433ee31d8a05c76463b408",
+            "key_epoch": 1,
+            "nonce": "1727d7c5bb49629724707f4d15118e5beedaad3ddd8e52d4",
+            "recipient": {
+              "device_id": "dev-566e5d542e8af119bfc7022f7fdfd3d8",
+              "kind": "device"
+            }
+          },
+          {
+            "ciphertext": "2e22a2fe83457d42613577d27d3f5639fdb0f1bbe9625933fc9cf759dea27ff6c60386494c89b1157674613629441c1f",
+            "ephemeral_public": "a22c9468e163fe20107ce7ffb89964feedb9d41f197067c1306b5cc57d904e23",
+            "key_epoch": 2,
+            "nonce": "cefd5fe908f5cc130b5e1f238a3cf9bf03d4fdb38050eca5",
+            "recipient": {
+              "device_id": "dev-566e5d542e8af119bfc7022f7fdfd3d8",
+              "kind": "device"
+            }
+          }
+        ]
+      },
+      {
+        "approval": {
+          "by": "device",
+          "device_id": "dev-3ca093961b331dd206b4ebeae583d354",
+          "signature": "12b5d793a897974976280799f2d99e82b7823bf7c63d07b7393b2fa20dd4bd52a5724a45bcaf337721de82e142b2248a50025182bd1a254b0fcf42e4a9670207"
+        },
+        "device": {
+          "device_id": "dev-22d8a08d6e78df8aaae6dbd778e4cc48",
+          "exchange_public": "9dd406bcc157b478fb01acee1f75a3857a309e09a121ff4e75f2666457e3732b",
+          "signing_public": "0e31269d8033c1445e385e88c759ae9e40ba6c28bc04d9b484e15acd8232671f"
+        },
+        "display_name": "Old laptop",
+        "enrolled_at": "2026-10-28T09:00:00Z",
+        "enrolled_epoch": 1,
+        "revocation": {
+          "by": "dev-3ca093961b331dd206b4ebeae583d354",
+          "cutoff_sequence": 1,
+          "epoch_after": 2,
+          "reason": "lost",
+          "revoked_at": "2026-10-28T09:00:00Z",
+          "signature": "916a4514d90db68c8bab740779e1a11d49ab4f9b86e1dcfe562abb4dbf63eb12ef3c6d2fbb3fa04a73b2012af255d8f8533776a002c43f47965ff349258ae90a"
+        },
+        "wrapped_keys": [
+          {
+            "ciphertext": "a4d62e0e0c2a32b4ec29a8e28b4dbe7cc652ff01a39546d68740e70ab6bb453fbdafadca3ab2be5856afabfb8f46f525",
+            "ephemeral_public": "e784be76c016f1ae72c2c4b4ce10b086b5f112a7653c3c08d45dd786b85ffe76",
+            "key_epoch": 1,
+            "nonce": "3e20fe3287b032dbfda6f223c66e42da9be8d4d4a7b9f25f",
+            "recipient": {
+              "device_id": "dev-22d8a08d6e78df8aaae6dbd778e4cc48",
+              "kind": "device"
+            }
+          }
+        ]
+      }
+    ],
+    "key_epoch": 2,
+    "principal": {
+      "issuer": "https://id.example.family",
+      "linked_at": "2026-10-28T09:00:00Z",
+      "linked_by": "dev-3ca093961b331dd206b4ebeae583d354",
+      "subject": "a1b2c3"
+    },
+    "recovery": {
+      "recovery_public": "04cabcbc3f28d20244852bb3cc0bb50962d042ac4df12721fbf9b92e8777ca1e",
+      "wrapped_keys": [
+        {
+          "ciphertext": "23f6340025b1b764dbdc94d8895224277c694567d0664c7c4188ea348073b86b830bf23c2f8648cb232bc2c9b746d6d7",
+          "ephemeral_public": "c1ed29e626fa276f848fa3e84474acf806dad288431e57b1765d54cbfe051a13",
+          "key_epoch": 1,
+          "nonce": "4cb069e4fe035ab875989608c7231e17d8caa00322e13bb8",
+          "recipient": {
+            "kind": "recovery",
+            "recovery_public": "04cabcbc3f28d20244852bb3cc0bb50962d042ac4df12721fbf9b92e8777ca1e"
+          }
+        },
+        {
+          "ciphertext": "03741088f28e303bdd618d028b8ab12b6b4f458642566eb3bbd4c88360a385ce2f8ded4f7ea6fde74039aaefe0c72457",
+          "ephemeral_public": "25292a867d1763683d24bb82509e7ae4b8991d953d9e444bcbb4a8208b7f697e",
+          "key_epoch": 2,
+          "nonce": "920fc749cb8c1d12116d64888c40e42201a13b41729e70f4",
+          "recipient": {
+            "kind": "recovery",
+            "recovery_public": "04cabcbc3f28d20244852bb3cc0bb50962d042ac4df12721fbf9b92e8777ca1e"
+          }
+        }
+      ]
+    },
+    "schema_version": "1.0",
+    "vault_id": "vault-b991225a1d3b3d04ecb6a81ec0213424"
+  },
+  "schema_version": "1.0",
+  "vault_id": "vault-b991225a1d3b3d04ecb6a81ec0213424",
+  "wrapped_vault_key": {
+    "ciphertext": "03741088f28e303bdd618d028b8ab12b6b4f458642566eb3bbd4c88360a385ce2f8ded4f7ea6fde74039aaefe0c72457",
+    "ephemeral_public": "25292a867d1763683d24bb82509e7ae4b8991d953d9e444bcbb4a8208b7f697e",
+    "key_epoch": 2,
+    "nonce": "920fc749cb8c1d12116d64888c40e42201a13b41729e70f4",
+    "recipient": {
+      "kind": "recovery",
+      "recovery_public": "04cabcbc3f28d20244852bb3cc0bb50962d042ac4df12721fbf9b92e8777ca1e"
+    }
+  }
+}

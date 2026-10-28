@@ -44,10 +44,23 @@ sqlite-vec = "=0.1.9"
 roaring = "=0.11.5"
 unicode-normalization = "=0.1.26"
 # SHA-256 of pack files for the device catalog and the link index rebuild check (B068).
-sha2 = "=0.10.9"
 # Native bindings only (crates/ffi, non-wasm targets); the uniffi-bindgen binary must be
 # built from this same version so the generated Swift and Kotlin match the scaffolding.
 uniffi = "=0.32.2"
+# Vault identity and encrypted sync (crates/sync only, ADR 0004). Pure-Rust RustCrypto and
+# dalek crates with default features off so no crate pulls `getrandom` (which cannot build
+# for wasm32-unknown-unknown without a backend cfg): the host supplies the random source.
+x25519-dalek = { version = "=3.0.0", default-features = false, features = ["static_secrets", "zeroize"] }
+ed25519-dalek = { version = "=3.0.0", default-features = false, features = ["zeroize"] }
+chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
+hkdf = { version = "=0.13.0", default-features = false }
+sha2 = { version = "=0.11.1", default-features = false }
+argon2 = { version = "=0.6.0", default-features = false, features = ["alloc"] }
+rand_core = { version = "=0.10.1", default-features = false }
+zeroize = { version = "=1.9.1", default-features = false, features = ["alloc"] }
+subtle = { version = "=2.6.1", default-features = false }
+proptest = { version = "=1.12.0", default-features = false, features = ["std"] }
+rand_chacha = { version = "=0.10.0", default-features = false }
 
 # Shared lint policy; each crate opts in with `[lints] workspace = true`. Clippy itself
 # runs with `-D warnings` (justfile, nix flake check), so a warning here fails CI.

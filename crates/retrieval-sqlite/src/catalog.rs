@@ -118,7 +118,12 @@ pub fn sha256_file(path: &Path) -> std::io::Result<String> {
         }
         hasher.update(&buf[..n]);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    // sha2 0.11 returns a `hybrid_array::Array`, which has no `LowerHex`; encode by hand.
+    Ok(hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 /// A catalog entry built from a core grammar: the scheme's shape and levels come from the
