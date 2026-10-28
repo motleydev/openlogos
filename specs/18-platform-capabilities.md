@@ -117,7 +117,7 @@ Because link state and scroll anchors live on the pane, no profile can lose them
 
 The class comes from the platform's own size class where one exists (an iPhone is compact in every orientation; an iPad window is compact or regular by its horizontal size class) and from the width otherwise (Mac, web, desktop, an iPad on an external display). The width thresholds are the smallest widths that hold two, four and seven panes at the 340-pt standard minimum, rounded up for chrome; they are prototype defaults in the sense of specs/12, not immutable breakpoints.
 
-| Class | Width (pt) | Visible panes at most | Typical surfaces |
+| Class | Width (pt) | Columns at most (a collapsed group is one column) | Typical surfaces |
 |---|---|---|---|
 | compact | under 700 | 1 | iPhone, Slide Over, one-third and half Split View, narrow browser windows |
 | regular | 700–1399 | 3 | iPad in either orientation, two-thirds Split View, small laptop windows |
@@ -128,7 +128,7 @@ The class comes from the platform's own size class where one exists (an iPhone i
 
 Given a workspace, a class, the width available to panes (the window width minus any side chrome such as layout B's launcher or a pinned drawer) and the text size:
 
-1. **Slots.** `slots = max(1, min(class maximum, floor(width ÷ pane minimum)))`. The pane minimum is 340 pt at standard text sizes (B004: 341-pt panes at 1024 carry 31 Latin characters per line) and 480 pt at accessibility text sizes (B004 decision 3). With the notes dock open on a regular or wider class, the dock takes a 360-pt column first and the slots are computed on the remainder; on compact the dock is a sheet and takes no slot.
+1. **Slots.** `slots = max(1, min(class maximum, floor(width ÷ pane minimum)))`. The pane minimum is 340 pt at standard text sizes (B004: 341-pt panes at 1024 carry 31 Latin characters per line) and 480 pt at accessibility text sizes (B004 decision 3). With the notes dock open on a regular or wider class, the dock takes one of the slots as a column of equal width (never the last one: a single slot stays with the panes and the dock becomes a sheet); on compact the dock is a sheet and takes no slot. The class maximum counts columns: the visible members of a collapsed link group share one column.
 2. **Priority order.** If the workspace stores a profile for the class, the order is its visible list followed by its tab order, and only the panes in its visible list may take a slot (the reader's arrangement is honoured even when the width would hold more). Otherwise the order is the nearest stored profile's (compact looks at regular, wide, ultra-wide; regular at wide, compact, ultra-wide; wide at ultra-wide, regular, compact; ultra-wide at wide, regular, compact) and every pane may take a slot; with no profile at all the order is the workspace's pane order. Panes the profile does not know are appended as tabs; ids the workspace no longer has are ignored.
 3. **Columns.** Walk the order. A pane whose link group is collapsed for this class and already has a column stacks into that column (shown as a tab inside it, one slot for the group). Otherwise it takes the next free slot. Panes beyond the slots, or beyond the profile's visible list, become tabs in order.
 4. **Active pane.** The active pane is always shown. If it landed as a stacked pane it becomes its column's shown pane; if it landed as a tab it takes the last column and the displaced pane becomes the first tab. Nothing else moves.

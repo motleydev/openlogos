@@ -81,7 +81,14 @@ def check_workspace(wp):
         if cls not in PROFILE_LIMITS: raise ValueError('Unknown device class: '+cls)
         placed=profile['visible_pane_ids']+profile['tab_order']
         if sorted(placed)!=sorted(ids): raise ValueError('Profile '+cls+' does not place every pane exactly once')
-        if len(profile['visible_pane_ids'])>PROFILE_LIMITS[cls]: raise ValueError('Profile '+cls+' shows more panes than its class allows')
+        collapsed=set(profile.get('collapsed_link_groups',[]))
+        group_of={p['id']:p['link_group'] for p in wp['panes']}
+        columns,seen=0,set()
+        for pid in profile['visible_pane_ids']:
+            g=group_of[pid]
+            if g in collapsed and g in seen: continue
+            columns+=1; seen.add(g)
+        if columns>PROFILE_LIMITS[cls]: raise ValueError('Profile '+cls+' shows more columns than its class allows')
         widths=profile.get('widths',{})
         if widths and not set(widths)<=set(profile['visible_pane_ids']): raise ValueError('Profile '+cls+' sizes a pane it does not show')
         if widths and abs(sum(widths.values())-1)>1e-8: raise ValueError('Profile '+cls+' widths do not sum to one')
@@ -170,7 +177,9 @@ def main():
     foreign_class=copy.deepcopy(wp); foreign_class['layout_profiles']['desktop']=foreign_class['layout_profiles']['wide']
     expect_rejected(lambda:validate('workspace',foreign_class),'layout profile for an unknown device class')
     crowded=copy.deepcopy(wp); crowded['layout_profiles']['compact']={'visible_pane_ids':['p1','p2'],'tab_order':['p3','p4','p5'],'notes_dock_open':False}
-    expect_rejected(lambda:validate('workspace',crowded),'compact profile with two visible panes')
+    expect_rejected(lambda:check_workspace(crowded),'compact profile with two columns')
+    stacked=copy.deepcopy(crowded); stacked['layout_profiles']['compact']['collapsed_link_groups']=['1']
+    check_workspace(stacked)  # the same two panes in one collapsed group are one column
     old_with_profiles=copy.deepcopy(old_wp); old_with_profiles['layout_profiles']={}
     expect_rejected(lambda:validate('workspace',old_with_profiles),'1.0 workspace with 1.1 profiles')
     new_without_profiles=copy.deepcopy(wp); del new_without_profiles['layout_profiles']

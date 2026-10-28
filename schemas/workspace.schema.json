@@ -122,60 +122,16 @@
       "additionalProperties": false,
       "properties": {
         "compact": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/layout_profile"
-            },
-            {
-              "properties": {
-                "visible_pane_ids": {
-                  "maxItems": 1
-                }
-              }
-            }
-          ]
+          "$ref": "#/$defs/layout_profile"
         },
         "regular": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/layout_profile"
-            },
-            {
-              "properties": {
-                "visible_pane_ids": {
-                  "maxItems": 3
-                }
-              }
-            }
-          ]
+          "$ref": "#/$defs/layout_profile"
         },
         "wide": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/layout_profile"
-            },
-            {
-              "properties": {
-                "visible_pane_ids": {
-                  "maxItems": 6
-                }
-              }
-            }
-          ]
+          "$ref": "#/$defs/layout_profile"
         },
         "ultra-wide": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/layout_profile"
-            },
-            {
-              "properties": {
-                "visible_pane_ids": {
-                  "maxItems": 6
-                }
-              }
-            }
-          ]
+          "$ref": "#/$defs/layout_profile"
         }
       }
     }
@@ -238,7 +194,7 @@
       "additionalProperties": false,
       "properties": {
         "visible_pane_ids": {
-          "description": "Panes shown as columns on this class, in visual order. The class caps the length; the width at open time may show fewer, in which case the trailing ones lead the tabs.",
+          "description": "Panes shown on this class, in visual order. They occupy at most the class's column limit (compact 1, regular 3, wide and ultra-wide 6), where the members of a collapsed link group share one column; the validator and the core enforce the limit. The width at open time may show fewer, in which case the trailing ones lead the tabs.",
           "type": "array",
           "minItems": 1,
           "maxItems": 8,
@@ -271,7 +227,7 @@
           "type": "boolean"
         },
         "collapsed_link_groups": {
-          "description": "Link groups shown as one column on this class (wide and ultra-wide); members stack as tabs inside the column.",
+          "description": "Link groups shown as one column on this class; the group's visible members stack as tabs inside that column and count as one column against the class limit.",
           "type": "array",
           "uniqueItems": true,
           "items": {
