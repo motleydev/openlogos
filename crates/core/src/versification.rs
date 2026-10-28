@@ -12,6 +12,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::reference::Reference;
 
+pub mod mapping;
+pub mod segments;
+
+pub use mapping::ReferenceMapping;
+pub use segments::{SegmentResolution, SegmentSpan, SegmentTable};
+
 /// Name of a versification scheme, such as `org`, `eng`, `lxx` or `vul`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]

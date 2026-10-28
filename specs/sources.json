@@ -53,7 +53,7 @@
       "title": "SBL Greek New Testament",
       "url": "https://github.com/Faithlife/SBLGNT",
       "secondary_url": "https://www.sblgnt.com/",
-      "finding": "Current upstream describes CC BY 4.0. Pin exact text edition; critical editorial choices are not interchangeable with other Greek editions.",
+      "finding": "Current upstream describes CC BY 4.0. Pin exact text edition; critical editorial choices are not interchangeable with other Greek editions. B006 fixture alignment-john-3-16-sblgnt-bsb takes John 3:16 from data/sblgnt/text/John.txt in this repository (github.com/Faithlife/SBLGNT; the former github.com/LogosBible/SBLGNT address redirects to it), at commit d7f35adca9ec410e1d1499c63b4dd989d76c8d4d, fetched 28 October 2026, file SHA-256 ada9643154a990ae2725ab847c6cfb576ce2c3bcd4945d47606e8a90c8d065f5; the apparatus siglum U+2E00 is stripped from the text.",
       "status": "candidate_open",
       "pinned_artifact": null
     },

@@ -1,0 +1,261 @@
+{
+  "id": "joel-malachi-chapter-numbering",
+  "kind": "versification",
+  "description": "Chapters that differ across traditions: the Hebrew text (org) divides Joel into four chapters where English editions have three (English 2:28-32 is Hebrew 3:1-5 and English 3 is Hebrew 4), and Malachi into three where English has four (English 4:1-6 is Hebrew 3:19-24). Rows run from eng to org; set cases map whole spans, including one that crosses the English chapter boundary. Nothing is asserted about the Septuagint here.",
+  "license": "CC0 (numbering facts; no copyrighted text)",
+  "source": "Chapter and verse counts compared between the WLC (Hebrew) and the KJV/BSB (English) for Joel and Malachi; the eng scheme name follows Paratext usage.",
+  "rows": [
+    {
+      "from_scheme": "eng",
+      "from": "Joel.1.1-Joel.1.20",
+      "to_scheme": "org",
+      "to": "Joel.1.1-Joel.1.20",
+      "kind": "equal",
+      "source": "Joel 1 has 20 verses in both numberings."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Joel.2.1-Joel.2.27",
+      "to_scheme": "org",
+      "to": "Joel.2.1-Joel.2.27",
+      "kind": "equal",
+      "source": "Joel 2:1-27 agree; the Hebrew chapter ends at verse 27."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Joel.2.28-Joel.2.32",
+      "to_scheme": "org",
+      "to": "Joel.3.1-Joel.3.5",
+      "kind": "equal",
+      "source": "English Joel 2:28-32 (the outpouring of the Spirit) is Hebrew Joel 3:1-5."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Joel.3.1-Joel.3.21",
+      "to_scheme": "org",
+      "to": "Joel.4.1-Joel.4.21",
+      "kind": "equal",
+      "source": "English Joel 3 is Hebrew Joel 4 (21 verses in both)."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Mal.3.1-Mal.3.18",
+      "to_scheme": "org",
+      "to": "Mal.3.1-Mal.3.18",
+      "kind": "equal",
+      "source": "Malachi 3:1-18 agree."
+    },
+    {
+      "from_scheme": "eng",
+      "from": "Mal.4.1-Mal.4.6",
+      "to_scheme": "org",
+      "to": "Mal.3.19-Mal.3.24",
+      "kind": "equal",
+      "source": "Hebrew Malachi has three chapters: English 4:1-6 is Hebrew 3:19-24."
+    }
+  ],
+  "cases": [
+    {
+      "name": "English Joel 2:28 is Hebrew 3:1",
+      "reference": "Joel.2.28",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Joel.3.1"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "English Joel 2:32 is Hebrew 3:5",
+      "reference": "Joel.2.32",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Joel.3.5"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "English Joel 3:21 is Hebrew 4:21",
+      "reference": "Joel.3.21",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Joel.4.21"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "Hebrew Joel 4:1 is English 3:1 (row read backwards)",
+      "reference": "Joel.4.1",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Joel.3.1"
+      ],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "Hebrew Malachi 3:19 is English 4:1",
+      "reference": "Mal.3.19",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Mal.4.1"
+      ],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "English Malachi 4:6 is Hebrew 3:24",
+      "reference": "Mal.4.6",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Mal.3.24"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "Hebrew Joel 4:22 does not exist and is unmapped",
+      "reference": "Joel.4.22",
+      "from": "org",
+      "to": "eng",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "org",
+        "eng"
+      ]
+    },
+    {
+      "name": "A chapter-only reference is unmapped",
+      "reference": "Joel.3",
+      "from": "eng",
+      "to": "org",
+      "status": "unmapped",
+      "targets": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    }
+  ],
+  "set_cases": [
+    {
+      "name": "English Joel 2:28-32 as a set is Hebrew 3:1-5",
+      "references": [
+        "Joel.2.28-Joel.2.32"
+      ],
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "to_references": [
+        "Joel.3.1-Joel.3.5"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "A span crossing the English chapter boundary maps into two Hebrew chapters",
+      "references": [
+        "Joel.2.27-Joel.2.28"
+      ],
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "to_references": [
+        "Joel.2.27",
+        "Joel.3.1"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "English Malachi 4 as a set is Hebrew 3:19-24",
+      "references": [
+        "Mal.4.1-Mal.4.6"
+      ],
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "to_references": [
+        "Mal.3.19-Mal.3.24"
+      ],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "A set with one verse outside the table is partial with that verse unknown",
+      "references": [
+        "Mal.4.5",
+        "Mal.4.6",
+        "Mal.4.7"
+      ],
+      "from": "eng",
+      "to": "org",
+      "status": "partial",
+      "to_references": [
+        "Mal.3.23",
+        "Mal.3.24"
+      ],
+      "absent": [],
+      "unknown": [
+        "Mal.4.7"
+      ],
+      "path": [
+        "eng",
+        "org"
+      ]
+    },
+    {
+      "name": "An empty set is unmapped",
+      "references": [],
+      "from": "eng",
+      "to": "org",
+      "status": "unmapped",
+      "to_references": [],
+      "absent": [],
+      "unknown": [],
+      "path": [
+        "eng",
+        "org"
+      ]
+    }
+  ]
+}

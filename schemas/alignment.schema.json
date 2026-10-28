@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:alignment",
+  "title": "Standoff alignment set",
+  "description": "The serialized form of openlogos_core::identity::AlignmentSet: token-keyed standoff alignment records between two edition revisions, each with source token ids, target token ids, status (aligned, partial, null, disputed), origin (curated:<name>[@<version>], auto:<tool>@<version>, user:<device>) and confidence, plus the tokenization hash of each side (lower-case hex SHA-256 of the UTF-8 lines `<token id>\\t<surface>\\n` in id order) that invalidates the set when either side is re-tokenized (specs/19-search-and-retrieval.md, Alignment). A null record has exactly one empty side. A pack table.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "source_edition": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_tokenization_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "target_edition": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_tokenization_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "source_token_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "urn:open-bible-blueprint:anchor#/$defs/token_id"
+            }
+          },
+          "target_token_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "urn:open-bible-blueprint:anchor#/$defs/token_id"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "aligned",
+              "partial",
+              "null",
+              "disputed"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "pattern": "^(curated:[^@\\s]+(@[^\\s]+)?|auto:[^@\\s]+@[^\\s]+|user:[^@\\s]+(@[^\\s]+)?)$"
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "source_token_ids",
+          "target_token_ids",
+          "status",
+          "origin",
+          "confidence"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "null"
+                }
+              }
+            },
+            "then": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "source_token_ids": {
+                      "maxItems": 0
+                    },
+                    "target_token_ids": {
+                      "minItems": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "source_token_ids": {
+                      "minItems": 1
+                    },
+                    "target_token_ids": {
+                      "maxItems": 0
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "aligned",
+                    "partial",
+                    "disputed"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "source_token_ids": {
+                  "minItems": 1
+                },
+                "target_token_ids": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "source_edition",
+    "source_revision",
+    "source_tokenization_hash",
+    "target_edition",
+    "target_revision",
+    "target_tokenization_hash",
+    "records"
+  ]
+}

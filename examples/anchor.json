@@ -1,0 +1,40 @@
+{
+  "edition_id": "bsb",
+  "content_revision": "bsb-2024",
+  "segment_id": "John.3.16",
+  "range": {
+    "start": 11,
+    "end": 26
+  },
+  "tokens": [
+    {
+      "edition": "bsb",
+      "book": "John",
+      "chapter": 3,
+      "verse": 16,
+      "word": 4,
+      "suffix": null
+    },
+    {
+      "edition": "bsb",
+      "book": "John",
+      "chapter": 3,
+      "verse": 16,
+      "word": 5,
+      "suffix": null
+    },
+    {
+      "edition": "bsb",
+      "book": "John",
+      "chapter": 3,
+      "verse": 16,
+      "word": 6,
+      "suffix": null
+    }
+  ],
+  "quote": {
+    "exact": "loved the world",
+    "prefix": "For God so ",
+    "suffix": " that He gave His one and only S"
+  }
+}

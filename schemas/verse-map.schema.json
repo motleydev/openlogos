@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:verse-map",
+  "title": "Verse map",
+  "description": "The serialized form of openlogos_core::versification::VerseMap: rows from a scheme to the Paratext org pivot (or between two schemes) with kinds equal, split, merge, partial and absent (specs/19-search-and-retrieval.md, Versification). A pack table: versioned by the pack manifest, not by its own schema_version. `to` is null only for an absent row.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "from_scheme": {
+            "type": "string",
+            "minLength": 1
+          },
+          "from": {
+            "$ref": "urn:open-bible-blueprint:anchor#/$defs/reference"
+          },
+          "to_scheme": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "urn:open-bible-blueprint:anchor#/$defs/reference"
+              }
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "equal",
+              "split",
+              "merge",
+              "partial",
+              "absent"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "from_scheme",
+          "from",
+          "to_scheme",
+          "to",
+          "kind",
+          "source"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "absent"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "to": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "equal",
+                    "split",
+                    "merge",
+                    "partial"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "to": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "entries"
+  ]
+}

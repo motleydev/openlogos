@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "fixture_only": true,
+  "package_id": "fixture:package:1",
+  "revision": "0",
+  "minimum_reader_version": "0.0.0-fixture",
+  "editions": [
+    "fixture:edition-a"
+  ],
+  "artifacts": [
+    {
+      "path": "sample-content.txt",
+      "sha256": "b53b8c28198ee34906b9babffe8028938772e9bf6d8811ff47bb61509da6e3f0",
+      "size_bytes": 63,
+      "media_type": "text/plain"
+    }
+  ],
+  "rights_record_ids": [
+    "fixture:rights:1"
+  ],
+  "attribution_path": "sample-attribution.txt",
+  "previous_manifest_sha256": null,
+  "signature": null
+}

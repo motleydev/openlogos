@@ -14,7 +14,8 @@ use openlogos_core::anchor::{
 };
 use openlogos_core::reference::{AliasTable, ReferenceSet, parse};
 use openlogos_core::versification::{
-    MappingStatus, SchemeId, VerseMap, VerseMapEntry, VerseMapKind,
+    MappingStatus, ReferenceMapping, SchemeId, SegmentSpan, SegmentTable, VerseMap, VerseMapEntry,
+    VerseMapKind,
 };
 use openlogos_text::{
     GraphemeRange, OffsetError, Utf16Range, grapheme_len, grapheme_to_scalar, scalar_len,
@@ -24,8 +25,17 @@ use openlogos_text::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub mod identity;
+
+pub use identity::{
+    AlignedSegment, AlignmentFixture, ExpectedReanchor, FixtureAlignmentRecord, FixtureLineage,
+    FixtureLineageEntry, FixtureRevision, InvalidAlignmentCase, InvalidLineageCase, LineageCase,
+    LineageFixture, ReanchorCase, ReanchorFixture, RenderingCase, ReverseCase, RevisionPair,
+    StaleCase,
+};
+
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 5] = [
+pub const FIXTURE_FILES: [(&str, &str); 10] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -46,6 +56,26 @@ pub const FIXTURE_FILES: [(&str, &str); 5] = [
         "reference-parsing-english",
         include_str!("../fixtures/reference-parsing-english.json"),
     ),
+    (
+        "joel-malachi-chapter-numbering",
+        include_str!("../fixtures/joel-malachi-chapter-numbering.json"),
+    ),
+    (
+        "omitted-and-bridged-verses",
+        include_str!("../fixtures/omitted-and-bridged-verses.json"),
+    ),
+    (
+        "token-lineage-genesis-1",
+        include_str!("../fixtures/token-lineage-genesis-1.json"),
+    ),
+    (
+        "alignment-john-3-16-sblgnt-bsb",
+        include_str!("../fixtures/alignment-john-3-16-sblgnt-bsb.json"),
+    ),
+    (
+        "edition-revision-reanchor",
+        include_str!("../fixtures/edition-revision-reanchor.json"),
+    ),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -62,6 +92,16 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/psalm-9-10-numbering.json"),
         ",",
         include_str!("../fixtures/reference-parsing-english.json"),
+        ",",
+        include_str!("../fixtures/joel-malachi-chapter-numbering.json"),
+        ",",
+        include_str!("../fixtures/omitted-and-bridged-verses.json"),
+        ",",
+        include_str!("../fixtures/token-lineage-genesis-1.json"),
+        ",",
+        include_str!("../fixtures/alignment-john-3-16-sblgnt-bsb.json"),
+        ",",
+        include_str!("../fixtures/edition-revision-reanchor.json"),
         "]"
     )
 }
@@ -111,6 +151,9 @@ pub struct FixtureToken {
     pub start: u32,
     /// End in scalar values, exclusive.
     pub end: u32,
+    /// The surface text the range must slice to, when the fixture states it.
+    #[serde(default)]
+    pub surface: Option<String>,
 }
 
 /// A segment of text with its expected lengths and token layout.
@@ -250,6 +293,72 @@ pub struct MappingCase {
     pub path: Vec<String>,
 }
 
+/// One expected set mapping (`VerseMap::map_many`), with references or same-chapter ranges.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetMappingCase {
+    /// What the case shows.
+    pub name: String,
+    /// The source verses, as references or ranges.
+    pub references: Vec<String>,
+    /// Source scheme.
+    pub from: String,
+    /// Target scheme.
+    pub to: String,
+    /// Expected status.
+    pub status: MappingStatus,
+    /// Expected target verses, as references or ranges.
+    pub to_references: Vec<String>,
+    /// Expected absent source verses.
+    #[serde(default)]
+    pub absent: Vec<String>,
+    /// Expected unknown source verses.
+    #[serde(default)]
+    pub unknown: Vec<String>,
+    /// Expected schemes traversed.
+    pub path: Vec<String>,
+}
+
+/// One printed segment of an edition, with its verses in OSIS form.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FixtureSegmentSpan {
+    /// Segment id.
+    pub segment_id: String,
+    /// The printed label.
+    pub native_label: String,
+    /// The verses it holds.
+    pub verses: Vec<String>,
+}
+
+/// An edition's segment table.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FixtureSegmentTable {
+    /// The edition.
+    pub edition_id: String,
+    /// Its scheme.
+    pub scheme: String,
+    /// The segments.
+    pub segments: Vec<FixtureSegmentSpan>,
+}
+
+/// One expected segment resolution.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SegmentCase {
+    /// What the case shows.
+    pub name: String,
+    /// The edition whose table to resolve in.
+    pub edition_id: String,
+    /// The verse, in OSIS form.
+    pub reference: String,
+    /// Expected status.
+    pub status: MappingStatus,
+    /// Expected segment ids.
+    pub segment_ids: Vec<String>,
+    /// Expected native labels.
+    pub native_labels: Vec<String>,
+    /// Expected bridge flag.
+    pub bridged: bool,
+}
+
 /// A versification fixture: rows and the mappings they must produce.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VersificationFixture {
@@ -265,6 +374,15 @@ pub struct VersificationFixture {
     pub rows: Vec<FixtureRow>,
     /// The expected mappings.
     pub cases: Vec<MappingCase>,
+    /// Expected set mappings.
+    #[serde(default)]
+    pub set_cases: Vec<SetMappingCase>,
+    /// Segment tables of editions.
+    #[serde(default)]
+    pub segment_tables: Vec<FixtureSegmentTable>,
+    /// Expected segment resolutions.
+    #[serde(default)]
+    pub segment_cases: Vec<SegmentCase>,
 }
 
 impl VersificationFixture {
@@ -323,7 +441,7 @@ pub struct ReferenceFixture {
 }
 
 /// One fixture file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Fixture {
     /// Offsets, selections and anchors over text.
@@ -332,6 +450,12 @@ pub enum Fixture {
     Versification(VersificationFixture),
     /// Citation parsing.
     References(ReferenceFixture),
+    /// `id_lineage` tables between content revisions.
+    Lineage(LineageFixture),
+    /// Standoff alignment records.
+    Alignment(Box<AlignmentFixture>),
+    /// Anchors carried across a content revision.
+    Reanchor(ReanchorFixture),
 }
 
 impl Fixture {
@@ -342,6 +466,9 @@ impl Fixture {
             Fixture::Text(f) => &f.id,
             Fixture::Versification(f) => &f.id,
             Fixture::References(f) => &f.id,
+            Fixture::Lineage(f) => &f.id,
+            Fixture::Alignment(f) => &f.id,
+            Fixture::Reanchor(f) => &f.id,
         }
     }
 }
@@ -440,6 +567,9 @@ pub fn run_all() -> ConformanceReport {
             Ok(Fixture::Text(fixture)) => run_text(&fixture, &mut recorder),
             Ok(Fixture::Versification(fixture)) => run_versification(&fixture, &mut recorder),
             Ok(Fixture::References(fixture)) => run_references(&fixture, &mut recorder),
+            Ok(Fixture::Lineage(fixture)) => identity::run_lineage(&fixture, &mut recorder),
+            Ok(Fixture::Alignment(fixture)) => identity::run_alignment(&fixture, &mut recorder),
+            Ok(Fixture::Reanchor(fixture)) => identity::run_reanchor(&fixture, &mut recorder),
             Err(error) => recorder.fail(
                 "fixture parses",
                 "a fixture of a known kind",
@@ -760,10 +890,8 @@ fn expand_row(row: &FixtureRow, table: &AliasTable) -> Result<Vec<VerseMapEntry>
         source: row.source.clone(),
     };
     let Some(to) = &row.to else {
-        if from.len() != 1 {
-            return Err(format!("absent row `{}` must name one verse", row.from));
-        }
-        return Ok(vec![make(from[0].clone(), None)]);
+        // An absent row may cover a range: every verse of it is absent.
+        return Ok(from.into_iter().map(|f| make(f, None)).collect());
     };
     let to = single_range(to, table)?;
     if from.len() != to.len() {
@@ -889,6 +1017,147 @@ fn run_versification(fixture: &VersificationFixture, r: &mut Recorder) {
             },
         );
     }
+    for case in &fixture.set_cases {
+        let expand = |texts: &[String]| -> Result<Vec<String>, String> {
+            let mut out = Vec::new();
+            for text in texts {
+                out.extend(single_range(text, &table)?.iter().map(|r| r.to_osis()));
+            }
+            Ok(out)
+        };
+        let (Ok(references), Ok(to_references), Ok(absent), Ok(unknown)) = (
+            expand(&case.references),
+            expand(&case.to_references),
+            expand(&case.absent),
+            expand(&case.unknown),
+        ) else {
+            r.fail(
+                &format!("{}: references parse", case.name),
+                "references or same-chapter ranges",
+                &format!("{:?}", case.references),
+            );
+            continue;
+        };
+        let refs: Vec<openlogos_core::reference::Reference> = references
+            .iter()
+            .filter_map(|t| parse(t, &table).ok())
+            .map(|set| set.ranges[0].start.clone())
+            .collect();
+        let result = map.map_many(&refs, &SchemeId::new(&case.from), &SchemeId::new(&case.to));
+        r.check(
+            &case.name,
+            &SetShape {
+                status: case.status,
+                to: to_references,
+                absent,
+                unknown,
+                path: case.path.clone(),
+            },
+            &SetShape {
+                status: result.status,
+                to: result.to.iter().map(|t| t.to_osis()).collect(),
+                absent: result.absent.iter().map(|t| t.to_osis()).collect(),
+                unknown: result.unknown.iter().map(|t| t.to_osis()).collect(),
+                path: result.path.iter().map(|s| s.as_str().to_owned()).collect(),
+            },
+        );
+        // The record round-trips through JSON (the reference-mapping schema shape).
+        let round = serde_json::to_string(&result)
+            .ok()
+            .and_then(|json| serde_json::from_str::<ReferenceMapping>(&json).ok());
+        r.check(
+            &format!("{}: record round-trips", case.name),
+            &Some(result.clone()),
+            &round,
+        );
+    }
+    let tables: Vec<Result<SegmentTable, String>> = fixture
+        .segment_tables
+        .iter()
+        .map(|t| {
+            Ok(SegmentTable {
+                edition_id: t.edition_id.clone(),
+                scheme: SchemeId::new(&t.scheme),
+                segments: t
+                    .segments
+                    .iter()
+                    .map(|s| {
+                        Ok(SegmentSpan {
+                            segment_id: s.segment_id.clone(),
+                            native_label: s.native_label.clone(),
+                            verses: s
+                                .verses
+                                .iter()
+                                .map(|v| single_reference(v, &table))
+                                .collect::<Result<Vec<_>, _>>()?,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, String>>()?,
+            })
+        })
+        .collect();
+    for case in &fixture.segment_cases {
+        let found = tables.iter().find_map(|t| match t {
+            Ok(t) if t.edition_id == case.edition_id => Some(t),
+            _ => None,
+        });
+        let (Some(segments), Ok(reference)) = (found, single_reference(&case.reference, &table))
+        else {
+            r.fail(
+                &format!("{}: table and reference exist", case.name),
+                &case.edition_id,
+                &format!("{tables:?}"),
+            );
+            continue;
+        };
+        let resolution = segments.resolve(&reference);
+        r.check(
+            &case.name,
+            &SegmentShape {
+                status: case.status,
+                segment_ids: case.segment_ids.clone(),
+                native_labels: case.native_labels.clone(),
+                bridged: case.bridged,
+            },
+            &SegmentShape {
+                status: resolution.status,
+                segment_ids: resolution.segment_ids,
+                native_labels: resolution.native_labels,
+                bridged: resolution.bridged,
+            },
+        );
+    }
+}
+
+/// One verse reference in OSIS form.
+fn single_reference(
+    text: &str,
+    table: &AliasTable,
+) -> Result<openlogos_core::reference::Reference, String> {
+    let verses = single_range(text, table)?;
+    match verses.as_slice() {
+        [one] => Ok(one.clone()),
+        _ => Err(format!("`{text}` must be one verse")),
+    }
+}
+
+/// Status, targets, absent, unknown and path of a set mapping, for one comparison.
+#[derive(Serialize, PartialEq)]
+struct SetShape {
+    status: MappingStatus,
+    to: Vec<String>,
+    absent: Vec<String>,
+    unknown: Vec<String>,
+    path: Vec<String>,
+}
+
+/// The fields of a segment resolution a fixture pins down.
+#[derive(Serialize, PartialEq)]
+struct SegmentShape {
+    status: MappingStatus,
+    segment_ids: Vec<String>,
+    native_labels: Vec<String>,
+    bridged: bool,
 }
 
 /// Canonical form, human form and flags of a parse, for one comparison.
@@ -981,6 +1250,11 @@ mod tests {
             "conformance cases: {} passed, {} failed",
             report.passed, report.failed
         );
+        for (id, _) in FIXTURE_FILES {
+            let count = report.cases.iter().filter(|c| c.fixture == id).count();
+            eprintln!("  {id}: {count} cases");
+            assert!(count > 0, "{id} ran no cases");
+        }
         assert!(report.passed > 100, "{}", report.passed);
         assert_eq!(report.api_version, openlogos_core::api_version());
     }

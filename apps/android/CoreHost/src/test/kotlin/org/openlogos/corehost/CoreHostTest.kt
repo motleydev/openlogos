@@ -37,7 +37,7 @@ import kotlin.test.assertTrue
 class CoreHostTest {
     @Test
     fun apiVersionMatchesTheCore() {
-        assertEquals("0.1.0", apiVersion())
+        assertEquals("0.1.1", apiVersion())
         assertEquals(apiVersion(), runConformance().apiVersion)
     }
 

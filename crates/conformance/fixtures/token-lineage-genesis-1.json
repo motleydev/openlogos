@@ -1,0 +1,475 @@
+{
+  "id": "token-lineage-genesis-1",
+  "kind": "lineage",
+  "description": "An id_lineage table between the OSHB WLC 4.20 token ids of Genesis 1:1-2 (as in hebrew-cantillation-genesis-1) and a hypothetical next revision made for this fixture: the prefixed words בְּרֵאשִׁ֖ית and הַשָּׁמַ֖יִם are segmented into two morphemes each (split, suffixes a and b), the two maqqef pairs עַל־פְּנֵי in verse 2 are merged into one token each (merge), the last word of verse 2 is deleted and a new token inserted (delete, insert), and every other id is kept (same). Ids are never renumbered. The cases map sets of old ids and the invalid tables must be rejected with the named error kind.",
+  "license": "CC0 (token ids and a hypothetical revision; no text)",
+  "source": "Token ids from hebrew-cantillation-genesis-1; the next revision is hypothetical and does not describe any real OSHB release.",
+  "edition_id": "wlc",
+  "from_revision": "oshb-wlc-4.20",
+  "to_revision": "fixture-wlc-next",
+  "entries": [
+    {
+      "kind": "split",
+      "from": [
+        "wlc:01001001001"
+      ],
+      "to": [
+        "wlc:01001001001a",
+        "wlc:01001001001b"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001001002"
+      ],
+      "to": [
+        "wlc:01001001002"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001001003"
+      ],
+      "to": [
+        "wlc:01001001003"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001001004"
+      ],
+      "to": [
+        "wlc:01001001004"
+      ]
+    },
+    {
+      "kind": "split",
+      "from": [
+        "wlc:01001001005"
+      ],
+      "to": [
+        "wlc:01001001005a",
+        "wlc:01001001005b"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001001006"
+      ],
+      "to": [
+        "wlc:01001001006"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001001007"
+      ],
+      "to": [
+        "wlc:01001001007"
+      ]
+    },
+    {
+      "kind": "merge",
+      "from": [
+        "wlc:01001002006",
+        "wlc:01001002007"
+      ],
+      "to": [
+        "wlc:01001002006"
+      ]
+    },
+    {
+      "kind": "merge",
+      "from": [
+        "wlc:01001002012",
+        "wlc:01001002013"
+      ],
+      "to": [
+        "wlc:01001002012"
+      ]
+    },
+    {
+      "kind": "delete",
+      "from": [
+        "wlc:01001002014"
+      ],
+      "to": []
+    },
+    {
+      "kind": "insert",
+      "from": [],
+      "to": [
+        "wlc:01001002015"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002001"
+      ],
+      "to": [
+        "wlc:01001002001"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002002"
+      ],
+      "to": [
+        "wlc:01001002002"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002003"
+      ],
+      "to": [
+        "wlc:01001002003"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002004"
+      ],
+      "to": [
+        "wlc:01001002004"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002005"
+      ],
+      "to": [
+        "wlc:01001002005"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002008"
+      ],
+      "to": [
+        "wlc:01001002008"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002009"
+      ],
+      "to": [
+        "wlc:01001002009"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002010"
+      ],
+      "to": [
+        "wlc:01001002010"
+      ]
+    },
+    {
+      "kind": "same",
+      "from": [
+        "wlc:01001002011"
+      ],
+      "to": [
+        "wlc:01001002011"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "name": "a kept id maps to itself with identity kept",
+      "tokens": [
+        "wlc:01001001002"
+      ],
+      "status": "exact",
+      "successors": [
+        "wlc:01001001002"
+      ],
+      "deleted": [],
+      "unknown": [],
+      "identity_kept": true
+    },
+    {
+      "name": "a split id maps to both morphemes",
+      "tokens": [
+        "wlc:01001001001"
+      ],
+      "status": "exact",
+      "successors": [
+        "wlc:01001001001a",
+        "wlc:01001001001b"
+      ],
+      "deleted": [],
+      "unknown": [],
+      "identity_kept": false
+    },
+    {
+      "name": "the whole of verse 1 maps exactly, identity not kept because of the splits",
+      "tokens": [
+        "wlc:01001001001",
+        "wlc:01001001002",
+        "wlc:01001001003",
+        "wlc:01001001004",
+        "wlc:01001001005",
+        "wlc:01001001006",
+        "wlc:01001001007"
+      ],
+      "status": "exact",
+      "successors": [
+        "wlc:01001001001a",
+        "wlc:01001001001b",
+        "wlc:01001001002",
+        "wlc:01001001003",
+        "wlc:01001001004",
+        "wlc:01001001005a",
+        "wlc:01001001005b",
+        "wlc:01001001006",
+        "wlc:01001001007"
+      ],
+      "deleted": [],
+      "unknown": [],
+      "identity_kept": false
+    },
+    {
+      "name": "two merged ids map to one successor once",
+      "tokens": [
+        "wlc:01001002006",
+        "wlc:01001002007"
+      ],
+      "status": "exact",
+      "successors": [
+        "wlc:01001002006"
+      ],
+      "deleted": [],
+      "unknown": [],
+      "identity_kept": false
+    },
+    {
+      "name": "a deleted id has no successor",
+      "tokens": [
+        "wlc:01001002014"
+      ],
+      "status": "unmapped",
+      "successors": [],
+      "deleted": [
+        "wlc:01001002014"
+      ],
+      "unknown": [],
+      "identity_kept": false
+    },
+    {
+      "name": "an id the table does not mention is unknown, not deleted",
+      "tokens": [
+        "wlc:01001003001"
+      ],
+      "status": "unmapped",
+      "successors": [],
+      "deleted": [],
+      "unknown": [
+        "wlc:01001003001"
+      ],
+      "identity_kept": false
+    },
+    {
+      "name": "a mixed set is partial with deleted and unknown listed",
+      "tokens": [
+        "wlc:01001002011",
+        "wlc:01001002014",
+        "wlc:01001003001"
+      ],
+      "status": "partial",
+      "successors": [
+        "wlc:01001002011"
+      ],
+      "deleted": [
+        "wlc:01001002014"
+      ],
+      "unknown": [
+        "wlc:01001003001"
+      ],
+      "identity_kept": false
+    },
+    {
+      "name": "an empty set is unmapped",
+      "tokens": [],
+      "status": "unmapped",
+      "successors": [],
+      "deleted": [],
+      "unknown": [],
+      "identity_kept": false
+    }
+  ],
+  "invalid": [
+    {
+      "name": "a same row with two successors",
+      "entries": [
+        {
+          "kind": "same",
+          "from": [
+            "wlc:01001001002"
+          ],
+          "to": [
+            "wlc:01001001002",
+            "wlc:01001001003"
+          ]
+        }
+      ],
+      "error": "wrong_shape"
+    },
+    {
+      "name": "a split row with one successor",
+      "entries": [
+        {
+          "kind": "split",
+          "from": [
+            "wlc:01001001001"
+          ],
+          "to": [
+            "wlc:01001001001a"
+          ]
+        }
+      ],
+      "error": "wrong_shape"
+    },
+    {
+      "name": "a merge row with one predecessor",
+      "entries": [
+        {
+          "kind": "merge",
+          "from": [
+            "wlc:01001002006"
+          ],
+          "to": [
+            "wlc:01001002006"
+          ]
+        }
+      ],
+      "error": "wrong_shape"
+    },
+    {
+      "name": "an insert row with a predecessor",
+      "entries": [
+        {
+          "kind": "insert",
+          "from": [
+            "wlc:01001002014"
+          ],
+          "to": [
+            "wlc:01001002014"
+          ]
+        }
+      ],
+      "error": "wrong_shape"
+    },
+    {
+      "name": "a delete row with a successor",
+      "entries": [
+        {
+          "kind": "delete",
+          "from": [
+            "wlc:01001002014"
+          ],
+          "to": [
+            "wlc:01001002014"
+          ]
+        }
+      ],
+      "error": "wrong_shape"
+    },
+    {
+      "name": "a same row that renumbers",
+      "entries": [
+        {
+          "kind": "same",
+          "from": [
+            "wlc:01001001002"
+          ],
+          "to": [
+            "wlc:01001001003"
+          ]
+        }
+      ],
+      "error": "same_but_different"
+    },
+    {
+      "name": "a row naming another edition",
+      "entries": [
+        {
+          "kind": "same",
+          "from": [
+            "wlc:01001001002"
+          ],
+          "to": [
+            "wlc:01001001002"
+          ]
+        },
+        {
+          "kind": "insert",
+          "from": [],
+          "to": [
+            "bsb:01001001009"
+          ]
+        }
+      ],
+      "error": "foreign_edition"
+    },
+    {
+      "name": "an old id in two rows",
+      "entries": [
+        {
+          "kind": "same",
+          "from": [
+            "wlc:01001001002"
+          ],
+          "to": [
+            "wlc:01001001002"
+          ]
+        },
+        {
+          "kind": "delete",
+          "from": [
+            "wlc:01001001002"
+          ],
+          "to": []
+        }
+      ],
+      "error": "duplicate_from"
+    },
+    {
+      "name": "a new id in two rows",
+      "entries": [
+        {
+          "kind": "same",
+          "from": [
+            "wlc:01001001002"
+          ],
+          "to": [
+            "wlc:01001001002"
+          ]
+        },
+        {
+          "kind": "insert",
+          "from": [],
+          "to": [
+            "wlc:01001001002"
+          ]
+        }
+      ],
+      "error": "duplicate_to"
+    }
+  ]
+}

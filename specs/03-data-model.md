@@ -22,6 +22,8 @@
 
 Separate immutable source, deterministic parse, machine proposals, reviewed scholarly overlay, and user annotations. A source correction creates a new revision and mapping; it does not silently replace the text beneath old notes. Stable upstream IDs, such as OSHB token IDs, are preserved in a namespace [S07]. Synthetic IDs include edition/revision context and never pretend continuity after retokenization.
 
+Schema and API versioning (B006): every top-level document (pack manifest, collection, export receipt, workspace) carries `schema_version` as `MAJOR.MINOR`; pack tables (verse map, lineage, alignment, anchor) are versioned by their pack's manifest, which also records the `core_api_version` they were written against. A reader at version N+1 reads version N by filling defaults, reads a newer MINOR by ignoring what it does not know and never writing it back, and refuses another MAJOR. The rules, the `API_VERSION` policy and the migration discipline are docs/adr/0003-identity-and-schema-versioning.md.
+
 ## Reference and versification design
 
 Store an edition's book identifiers, canon membership/order, division system and native labels. The internal address is edition-scoped, not `book:chapter:verse` alone. OSIS/USFM identifiers are external identifiers where applicable, not universal proof of identical content.
@@ -67,7 +69,7 @@ Each visible edge has an evidence drawer. A chain can stop with 'basis not docum
 
 Anchor an annotation with edition ID, content revision, segment/token span, a W3C-style TextQuoteSelector (exact/prefix/suffix when rights permit), and position selectors [S17]. PDF anchors additionally use artifact hash, page index, bounding boxes and extracted-text revision. Text coordinates and visual boxes serve different purposes.
 
-Reanchoring tries exact stable IDs, then revision mapping, then exact quote context; ambiguous matches become orphaned anchors awaiting user choice. Never silently attach a note to the nearest different passage. Preserve its original target in exports.
+Reanchoring tries exact stable IDs, then revision mapping, then exact quote context; ambiguous matches become orphaned anchors awaiting user choice. Never silently attach a note to the nearest different passage. Preserve its original target in exports. The revision-mapping step uses the edition's `id_lineage` table; when that table says every token under a note was deleted, the note is orphaned even if its words recur elsewhere (`core::anchor::reanchor_across`, fixture `edition-revision-reanchor`).
 
 For v1 sync use an append-only operation log, globally unique operation IDs, causal parents and per-device sequence numbers. Concurrent note bodies become visible sibling revisions with a resolution UI; no silent last-write-wins text loss. Highlight/tag additions/removals and tombstones have specified deterministic merge rules and property tests. Out-of-order, duplicate and delayed operations converge. Tombstone compaction requires acknowledgement/retention policy; rejoining a stale device cannot resurrect deleted notes. A future CRDT is justified only if collaborative editing becomes a requirement.
 
@@ -84,7 +86,7 @@ Optional encrypted sync covers workspaces, chats and ink assets but never provid
 
 ## Collection and source-selection contracts
 
-`StudyCollection` has stable identity, title, optional primary passage/theme, ordered item memberships, groups/tags, revisions and private ownership. Membership is independent of a source/annotation's lifetime. `CollectionItem` distinguishes a source reference/excerpt, personal observation, research excerpt and margin attachment. Source-bearing entries retain exact edition/artifact/revision/locator and rights-policy snapshot; machine output retains its generated label and supporting evidence without becoming a source quotation. These are contracts for B006/B058, not yet additional validated JSON fixtures.
+`StudyCollection` has stable identity, title, optional primary passage/theme, ordered item memberships, groups/tags, revisions and private ownership. Membership is independent of a source/annotation's lifetime. `CollectionItem` distinguishes a source reference/excerpt, personal observation, research excerpt and margin attachment. Source-bearing entries retain exact edition/artifact/revision/locator and rights-policy snapshot; machine output retains its generated label and supporting evidence without becoming a source quotation. B006 fixes these as `schemas/study-collection.schema.json` and the Rust types in `crates/collections`; B058 builds capture and export on them.
 
 `VaultExportReceipt` maps collection/item IDs to opaque vault ID, relative resource-note path, block ID, last-export content hash and source revision. File paths are not identity. Updates reconcile managed blocks, preserve user-authored manuscript text and retain conflicts. A portable Markdown representation and versioned JSON archive carry provenance even without the custom app URI.
 
