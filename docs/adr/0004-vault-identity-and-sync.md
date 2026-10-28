@@ -122,6 +122,12 @@ Direct device-to-device exchange and file transfer carry the same three records.
 - A note's "modified" time for the UI must come from the sealed payload, not the header.
 - Hub equivocation (serving different rosters to different devices, or withholding a revocation) is not prevented by a roster document with signed entries. The mitigation is to carry roster changes as signed operations in the log itself so every device sees one causal history; this is the first follow-up if the hub ships.
 
+## Dependency convergence note
+
+The workspace must carry one `sha2` line. B068 (PR #15, open when this ADR was written) pins `sha2 = "=0.10.9"` for `crates/retrieval-sqlite`'s catalog hashing; this ADR pins `=0.11.1`, which `hkdf` 0.13 and the dalek 3.0 crates require through `digest` 0.11. The intended resolution when the branches meet is 0.11.x for both: `retrieval-sqlite` uses only `Sha256::new`, `update` and `finalize`, whose API is unchanged from 0.10 to 0.11, so the bump is one line in the workspace `Cargo.toml` plus a `just ci` run, made in one commit when `main` is merged into this branch.
+
+The conformance fixture `sync-operation-log-merge` is replayed by the sync crate's own test rather than linked into `conformance::run_all`, so no host binary gains the crypto crates before this ADR is accepted; this is a decision, recorded here, not an omission.
+
 ## Decisions for the owner's review
 
 1. Change kinds and entity ids in the clear (hub-side compaction possible) versus sealed (less metadata).
