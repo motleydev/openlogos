@@ -44,6 +44,8 @@ just test-ink-web     # the B039 ink prototype's palm cases, latency runs and ex
 just test-ink-web --actions --headed   # plus WebDriver Actions pen and mouse drags (trusted input) in a visible Chrome
 just ink-excalidraw-build && just test-ink-web --page excalidraw   # the Excalidraw comparison page, bundled offline
 just lint-wasm    # clippy for wasm32, including the worker tests
+just preview-web  # serve apps/web on 127.0.0.1:8780 for hand review (index, reader, ink); --tailnet shares it
+just feedback "note"  # drag a region of the screen; shot and note land in ~/OpenLogosFeedback/<utc>/
 ```
 
 ## The ink prototype (B039)
