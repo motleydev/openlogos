@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenLogos previews</title>
+<!--
+  The index `just preview-web` serves (scripts/preview.sh): links to the web spikes for hand
+  review. Feedback goes through `just feedback "note"` on the Mac serving it.
+-->
+<style>
+  :root { color-scheme: light dark; --fg: #1d1d1f; --muted: #6e6e73; --bg: #fbfbf8; --rule: #d9d9d4; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #ececec; --muted: #a1a1a6; --bg: #161616; --rule: #333; } }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 17px/1.5 ui-serif, Georgia, serif; }
+  main { max-width: 38rem; margin: 3rem auto; padding: 0 16px; }
+  h1 { font-weight: 500; font-size: 1.5rem; }
+  ul { list-style: none; padding: 0; }
+  li { border-top: 1px solid var(--rule); padding: 0.9rem 0; }
+  a { color: inherit; font-size: 1.1rem; }
+  p, small { color: var(--muted); }
+  code { font-size: 0.9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>OpenLogos previews</h1>
+  <p>Spikes over fixture text, with the Rust core running as WebAssembly. These are not the product.</p>
+  <ul>
+    <li><a href="reader/">DOM reader</a><br>
+      <small>Three panes and a notes dock. Select across verses; the selection becomes core anchors and is painted back as a highlight.</small></li>
+    <li><a href="ink/">Ink margin</a><br>
+      <small>Pen, highlighter, stroke eraser, undo and redo beside a reading pane. A pen or mouse draws; in stylus mode a finger is treated as a palm.</small></li>
+  </ul>
+  <p><small>Leave feedback from the Mac: <code>just feedback "what you saw"</code>, then drag a region of the screen.</small></p>
+</main>
+</body>
+</html>

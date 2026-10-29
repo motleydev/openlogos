@@ -150,6 +150,26 @@ test-ink-web *args:
 ink-excalidraw-build:
     @scripts/ink-excalidraw-build.sh
 
+# Serve apps/web on 127.0.0.1:8780 for hand review (builds the wasm core if missing); `just preview-web --tailnet` also shares it with the tailnet
+[group('6 · web')]
+preview-web *args:
+    @scripts/preview.sh web {{ args }}
+
+# Stop the preview server (and its Tailscale Serve entry)
+[group('6 · web')]
+preview-web-stop:
+    @scripts/preview.sh web-stop
+
+# Build the macOS app (Debug, unsigned) and open it for hand review
+[group('7 · apple app')]
+preview-mac:
+    @scripts/preview.sh mac
+
+# Drag a region of the screen and leave a note; both land in ~/OpenLogosFeedback/<utc>/ for the agent to read
+[positional-arguments]
+feedback *note:
+    @scripts/preview.sh feedback "$@"
+
 # Build the app shell for an iPad simulator (unsigned), boot it, install and launch: `just sim` or `just sim "iPad mini (A17 Pro)"` (apple shell)
 [group('7 · apple app')]
 sim device="":

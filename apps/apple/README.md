@@ -41,6 +41,8 @@ just sim "iPad mini (A17 Pro)"
 just sim-shot                 # artifacts/sim/shots/<utc>.png
 OPENLOGOS_SIM_TEXT_SIZE=UICTContentSizeCategoryAccessibilityL just sim   # large type
 just sim-stop
+just preview-mac              # Debug macOS app, unsigned, opened for hand review
+just feedback "note"          # drag a region of the screen; shot and note in ~/OpenLogosFeedback/<utc>/
 ```
 
 A first boot of a simulator writes about 2.7 GB of device data under
