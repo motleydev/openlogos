@@ -314,3 +314,20 @@ Amended 30 October 2026 (lead, agreed with the web host): focus stays on the col
 Decisions to review: a new or reused lexicon tab is pinned (the looked-up word keeps its
 passage when the reader navigates); the word does not enter the tab's
 Back history; a workspace without any lexicon tab opens content id `lexicon`.
+
+### Amended run (`fabebff`, rustfmt fix `70596d1`)
+
+`tab.open_lexicon` now leaves the active column alone (the lexicon tab is the shown tab of
+its column) and pins a reused lexicon tab. Scenario focus and link assertions and the host
+tests changed accordingly; conformance is 1371 cases.
+
+| Command | Result |
+|---|---|
+| `nix develop .#core -c just ci` on `70596d1` | exit 0, `Summary [   7.454s] 306 tests run: 306 passed, 0 skipped` (on `fabebff` it failed at `cargo fmt --check` on the UniFFI test; fixed in `70596d1`) |
+| `just test-swift` on `fabebff` | exit 0, `Executed 8 tests, with 0 failures (0 unexpected)`, `conformance cases: 1371 passed, 0 failed` |
+| `nix develop .#android -c just test-kotlin` on `fabebff`, test-results cleared | exit 0, 8 tests 0 failures, `BUILD SUCCESSFUL`, 1371 passed |
+| `nix develop .#web -c just test-web` on `fabebff` | exit 0, tests 8 pass 8, `conformance cases: 1371 passed, 0 failed` |
+| `nix develop .#web -c just test-wasm` on `fabebff` | exit 0, `7 passed; 0 failed` |
+| `tools/validate.py` | PASS |
+
+`70596d1` changes only the formatting of one Rust test, so the host lanes on `fabebff` stand.
