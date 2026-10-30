@@ -1,25 +1,26 @@
 # B072 evidence (web): the workspace shell in the browser
 
 Recorded 30 October 2026 on the Mac mini (Apple M1, macOS 26.4.1, Chrome 156.0.8078.48) in the
-worktree `openlogos-b072web`, branch `b072-web-shell` cut from `b070-core-shell` (70ce91e), by
+worktree `openlogos-b072web`, branch `b072-web-shell` cut from `b070-core-shell` (70ce91e) with
+`b070-core-shell` at dec4426 merged in (the core's reading, ink, width and scroll commands), by
 a Claude Code subagent working under the lead's audit. Nothing was pushed or merged. No
-simulator was touched, and `crates/` is unchanged. Only fixture text appears on screen. The
-Mac half of B072 is a separate branch and has its own evidence.
+simulator was touched. This branch does not change `crates/`; the merged dec4426 does. Only
+fixture text appears on screen. The Mac half of B072 is a separate branch and has its own evidence.
 
 ## What was built
 
 | Item (the B072 brief) | Where |
 |---|---|
 | Palette field: the only top bar, with the core's sectioned results, ↑/↓, Enter, ⌥Enter or Tab to show a whole section, Esc to return focus, a query on every keystroke | `apps/web/shell/shell.js` (MARK: The palette), `paletteQuery` with `platform: "web"` |
-| Workspace switcher (`Study · 1/2`) and text menu (A− A A+, line spacing, theme) | `shell.js` (MARK: Menus) |
-| Numbered columns with 1 px rules that can be dragged; a tab strip (28) with the shown tab marked by weight and a 2 px accent underline, close × on hover or focus, `+`, horizontal overflow; an identity row (32) with a badge, the resource, the passage, the link word and a `…` menu | `shell.js` (MARK: Rendering), `shell.css` |
-| Text: the B005 surface, capped at the measure, scroll position per tab, specs/21's placeholder when a passage is not installed | `apps/web/reader/surface.js` (moved out of reader.js), `shell.js` `buildColumn`, `placeholder` |
-| Floating tool palette: grip (drag along the edge, double-click to collapse), six tools as inline SVG with name and key in the tooltip, `aria-pressed` plus a filled button, two overlapping swatches (X swaps them), a width dot | `shell.js` (MARK: The floating tool palette) |
+| Workspace switcher (`Study · 1/2`) and text menu (`Aa 19`: A− A A+, line spacing, theme, all core commands) | `shell.js` (MARK: Menus) |
+| Numbered columns with 1 px rules (a drag ends in `column.resize`, a double-click is `column.equalize`); a tab strip (28) with the shown tab marked by weight and a 2 px accent underline, close × on hover or focus, `+`, horizontal overflow; an identity row (32) with a badge, the resource, the passage, the link word and a `…` menu | `shell.js` (MARK: Rendering), `shell.css` |
+| Text: the B005 surface, capped at the core's measure (`layoutConstants()`), scroll position recorded with `tab.record_scroll` and restored from `scroll_anchor`, specs/21's placeholder when a passage is not installed | `apps/web/reader/surface.js` (moved out of reader.js), `shell.js` `buildColumn`, `placeholder` |
+| Floating tool palette: grip (drag along the edge, double-click to collapse), six tools as inline SVG with name and key in the tooltip, `aria-pressed` plus a filled button, two overlapping swatches (the current one chooses with `tool.swatch`, the alternate one or X swaps), a width dot that steps 2/4/6 with `tool.width` | `shell.js` (MARK: The floating tool palette) |
 | Highlight: dragging over text paints it at once through the core's anchors. Collect: a toast such as `Collected: Jn 3:16`. Pen, highlighter pen, eraser: a margin canvas over the text that draws with B039's brushes | `shell.js` (MARK: Highlights, Ink), `apps/web/ink/layer.js` (moved out of ink.js) |
-| Every control dispatches a registered command through `ShellHandle.apply`; `handled: false` is carried out by the host | `run()` and `perform()` in `shell.js` |
+| Every control dispatches a registered command through `ShellHandle.apply`; `handled: false` is carried out by the host. Text size, spacing and theme render from `session.reading`; width and swatches from `session.ink` | `run()` and `perform()` in `shell.js` |
 | Keys come only from the registry (`shortcuts.web`, `bare_key`) | `apps/web/shell/keys.js` |
 | `TextSource` (resource id and reference in; display metadata and core segments out) | `apps/web/shell/text-source.js` |
-| Seed session (Study: BSB Jn 3 + WLC Gen 1 \| SBLGNT Jn 3 (group 1) \| the note pinned as a tab; Hebrew: WLC Gen 1) and the bench session (10 × 3 × 4) | `apps/web/shell/seed.js` |
+| Seed session, the same JSON as the Mac app (Study: BSB John 3:16 + WLC Gen 1:1 \| SBLGNT John 3:16 (group 1) \| `fixture:note:1` pinned as a tab, widths 0.4/0.35/0.25; Hebrew: WLC Gen 1:1), and the bench session (10 × 3 × 4) | `apps/web/shell/seed.js` |
 | Tokens | `design/tokens/shell.json`, as CSS custom properties in `shell.css`; the runner fails if the two disagree |
 | `just test-shell-web` | `scripts/shell-web-test.sh`, `apps/web/shell/test/run-chrome.mjs` |
 | `just preview-web` links the shell | `apps/web/index.html` lists **Workspace shell** first, at `/shell/` |
@@ -37,7 +38,10 @@ other workspaces keep no DOM.
 | `31e8bb3` | the shell, the tokens, `just test-shell-web` (17 cases) |
 | `3fd3dca` | speed runs (synthetic and trusted keystrokes), tab rows in the chrome's words, scroll anchors, screenshots |
 | `fd8ca7c` | Hebrew at the token reading size, bench JSON |
-| this commit | this file |
+| `cc789e7` | the first version of this file |
+| `372e6fd` | merge of `b070-core-shell` at dec4426 |
+| `853ddc0` | the shell on the core's reading, ink, width and scroll commands; seed and labels in step with the Mac app; tab rows `BSB · John 3:16`; screenshots retaken without stray ink (20 cases) |
+| this commit | this file, updated |
 
 ## Cases (`just test-shell-web`, WebDriver Actions)
 
@@ -53,10 +57,11 @@ bindings are what gets tested. The page is reloaded before each case.
 `tab-commands-and-undo` (⌥T, ⌥⇧3, ⌘Z twice, ⌘⇧Z, ⌥W, the × of a hidden tab, `+`) ·
 `tool-keys-and-well` (V H P M E C, X, click, grip double-click both ways, grip drag, no bare keys in the field) ·
 `highlight-drag` (anchor and painted range, repainted after a re-render) · `collect-drag` · `hebrew-highlight` (an RTL drag) ·
-`pen-and-eraser` · `placeholder-and-navigation` (Rom 8, then ⌘[) · `menus` (switcher, text menu, theme through the palette, pane menu) ·
-`column-resize` · `only-registered-commands`.
+`pen-and-eraser` · `placeholder-and-navigation` (Rom 8, then ⌘[) · `menus` (switcher, text menu as core commands and its `Aa 21` label, theme through the palette, pane menu) ·
+`column-resize` (`column.resize` on drop, ⌘Z restores, double-click equalizes) · `scroll-anchor-recorded` (`tab.record_scroll`, restored after a rebuild) ·
+`swatches-and-width` (`tool.swatch`, swap from the alternate well, width dot) · `well-clears-column-one` (1440 and 1024; collapsing gives the inset back) · `only-registered-commands`.
 
-Headless and headed Chrome: **17/17** on the final tree.
+Headless and headed Chrome: **20/20** on the final tree.
 
 ## Speed (specs/22 §7)
 
@@ -80,34 +85,34 @@ tabs (120 tabs).
 
 | Interaction (budget) | session | headless work p50 / p95 ms | headless frame p95 | headed work p50 / p95 ms | headed frame p95 |
 |---|---|---:|---:|---:|---:|
-| Palette keystroke: passage, commands, tabs (16 ms) | seed | 0.7 / 1.0 | 16.5 | 0.6 / 0.9 | 16.6 |
-| | bench | 0.8 / 1.1 | 15.8 | 0.8 / 1.1 | 16.6 |
-| Trusted keystroke → palette rendered (16 ms) | seed | 0.4 / 1.1 | 15.6 | 0.5 / 1.1 | 14.7 |
-| | bench | 0.8 / 1.4 | 16.1 | 0.8 / 1.4 | 15.4 |
-| Keystroke with the Text section, fixture provider (50 ms) | seed | 0.6 / 0.7 | 15.4 | 0.5 / 0.6 | 16.6 |
-| | bench | 0.6 / 0.8 | 16.5 | 0.6 / 0.8 | 16.7 |
-| Tab switch within a column (next frame) | seed | 1.7 / 2.2 | 16.5 | 1.5 / 2.0 | 16.6 |
-| | bench | 1.8 / 2.2 | 16.0 | 1.6 / 2.0 | 16.8 |
-| Column focus (next frame) | seed | 0.4 / 0.6 | 16.5 | 0.4 / 0.4 | 16.6 |
-| | bench | 0.7 / 0.8 | 16.5 | 0.6 / 0.9 | 16.6 |
-| Workspace switch to painted text (100 ms) | seed (2) | 2.3 / 2.9 | 16.5 | 1.6 / 2.0 | 16.6 |
-| | bench (10 × 3 × 4) | 2.6 / 3.0 | 16.6 | 1.9 / 2.2 | 16.6 |
-| Tool change (next frame) | seed | 0.6 / 0.8 | 16.6 | 0.6 / 0.7 | 16.7 |
-| | bench | 0.9 / 1.8 | 16.5 | 0.8 / 1.0 | 16.6 |
-| Open a chapter in a tab, warm (100 ms) | seed | 2.6 / 4.8 | 16.0 | 1.5 / 2.0 | 16.6 |
-| | bench | 2.4 / 3.4 | 16.5 | 1.9 / 2.1 | 16.6 |
+| Palette keystroke: passage, commands, tabs (16 ms) | seed | 0.7 / 1.6 | 16.5 | 0.7 / 1.1 | 16.7 |
+| | bench | 0.9 / 1.6 | 16.5 | 0.9 / 1.5 | 17.1 |
+| Trusted keystroke → palette rendered (16 ms) | seed | 0.5 / 1.3 | 16.6 | 0.9 / 1.8 | 15.7 |
+| | bench | 1.1 / 1.9 | 15.8 | 1.0 / 1.8 | 15.6 |
+| Keystroke with the Text section, fixture provider (50 ms) | seed | 0.5 / 0.6 | 16.6 | 0.6 / 0.8 | 16.4 |
+| | bench | 1.1 / 1.8 | 16.4 | 0.6 / 0.8 | 16.7 |
+| Tab switch within a column (next frame) | seed | 1.6 / 1.9 | 16.6 | 1.6 / 1.9 | 16.2 |
+| | bench | 3.2 / 5.0 | 15.6 | 1.5 / 1.8 | 16.8 |
+| Column focus (next frame) | seed | 0.4 / 0.5 | 15.5 | 0.5 / 0.7 | 16.7 |
+| | bench | 1.3 / 1.8 | 16.6 | 0.6 / 0.7 | 16.9 |
+| Workspace switch to painted text (100 ms) | seed (2) | 3.0 / 4.6 | 16.6 | 1.7 / 2.1 | 17.3 |
+| | bench (10 × 3 × 4) | 2.4 / 2.9 | 16.6 | 1.9 / 2.2 | 16.7 |
+| Tool change (next frame) | seed | 1.5 / 2.0 | 16.5 | 0.7 / 0.8 | 17.1 |
+| | bench | 0.9 / 1.0 | 16.6 | 0.8 / 0.9 | 16.6 |
+| Open a chapter in a tab, warm (100 ms) | seed | 3.4 / 4.9 | 16.0 | 1.7 / 2.0 | 16.7 |
+| | bench | 2.3 / 3.1 | 15.9 | 1.9 / 2.1 | 16.6 |
 
-Every row is within its budget. The worst work p95 is 4.8 ms (open a chapter, headless, seed),
-30 % of one frame. Raw numbers, with max and n: `docs/evidence/B072/web-bench-headless.json`
-(tree 3fd3dca) and `web-bench-headed.json` (fd8ca7c). Between those two trees only the CSS of
-the Hebrew size changed. Timer resolution is 0.1 ms because the page is not cross-origin
+Every row is within its budget. The worst work p95 is 5.0 ms (tab switch, headless, bench),
+about 30 % of one frame. Raw numbers, with max and n: `docs/evidence/B072/web-bench-headless.json`
+and `web-bench-headed.json`, both on 853ddc0. Timer resolution is 0.1 ms because the page is not cross-origin
 isolated. Cold launch is not measured here, and neither is the text section over the real
 editions (B071).
 
-## Screenshots (`docs/evidence/B072/`, 14 PNGs, 1.5 MB)
+## Screenshots (`docs/evidence/B072/`, 15 PNGs, 1.6 MB)
 
 `web-light-1440`, `web-sepia-1440`, `web-dark-1440`, `web-light-1024` and `web-dark-1024` show
-the seed session with a highlight on "eternal life" and one pen stroke.
+the seed session with one highlight on "eternal life" and no ink. `web-ink` shows a pen stroke
+in the accent and a highlighter-pen stroke over "For God did not send".
 `web-palette-passage`, `-commands`, `-tabs` and `-text` show the palette with each section, and
 `web-palette-commands-expanded-dark` shows `>` with the Commands section expanded.
 `web-tool-palette` (highlighter pen current), `web-workspace-menu`, `web-text-menu` and
@@ -118,40 +123,38 @@ the seed session with a highlight on "eternal life" and one pen stroke.
 
 | Command | Result |
 |---|---|
-| `nix develop .#core -c just ci` | exit 0. `PASS: 33 schema/example validations; …; 122 negative tests …`; `Summary [  13.322s] 299 tests run: 299 passed, 0 skipped` |
-| `nix develop .#web -c just test-web` | exit 0. `tests 7`, `pass 7`, `fail 0`; `conformance cases: 1118 passed, 0 failed (api 0.1.2)` |
+| `nix develop .#core -c just ci` | exit 0. `Summary [   6.340s] 299 tests run: 299 passed, 0 skipped` |
+| `nix develop .#web -c just test-web` | exit 0. `tests 7`, `pass 7`, `fail 0`; `conformance cases: 1174 passed, 0 failed (api 0.1.2)` |
 | `nix develop .#web -c just test-wasm` | exit 0. `test result: ok. 6 passed; 0 failed` |
 | `nix develop .#web -c just test-dom-reader` | exit 0. `DOM reader: 13/13 cases passed` |
 | `nix develop .#web -c just test-ink-web` | exit 0. `Web ink: 6/6 palm cases passed, live palm case passed, export valid` |
-| `nix develop .#web -c just test-shell-web --bench --samples 200` | exit 0. `Summary: Web shell: 17/17 cases passed; bench: headless Chrome, 200 samples per interaction` |
-| `nix develop .#web -c just test-shell-web --headed --bench --samples 200` | exit 0. `Summary: Web shell: 17/17 cases passed; bench: headed Chrome, 200 samples per interaction` |
+| `nix develop .#web -c just test-shell-web --bench --samples 200` | exit 0. `Summary: Web shell: 20/20 cases passed; bench: headless Chrome, 200 samples per interaction` |
+| `nix develop .#web -c just test-shell-web --headed --bench --samples 200` | exit 0. `Summary: Web shell: 20/20 cases passed; bench: headed Chrome, 200 samples per interaction` |
 
 ## Deviations from the brief and decisions to review
 
-1. **Host state with no registered command.** The registry has no command for the following,
-   so the host keeps them as view state, outside the session and undo: column widths after a
-   drag, scroll position (a tab's stored `scroll_anchor` is read on first show but not written
-   back), the tool well's position, line spacing, pen width (the width dot only displays it)
-   and choosing a swatch colour (only X swaps). Highlights and ink strokes live in host memory
-   only (no annotation store yet) and ⌘Z does not undo them. All but highlights and ink want
-   core commands (`column.resize`, `view.line_spacing`, `tool.width`, `tool.swatch`, a scroll
-   anchor setter) so the superset rule holds exactly. The line-spacing segmented control is the
-   one visible control without a command.
-2. **Pen colour.** The pen draws in the theme's text colour. Highlight and the highlighter pen
-   use the current swatch. The swatches are highlight colours, and a yellow pen line would not
-   read. The owner should confirm.
-3. **Tab rows in the palette** show the strip's label (`BSB Jn 3`) and `Study › column 1`. The
-   core titles them `bsb · John 3` (the raw resource id) with `Study · column 1`. Two core
-   nits for whoever next touches `palette.rs`: resource display names, and the workspace row's
+1. **Host view state.** Only the tool well's position and collapse, and a column-rule drag
+   until it ends in `column.resize`, stay outside the session. Highlights and ink strokes
+   live in host memory (B074 persists them) and ⌘Z does not undo them. Everything else that
+   was host state in the first version is now a core command (dec4426).
+2. **Colours.** The pen draws in the theme's accent, as the Mac app does. Highlight and the
+   highlighter pen use the current swatch. The seed session starts the wells on the token
+   yellow and green, because the core's `InkSettings` default is `#FFE066` / `#7FD1FF`,
+   which are not token swatches. A colour that is not a token swatch still paints, at 30 %.
+   The core's text-size steps run −3…5 but the tokens hold seven sizes (−2…4), so the shell
+   clamps at both ends. One of the two should change.
+3. **Tab rows in the palette** read `BSB · John 3:16` with `Study › column 1`. The core titles
+   them `bsb · John 3:16`, so the host relabels them until the core's tab labels land; it also
+   copies the reason texts (item 4) until then. The workspace row still says
    `1 columns, 1 tabs`.
 4. **Disabled reasons.** The bindings return `{ kind, … }` but not the sentence, so
    `format.js` repeats the core's `thiserror` texts. A `reason_text` in the outcome would
    remove the copy.
-5. **The measure cap** comes from the tokens file, which copies the core's
-   `MEASURE_CAP_STANDARD_PT` and `MEASURE_CAP_ACCESSIBILITY_PT` (640, and 900 from 28 pt up).
-   The bindings do not expose it.
-6. **Passages are written the way `formatHuman` writes them** (`John 3`, `Rom 8`, not
-   `Romans 8`). Tab labels use SBL abbreviations (`Jn 3`) from a table in `format.js`.
+5. **The measure cap** comes from `layoutConstants()` (640, and 900 from 28 pt up). The
+   tokens file keeps the numbers, labelled as derived, and the test fails if they differ.
+6. **Passages are written the way `formatHuman` writes them** (`John 3:16`, `Rom 8`, not
+   `Romans 8`). Tab labels are the short name plus the chapter (`BSB Jn 3`), with SBL
+   abbreviations from a table in `format.js`; the Mac app uses the same labels.
 7. **Rename workspace** from the switcher opens the palette prefilled with `Rename workspace `,
    so the name is typed as the command's argument. Enter on any command row that is disabled
    only for a missing argument does the same.
@@ -162,10 +165,10 @@ the seed session with a highlight on "eternal life" and one pen stroke.
 10. **Shared modules.** B005's paragraph rendering and anchor round trip moved to
     `reader/surface.js`, and B039's brushes, compositing and palm arbiter moved to
     `ink/layer.js`. `reader.js` and `ink.js` import them, and their lanes pass as before.
-11. **Notes tab.** Column 3's note is a tab of kind `notes` with `content_id: "notes"` and no
-    reference. The notes dock (`view.notes_dock`) is a separate trailing panel showing the same
-    note.
-12. **Disk.** Free space on `/` fell from 28 GiB to 14 GiB over the session (Nix shells and
+11. **Notes tab.** Column 3's note is a tab of kind `notes` with `content_id: "fixture:note:1"`
+    (short name `Note`) and no reference. The notes dock (`view.notes_dock`) is a separate
+    trailing panel showing the same note.
+12. **Disk.** Free space on `/` fell from 28 GiB to 12 GiB over the session (Nix shells and
     `target/`), still above the 4 GiB stop line.
 
 ## Skipped or open
