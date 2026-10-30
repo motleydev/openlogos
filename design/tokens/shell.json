@@ -33,6 +33,8 @@
   "metrics": {
     "palette_field_height": 44,
     "palette_results_max_fraction": 0.5,
+    "palette_dropdown_max_width": 770,
+    "$palette_dropdown_width": "The results drop down under the field at the field's width, at most palette_dropdown_max_width (below that the field is the window less the switcher and text menu, about window − 360)",
     "tab_strip_height": 28,
     "identity_row_height": 32,
     "column_badge": 20,

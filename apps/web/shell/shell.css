@@ -18,6 +18,7 @@
   --radius-tool-well: 10px;
   /* metrics */
   --palette-field-height: 44px;
+  --palette-dropdown-max-width: 770px;
   --tab-strip-height: 28px;
   --identity-row-height: 32px;
   --column-badge: 20px;
@@ -91,7 +92,7 @@ button { font: inherit; color: inherit; }
 /* MARK: Palette results */
 
 .results {
-  position: absolute; top: calc(100% + 6px); left: 0; width: min(760px, 100%);
+  position: absolute; top: calc(100% + 6px); left: 0; width: min(var(--palette-dropdown-max-width), 100%);
   max-height: calc(50vh); overflow-y: auto; background: var(--page); border: 1px solid var(--rule);
   border-radius: var(--radius-tool-well); box-shadow: var(--shadow); padding: var(--space-1) 0; z-index: 30;
 }

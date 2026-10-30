@@ -38,8 +38,6 @@ export const TOKENS = {
   themes: ["light", "sepia", "dark"],
 };
 const SWATCH_ORDER = ["yellow", "green", "blue", "pink"];
-// The width dot cycles these (core INK_WIDTHS holds more; the palette reaches all of them).
-const DOT_WIDTHS = [2, 4, 6];
 
 /** The swatch name of a `#RRGGBB` (the core stores colours), or null for another colour. */
 function swatchName(hex) {
@@ -719,14 +717,15 @@ function buildWell() {
   swatches.querySelector(".alternate").addEventListener("click", () => run({ command_id: "tool.swap_swatches" }));
   swatches.querySelector(".current").addEventListener("click", (e) => openSwatchMenu(e.currentTarget));
   well.appendChild(swatches);
-  // The width dot steps through 2, 4, 6 (tool.width); the palette reaches every core width.
+  // The width dot steps up through the core's widths (tool.width_up) and wraps to the
+  // narrowest (tool.width) after the widest.
   const dot = document.createElement("button");
   dot.type = "button";
   dot.className = "width-dot";
   dot.innerHTML = "<span></span>";
   dot.addEventListener("click", () => {
-    const i = DOT_WIDTHS.indexOf(host.session.ink.width);
-    run({ command_id: "tool.width", args: { number: DOT_WIDTHS[(i + 1) % DOT_WIDTHS.length] } });
+    const state = commandStates().get("tool.width_up");
+    run(state && state.disabled ? { command_id: "tool.width", args: { number: 1 } } : { command_id: "tool.width_up" });
   });
   well.appendChild(dot);
 }
@@ -754,7 +753,7 @@ function renderWell() {
   const dot = well.querySelector(".width-dot");
   dot.setAttribute("aria-label", `Brush width ${w}. Change`);
   dot.title = `Brush width ${w}`;
-  dot.firstChild.style.width = dot.firstChild.style.height = `${w + 3}px`;
+  dot.firstChild.style.width = dot.firstChild.style.height = `${Math.min(18, w + 3)}px`;
   placeWell();
 }
 

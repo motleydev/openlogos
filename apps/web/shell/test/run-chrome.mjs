@@ -5,7 +5,7 @@
 // is tested), the speed runs of specs/22 §7, and screenshots on request.
 //
 //   node apps/web/shell/test/run-chrome.mjs --chromedriver <path> [--case name…] [--headed]
-//        [--bench [--samples 200] [--bench-json <file>]] [--shots <dir>]
+//        [--bench [--samples 200] [--bench-json <file>]] [--shots <dir> [--extra-shots <dir>]]
 //
 // Exit code 0 when every case passed (and, with --bench, every run produced its samples); the
 // results are printed as JSON lines and a Summary line.
@@ -22,6 +22,7 @@ const option = (name, fallback) => { const i = args.indexOf(name); return i >= 0
 const only = args.flatMap((a, i) => (a === "--case" ? [args[i + 1]] : []));
 const chromedriver = option("--chromedriver", process.env.CHROMEDRIVER);
 const shotsDir = option("--shots", null);
+const extraDir = option("--extra-shots", null); // shots beyond the ten kept in the evidence
 const headed = args.includes("--headed");
 const benchOn = args.includes("--bench");
 const samples = Number(option("--samples", "200"));
@@ -243,6 +244,8 @@ const CASES = {
     const newTab = rows.find((r) => r[0] === "New tab");
     expect(p, newTab && newTab[1] === "⌥T", `New tab shows ⌥T: ${JSON.stringify(newTab)}`);
     const more = rows.find((r) => /^Show all \d+$/.test(r[0]));
+    const widthCheck = await js("return [document.getElementById('palette-results').getBoundingClientRect().width, document.querySelector('.field-wrap').getBoundingClientRect().width]");
+    expect(p, widthCheck[0] === Math.min(tokens.metrics.palette_dropdown_max_width, widthCheck[1]), `dropdown width ${widthCheck}`);
     expect(p, !!more, "a capped section offers Show all N");
     await type(" "); // "tab " still matches
     await chord("Meta", "a");
@@ -506,13 +509,11 @@ const CASES = {
     await click(...(await centre(".swatches .alternate")));
     s = await snap();
     expect(p, eq(s.swatches, ["green", "blue"]), `swap via the alternate well ${s.swatches}`);
-    await click(...(await centre(".width-dot")));
+    const widths = [];
+    for (let i = 0; i < 5; i++) { await click(...(await centre(".width-dot"))); widths.push((await snap()).width); }
     s = await snap();
-    expect(p, s.width === 6, `width dot 4 → ${s.width}`);
-    await click(...(await centre(".width-dot")));
-    s = await snap();
-    expect(p, s.width === 2, `width dot wraps → ${s.width}`);
-    expect(p, ["tool.swatch", "tool.swap_swatches", "tool.width"].every((id) => s.log.some((l) => l.command_id === id && l.handled)), "core commands");
+    expect(p, eq(widths, [6, 8, 12, 16, 1]), `width dot steps up the core's widths and wraps: ${widths}`);
+    expect(p, ["tool.swatch", "tool.swap_swatches", "tool.width_up", "tool.width"].every((id) => s.log.some((l) => l.command_id === id && l.handled)), "core commands");
   },
 
   async "well-clears-column-one"(p) {
@@ -538,9 +539,16 @@ const CASES = {
 
 // MARK: screenshots
 
+// The ten the evidence keeps (≤ 20 PNGs per task across both hosts); the rest go to
+// --extra-shots when given, and are skipped otherwise.
+const EVIDENCE = new Set(["web-light-1440", "web-sepia-1440", "web-dark-1024", "web-palette-passage", "web-palette-commands-expanded-dark", "web-palette-tabs", "web-palette-text", "web-tool-palette", "web-ink", "web-placeholder"]);
+
 async function shoot(name) {
+  const dir = EVIDENCE.has(name) ? shotsDir : extraDir;
+  if (!dir) return;
+  await mkdir(dir, { recursive: true });
   const png = await wd("GET", `${S}/screenshot`);
-  const file = join(shotsDir, `${name}.png`);
+  const file = join(dir, `${name}.png`);
   await writeFile(file, Buffer.from(png, "base64"));
   console.log(`screenshot ${file}`);
 }

@@ -1,8 +1,8 @@
 // The launch session (B072 brief), the same JSON the Mac app seeds: workspace "Study" with three
 // columns (1 = BSB John 3:16 with a second tab WLC Gen 1:1, 2 = SBLGNT John 3:16 in group 1,
 // 3 = the study note pinned as a tab) and workspace "Hebrew" with one column (WLC Gen 1:1).
-// Reading settings follow the system theme; the ink wells start on the first two token
-// swatches (the core's defaults are other colours). Nothing is persisted yet (B074). The bench
+// Reading settings start on the light theme and the ink wells on the first two token swatches,
+// as the Mac app's seed does. Nothing is persisted yet (B074). The bench
 // session is specs/22 §7's ten workspaces of three columns × four tabs.
 const NOTE = "fixture:note:1";
 
@@ -25,7 +25,7 @@ function workspace(id, title, columns, serial, noteId = null) {
 }
 
 const settings = () => ({
-  reading: { text_size_step: 0, line_spacing: 1.5, theme: "system" },
+  reading: { text_size_step: 0, line_spacing: 1.5, theme: "light" },
   ink: { width: 4, swatch: "#F5D90A", alternate_swatch: "#4CC38A" },
 });
 
