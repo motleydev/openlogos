@@ -73,6 +73,8 @@ final class ShellModel: ObservableObject {
         self.textSource = textSource
         registry = shellRegistry()
         keymap = ShellKeymap(registry: registry, platform: .mac)
+        // Tab views and palette rows name resources by these (`BSB · Jn 3:16`).
+        handle.setResourceTitles(titles: textSource.resourceTitles)
         session = handle.session()
     }
 
@@ -104,8 +106,7 @@ final class ShellModel: ObservableObject {
 
     // MARK: Reading and ink settings (session.reading, session.ink)
 
-    /// The size step's index into the tokens' sizes; the core's steps beyond the seven
-    /// sizes clamp to the ends.
+    /// The core's text-size step (−2…4) as an index into the tokens' seven sizes (0 = 19 pt).
     var sizeIndex: Int {
         max(0, min(ShellTokens.readingSizes.count - 1, ShellTokens.defaultReadingSizeIndex + Int(session.reading.textSizeStep)))
     }
@@ -276,14 +277,6 @@ final class ShellModel: ObservableObject {
         palette.expanded = expandedSection == section ? nil : section
         query()
         if let first = paletteRows.firstIndex(where: { $0.section == section }) { paletteSelection = first }
-    }
-
-    /// Tab and text rows name the resource by id (`bsb · John 3:16`); show its short name
-    /// (`BSB · John 3:16`) as the tab strip does.
-    func displayTitle(_ item: ShellPaletteItem) -> String {
-        guard item.section == .tabs || item.section == .text, let range = item.title.range(of: " · ") else { return item.title }
-        let id = String(item.title[..<range.lowerBound])
-        return textSource.resource(id).shortName + item.title[range.lowerBound...]
     }
 
     func runSelectedRow() {

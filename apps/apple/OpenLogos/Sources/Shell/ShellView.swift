@@ -354,7 +354,7 @@ struct PaletteRow: View {
     var body: some View {
         let disabled = item.disabledReason != nil
         HStack(alignment: .firstTextBaseline, spacing: ShellTokens.Spacing.s) {
-            Text(model.displayTitle(item))
+            Text(item.title)
                 .font(ShellTokens.chromeFont)
                 .lineLimit(1)
             if let subtitle = subtitleText {

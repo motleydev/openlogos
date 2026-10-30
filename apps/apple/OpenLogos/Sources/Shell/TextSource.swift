@@ -22,6 +22,8 @@ struct SourceText {
 }
 
 protocol TextSource {
+    /// Every resource's short name by id, registered with the core (`setResourceTitles`).
+    var resourceTitles: [String: String] { get }
     func resource(_ id: String) -> ResourceInfo
     /// The text of `resourceID` at `reference` (OSIS, `John.3.16`), or nil when there is none.
     func text(resourceID: String, reference: String?) -> SourceText?
@@ -48,6 +50,8 @@ struct FixtureTextSource: TextSource {
         "fixture:note:1": Entry(fixture: "bidi-isolation-note", chapter: nil),
     ]
 
+    var resourceTitles: [String: String] { Self.resources.mapValues(\.shortName) }
+
     func resource(_ id: String) -> ResourceInfo {
         Self.resources[id] ?? ResourceInfo(id: id, shortName: id, name: id, isRightToLeft: false)
     }
@@ -72,33 +76,20 @@ struct FixtureTextSource: TextSource {
     }
 }
 
-/// Reference labels for chrome. The core parses and formats (`formatHuman`); tab labels use a
-/// short book form the core has no formatter for yet.
+/// Reference labels for chrome, all from the core: `formatShort` (`Jn 3:16`, tab labels,
+/// palette rows, toasts) and `formatHuman` (`John 3:16`, the identity row).
 enum ShellReference {
     /// `John.3.16` → `John.3`.
     static func chapter(of osis: String) -> String {
         osis.split(separator: ".").prefix(2).joined(separator: ".")
     }
 
-    /// `John.3.16` → `Jn 3` (tab labels).
-    static func shortChapter(_ osis: String?) -> String {
-        guard let osis else { return "" }
-        let parts = osis.split(separator: ".")
-        guard parts.count >= 2 else { return osis }
-        return "\(shortBook(String(parts[0]))) \(parts[1])"
+    /// `John.3.16` → `Jn 3:16`.
+    static func short(_ reference: String) -> String {
+        (try? formatShort(reference: reference)) ?? reference
     }
 
-    /// `John.3.16` → `Jn 3:16` (toasts).
-    static func short(_ osis: String) -> String {
-        let parts = osis.split(separator: ".")
-        switch parts.count {
-        case 3...: return "\(shortBook(String(parts[0]))) \(parts[1]):\(parts[2])"
-        case 2: return "\(shortBook(String(parts[0]))) \(parts[1])"
-        default: return osis
-        }
-    }
-
-    /// `John.3.16` → `John 3:16` through the core.
+    /// `John.3.16` → `John 3:16`.
     static func human(_ osis: String?) -> String {
         guard let osis else { return "" }
         let parts = osis.split(separator: ".")
@@ -106,13 +97,4 @@ enum ShellReference {
         let reference = Reference(book: String(parts[0]), chapter: chapter, verse: parts.count > 2 ? UInt32(parts[2]) : nil, subverse: nil)
         return (try? formatHuman(reference: reference)) ?? osis
     }
-
-    private static let shortBooks: [String: String] = [
-        "Gen": "Gen", "Exod": "Ex", "Lev": "Lev", "Num": "Num", "Deut": "Dt", "Ps": "Ps", "Prov": "Prov", "Isa": "Isa",
-        "Matt": "Mt", "Mark": "Mk", "Luke": "Lk", "John": "Jn", "Acts": "Acts", "Rom": "Rom", "1Cor": "1 Cor",
-        "2Cor": "2 Cor", "Gal": "Gal", "Eph": "Eph", "Phil": "Phil", "Col": "Col", "Heb": "Heb", "Jas": "Jas",
-        "1John": "1 Jn", "Rev": "Rev",
-    ]
-
-    static func shortBook(_ book: String) -> String { shortBooks[book] ?? book }
 }

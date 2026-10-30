@@ -88,8 +88,10 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(model.session.workspaces.map(\.title), ["Study", "Hebrew"])
         let study = model.session.workspaces[0]
         XCTAssertEqual(study.columns.map(\.number), [1, 2, 3])
-        let labels = study.columns.map { $0.tabs.map { TabTitle.label($0, source: model.textSource) } }
-        XCTAssertEqual(labels, [["BSB Jn 3", "WLC Gen 1"], ["SBLGNT Jn 3"], ["Note"]])
+        let labels = study.columns.map { $0.tabs.map(TabTitle.label) }
+        XCTAssertEqual(labels, [["BSB Jn 3:16", "WLC Gen 1:1"], ["SBLGNT Jn 3:16"], ["Note"]], "the core's resource titles and short references")
+        XCTAssertEqual(model.session.ink.swatch, "#F5D90A", "the core's default swatches are the tokens'")
+        XCTAssertEqual(model.session.ink.alternateSwatch, "#4CC38A")
         XCTAssertEqual(study.columns.map { TabTitle.linkState($0.tabs[0]) }, ["Group 1", "Group 1", "Pinned"])
         XCTAssertEqual(model.session.workspaces[1].columns.count, 1)
         XCTAssertEqual(model.activeTab?.contentId, "bsb")
@@ -124,6 +126,10 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(model.readingSize, 17)
         model.run("view.text_size_reset")
         XCTAssertEqual(model.readingSize, 19)
+        for _ in 0..<4 { model.run("view.text_size_up") }
+        XCTAssertEqual(model.readingSize, 32, "step 4 is the largest token size")
+        XCTAssertNotNil(model.disabledReason("view.text_size_up"), "the core stops at the last size")
+        model.run("view.text_size_reset")
         model.run("view.line_spacing", args: ShellCommandArgs(number: 1.7))
         XCTAssertEqual(model.lineSpacing, 1.7)
         model.run("view.theme", args: ShellCommandArgs(text: "sepia"))
@@ -230,6 +236,13 @@ final class ShellTests: XCTestCase {
             XCTAssertNotNil(model.paletteResult, prefix)
         }
         XCTAssertEqual(model.paletteResult?.targetColumn, 2)
+        model.paletteText = "move tab to"
+        model.paletteTextChanged()
+        let moves = model.paletteRows.filter { $0.commandId == "tab.move_to_column" && $0.disabledReason == nil }
+        XCTAssertFalse(moves.isEmpty, "a command typed without its column expands into one row per column")
+        XCTAssertFalse(moves.contains { $0.args.column == 1 }, "not the current column")
+        model.paletteText = "Jn 3:16 @2"
+        model.paletteTextChanged()
         let first = try! XCTUnwrap(model.paletteRows.first)
         XCTAssertEqual(first.section, .passage)
         XCTAssertEqual(first.commandId, "nav.navigate")
@@ -285,7 +298,7 @@ final class ShellTests: XCTestCase {
         model.focusPalette()
         model.paletteText = "@jn"
         model.paletteTextChanged()
-        XCTAssertEqual(model.paletteRows.filter { $0.section == .tabs }.map(model.displayTitle).prefix(2), ["BSB · John 3:16", "SBLGNT · John 3:16"],
+        XCTAssertEqual(model.paletteRows.filter { $0.section == .tabs }.map(\.title).prefix(2), ["BSB · Jn 3:16", "SBLGNT · Jn 3:16"],
                        "tab rows name the resource as the tab strip does")
     }
 
@@ -301,7 +314,6 @@ final class ShellTests: XCTestCase {
         XCTAssertNil(source.text(resourceID: "kjv", reference: "John.3.16"))
         XCTAssertEqual(ShellReference.human("John.3.16"), "John 3:16")
         XCTAssertEqual(ShellReference.short("John.3.16"), "Jn 3:16")
-        XCTAssertEqual(ShellReference.shortChapter("Gen.1.1"), "Gen 1")
     }
 
     // MARK: Rendered

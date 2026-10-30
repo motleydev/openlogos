@@ -151,7 +151,7 @@ struct TabLabel: View {
     @State private var hovering = false
 
     var body: some View {
-        let label = TabTitle.label(tab, source: model.textSource)
+        let label = TabTitle.label(tab)
         HStack(spacing: ShellTokens.Spacing.xs) {
             Text(label)
                 .font(.system(size: ShellTokens.tabLabelSize, weight: shown ? .semibold : .regular))
@@ -193,11 +193,10 @@ struct TabLabel: View {
 }
 
 enum TabTitle {
-    /// `BSB Jn 3`; a tab with no passage shows its resource alone.
-    static func label(_ tab: ShellTab, source: TextSource) -> String {
-        let short = source.resource(tab.contentId).shortName
-        let passage = ShellReference.shortChapter(tab.reference)
-        return passage.isEmpty ? short : "\(short) \(passage)"
+    /// `BSB Jn 3:16`, from the core's tab view (registered short name and `formatShort`); a
+    /// tab with no passage shows its resource alone.
+    static func label(_ tab: ShellTab) -> String {
+        tab.referenceLabel.map { "\(tab.resourceTitle) \($0)" } ?? tab.resourceTitle
     }
 
     /// `Group 1`, `Pinned`, `Follows`.
