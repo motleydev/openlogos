@@ -47,19 +47,31 @@ function swatchName(hex) {
 /** Colour and painted opacity of a stored swatch; an unknown colour paints at 30 %. */
 const swatchPaint = (hex) => { const n = swatchName(hex); return n ? TOKENS.swatches[n] : [hex, 0.3]; };
 
-// Inline SVG for the tool well (20 × 20, stroked with currentColor).
+// Inline SVG for the tool well (20 × 20, stroked with currentColor), keyed by the core's neutral
+// icon names (specs/22 §4.1). The Mac app maps the same names to SF Symbols of the same meaning;
+// the table is in docs/evidence/B076-web.md.
+const glyph = (x, size, text, extra = "", y = 15.5) => `<text x="${x}" y="${y}" font-size="${size}" text-anchor="middle" fill="currentColor" stroke="none" ${extra} font-family="system-ui, -apple-system, sans-serif">${text}</text>`;
 const ICONS = {
   select: '<path d="M5.5 3.5v12l3.2-3 2.3 5 2-1-2.3-4.8h4.3z" fill="currentColor" stroke="none"/>',
+  "word-study": '<path d="M5.8 3.5h9.7v13H5.8A1.8 1.8 0 0 1 4 14.7V5.3a1.8 1.8 0 0 1 1.8-1.8z"/><path d="M4 14.7a1.8 1.8 0 0 1 1.8-1.8h9.7"/>' + glyph(10, 9, "α", 'font-weight="600"', 10.5),
   highlight: '<path d="M7 13.5l-2.5 3h5l1-1.2M7 13.5l1.8-4.2 6-6 2.4 2.4-6 6z"/><path d="M3 18h14" opacity=".5"/>',
   pen: '<path d="M4 16l.9-3.6L13 4.3l2.7 2.7-8.1 8.1z"/><path d="M11.5 5.8l2.7 2.7"/>',
-  highlighter_pen: '<path d="M10.5 9.5l5.5-5.5 1 1-5.5 5.5"/><path d="M4 16.5c.3-2.6 1.4-4.6 3.6-4.6 1.4 0 2.2 1 2.1 2.2-.2 1.9-2.5 2.4-5.7 2.4z" fill="currentColor" fill-opacity=".35"/>',
+  "highlighter-pen": '<path d="M10.5 9.5l5.5-5.5 1 1-5.5 5.5"/><path d="M4 16.5c.3-2.6 1.4-4.6 3.6-4.6 1.4 0 2.2 1 2.1 2.2-.2 1.9-2.5 2.4-5.7 2.4z" fill="currentColor" fill-opacity=".35"/>',
   eraser: '<path d="M7.5 16.5h9"/><path d="M3.8 12.2l7.4-7.4 5 5-6.6 6.7H7.6z"/><path d="M7.4 8.6l5 5"/>',
   collect: '<path d="M10 3v8.5M6.8 8.5l3.2 3.2 3.2-3.2"/><path d="M3.5 12v4.5h13V12"/>',
+  type: '<path d="M3 15.5l3.6-10 3.6 10M4.4 12h4.4"/><path d="M14.5 4v12M12.8 4h3.4M12.8 16h3.4"/>',
+  bold: glyph(10, 15, "B", 'font-weight="700"'),
+  italic: glyph(10, 15, "I", 'font-style="italic" font-family="ui-serif, Georgia, serif"'),
+  heading: glyph(7.5, 14, "A", 'font-weight="600"') + glyph(15.5, 9, "A", 'font-weight="600"'),
+  list: '<circle cx="4.5" cy="5.5" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="14.5" r="1" fill="currentColor" stroke="none"/><path d="M8 5.5h8.5M8 10h8.5M8 14.5h8.5"/>',
+  "link-passage": '<path d="M8.6 11.4a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M11.4 8.6a3 3 0 0 0-4.2 0l-2.6 2.6a3 3 0 0 0 4.2 4.2l1-1"/>',
+  "highlight-now": '<path d="M7 13.5l-2.5 3h5l1-1.2M7 13.5l1.8-4.2 6-6 2.4 2.4-6 6z"/><path d="M3 18h14" opacity=".5"/>',
+  note: '<path d="M11.5 16.5H5.2a1.2 1.2 0 0 1-1.2-1.2V4.7a1.2 1.2 0 0 1 1.2-1.2h9.6a1.2 1.2 0 0 1 1.2 1.2V10"/><path d="M6.8 7h6.4M6.8 10h4"/><path d="M15 12.5v5M12.5 15h5"/>',
+  search: '<circle cx="8.5" cy="8.5" r="4.8"/><path d="M12 12l4.5 4.5"/>',
+  "copy-reference": '<rect x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path d="M13 7V4.8a1.3 1.3 0 0 0-1.3-1.3H4.8a1.3 1.3 0 0 0-1.3 1.3v6.9A1.3 1.3 0 0 0 4.8 13H7"/>',
+  study: '<path d="M5.8 3.5h9.7v13H5.8A1.8 1.8 0 0 1 4 14.7V5.3a1.8 1.8 0 0 1 1.8-1.8z"/><path d="M4 14.7a1.8 1.8 0 0 1 1.8-1.8h9.7"/><path d="M7.5 6.5h5M7.5 9h5"/>',
 };
-const TOOLS = [
-  ["select", "Select"], ["highlight", "Highlight"], ["pen", "Pen"],
-  ["highlighter_pen", "Highlighter pen"], ["eraser", "Eraser"], ["collect", "Collect"],
-];
+const svg = (icon) => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[icon] || ""}</svg>`;
 
 const host = {
   handle: null, session: null, registry: [], specs: new Map(), bindings: [], text: null,
@@ -69,6 +81,10 @@ const host = {
   highlights: [], ink: new Map(),
   palette: { expanded: null, rows: [], index: -1, result: null, returnTo: null },
   menu: null, log: [], targets: new Map(), colourRules: new Set(), labels: new Map(),
+  // B076: what has focus for the core's context (`tab`, `notes_dock`; `empty` never arises, a
+  // column always has a tab), the last tool well drawn, the notes as edited (HTML per note id,
+  // in memory until B074) and the column a passage link navigates.
+  focus: "tab", toolWell: null, notes: new Map(), readingColumn: 1, lexicon: new Map(),
 };
 
 // MARK: - Commands
@@ -78,12 +94,15 @@ function hasSelection() {
   return !!s && s.rangeCount > 0 && !s.isCollapsed && !!viewOfNode(s.getRangeAt(0).commonAncestorContainer);
 }
 
+/** What the core takes as context: whether text is selected and what has focus. */
+const context = () => ({ has_selection: hasSelection(), focus: host.focus });
+
 /** Dispatches one registered command; the only path from the UI to the session. A quiet
  *  command (tab.record_scroll) changes nothing on screen, so it does not re-render. */
 export function run(invocation) {
   let outcome;
   try {
-    outcome = host.handle.apply(invocation, { has_selection: hasSelection() });
+    outcome = host.handle.apply(invocation, context());
   } catch (error) {
     toast(error.reason_text || error.message);
     host.log.push({ command_id: invocation.command_id, error: error.kind || String(error) });
@@ -105,7 +124,7 @@ export function run(invocation) {
 }
 
 /** The host's half of the commands the core leaves to it (`handled: false`). */
-function perform({ command_id: id }) {
+function perform({ command_id: id, args }) {
   switch (id) {
     case "palette.focus": focusPalette(); break;
     case "view.focus_mode": host.focusMode = !host.focusMode; break;
@@ -117,6 +136,14 @@ function perform({ command_id: id }) {
     case "selection.highlight": highlightSelection(); break;
     case "selection.collect": collectSelection(); break;
     case "selection.study": toast("Word study is not built yet"); break;
+    case "selection.note": noteSelection(); break;
+    case "selection.search": searchSelection(); break;
+    case "selection.copy_reference": copyReference(); break;
+    case "note.bold": noteFormat("bold"); break;
+    case "note.italic": noteFormat("italic"); break;
+    case "note.heading": noteFormat("heading"); break;
+    case "note.list": noteFormat("list"); break;
+    case "note.link_passage": linkPassage(args); break;
     case "view.collection_drawer": toast("The collection drawer is not built yet"); break;
     case "view.study_drawer": toast("The study drawer is not built yet"); break;
     case "workspace.export": exportWorkspace(); break;
@@ -189,8 +216,13 @@ function inColumn(number, then) {
 
 export function render() {
   const r = reading();
+  const ws = activeWorkspace();
+  if (host.focus === "notes_dock" && !ws.notes_dock.open) host.focus = "tab";
+  if (activeTab().kind === "reading") host.readingColumn = ws.columns.findIndex((c) => c.id === ws.active_column_id) + 1;
+  // The well for what has focus; the tool in effect (not the stored one) drives the text.
+  fetchWell();
   root.dataset.theme = r.theme;
-  root.dataset.tool = host.session.tool;
+  root.dataset.tool = host.toolWell.effective_tool;
   root.classList.toggle("focus-mode", host.focusMode);
   root.classList.toggle("well-collapsed", host.well.collapsed);
   root.style.setProperty("--reading-size", `${r.size}px`);
@@ -358,7 +390,12 @@ function buildColumn(ws, column, number) {
   scroller.appendChild(page);
   const view = { section, scroller, page, ws, column, tab, resource, number, text: null, paragraph: null, canvas: null, key: tabKey(ws, tab) };
   const passageText = host.text.passage(tab.content_id, tab.reference);
-  if (passageText) {
+  if (resource.kind === "notes") {
+    const article = document.createElement("article");
+    article.className = "measure";
+    article.appendChild(noteEditor(tab.content_id, `${resource.name}, column ${number}`));
+    page.appendChild(article);
+  } else if (passageText) {
     const article = document.createElement("article");
     article.className = "measure";
     article.lang = resource.lang;
@@ -390,6 +427,7 @@ function buildColumn(ws, column, number) {
   }, { passive: true });
   section.addEventListener("pointerdown", (e) => {
     if (e.target.closest(".tabstrip, .pane-menu")) return;
+    if (host.focus !== "tab") { host.focus = "tab"; render(); }
     if (activeWorkspace().active_column_id !== column.id) {
       const n = activeWorkspace().columns.findIndex((c) => c.id === column.id) + 1;
       if (n > 0) run({ command_id: "column.focus", args: { column: n } });
@@ -414,7 +452,8 @@ function placeholder(ws, tab, resource) {
 
 let dock = null;
 function dockView(ws) {
-  if (dock && dock.ws === ws.id) return dock.el;
+  const noteId = ws.notes_dock.note_id || "fixture:note:1";
+  if (dock && dock.ws === ws.id && dock.note === noteId) return dock.el;
   const el = document.createElement("aside");
   el.className = "dock";
   el.setAttribute("aria-label", "Notes dock");
@@ -422,13 +461,12 @@ function dockView(ws) {
   h.textContent = "Notes";
   const scroller = document.createElement("div");
   scroller.className = "scroller";
-  const note = host.text.passage(ws.notes_dock.note_id || "fixture:note:1", null);
   const article = document.createElement("article");
   article.className = "measure";
-  if (note) article.appendChild(renderParagraph(note.paragraph, "ltr", "en"));
+  article.appendChild(noteEditor(noteId, "Notes dock"));
   scroller.appendChild(article);
   el.append(h, scroller);
-  dock = { ws: ws.id, el };
+  dock = { ws: ws.id, note: noteId, el };
   return el;
 }
 
@@ -541,12 +579,19 @@ function highlightSelection() {
   document.getSelection().removeAllRanges();
 }
 
+/** The verses a selection spans as an OSIS reference (`John.3.16`, `John.3.16-John.3.17`), or
+ *  null when its segments are not verses. */
+function selectionPassage(found) {
+  const ids = found.trip.anchors.map((a) => a.segment_id);
+  const first = ids[0], last = ids[ids.length - 1];
+  return /^[A-Za-z0-9]+\.\d+\.\d+$/.test(first) ? (first === last ? first : `${first}-${last}`) : null;
+}
+
 function collectSelection() {
   const found = selectionInView();
   if (!found) return toast("Select some text first");
-  const ids = found.trip.anchors.map((a) => a.segment_id);
-  const first = ids[0], last = ids[ids.length - 1];
-  const where = /^[A-Za-z0-9]+\.\d+\.\d+$/.test(first) ? short(first === last ? first : `${first}-${last}`) : found.view.resource.name;
+  const passage = selectionPassage(found);
+  const where = passage ? short(passage) : found.view.resource.name;
   host.collected = (host.collected || 0) + 1;
   document.getSelection().removeAllRanges();
   toast(`Collected: ${where}`);
@@ -585,13 +630,199 @@ function paintHighlights() {
   for (const [name, ranges] of bySwatch) CSS.highlights.set(name, new Highlight(...ranges));
 }
 
+/** The core's well for the current context (specs/22 §4.1). */
+function fetchWell() {
+  const ctx = context();
+  host.toolWell = host.handle.toolWell(ctx);
+  host.wellSelection = ctx.has_selection;
+}
+
+/** The selection group follows the selection: the well alone is redrawn when text becomes
+ *  selected or stops being selected. */
+export function selectionChanged() {
+  if (!host.toolWell || hasSelection() === host.wellSelection) return;
+  fetchWell();
+  renderWell();
+}
+document.addEventListener("selectionchange", selectionChanged);
+
+/** Focus moving between a column and the notes dock changes the context; the palette field
+ *  and menus keep the context they were opened from. */
+document.addEventListener("focusin", (e) => {
+  if (!host.session || e.target === field || e.target.closest(".menu")) return;
+  const focus = e.target.closest(".dock") ? "notes_dock" : "tab";
+  if (focus !== host.focus) { host.focus = focus; render(); }
+});
+
 // A drag with the Highlight or Collect tool ends in the command, with no menu (specs/22 §4).
 document.addEventListener("pointerup", () => {
-  const tool = host.session && host.session.tool;
+  const tool = host.toolWell && host.toolWell.effective_tool;
   if (tool !== "highlight" && tool !== "collect") return;
   // After the browser has settled the selection for this pointerup.
   setTimeout(() => { if (hasSelection()) run({ command_id: tool === "highlight" ? "selection.highlight" : "selection.collect" }); }, 0);
 });
+
+// MARK: - Selection actions (B076)
+
+/** The selected words as the core quotes them (no verse markers), and where they are. */
+function selectedQuote(found) {
+  return found.trip.anchors.map((a) => (a.quote ? a.quote.exact : "")).join(" ").trim();
+}
+
+/** Note on it: the quote and its reference appended to the open note as a quote paragraph,
+ *  opening the dock when no note is open. */
+function noteSelection() {
+  const found = selectionInView();
+  if (!found) return toast("Select some text first");
+  const passage = selectionPassage(found);
+  let editor = openNoteEditor();
+  if (!editor) {
+    run({ command_id: "view.notes_dock" });
+    editor = openNoteEditor();
+  }
+  if (!editor) return;
+  const quote = document.createElement("blockquote");
+  quote.append(`“${selectedQuote(found)}” — `, passage ? passageLink(passage) : found.view.resource.name);
+  editor.appendChild(quote);
+  noteChanged(editor);
+  document.getSelection().removeAllRanges();
+}
+
+/** Search this: the selected words in the palette field, the palette open. */
+function searchSelection() {
+  const found = selectionInView();
+  if (!found) return toast("Select some text first");
+  focusPalette(selectedQuote(found));
+}
+
+/** Copy reference: the selection's passage in the core's human form. */
+function copyReference() {
+  const found = selectionInView();
+  if (!found) return toast("Select some text first");
+  const passage = selectionPassage(found);
+  const text = passage ? humanPassage(core, passage) : found.view.resource.name;
+  host.copied = text;
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+  toast(`Copied ${text}`);
+}
+
+// MARK: - Notes (B076): an editable note in memory until B074
+
+/** A note's HTML as edited, first the fixture note's text as one paragraph. */
+function noteHtml(noteId) {
+  if (!host.notes.has(noteId)) {
+    const note = host.text.passage(noteId, null);
+    const text = note ? note.paragraph.segments.map((s) => s.text).join(note.paragraph.joiner) : "";
+    host.notes.set(noteId, text ? `<p>${escapeHtml(text)}</p>` : "<p><br></p>");
+  }
+  return host.notes.get(noteId);
+}
+
+/** A rich-text editor over one note; the notes tab and the dock showing the same note stay in
+ *  step. A passage link navigates the reading column when clicked. */
+function noteEditor(noteId, label) {
+  const el = document.createElement("div");
+  el.className = "note-editor";
+  el.contentEditable = "true";
+  el.spellcheck = false;
+  el.dataset.note = noteId;
+  el.setAttribute("role", "textbox");
+  el.setAttribute("aria-multiline", "true");
+  el.setAttribute("aria-label", `Note: ${label}`);
+  el.innerHTML = noteHtml(noteId);
+  el.addEventListener("input", () => noteChanged(el));
+  el.addEventListener("click", (e) => {
+    const link = e.target.closest("a.passage-link");
+    if (!link) return;
+    e.preventDefault();
+    host.focus = "tab";
+    run({ command_id: "nav.navigate", args: { reference: link.dataset.reference, column: host.readingColumn } });
+  });
+  return el;
+}
+
+function noteChanged(editor) {
+  host.notes.set(editor.dataset.note, editor.innerHTML);
+  for (const other of document.querySelectorAll(".note-editor")) {
+    if (other !== editor && other.dataset.note === editor.dataset.note) other.innerHTML = editor.innerHTML;
+  }
+}
+
+/** A passage link: the human reference, not editable as text, carrying the OSIS reference. */
+function passageLink(reference) {
+  const a = document.createElement("a");
+  a.className = "passage-link";
+  a.href = "#";
+  a.contentEditable = "false";
+  a.dataset.reference = reference;
+  a.textContent = humanPassage(core, reference);
+  a.title = `Go to ${a.textContent}`;
+  return a;
+}
+
+/** The note on screen: the focused editor, else the dock's when it has focus, else a notes tab
+ *  shown in the active workspace (the active column's first), else the open dock's. */
+function openNoteEditor() {
+  const focused = document.activeElement && document.activeElement.closest && document.activeElement.closest(".note-editor");
+  if (focused) return focused;
+  const editors = [...document.querySelectorAll("#columns .note-editor")];
+  if (host.focus === "notes_dock") { const d = editors.find((e) => e.closest(".dock")); if (d) return d; }
+  const active = host.views.get(`${activeWorkspace().id}/${activeColumn().id}`);
+  return editors.find((e) => active && active.section.contains(e)) || editors.find((e) => e.closest(".column")) || editors.find((e) => e.closest(".dock")) || null;
+}
+
+/** Focuses the editor, keeping a caret already in it, else at its end. */
+function caretIn(editor) {
+  const s = document.getSelection();
+  const inside = s.rangeCount > 0 && editor.contains(s.getRangeAt(0).commonAncestorContainer);
+  if (document.activeElement !== editor) editor.focus({ preventScroll: true });
+  if (!inside) {
+    const r = document.createRange();
+    r.selectNodeContents(editor);
+    r.collapse(false);
+    s.removeAllRanges();
+    s.addRange(r);
+  }
+}
+
+/** Bold, italic, heading and list on the note editor (`note.*` come back unhandled). */
+function noteFormat(kind) {
+  const editor = openNoteEditor();
+  if (!editor) return toast("Open a note first");
+  caretIn(editor);
+  if (kind === "bold" || kind === "italic") document.execCommand(kind);
+  else if (kind === "list") document.execCommand("insertUnorderedList");
+  else if (kind === "heading") {
+    const node = document.getSelection().anchorNode;
+    const block = node && (node.nodeType === 1 ? node : node.parentElement).closest("h3, p, li, blockquote, div:not(.note-editor)");
+    document.execCommand("formatBlock", false, block && block.tagName === "H3" ? "p" : "h3");
+  }
+  noteChanged(editor);
+}
+
+/** Link passage: the passage at the caret the palette was opened from (or the note's end). */
+function linkPassage(args) {
+  const reference = args && args.reference;
+  if (!reference) { focusPalette("Link passage "); return; }
+  const saved = host.noteRange;
+  host.noteRange = null;
+  const editor = (saved && saved.editor.isConnected && saved.editor) || openNoteEditor();
+  if (!editor) return toast("Open a note first");
+  editor.focus({ preventScroll: true });
+  const s = document.getSelection();
+  let range = saved && saved.editor === editor ? saved.range : null;
+  if (!range) { range = document.createRange(); range.selectNodeContents(editor.lastElementChild || editor); range.collapse(false); }
+  range.deleteContents();
+  const link = passageLink(reference);
+  const space = document.createTextNode(" ");
+  range.insertNode(space);
+  range.insertNode(link);
+  range.setStartAfter(space);
+  range.collapse(true);
+  s.removeAllRanges();
+  s.addRange(range);
+  noteChanged(editor);
+}
 
 // MARK: - Ink in the margin layer (B039's brushes and compositing, ../ink/layer.js)
 
@@ -646,7 +877,7 @@ function attachInk(view) {
     if (decision !== "draw") return;
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
-    const tool = host.session.tool;
+    const tool = host.toolWell.effective_tool;
     if (tool === "eraser") { live = { eraser: true }; erase(point(e)); return; }
     const brush = tool === "highlighter_pen" ? BRUSHES.highlighter : BRUSHES.pen;
     // The session's brush width; the highlighter band is wider (B039's factor).
@@ -683,6 +914,7 @@ function shortcutOf(commandId) {
   return spec && spec.shortcuts.web.length ? spec.shortcuts.web[0] : "";
 }
 
+/** The grip and an empty body; the groups are drawn from the core's `toolWell` (renderWell). */
 function buildWell() {
   const well = $("well");
   well.innerHTML = "";
@@ -708,73 +940,132 @@ function buildWell() {
     grip.addEventListener("pointerup", up);
   });
   well.appendChild(grip);
-  for (const [id, title] of TOOLS) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "tool";
-    b.dataset.tool = id;
-    const key = shortcutGlyphs(shortcutOf(`tool.${id}`));
-    b.title = `${title} (${key})`;
-    b.setAttribute("aria-label", title);
-    b.setAttribute("aria-keyshortcuts", shortcutOf(`tool.${id}`));
-    b.innerHTML = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id]}</svg>`;
-    b.addEventListener("click", () => run({ command_id: `tool.${id}` }));
-    well.appendChild(b);
-  }
-  well.appendChild(document.createElement("hr"));
-  // Two overlapping wells: the current one chooses a swatch (tool.swatch), the alternate one
-  // swaps them (tool.swap_swatches, X).
-  const swatches = document.createElement("div");
-  swatches.className = "swatches";
-  swatches.innerHTML = '<button type="button" class="alternate"></button><button type="button" class="current" aria-haspopup="menu"></button>';
-  swatches.querySelector(".alternate").addEventListener("click", () => run({ command_id: "tool.swap_swatches" }));
-  swatches.querySelector(".current").addEventListener("click", (e) => openSwatchMenu(e.currentTarget));
-  well.appendChild(swatches);
-  // The width dot steps up through the core's widths (tool.width_up) and wraps to the
-  // narrowest (tool.width) after the widest.
-  const dot = document.createElement("button");
-  dot.type = "button";
-  dot.className = "width-dot";
-  dot.innerHTML = "<span></span>";
-  dot.addEventListener("click", () => {
-    const state = commandStates().get("tool.width_up");
-    run(state && state.disabled ? { command_id: "tool.width", args: { number: 1 } } : { command_id: "tool.width_up" });
+  // A press in the well keeps the text selection and the note editor's caret.
+  well.addEventListener("pointerdown", (e) => { if (!e.target.closest(".grip")) e.preventDefault(); });
+  well.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-command]");
+    if (b) pressWellItem(b);
   });
-  well.appendChild(dot);
 }
 
+/** One well button: `Label (key)` in the tooltip, `Label — reason` when disabled. */
+function wellButton(item) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.dataset.command = item.command_id;
+  b.dataset.icon = item.icon;
+  if (item.tool) b.dataset.tool = item.tool;
+  if (item.key) b.setAttribute("aria-keyshortcuts", item.key);
+  b.setAttribute("aria-label", item.label);
+  return b;
+}
+
+function buildWellGroup(group) {
+  const el = document.createElement("div");
+  el.className = `group ${group.kind}`;
+  el.dataset.kind = group.kind;
+  el.setAttribute("role", "group");
+  el.setAttribute("aria-label", { tools: "Tools", ink: "Ink", selection: "Selection" }[group.kind]);
+  if (group.kind === "ink") {
+    // Two overlapping wells: the current one chooses a swatch (tool.swatch), the alternate one
+    // swaps them (tool.swap_swatches, X); then the width dot.
+    const [swatch, alternate, width] = group.items;
+    const swatches = document.createElement("div");
+    swatches.className = "swatches";
+    const alt = wellButton(alternate), cur = wellButton(swatch);
+    alt.className = "alternate";
+    cur.className = "current";
+    cur.setAttribute("aria-haspopup", "menu");
+    swatches.append(alt, cur);
+    const dot = wellButton(width);
+    dot.className = "width-dot";
+    dot.innerHTML = "<span></span>";
+    el.append(swatches, dot);
+  } else {
+    for (const item of group.items) {
+      const b = wellButton(item);
+      b.className = "tool";
+      b.innerHTML = svg(item.icon);
+      el.appendChild(b);
+    }
+  }
+  return el;
+}
+
+/** A click on a well item: a disabled one says why; the ink items open their choices. */
+function pressWellItem(b) {
+  const item = host.toolWell.groups.flatMap((g) => g.items).find((i) => i.command_id === b.dataset.command);
+  if (!item) return;
+  if (item.disabled_text) { toast(item.disabled_text); return; }
+  switch (item.command_id) {
+    case "tool.swatch": openSwatchMenu(b); return;
+    case "tool.width": {
+      // The width dot steps up through the core's widths (tool.width_up) and wraps to the
+      // narrowest (tool.width) after the widest.
+      const state = commandStates().get("tool.width_up");
+      run(state && state.disabled ? { command_id: "tool.width", args: { number: 1 } } : { command_id: "tool.width_up" });
+      return;
+    }
+    case "note.link_passage": focusPalette(`${item.label} `); return;
+    default: run({ command_id: item.command_id });
+  }
+}
+
+/** The well as the core decides it for what has focus (specs/22 §4.1): the groups are rebuilt
+ *  only when their items change, so a context change swaps buttons in place; the well's top
+ *  stays where it is and a selection group grows downward. */
 function renderWell() {
   const well = $("well");
+  const toolWell = host.toolWell;
   well.classList.toggle("collapsed", host.well.collapsed);
-  const tool = host.session.tool;
-  const toolTitle = TOOLS.find(([id]) => id === tool)[1];
-  well.setAttribute("aria-label", `Tools, current: ${toolTitle}`);
-  for (const b of well.querySelectorAll(".tool")) {
-    const on = b.dataset.tool === tool;
-    if (b.getAttribute("aria-pressed") !== String(on)) b.setAttribute("aria-pressed", String(on));
+  well.dataset.context = toolWell.context;
+  const active = toolWell.groups[0].items.find((i) => i.active);
+  well.setAttribute("aria-label", `Tools, current: ${active ? active.label : toolWell.effective_tool}`);
+  const signature = toolWell.groups.map((g) => `${g.kind}:${g.items.map((i) => i.command_id).join(",")}`).join("|");
+  if (well.dataset.signature !== signature) {
+    well.dataset.signature = signature;
+    const parts = [];
+    toolWell.groups.forEach((g, i) => { if (i > 0) parts.push(document.createElement("hr")); parts.push(buildWellGroup(g)); });
+    well.replaceChildren(well.querySelector(".grip"), ...parts);
   }
-  const { swatch, alternate_swatch: alternate, width: w } = host.session.ink;
-  const label = (hex) => swatchName(hex) || hex;
-  const sw = well.querySelector(".swatches");
-  const cur = sw.querySelector(".current"), alt = sw.querySelector(".alternate");
-  cur.style.background = swatch;
-  alt.style.background = alternate;
-  cur.title = `Swatch: ${label(swatch)} (choose)`;
-  cur.setAttribute("aria-label", `Current swatch ${label(swatch)}. Choose a swatch`);
-  alt.title = `Alternate: ${label(alternate)} (${shortcutGlyphs(shortcutOf("tool.swap_swatches"))} swaps)`;
-  alt.setAttribute("aria-label", `Alternate swatch ${label(alternate)}. Swap swatches`);
-  const dot = well.querySelector(".width-dot");
-  dot.setAttribute("aria-label", `Brush width ${w}. Change`);
-  dot.title = `Brush width ${w}`;
-  dot.firstChild.style.width = dot.firstChild.style.height = `${Math.min(18, w + 3)}px`;
+  for (const item of toolWell.groups.flatMap((g) => g.items)) {
+    const b = well.querySelector(`button[data-command="${item.command_id}"]`);
+    if (!b) continue;
+    const key = shortcutGlyphs(item.key);
+    let title = key ? `${item.label} (${key})` : item.label;
+    if (item.disabled_text) title = `${item.label} — ${item.disabled_text}`;
+    if (item.command_id === "tool.swatch") title = `Swatch: ${swatchName(item.value) || item.value} (choose)`;
+    if (item.command_id === "tool.swap_swatches") title = `Alternate: ${swatchName(item.value) || item.value} (${key} swaps)`;
+    if (item.command_id === "tool.width") title = `Brush width ${item.value}`;
+    if (b.title !== title) b.title = title;
+    if (item.tool) {
+      if (b.getAttribute("aria-pressed") !== String(item.active)) b.setAttribute("aria-pressed", String(item.active));
+    }
+    b.toggleAttribute("aria-disabled", !!item.disabled_text);
+    if (item.value != null) {
+      if (item.icon === "brush-width") {
+        b.setAttribute("aria-label", `Brush width ${item.value}. Change`);
+        b.firstChild.style.width = b.firstChild.style.height = `${Math.min(18, Number(item.value) + 3)}px`;
+      } else {
+        b.style.background = item.value;
+        const name = swatchName(item.value) || item.value;
+        b.setAttribute("aria-label", item.icon === "swatch" ? `Current swatch ${name}. Choose a swatch` : `Alternate swatch ${name}. Swap swatches`);
+      }
+    }
+  }
   placeWell();
 }
 
+/** Centred over the columns when first drawn and after a window resize; a change of context
+ *  or a selection group never moves the top (the well grows and shrinks downward). */
 function placeWell() {
   const well = $("well");
   if (host.well.top == null) {
-    const columns = $("columns").getBoundingClientRect();
-    well.style.top = `${columns.top + (columns.height - well.offsetHeight) / 2}px`;
+    if (host.well.autoTop == null) {
+      const columns = $("columns").getBoundingClientRect();
+      host.well.autoTop = Math.round(columns.top + (columns.height - well.offsetHeight) / 2);
+    }
+    well.style.top = `${host.well.autoTop}px`;
   } else {
     well.style.top = `${host.well.top}px`;
   }
@@ -830,7 +1121,7 @@ function commandItem(menu, label, invocation, states, extra = {}) {
 }
 
 function commandStates() {
-  return new Map(host.handle.commands({ has_selection: hasSelection() }).map((s) => [s.spec.id, s]));
+  return new Map(host.handle.commands(context()).map((s) => [s.spec.id, s]));
 }
 
 function openSwitcher() {
@@ -913,7 +1204,13 @@ const field = $("palette-field");
 const results = $("palette-results");
 
 function focusPalette(text) {
-  if (document.activeElement !== field) host.palette.returnTo = document.activeElement;
+  if (document.activeElement !== field) {
+    host.palette.returnTo = document.activeElement;
+    // Link passage inserts at the caret the palette was opened from.
+    const s = document.getSelection();
+    const editor = s.rangeCount > 0 && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement).closest(".note-editor");
+    host.noteRange = editor ? { editor, range: s.getRangeAt(0).cloneRange() } : null;
+  }
   if (text != null) field.value = text;
   field.focus();
   if (text == null) field.select();
@@ -931,7 +1228,8 @@ function closePalette(restore) {
     host.palette.returnTo = null;
     field.blur();
     const view = host.views.get(`${activeWorkspace().id}/${activeColumn().id}`);
-    const target = back && back !== document.body && back.isConnected && view && view.section.contains(back) ? back : view && view.scroller;
+    const inPlace = back && back !== document.body && back.isConnected && ((view && view.section.contains(back)) || (host.focus === "notes_dock" && back.closest(".dock")));
+    const target = inPlace ? back : view && view.scroller;
     if (target) target.focus({ preventScroll: true });
   }
 }
@@ -939,7 +1237,7 @@ function closePalette(restore) {
 /** Every keystroke asks the core; nothing is debounced (specs/22 §7: one frame). */
 export function queryPalette() {
   const text = field.value;
-  const result = host.handle.paletteQuery(text, { platform: "web", has_selection: hasSelection(), expanded: host.palette.expanded });
+  const result = host.handle.paletteQuery(text, { platform: "web", ...context(), expanded: host.palette.expanded });
   host.palette.result = result;
   renderPalette(result);
   return result;
@@ -1068,6 +1366,8 @@ document.addEventListener("keydown", (e) => {
   const typing = inTextField(document.activeElement);
   const invocation = match(host.bindings, e, typing);
   if (!invocation) return;
+  // ⌘B and ⌘I are the note editor's, only while it has focus (specs/22 §6).
+  if (invocation.command_id.startsWith("note.") && !document.activeElement.closest(".note-editor")) return;
   // In the field, ⌘Z and the history keys are the field's own.
   if (typing && ["edit.undo", "edit.redo", "nav.back", "nav.forward"].includes(invocation.command_id)) return;
   e.preventDefault();
@@ -1077,7 +1377,7 @@ document.addEventListener("keydown", (e) => {
 
 $("workspace-switcher").addEventListener("click", openSwitcher);
 $("text-menu").addEventListener("click", openTextMenu);
-window.addEventListener("resize", () => { placeWell(); for (const v of host.views.values()) if (v.section.isConnected) sizeCanvas(v); });
+window.addEventListener("resize", () => { host.well.autoTop = null; placeWell(); for (const v of host.views.values()) if (v.section.isConnected) sizeCanvas(v); });
 
 // MARK: - Toast
 
@@ -1157,7 +1457,7 @@ export async function bench({ samples = 200 } = {}) {
   const n = activeWorkspace().columns.length;
   out.push(await measure("column focus (column.focus N)", samples, (i) => run({ command_id: "column.focus", args: { column: (i % n) + 1 } })));
   out.push(await measure(`workspace switch (workspace.next, ${host.session.workspaces.length} workspaces)`, samples, () => run({ command_id: "workspace.next" })));
-  const tools = TOOLS.map(([id]) => `tool.${id}`);
+  const tools = ["select", "highlight", "pen", "highlighter_pen", "eraser", "collect"].map((id) => `tool.${id}`);
   out.push(await measure("tool change (tool.*)", samples, (i) => run({ command_id: tools[i % tools.length] })));
   run({ command_id: "tool.select" });
   out.push(await measure("open a chapter in a tab, warm (nav.navigate)", samples, (i) => run({ command_id: "nav.navigate", args: { reference: ["John.3", "Gen.1", "John.3.16", "Gen.1.2"][i % 4] } })));
@@ -1178,12 +1478,20 @@ export function snapshot() {
     dom: [...document.querySelectorAll("#columns > .column")].map((s) => ({
       number: s.dataset.number, active: s.classList.contains("active"), badge: s.querySelector(".badge").textContent,
       tabs: [...s.querySelectorAll(".tab")].map((t) => t.firstChild.textContent), shown: s.querySelector('.tab[aria-selected="true"]')?.firstChild.textContent,
-      identity: s.querySelector(".identity").textContent, text: !!s.querySelector(".measure .text"), placeholder: !!s.querySelector(".placeholder"),
+      identity: s.querySelector(".identity").textContent, text: !!s.querySelector(".measure .text, .note-editor, .lexicon"), placeholder: !!s.querySelector(".placeholder"),
     })),
     highlights: host.highlights.map((h) => ({ swatch: swatchName(h.swatch) || h.swatch, anchors: h.anchors.map((a) => ({ segment_id: a.segment_id, exact: a.quote ? a.quote.exact : "" })) })),
     ink: [...host.ink.entries()].map(([k, v]) => ({ tab: k, strokes: v.strokes.length, erased: v.deleted.size })),
     toast: host.lastToast || null, focus: document.activeElement ? (document.activeElement.id || document.activeElement.className) : null,
     paletteOpen: !results.hidden, log: host.log.slice(-20),
+    // B076: the well as drawn, what has focus, the notes as edited, the last copied reference.
+    well: {
+      context: $("well").dataset.context, effective: host.toolWell.effective_tool, focus: host.focus,
+      groups: [...$("well").querySelectorAll(".group")].map((g) => ({ kind: g.dataset.kind, items: [...g.querySelectorAll("button[data-command]")].map((b) => b.dataset.command) })),
+      pressed: [...$("well").querySelectorAll('button[aria-pressed="true"]')].map((b) => b.dataset.command),
+      top: $("well").getBoundingClientRect().top,
+    },
+    notes: Object.fromEntries(host.notes), copied: host.copied || null,
   };
 }
 
@@ -1201,11 +1509,12 @@ async function main() {
   host.handle = new core.ShellHandle(session);
   host.handle.useFixtureText();
   host.handle.setResourceTitles(host.text.titles());
+  host.handle.setResourceLanguages(host.text.languages());
   sync();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();
   render();
-  window.openlogosShell = { core, host, run, render, snapshot, bench, keyReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab };
+  window.openlogosShell = { core, host, run, render, selectionChanged, snapshot, bench, keyReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab };
   window.openlogosReady = true;
 }
 

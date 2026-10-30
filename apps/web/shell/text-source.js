@@ -7,6 +7,8 @@
 //   resource(contentId)          → { id, short, name, dir, lang, kind } (always; an unknown id
 //                                  gets its id as its name)
 //   titles()                     → { contentId: short name } for the core's palette rows
+//   languages()                  → { contentId: BCP 47 tag } for the core's tool well (B076:
+//                                  `grc`, `he` and `hbo` resources get the original-language tools)
 //   passage(contentId, reference) → { paragraph, attribution } or null when the resource has no
 //                                  text for that passage (the shell shows specs/21's
 //                                  placeholder, not an error)
@@ -53,6 +55,9 @@ export function fixtureTextSource(core) {
   return {
     titles() {
       return Object.fromEntries(Object.entries(RESOURCES).map(([id, r]) => [id, r.short]));
+    },
+    languages() {
+      return Object.fromEntries(Object.entries(RESOURCES).map(([id, r]) => [id, r.lang]));
     },
     resource(contentId) {
       const r = RESOURCES[contentId];

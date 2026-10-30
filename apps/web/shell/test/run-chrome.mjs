@@ -148,6 +148,7 @@ async function load(query = "") {
 const rgb = (hex) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
 function expect(problems, ok, message) { if (!ok) problems.push(message); }
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const groupsOf = (well) => well.groups.map((g) => [g.kind, g.items]);
 
 // MARK: cases
 
@@ -216,7 +217,7 @@ const CASES = {
     const r = await js(`const h = window.openlogosShell.host; const n = h.registry.reduce((a, s) => a + s.shortcuts.web.length, 0);
       return { bindings: h.bindings.length, shortcuts: n, commands: h.registry.length, wellKeys: [...document.querySelectorAll('.tool')].map((b) => b.getAttribute('aria-keyshortcuts')) };`);
     expect(p, r.bindings === r.shortcuts, `${r.bindings} bindings for ${r.shortcuts} registry shortcuts`);
-    expect(p, r.commands === 59, `${r.commands} commands`);
+    expect(p, r.commands === 69, `${r.commands} commands`);
     expect(p, eq(r.wellKeys, ["V", "H", "P", "M", "E", "C"]), `tool keys from the registry ${r.wellKeys}`);
   },
 
@@ -541,6 +542,150 @@ const CASES = {
     expect(p, c[0] === m.tool_well_collapsed && c[1] === m.tool_well_collapsed, `collapsed grip ${c[0]}×${c[1]}`);
     expect(p, c[3] === m.tool_well_inset + m.tool_well_collapsed + 8 && c[2] <= c[3] - 8, `collapsed: text starts at ${c[3]}, clear of the grip (right ${c[2]})`);
     await setWindow(width, height);
+  },
+
+  // MARK: B076 — the contextual well
+
+  async "well-contexts"(p) {
+    const tops = () => js("const q = (c) => { const b = document.querySelector('#well button[data-command=\"' + c + '\"]'); return b ? Math.round(b.getBoundingClientRect().top) : null; }; return { well: document.getElementById('well').getBoundingClientRect().top, select: q('tool.select'), word: q('tool.word_study'), highlight: q('tool.highlight') };");
+    let s = await snap();
+    const translation = [["tools", ["tool.select", "tool.highlight", "tool.pen", "tool.highlighter_pen", "tool.eraser", "tool.collect"]], ["ink", ["tool.swap_swatches", "tool.swatch", "tool.width"]]];
+    expect(p, s.well.context === "translation" && eq(groupsOf(s.well), translation), `translation well ${JSON.stringify(s.well)}`);
+    const t0 = await tops();
+    await chord("Alt", "2");
+    s = await snap();
+    expect(p, s.well.context === "original" && eq(s.well.groups[0].items.slice(0, 2), ["tool.select", "tool.word_study"]) && s.well.groups.length === 2, `original well ${JSON.stringify(s.well.groups)}`);
+    const t1 = await tops();
+    expect(p, t1.well === t0.well && t1.select === t0.select, `the well's top and Select stay put (${JSON.stringify(t0)} → ${JSON.stringify(t1)})`);
+    await chord("Alt", "3");
+    s = await snap();
+    expect(p, s.well.context === "notes" && eq(groupsOf(s.well), [["tools", ["tool.type", "note.bold", "note.italic", "note.heading", "note.list", "note.link_passage", "tool.collect"]]]) && eq(s.well.pressed, ["tool.type"]), `notes well ${JSON.stringify(s.well)}`);
+    const tips = await js("return [...document.querySelectorAll('#well .group button')].map((b) => b.title)");
+    expect(p, tips.includes("Bold (⌘B)") && tips.includes("Heading") && tips.includes("Type (T)"), `tooltips ${JSON.stringify(tips)}`);
+    const label = await js("return document.getElementById('well').getAttribute('aria-label')");
+    expect(p, label === "Tools, current: Type", `well label ${label}`);
+    // The dock: focus in its editor is the notes context whatever the column shows.
+    await chord("Alt", "1");
+    await js("window.openlogosShell.run({ command_id: 'view.notes_dock' })");
+    await click(...(await centre(".dock .note-editor")));
+    s = await snap();
+    expect(p, s.well.focus === "notes_dock" && s.well.context === "notes" && s.active === 1, `dock focus ${JSON.stringify(s.well)}`);
+    await click(...(await centre('#columns > .column[data-number="1"] .measure .text')));
+    s = await snap();
+    expect(p, s.well.focus === "tab" && s.well.context === "translation", `back in the column ${JSON.stringify(s.well)}`);
+    const t2 = await tops();
+    expect(p, t2.well === t0.well, `well top fixed through the contexts (${t0.well} → ${t2.well})`);
+  },
+
+  async "effective-tool-restore"(p) {
+    await type("p");
+    let s = await snap();
+    expect(p, s.tool === "pen" && eq(s.well.pressed, ["tool.pen"]), `pen ${JSON.stringify(s.well.pressed)}`);
+    await chord("Alt", "3");
+    s = await snap();
+    expect(p, s.tool === "pen" && s.well.effective === "type" && eq(s.well.pressed, ["tool.type"]), `notes: Pen stays stored, Type in effect (${s.tool}, ${s.well.effective})`);
+    const tool = await js("return document.documentElement.dataset.tool");
+    expect(p, tool === "type", `the text follows the effective tool (${tool})`);
+    await type("e");
+    s = await snap();
+    expect(p, s.toast === "Eraser works on Bible text" && s.tool === "pen", `E in notes: toast "${s.toast}", stored ${s.tool}`);
+    await chord("Alt", "2");
+    s = await snap();
+    expect(p, s.well.effective === "pen" && eq(s.well.pressed, ["tool.pen"]), `back on Bible text Pen is restored (${s.well.effective})`);
+    await type("w");
+    await chord("Alt", "1");
+    s = await snap();
+    expect(p, s.tool === "word_study" && s.well.effective === "select" && eq(s.well.pressed, ["tool.select"]), `Word study falls back to Select on a translation (${s.well.effective})`);
+    await chord("Alt", "2");
+    s = await snap();
+    expect(p, s.well.effective === "word_study", `and comes back on Greek (${s.well.effective})`);
+  },
+
+  async "selection-group"(p) {
+    const before = await js("const b = document.querySelector('#well button[data-command=\"tool.width\"]').getBoundingClientRect(); return [document.getElementById('well').getBoundingClientRect().top, b.top];");
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(60);
+    let s = await snap();
+    const sel = s.well.groups.find((g) => g.kind === "selection");
+    expect(p, sel && eq(sel.items, ["selection.highlight", "selection.collect", "selection.note", "selection.search", "selection.copy_reference", "selection.study"]), `selection group ${JSON.stringify(s.well.groups)}`);
+    const after = await js("const b = document.querySelector('#well button[data-command=\"tool.width\"]').getBoundingClientRect(); return [document.getElementById('well').getBoundingClientRect().top, b.top];");
+    expect(p, eq(before, after), `the group grows downward (${before} → ${after})`);
+    await click(...(await centre('#well button[data-command="selection.copy_reference"]')));
+    s = await snap();
+    expect(p, s.toast === "Copied John 3:16" && s.copied === "John 3:16", `copy reference: toast "${s.toast}"`);
+    await js("document.getSelection().removeAllRanges()");
+    await sleep(60);
+    s = await snap();
+    expect(p, !s.well.groups.some((g) => g.kind === "selection"), "the group goes with the selection");
+  },
+
+  async "selection-note-and-search"(p) {
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(60);
+    await click(...(await centre('#well button[data-command="selection.note"]')));
+    let s = await snap();
+    const note = s.notes["fixture:note:1"] || "";
+    expect(p, note.includes("<blockquote>“eternal life” — <a") && note.includes('data-reference="John.3.16"') && note.includes(">John 3:16</a></blockquote>"), `quote in the note tab ${note.slice(-200)}`);
+    const shown = await js("return document.querySelector('#columns > .column[data-number=\"3\"] .note-editor blockquote')?.textContent");
+    expect(p, shown === "“eternal life” — John 3:16", `on screen "${shown}"`);
+    // With the note tab hidden the dock opens and takes the next quote.
+    await js("window.openlogosShell.run({ command_id: 'tab.focus', args: { workspace_id: 'w1', tab_id: 't4' } }); window.openlogosShell.run({ command_id: 'tab.close' })");
+    const more = await phrasePoints(1, "eternal life");
+    await drag(more[0], more[1]);
+    await sleep(60);
+    await click(...(await centre('#well button[data-command="selection.note"]')));
+    const dock = await js("const d = document.querySelector('.dock .note-editor'); return d ? d.querySelectorAll('blockquote').length : -1");
+    expect(p, dock === 2, `the dock opened with the note (${dock} quotes)`);
+    const again = await phrasePoints(1, "For God so loved");
+    await drag(again[0], again[1]);
+    await sleep(60);
+    await chord("Meta", "e");
+    s = await snap();
+    const value = await js("return document.getElementById('palette-field').value");
+    expect(p, s.paletteOpen && s.focus === "palette-field" && value === "For God so loved", `⌘E searches "${value}"`);
+  },
+
+  async "notes-bold-heading-link"(p) {
+    await click(...(await centre('#columns > .column[data-number="3"] .note-editor')));
+    let s = await snap();
+    expect(p, s.active === 3 && s.well.context === "notes", `note tab focused (${s.well.context})`);
+    await js("const e = document.querySelector('#columns > .column[data-number=\"3\"] .note-editor'); const r = document.createRange(); r.selectNodeContents(e); r.collapse(false); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r);");
+    await type(" ");
+    await chord("Meta", "b");
+    await type("grace");
+    await chord("Meta", "b");
+    await chord("Meta", "i");
+    await type(" truth");
+    await chord("Meta", "i");
+    s = await snap();
+    let note = s.notes["fixture:note:1"];
+    expect(p, /<b>grace<\/b>/.test(note) && /<i>(&nbsp;| )truth<\/i>/.test(note), `⌘B ⌘I in the note: ${note.slice(-120)}`);
+    expect(p, s.log.some((l) => l.command_id === "note.bold" && l.handled === false), "note.bold dispatched");
+    await chord("Enter");
+    await type("Heading");
+    await click(...(await centre('#well button[data-command="note.heading"]')));
+    await chord("Enter");
+    await click(...(await centre('#well button[data-command="note.list"]')));
+    await type("item");
+    s = await snap();
+    note = s.notes["fixture:note:1"];
+    expect(p, note.includes("<h3>Heading</h3>") && /<ul><li>item/.test(note), `heading and list: ${note.slice(-160)}`);
+    await click(...(await centre('#well button[data-command="note.link_passage"]')));
+    s = await snap();
+    const value = await js("return document.getElementById('palette-field').value");
+    expect(p, s.paletteOpen && value === "Link passage ", `Link passage asks for the passage ("${value}")`);
+    await type("jn 3:17");
+    const row = await js("const r = document.querySelector('.row[aria-selected=true]'); return r && r.querySelector('.title').textContent");
+    expect(p, row === "Link passage", `first row ${row}`);
+    await chord("Enter");
+    s = await snap();
+    note = s.notes["fixture:note:1"];
+    expect(p, note.includes('data-reference="John.3.17"') && note.includes(">John 3:17</a>"), `link inserted: ${note.slice(-200)}`);
+    await click(...(await centre('#columns > .column[data-number="3"] a.passage-link')));
+    s = await snap();
+    expect(p, s.columns[0].reference === "John.3.17" && s.active === 1, `the link navigates column 1 (${s.columns[0].reference}, active ${s.active})`);
   },
 
   async "only-registered-commands"(p) {
