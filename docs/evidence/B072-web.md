@@ -2,9 +2,11 @@
 
 Recorded 30 October 2026 on the Mac mini (Apple M1, macOS 26.4.1, Chrome 156.0.8078.48) in the
 worktree `openlogos-b072web`, branch `b072-web-shell` cut from `b070-core-shell` (70ce91e) with
-`b070-core-shell` at dec4426 merged in (the core's reading, ink, width and scroll commands), by
+`b070-core-shell` merged in at dec4426 (reading, ink, width and scroll commands) and a7d41e5
+(reason texts, resource titles, `formatShort`, token-aligned sizes and swatches, argument
+expansion rows), by
 a Claude Code subagent working under the lead's audit. Nothing was pushed or merged. No
-simulator was touched. This branch does not change `crates/`; the merged dec4426 does. Only
+simulator was touched. This branch does not change `crates/`; the merged core commits do. Only
 fixture text appears on screen. The Mac half of B072 is a separate branch and has its own evidence.
 
 ## What was built
@@ -41,6 +43,9 @@ other workspaces keep no DOM.
 | `cc789e7` | the first version of this file |
 | `372e6fd` | merge of `b070-core-shell` at dec4426 |
 | `853ddc0` | the shell on the core's reading, ink, width and scroll commands; seed and labels in step with the Mac app; tab rows `BSB · John 3:16`; screenshots retaken without stray ink (20 cases) |
+| `7a5d55e`, `95f73d8` | palette dropdown width token (770), width dot on the core's widths, ten evidence shots; collapsed well as a 22 × 22 grip |
+| `52cfedb` | merge of `b070-core-shell` at a7d41e5 |
+| `ef9afc4` | the core's `disabled_text` / `reason_text`, `setResourceTitles` rows, `formatShort` labels, expansion rows; seed sets only `reading.theme`; four palette shots retaken (21 cases) |
 | this commit | this file, updated |
 
 ## Cases (`just test-shell-web`, WebDriver Actions)
@@ -52,7 +57,8 @@ bindings are what gets tested. The page is reloaded before each case.
 `tokens-match-design` (three themes, swatches and their `::highlight` rules, radii, spacing, fonts, reading size and leading, measure) ·
 `registry-bindings` (one binding per web shortcut, 49 commands, tool keys read from the registry) ·
 `palette-passage-follows-group` (⌘K, `jn 3:16`, Enter: group 1 follows, the pinned note stays) ·
-`palette-sections-and-expand` (shortcut glyphs, Show all N, Tab expands, disabled rows with reasons, `@` and `#` sections, tab rows, Esc returns focus) ·
+`palette-sections-and-expand` (shortcut glyphs, Show all N, Tab expands, disabled rows with the core's reasons, `@` and `#` sections, the core's tab rows `BSB · Jn 3:16`, argument expansion rows, the dropdown width, Esc returns focus) ·
+`reason-text-from-core` (⌘Z with nothing to undo toasts the core's `reason_text`) ·
 `slash-focuses-palette` · `column-tab-workspace-keys` (⌥2, ⌥], ⌥[, ⌥⇧], ⌥⇧[) ·
 `tab-commands-and-undo` (⌥T, ⌥⇧3, ⌘Z twice, ⌘⇧Z, ⌥W, the × of a hidden tab, `+`) ·
 `tool-keys-and-well` (V H P M E C, X, click, grip double-click both ways, grip drag, no bare keys in the field) ·
@@ -61,7 +67,7 @@ bindings are what gets tested. The page is reloaded before each case.
 `column-resize` (`column.resize` on drop, ⌘Z restores, double-click equalizes) · `scroll-anchor-recorded` (`tab.record_scroll`, restored after a rebuild) ·
 `swatches-and-width` (`tool.swatch`, swap from the alternate well, width dot) · `well-clears-column-one` (1440 and 1024; collapsing gives the inset back) · `only-registered-commands`.
 
-Headless and headed Chrome: **20/20** on the final tree.
+Headless and headed Chrome: **21/21** on the final tree.
 
 ## Speed (specs/22 §7)
 
@@ -85,26 +91,28 @@ tabs (120 tabs).
 
 | Interaction (budget) | session | headless work p50 / p95 ms | headless frame p95 | headed work p50 / p95 ms | headed frame p95 |
 |---|---|---:|---:|---:|---:|
-| Palette keystroke: passage, commands, tabs (16 ms) | seed | 0.7 / 1.6 | 16.5 | 0.7 / 1.1 | 16.7 |
-| | bench | 0.9 / 1.6 | 16.5 | 0.9 / 1.5 | 17.1 |
-| Trusted keystroke → palette rendered (16 ms) | seed | 0.5 / 1.3 | 16.6 | 0.9 / 1.8 | 15.7 |
-| | bench | 1.1 / 1.9 | 15.8 | 1.0 / 1.8 | 15.6 |
-| Keystroke with the Text section, fixture provider (50 ms) | seed | 0.5 / 0.6 | 16.6 | 0.6 / 0.8 | 16.4 |
-| | bench | 1.1 / 1.8 | 16.4 | 0.6 / 0.8 | 16.7 |
-| Tab switch within a column (next frame) | seed | 1.6 / 1.9 | 16.6 | 1.6 / 1.9 | 16.2 |
-| | bench | 3.2 / 5.0 | 15.6 | 1.5 / 1.8 | 16.8 |
-| Column focus (next frame) | seed | 0.4 / 0.5 | 15.5 | 0.5 / 0.7 | 16.7 |
-| | bench | 1.3 / 1.8 | 16.6 | 0.6 / 0.7 | 16.9 |
-| Workspace switch to painted text (100 ms) | seed (2) | 3.0 / 4.6 | 16.6 | 1.7 / 2.1 | 17.3 |
-| | bench (10 × 3 × 4) | 2.4 / 2.9 | 16.6 | 1.9 / 2.2 | 16.7 |
-| Tool change (next frame) | seed | 1.5 / 2.0 | 16.5 | 0.7 / 0.8 | 17.1 |
-| | bench | 0.9 / 1.0 | 16.6 | 0.8 / 0.9 | 16.6 |
-| Open a chapter in a tab, warm (100 ms) | seed | 3.4 / 4.9 | 16.0 | 1.7 / 2.0 | 16.7 |
-| | bench | 2.3 / 3.1 | 15.9 | 1.9 / 2.1 | 16.6 |
+| Palette keystroke: passage, commands, tabs (16 ms) | seed | 1.4 / 2.8 | 16.6 | 1.2 / 2.4 | 17.0 |
+| | bench | 0.9 / 3.4 | 16.5 | 0.7 / 1.0 | 16.7 |
+| Trusted keystroke → palette rendered (16 ms) | seed | 0.8 / 2.3 | 15.2 | 0.5 / 1.0 | 15.6 |
+| | bench | 1.1 / 2.7 | 15.5 | 0.8 / 2.6 | 16.1 |
+| Keystroke with the Text section, fixture provider (50 ms) | seed | 1.4 / 1.9 | 16.5 | 1.4 / 2.2 | 17.4 |
+| | bench | 0.5 / 1.6 | 15.6 | 0.6 / 1.9 | 16.7 |
+| Tab switch within a column (next frame) | seed | 3.3 / 4.3 | 16.3 | 4.1 / 5.9 | 16.7 |
+| | bench | 3.7 / 5.3 | 16.4 | 4.4 / 5.9 | 16.8 |
+| Column focus (next frame) | seed | 1.0 / 1.6 | 16.4 | 1.0 / 1.8 | 17.0 |
+| | bench | 1.9 / 2.9 | 16.5 | 1.3 / 1.8 | 16.8 |
+| Workspace switch to painted text (100 ms) | seed (2) | 3.6 / 5.2 | 16.5 | 4.4 / 6.8 | 16.8 |
+| | bench (10 × 3 × 4) | 3.4 / 4.5 | 15.4 | 5.5 / 7.4 | 16.7 |
+| Tool change (next frame) | seed | 2.0 / 2.3 | 15.8 | 0.6 / 2.4 | 16.6 |
+| | bench | 2.7 / 4.2 | 16.2 | 2.1 / 3.2 | 16.7 |
+| Open a chapter in a tab, warm (100 ms) | seed | 4.2 / 5.6 | 16.6 | 1.8 / 2.1 | 16.7 |
+| | bench | 5.0 / 7.1 | 16.5 | 5.5 / 7.5 | 16.4 |
 
-Every row is within its budget. The worst work p95 is 5.0 ms (tab switch, headless, bench),
-about 30 % of one frame. Raw numbers, with max and n: `docs/evidence/B072/web-bench-headless.json`
-and `web-bench-headed.json`, both on 853ddc0. Timer resolution is 0.1 ms because the page is not cross-origin
+Every row is within its budget. The worst work p95 is 7.5 ms (open a chapter, headed, bench), against a 100 ms budget. The
+worst next-frame row is a tab switch at 5.9 ms, 37 % of one frame. These numbers are 1–3 ms
+higher than on 853ddc0. The Mac agent was building on the same machine during this run,
+and the shell's own path changed little (the session now also carries resource titles). Raw numbers, with max and n: `docs/evidence/B072/web-bench-headless.json`
+and `web-bench-headed.json`, both on ef9afc4. Timer resolution is 0.1 ms because the page is not cross-origin
 isolated. Cold launch is not measured here, and neither is the text section over the real
 editions (B071).
 
@@ -120,7 +128,8 @@ The evidence keeps ten web shots (the task's cap is 20 across both hosts):
 - `web-placeholder`: Rom 8 in group 1.
 
 `just test-shell-web --shots docs/evidence/B072 --extra-shots artifacts/b072/shots` takes them
-again. The second flag also writes the other five (`web-dark-1440`, `web-light-1024`,
+again. After a7d41e5, only the four palette shots changed (the core's row labels and reasons),
+and only those were replaced; the other six are byte-identical. The second flag also writes the other five (`web-dark-1440`, `web-light-1024`,
 `web-palette-commands`, `web-workspace-menu`, `web-text-menu`) outside the repository, for the
 NAS archive.
 
@@ -128,13 +137,13 @@ NAS archive.
 
 | Command | Result |
 |---|---|
-| `nix develop .#core -c just ci` | exit 0. `Summary [   6.340s] 299 tests run: 299 passed, 0 skipped` |
-| `nix develop .#web -c just test-web` | exit 0. `tests 7`, `pass 7`, `fail 0`; `conformance cases: 1174 passed, 0 failed (api 0.1.2)` |
+| `nix develop .#core -c just ci` | exit 0. `Summary [   9.295s] 300 tests run: 300 passed, 0 skipped` |
+| `nix develop .#web -c just test-web` | exit 0. `tests 7`, `fail 0`; `conformance cases: 1215 passed, 0 failed (api 0.1.2)` |
 | `nix develop .#web -c just test-wasm` | exit 0. `test result: ok. 6 passed; 0 failed` |
 | `nix develop .#web -c just test-dom-reader` | exit 0. `DOM reader: 13/13 cases passed` |
 | `nix develop .#web -c just test-ink-web` | exit 0. `Web ink: 6/6 palm cases passed, live palm case passed, export valid` |
-| `nix develop .#web -c just test-shell-web --bench --samples 200` | exit 0. `Summary: Web shell: 20/20 cases passed; bench: headless Chrome, 200 samples per interaction` |
-| `nix develop .#web -c just test-shell-web --headed --bench --samples 200` | exit 0. `Summary: Web shell: 20/20 cases passed; bench: headed Chrome, 200 samples per interaction` |
+| `nix develop .#web -c just test-shell-web --bench --samples 200` | exit 0. `Summary: Web shell: 21/21 cases passed; bench: headless Chrome, 200 samples per interaction` |
+| `nix develop .#web -c just test-shell-web --headed --bench --samples 200` | exit 0. `Summary: Web shell: 21/21 cases passed; bench: headed Chrome, 200 samples per interaction` |
 
 ## Deviations from the brief and decisions to review
 
@@ -142,24 +151,24 @@ NAS archive.
    until it ends in `column.resize`, stay outside the session. Highlights and ink strokes
    live in host memory (B074 persists them) and ⌘Z does not undo them. Everything else that
    was host state in the first version is now a core command (dec4426).
-2. **Colours.** The pen draws in the theme's accent, as the Mac app does. Highlight and the
-   highlighter pen use the current swatch. The seed session (theme light, width 4) starts the wells on the token
-   yellow and green, as the Mac app's does, because the core's `InkSettings` default is `#FFE066` / `#7FD1FF`,
-   which are not token swatches. A colour that is not a token swatch still paints, at 30 %.
-   The core's text-size steps run −3…5 but the tokens hold seven sizes (−2…4), so the shell
-   clamps at both ends. One of the two should change.
-3. **Tab rows in the palette** read `BSB · John 3:16` with `Study › column 1`. The core titles
-   them `bsb · John 3:16`, so the host relabels them until the core's tab labels land; it also
-   copies the reason texts (item 4) until then. The workspace row still says
-   `1 columns, 1 tabs`.
-4. **Disabled reasons.** The bindings return `{ kind, … }` but not the sentence, so
-   `format.js` repeats the core's `thiserror` texts. A `reason_text` in the outcome would
-   remove the copy.
+2. **Colours and seed.** The pen draws in the theme's accent, as the Mac app does. Highlight
+   and the highlighter pen use the current swatch. Swatches outside the four token colours
+   still paint, at 30 %. The seed session sets only `reading.theme: "light"`, which is the
+   tokens' default, where the core's is `"system"`. Everything else is the core's default,
+   which since a7d41e5 matches the tokens (sizes −2…4, swatches #F5D90A / #4CC38A, width 4).
+3. **Palette rows and reasons come from the core.** Tab rows (`BSB · Jn 3:16`,
+   `Study · column 1`) use the titles the host registers with `setResourceTitles`. Disabled
+   rows and menu items show `disabled_text`, and a refused command's toast shows
+   `reason_text`. Commands with arguments expand into rows such as "Move tab to column 2" and
+   "Move tab to new column". The host relabel and the copied reason sentences are gone.
+4. **Scroll timing differs between the hosts.** Web records `tab.record_scroll` 150 ms after
+   scrolling stops; the Mac records just before each command. In both, the session holds the
+   anchor before anything reads it.
 5. **The measure cap** comes from `layoutConstants()` (640, and 900 from 28 pt up). The
    tokens file keeps the numbers, labelled as derived, and the test fails if they differ.
-6. **Passages are written the way `formatHuman` writes them** (`John 3:16`, `Rom 8`, not
-   `Romans 8`). Tab labels are the short name plus the chapter (`BSB Jn 3`), with SBL
-   abbreviations from a table in `format.js`; the Mac app uses the same labels.
+6. **Passages.** The identity row is written the way `formatHuman` writes it (`John 3:16`). Tab
+   labels are the short name plus the chapter through the core's `formatShort` (`BSB Jn 3`),
+   and so is the collect toast (`Collected: Jn 3:16`). The Mac app does the same.
 7. **Rename workspace** from the switcher opens the palette prefilled with `Rename workspace `,
    so the name is typed as the command's argument. Enter on any command row that is disabled
    only for a missing argument does the same.
@@ -173,7 +182,7 @@ NAS archive.
 11. **Notes tab.** Column 3's note is a tab of kind `notes` with `content_id: "fixture:note:1"`
     (short name `Note`) and no reference. The notes dock (`view.notes_dock`) is a separate
     trailing panel showing the same note.
-12. **Disk.** Free space on `/` fell from 28 GiB to 12 GiB over the session (Nix shells and
+12. **Disk.** Free space on `/` fell from 28 GiB to 13 GiB over the session (Nix shells and
     `target/`), still above the 4 GiB stop line.
 
 ## Skipped or open
