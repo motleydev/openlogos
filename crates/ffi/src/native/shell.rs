@@ -123,6 +123,8 @@ pub struct ShellTab {
     pub can_go_back: bool,
     /// Whether Forward would move this tab.
     pub can_go_forward: bool,
+    /// The word a Lexicon tab looks up (B076, `tab.open_lexicon`).
+    pub lexicon_word: Option<String>,
 }
 
 /// One column; `number` is its position, 1-based.
@@ -660,6 +662,7 @@ fn view(shell: &Shell) -> ShellSession {
         link_group: t.link_group,
         can_go_back: t.can_go_back,
         can_go_forward: t.can_go_forward,
+        lexicon_word: t.lexicon_word,
     };
     ShellSession {
         workspaces: v
@@ -1145,6 +1148,21 @@ mod tests {
             },
         );
         assert_eq!(rows.groups[0].items[1].command_id, "note.link_passage");
+        let opened = shell
+            .apply(
+                "tab.open_lexicon".into(),
+                ShellCommandArgs {
+                    text: Some("ἀγάπη".into()),
+                    ..Default::default()
+                },
+                false,
+            )
+            .unwrap();
+        assert!(opened.recorded);
+        let session = shell.session();
+        let column = &session.workspaces[0].columns[2];
+        assert_eq!(column.tabs[0].lexicon_word.as_deref(), Some("ἀγάπη"));
+        assert_eq!(session.workspaces[0].active_column_number, 3);
     }
 
     #[test]

@@ -63,6 +63,7 @@ fn session() -> Session {
                     link_group: group,
                     pinned,
                     history: Default::default(),
+                    lexicon_word: None,
                 });
             }
             columns.push(Column {

@@ -174,4 +174,10 @@ test("B076: the tool well follows focus, keeps the stored tool and refuses tools
   assert.deepEqual([view.tool_context, view.tool, view.effective_tool], ["original", "pen", "pen"]);
   shell.setResourceLanguages({});
   assert.equal(shell.toolWell().context, "translation");
+  // Word study results open in the lexicon tab of the column to the right, reused.
+  shell.apply({ command_id: "tab.open_lexicon", args: { text: "ἀγάπη" } });
+  const lexicon = shell.view().workspaces[0].columns[2];
+  assert.equal(lexicon.tabs[0].lexicon_word, "ἀγάπη");
+  assert.equal(shell.view().workspaces[0].active_column_number, 3);
+  assert.equal(shell.view().workspaces[0].columns[0].tabs[0].lexicon_word, null);
 });

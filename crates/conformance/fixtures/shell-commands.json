@@ -240,7 +240,8 @@
     "note.link_passage",
     "selection.note",
     "selection.search",
-    "selection.copy_reference"
+    "selection.copy_reference",
+    "tab.open_lexicon"
   ],
   "scenarios": [
     {
@@ -1844,6 +1845,252 @@
           }
         }
       ]
+    },
+    {
+      "name": "open in lexicon",
+      "steps": [
+        {
+          "command": "tab.open_lexicon",
+          "args": {
+            "text": "ἀγάπη"
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "t3",
+                "*t10"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t10"
+            },
+            "references": {
+              "t10": "John.3.16"
+            },
+            "links": {
+              "t10": "pinned"
+            },
+            "lexicon_words": {
+              "t10": "ἀγάπη",
+              "t4": null
+            }
+          }
+        },
+        {
+          "command": "tab.open_lexicon",
+          "args": {
+            "text": "κόσμος",
+            "reference": "John.3.17",
+            "column": 3
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "t3",
+                "*t10"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t4"
+            },
+            "references": {
+              "t4": "John.3.17"
+            },
+            "links": {
+              "t4": "follows"
+            },
+            "lexicon_words": {
+              "t4": "κόσμος",
+              "t10": "ἀγάπη"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t10"
+            },
+            "references": {
+              "t4": "John.3.16"
+            },
+            "lexicon_words": {
+              "t4": null,
+              "t10": "ἀγάπη"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t1"
+            },
+            "can_undo": false,
+            "lexicon_words": {
+              "t4": null
+            }
+          }
+        },
+        {
+          "command": "tab.open_lexicon",
+          "args": {
+            "text": "λόγος",
+            "new_column": true
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t10"
+            },
+            "lexicon_words": {
+              "t10": "λόγος"
+            }
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          },
+          "expect": {
+            "active": {
+              "workspace": "w1",
+              "column": 4,
+              "tab": "t4"
+            }
+          }
+        },
+        {
+          "command": "tab.open_lexicon",
+          "args": {
+            "text": "ζωή"
+          },
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t12"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 5,
+              "tab": "t12"
+            },
+            "lexicon_words": {
+              "t12": "ζωή",
+              "t4": null
+            }
+          }
+        },
+        {
+          "command": "tab.open_lexicon",
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "tab.open_lexicon",
+          "args": {
+            "text": "ζωή",
+            "column": 9
+          },
+          "expect": {
+            "error": "no_such_column"
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 4,
+              "tab": "t4"
+            }
+          }
+        }
+      ]
     }
   ],
   "palette": [
@@ -2477,6 +2724,34 @@
       "totals": {
         "text": 2
       }
+    },
+    {
+      "name": "open in lexicon with a word",
+      "query": "open in lexicon agape",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Open in lexicon",
+          "command": "tab.open_lexicon",
+          "args": {
+            "text": "agape"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "open in lexicon needs a word",
+      "query": ">open in lexicon",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Open in lexicon",
+          "command": "tab.open_lexicon",
+          "disabled": "needs_argument",
+          "disabled_text": "Needs a word to look up"
+        }
+      ]
     }
   ],
   "migrations": [

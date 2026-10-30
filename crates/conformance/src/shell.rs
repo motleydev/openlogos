@@ -169,6 +169,8 @@ pub struct StepExpectation {
     /// Tab labels in the active workspace from `Shell::view`: `[reference_label,
     /// chapter_label]`.
     pub labels: Option<BTreeMap<String, [Option<String>; 2]>>,
+    /// Lexicon words in the active workspace from `Shell::view` (B076), `null` for none.
+    pub lexicon_words: Option<BTreeMap<String, Option<String>>>,
 }
 
 /// One command of a scenario.
@@ -482,6 +484,25 @@ fn check_step(
             })
             .collect();
         r.check(&format!("{name} labels"), labels, &actual);
+    }
+    if let Some(words) = &expect.lexicon_words {
+        let view = shell.view();
+        let active = view
+            .workspaces
+            .iter()
+            .find(|w| w.id == view.active_workspace_id);
+        let actual: BTreeMap<String, Option<String>> = words
+            .keys()
+            .map(|id| {
+                let word = active
+                    .into_iter()
+                    .flat_map(|w| w.columns.iter().flat_map(|c| c.tabs.iter()))
+                    .find(|t| &t.id == id)
+                    .and_then(|t| t.lexicon_word.clone());
+                (id.clone(), word)
+            })
+            .collect();
+        r.check(&format!("{name} lexicon words"), words, &actual);
     }
     if let Some(revision) = &expect.revision {
         r.check(&format!("{name} revision"), revision, &shell.revision);
