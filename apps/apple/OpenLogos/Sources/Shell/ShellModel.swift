@@ -65,8 +65,6 @@ final class ShellModel: ObservableObject {
     // MARK: Per tab
 
     @Published private(set) var marks: [String: [ReaderMark]] = [:]
-    /// What each Lexicon tab shows, by tab id (B076 Word study).
-    @Published private(set) var lexiconEntries: [String: LexiconEntry] = [:]
     @Published private(set) var toast: String?
     @Published private(set) var selection: ReaderSelection? {
         didSet { if selection != oldValue { refreshWell() } }
@@ -179,7 +177,7 @@ final class ShellModel: ObservableObject {
     #if canImport(AppKit)
     /// A note's fonts and colours: the reading size, spacing and theme.
     var noteTypography: NoteTypography {
-        NoteTypography(size: readingSize, lineSpacing: lineSpacing, text: theme.text, accent: theme.accent)
+        NoteTypography(size: readingSize, lineSpacing: lineSpacing, text: theme.text, accent: theme.accent, rules: theme.rules)
     }
     #endif
 
@@ -236,6 +234,7 @@ final class ShellModel: ObservableObject {
     func refresh() {
         let next = handle.session()
         if next != session { session = next }
+        if activeTab?.kind == "reading" { lastReadingColumnID = activeColumn.id }
         // The dock closed under the focus: focus is back on the tab.
         if focus == .notesDock, !activeWorkspace.notesDockOpen { focus = .tab }
         refreshWell()
@@ -499,21 +498,16 @@ final class ShellModel: ObservableObject {
     static let defaultNoteID = "fixture:note:1"
 
     /// Word study: the clicked word opens in the Lexicon tab of the next column to the right
-    /// (`tab.open_lexicon` reuses it, or adds one, or a new column after the last). Focus
-    /// stays on the clicked column, so Word study goes on there. The core keeps the verse;
-    /// the host keeps the word as clicked.
+    /// (`tab.open_lexicon` reuses it, or opens a new column). The core keeps the word on the
+    /// tab (`lexiconWord`) with the verse; focus stays on the clicked column, so Word study
+    /// goes on there.
     private func openWordStudy(_ selection: ReaderSelection) {
         let ws = activeWorkspace
-        guard let index = ws.columns.firstIndex(where: { $0.shownTabId == selection.paneID }),
-              let source = ws.columns[index].tabs.first(where: { $0.id == selection.paneID }) else { return }
-        let entry = LexiconEntry(word: selection.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)),
-                                 language: textSource.resource(source.contentId).language,
-                                 reference: selection.anchors.first?.segmentId ?? source.reference ?? "")
-        focusColumn(ws.columns[index].number)
-        guard run("tab.open_lexicon", args: ShellCommandArgs(reference: entry.reference)) else { return }
-        let next = activeWorkspace.columns.first { $0.number == ws.columns[index].number + 1 }
-        guard let tab = next?.tabs.first(where: { $0.id == next?.shownTabId && $0.kind == "lexicon" }) else { return }
-        lexiconEntries[tab.id] = entry
+        guard let column = ws.columns.first(where: { $0.shownTabId == selection.paneID }) else { return }
+        let word = selection.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        guard !word.isEmpty else { return }
+        focusColumn(column.number)
+        run("tab.open_lexicon", args: ShellCommandArgs(text: word, reference: selection.anchors.first?.segmentId))
     }
 
     /// Search this: the selected text in the palette field, the palette open.
@@ -544,13 +538,16 @@ final class ShellModel: ObservableObject {
         paletteTextChanged()
     }
 
-    /// A passage link in a note was clicked: the passage opens in the column the note sits
-    /// beside (the active column when it reads Bible text, else the first reading column).
+    /// The column whose Bible text last had focus (passage links in notes move it).
+    private(set) var lastReadingColumnID: String?
+
+    /// A passage link in a note was clicked: the passage opens in the last-focused reading
+    /// column (column 1 when none has had focus).
     func openPassageLink(_ reference: String) {
         let ws = activeWorkspace
-        let reading = ws.columns.first { column in
-            column.number == ws.activeColumnNumber && column.tabs.first { $0.id == column.shownTabId }?.kind == "reading"
-        } ?? ws.columns.first { column in column.tabs.first { $0.id == column.shownTabId }?.kind == "reading" }
+        let isReading = { (column: ShellColumn) in column.tabs.first { $0.id == column.shownTabId }?.kind == "reading" }
+        let reading = ws.columns.first { $0.id == lastReadingColumnID && isReading($0) }
+            ?? ws.columns.first { $0.number == 1 && isReading($0) } ?? ws.columns.first(where: isReading)
         guard let column = reading else { return show(toast: "No Bible text open for \(ShellReference.human(reference))") }
         setFocus(.tab)
         run("nav.navigate", args: ShellCommandArgs(column: column.number, reference: reference))

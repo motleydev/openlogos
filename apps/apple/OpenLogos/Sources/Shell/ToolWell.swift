@@ -32,7 +32,7 @@ struct ToolWell: View {
         "note": "note.text.badge.plus",
         "search": "magnifyingglass",
         "copy-reference": "doc.on.doc",
-        "study": "book",
+        "study": "text.book.closed",
     ]
 
     static func symbol(_ icon: String) -> String { symbols[icon] ?? "questionmark.square.dashed" }

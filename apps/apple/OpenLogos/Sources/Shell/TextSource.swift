@@ -105,6 +105,18 @@ enum ShellReference {
         return "\(human(parts[0]))–\(tail)"
     }
 
+    /// A word's language from its script: Greek letters `grc`, Hebrew letters `hbo`.
+    static func language(ofWord word: String) -> String {
+        for scalar in word.unicodeScalars {
+            switch scalar.value {
+            case 0x0370...0x03FF, 0x1F00...0x1FFF: return "grc"
+            case 0x0590...0x05FF, 0xFB1D...0xFB4F: return "hbo"
+            default: continue
+            }
+        }
+        return "en"
+    }
+
     /// `grc` → `Greek`, for the lexicon tab.
     static func languageName(_ tag: String) -> String {
         switch tag {

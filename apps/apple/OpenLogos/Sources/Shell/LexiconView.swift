@@ -1,16 +1,7 @@
-// B076: the Lexicon tab Word study opens: the word as it was clicked, its language and its
-// passage, and an honest line that the entries are not here yet. No glosses are invented.
+// B076: the Lexicon tab Word study opens (`tab.open_lexicon`): the word as it was clicked
+// (the core's `lexiconWord`), its language and its passage, and an honest line that the
+// entries are not here yet. No glosses are invented.
 import SwiftUI
-
-/// What a Lexicon tab was opened for.
-struct LexiconEntry: Equatable {
-    /// The word as clicked, with its marks.
-    let word: String
-    /// BCP 47 tag of the text it came from (`grc`, `hbo`).
-    let language: String
-    /// Its verse (OSIS, `John.3.16`).
-    let reference: String
-}
 
 struct LexiconView: View {
     @ObservedObject var model: ShellModel
@@ -19,14 +10,13 @@ struct LexiconView: View {
     static let placeholder = "Lexicon entries arrive with the lexicon import."
 
     var body: some View {
-        let entry = model.lexiconEntries[tab.id]
         VStack(alignment: .leading, spacing: ShellTokens.Spacing.s) {
-            if let entry {
-                Text(entry.word)
-                    .font(.system(size: model.readingSize + 9, design: .serif))
+            if let word = tab.lexiconWord {
+                Text(word)
+                    .font(.system(size: model.readingSize * 1.5, weight: .semibold, design: .serif))
                     .textSelection(.enabled)
                     .accessibilityIdentifier("shell-lexicon-word")
-                Text("\(ShellReference.languageName(entry.language)) · \(ShellReference.human(entry.reference))")
+                Text("\(ShellReference.languageName(ShellReference.language(ofWord: word))) · \(ShellReference.human(tab.reference))")
                     .font(ShellTokens.chromeFont)
                     .foregroundStyle(model.theme.chromeColor)
                     .accessibilityIdentifier("shell-lexicon-source")

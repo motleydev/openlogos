@@ -13,6 +13,8 @@ import AppKit
 extension NSAttributedString.Key {
     /// A paragraph styled as a heading.
     static let openLogosNoteHeading = NSAttributedString.Key("org.openlogos.note.heading")
+    /// A quoted selection (Note on it): indented, with a rule on the leading edge.
+    static let openLogosNoteQuote = NSAttributedString.Key("org.openlogos.note.quote")
 }
 
 /// The notes being edited, by note id, and the editors showing them.
@@ -146,12 +148,12 @@ final class NoteStore {
         }
     }
 
-    /// Note on it: `> “quoted text” — John 3:16` as a new paragraph at the end of the note,
-    /// the passage a link.
+    /// Note on it: `“quoted text” — John 3:16` as a new quote paragraph at the end of the
+    /// note (indented 12 with a 2 pt rule on the leading edge), the passage a link.
     func appendQuote(_ text: String, reference: String, to noteID: String) {
-        let quote = NSMutableAttributedString(string: "> “\(text)” — ")
+        let quote = NSMutableAttributedString(string: "“\(text)” — ", attributes: [.openLogosNoteQuote: true])
         let first = reference.split(separator: "–").first.map(String.init) ?? reference
-        var link: [NSAttributedString.Key: Any] = [:]
+        var link: [NSAttributedString.Key: Any] = [.openLogosNoteQuote: true]
         link[.link] = Self.url(first)
         quote.append(NSAttributedString(string: ShellReference.humanRange(reference), attributes: link))
         if let view = editor(for: noteID), let storage = view.textStorage {
@@ -194,9 +196,14 @@ struct NoteTypography: Equatable {
     let lineSpacing: CGFloat
     let text: UInt32
     let accent: UInt32
+    var rules: UInt32 = 0xE4E1DA
 
     var body: NSFont { Self.serif(size, weight: .regular) }
-    var heading: NSFont { Self.serif(size + 4, weight: .semibold) }
+    var heading: NSFont { Self.serif((size * 1.25).rounded(), weight: .semibold) }
+
+    /// The quote paragraph's indent and the list's hanging indent.
+    static let quoteIndent: CGFloat = 12
+    var bulletIndent: CGFloat { ("• " as NSString).size(withAttributes: [.font: body]).width }
 
     static func serif(_ size: CGFloat, weight: NSFont.Weight) -> NSFont {
         let base = NSFont.systemFont(ofSize: size, weight: weight)
@@ -252,18 +259,52 @@ final class NoteTextView: NSTextView {
     /// Fonts from each run's traits and the heading mark; colours from the theme.
     func restyle(_ range: NSRange) {
         guard let storage = textStorage, range.length > 0, range.location + range.length <= storage.length else { return }
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineHeightMultiple = typography.lineSpacing
-        paragraph.paragraphSpacing = typography.size * 0.4
         storage.beginEditing()
         storage.enumerateAttributes(in: range) { attributes, run, _ in
             let heading = attributes[.openLogosNoteHeading] != nil
             let traits = (attributes[.font] as? NSFont)?.fontDescriptor.symbolicTraits.intersection([.bold, .italic]) ?? []
             var font = heading ? typography.heading : typography.body
             if !traits.isEmpty { font = NSFont(descriptor: font.fontDescriptor.withSymbolicTraits(font.fontDescriptor.symbolicTraits.union(traits)), size: font.pointSize) ?? font }
-            storage.addAttributes([.font: font, .foregroundColor: PlatformColor(hex: typography.text), .paragraphStyle: paragraph], range: run)
+            storage.addAttributes([.font: font, .foregroundColor: PlatformColor(hex: typography.text)], range: run)
+        }
+        // Paragraph styles: spacing, a hanging indent for `• ` items, the quote's indent.
+        let text = storage.string as NSString
+        text.enumerateSubstrings(in: text.paragraphRange(for: range), options: [.byParagraphs, .substringNotRequired]) { _, paragraphRange, enclosing, _ in
+            let style = NSMutableParagraphStyle()
+            style.lineHeightMultiple = self.typography.lineSpacing
+            style.paragraphSpacing = self.typography.size * 0.4
+            if paragraphRange.length > 0, storage.attribute(.openLogosNoteQuote, at: paragraphRange.location, effectiveRange: nil) != nil {
+                style.firstLineHeadIndent = NoteTypography.quoteIndent
+                style.headIndent = NoteTypography.quoteIndent
+            } else if text.substring(with: paragraphRange).hasPrefix("• ") {
+                style.headIndent = self.typography.bulletIndent
+            }
+            storage.addAttribute(.paragraphStyle, value: style, range: enclosing)
         }
         storage.endEditing()
+        needsDisplay = true
+    }
+
+    /// The quote paragraphs' 2 pt rule on the leading edge, in the theme's rule colour.
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+        guard let storage = textStorage, storage.length > 0, let manager = textLayoutManager,
+              let content = manager.textContentManager else { return }
+        PlatformColor(hex: typography.rules).setFill()
+        storage.enumerateAttribute(.openLogosNoteQuote, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+            guard value != nil,
+                  let start = content.location(content.documentRange.location, offsetBy: range.location),
+                  let end = content.location(start, offsetBy: range.length),
+                  let textRange = NSTextRange(location: start, end: end) else { return }
+            var box = NSRect.null
+            manager.enumerateTextSegments(in: textRange, type: .standard, options: []) { _, frame, _, _ in
+                box = box.union(frame)
+                return true
+            }
+            guard !box.isNull else { return }
+            let origin = textContainerOrigin
+            NSRect(x: origin.x, y: box.minY + origin.y, width: 2, height: box.height).fill()
+        }
     }
 
     func apply(_ next: NoteTypography) {

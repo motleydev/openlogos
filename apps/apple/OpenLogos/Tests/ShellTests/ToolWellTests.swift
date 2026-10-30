@@ -172,13 +172,16 @@ final class ToolWellTests: XCTestCase {
         XCTAssertEqual(third.shownTabId, lexicon.id, "shown in column 3, beside the note")
         XCTAssertEqual(TabTitle.label(lexicon), "Lexicon Jn 3")
         XCTAssertEqual(model.activeWorkspace.activeColumnNumber, 2, "focus stays where the word was clicked")
-        XCTAssertEqual(model.lexiconEntries[lexicon.id], LexiconEntry(word: "ἠγάπησεν", language: "grc", reference: "John.3.16"))
+        XCTAssertEqual(lexicon.lexiconWord, "ἠγάπησεν", "the core keeps the word on the tab")
+        XCTAssertEqual(lexicon.reference, "John.3.16")
+        XCTAssertEqual(ShellReference.language(ofWord: "ἠγάπησεν"), "grc")
+        XCTAssertEqual(ShellReference.language(ofWord: "בְּרֵאשִׁית"), "hbo")
         XCTAssertEqual(model.effectiveTool, "word_study")
 
         surface.select(display: layout.runMap.displayRange(fromCore: try XCTUnwrap(layout.coreRange(ofPhrase: "κόσμον"))))
         surface.dragEnded()
         XCTAssertEqual(model.activeWorkspace.columns[2].tabs.filter { $0.kind == "lexicon" }.count, 1, "the Lexicon tab is reused")
-        XCTAssertEqual(model.lexiconEntries[lexicon.id]?.word, "κόσμον")
+        XCTAssertEqual(model.activeWorkspace.columns[2].tabs.first { $0.kind == "lexicon" }?.lexiconWord, "κόσμον")
         spin(0.2)
         XCTAssertNotNil(LexiconView.placeholder.range(of: "lexicon import"), "no glosses, an honest line")
 
@@ -222,7 +225,10 @@ final class ToolWellTests: XCTestCase {
         try select("loved the world", in: "t1", model)
         model.run("selection.note")
         let text = model.notes.document(ShellModel.defaultNoteID).string
-        XCTAssertTrue(text.hasSuffix("\n> “loved the world” — John 3:16"), text)
+        XCTAssertTrue(text.hasSuffix("\n“loved the world” — John 3:16"), text)
+        let quoted = model.notes.document(ShellModel.defaultNoteID)
+        XCTAssertNotNil(quoted.attribute(.openLogosNoteQuote, at: quoted.length - 3, effectiveRange: nil), "a quote paragraph")
+        XCTAssertNotNil(quoted.attribute(.link, at: quoted.length - 3, effectiveRange: nil), "the passage is a link")
         XCTAssertFalse(model.activeWorkspace.notesDockOpen, "the notes tab is open, so no dock")
 
         model.run("workspace.next")

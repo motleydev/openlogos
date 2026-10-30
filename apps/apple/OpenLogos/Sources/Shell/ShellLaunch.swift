@@ -117,7 +117,8 @@ enum ShellLaunch {
     }
 
     #if os(macOS)
-    /// The shown note being edited: a heading, a bold word and a passage link, focus in it.
+    /// The shown note being edited: a heading, a bold word, a passage link and a quote, focus
+    /// in it.
     private static func noteDemo(_ model: ShellModel) {
         guard let column = model.activeWorkspace.columns.first(where: { c in c.tabs.first { $0.id == c.shownTabId }?.kind == "notes" }),
               let editor = model.notes.editor(pane: column.shownTabId), let storage = editor.textStorage else { return }
@@ -137,6 +138,8 @@ enum ShellLaunch {
         editor.typingAttributes[.font] = editor.typography.body
         editor.insertText(" the world: see ", replacementRange: editor.selectedRange())
         model.run("note.link_passage", args: ShellCommandArgs(reference: "John.3.16"))
+        // What Note on it leaves: the quote paragraph with its rule and passage link.
+        model.notes.appendQuote("loved the world", reference: "John.3.16", to: column.tabs.first { $0.id == column.shownTabId }?.contentId ?? ShellModel.defaultNoteID)
     }
     #endif
 
