@@ -208,6 +208,7 @@ final class CoreHostTests: XCTestCase {
         let opened = try shell.apply(commandId: "tab.open_lexicon", args: ShellCommandArgs(text: "ἀγάπη"), hasSelection: false)
         XCTAssertTrue(opened.recorded)
         XCTAssertEqual(shell.session().workspaces[0].columns[2].tabs[0].lexiconWord, "ἀγάπη")
+        XCTAssertEqual(shell.session().workspaces[0].activeColumnNumber, 2, "focus stays where the word was clicked")
     }
 
     // MARK: - Fixture decoding

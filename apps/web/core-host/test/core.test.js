@@ -178,6 +178,6 @@ test("B076: the tool well follows focus, keeps the stored tool and refuses tools
   shell.apply({ command_id: "tab.open_lexicon", args: { text: "ἀγάπη" } });
   const lexicon = shell.view().workspaces[0].columns[2];
   assert.equal(lexicon.tabs[0].lexicon_word, "ἀγάπη");
-  assert.equal(shell.view().workspaces[0].active_column_number, 3);
+  assert.equal(shell.view().workspaces[0].active_column_number, 2, "focus stays where the word was clicked");
   assert.equal(shell.view().workspaces[0].columns[0].tabs[0].lexicon_word, null);
 });

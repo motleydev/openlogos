@@ -1871,8 +1871,8 @@
             ],
             "active": {
               "workspace": "w1",
-              "column": 2,
-              "tab": "t10"
+              "column": 1,
+              "tab": "t1"
             },
             "references": {
               "t10": "John.3.16"
@@ -1910,14 +1910,14 @@
             ],
             "active": {
               "workspace": "w1",
-              "column": 3,
-              "tab": "t4"
+              "column": 1,
+              "tab": "t1"
             },
             "references": {
               "t4": "John.3.17"
             },
             "links": {
-              "t4": "follows"
+              "t4": "pinned"
             },
             "lexicon_words": {
               "t4": "κόσμος",
@@ -1930,8 +1930,8 @@
           "expect": {
             "active": {
               "workspace": "w1",
-              "column": 2,
-              "tab": "t10"
+              "column": 1,
+              "tab": "t1"
             },
             "references": {
               "t4": "John.3.16"
@@ -1939,6 +1939,9 @@
             "lexicon_words": {
               "t4": null,
               "t10": "ἀγάπη"
+            },
+            "links": {
+              "t4": "follows"
             }
           }
         },
@@ -1993,8 +1996,8 @@
             ],
             "active": {
               "workspace": "w1",
-              "column": 2,
-              "tab": "t10"
+              "column": 1,
+              "tab": "t1"
             },
             "lexicon_words": {
               "t10": "λόγος"
@@ -2040,8 +2043,8 @@
             ],
             "active": {
               "workspace": "w1",
-              "column": 5,
-              "tab": "t12"
+              "column": 4,
+              "tab": "t4"
             },
             "lexicon_words": {
               "t12": "ζωή",
