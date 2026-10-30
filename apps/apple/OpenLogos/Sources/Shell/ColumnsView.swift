@@ -18,7 +18,7 @@ struct ColumnsView: View {
                     if index > 0 {
                         ColumnRule(model: model, left: ws.columns[index - 1], right: column, widths: widths, index: index)
                     }
-                    ColumnView(model: model, column: column, isActive: column.number == ws.activeColumnNumber, leading: index == 0 && !model.toolWellCollapsed)
+                    ColumnView(model: model, column: column, isActive: column.number == ws.activeColumnNumber, leading: index == 0)
                         .frame(width: max(0, widths[index]))
                 }
             }
@@ -88,7 +88,7 @@ struct ColumnView: View {
     @ObservedObject var model: ShellModel
     let column: ShellColumn
     let isActive: Bool
-    /// The leading column's text clears the floating tool well.
+    /// The leading column's text clears the floating tool well, expanded or collapsed.
     var leading = false
 
     var body: some View {
@@ -97,7 +97,7 @@ struct ColumnView: View {
             IdentityRow(model: model, column: column, isActive: isActive)
             Rectangle().fill(model.theme.rulesColor).frame(height: ShellTokens.rule)
             if let tab = column.tabs.first(where: { $0.id == column.shownTabId }) {
-                TabBody(model: model, tab: tab, column: column, leadingInset: leading ? ShellTokens.toolWellInset + ShellTokens.toolWellWidth + ShellTokens.Spacing.s : 0)
+                TabBody(model: model, tab: tab, column: column, leadingInset: leading ? model.toolWellClearance : 0)
                     .id(tab.id)
             }
         }

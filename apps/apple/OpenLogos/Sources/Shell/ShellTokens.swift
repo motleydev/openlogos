@@ -31,6 +31,8 @@ enum ShellTokens {
     static let identityRowHeight: CGFloat = 32
     static let badgeSide: CGFloat = 20
     static let toolWellWidth: CGFloat = 40
+    /// The collapsed well: the grip alone, a square.
+    static let toolGripSide: CGFloat = 22
     static let toolButtonSide: CGFloat = 32
     static let toolWellInset: CGFloat = 12
     static let accentUnderline: CGFloat = 2

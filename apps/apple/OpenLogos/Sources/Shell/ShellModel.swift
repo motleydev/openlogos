@@ -43,6 +43,10 @@ final class ShellModel: ObservableObject {
     // MARK: Tools
 
     @Published var toolWellCollapsed = false
+    /// 40 pt expanded, the 22 pt grip collapsed.
+    var toolWellWidth: CGFloat { toolWellCollapsed ? ShellTokens.toolGripSide : ShellTokens.toolWellWidth }
+    /// Column 1's text inset: the well (or its grip) + 12 + 8, so nothing ever covers text.
+    var toolWellClearance: CGFloat { ShellTokens.toolWellInset + toolWellWidth + ShellTokens.Spacing.s }
     /// The well's centre as a fraction of the columns' height.
     @Published var toolWellPosition: CGFloat = 0.5
 

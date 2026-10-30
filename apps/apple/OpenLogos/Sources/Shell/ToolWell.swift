@@ -32,8 +32,8 @@ struct ToolWell: View {
             let centre = model.toolWellPosition * geometry.size.height
             let y = max(height / 2 + 8, min(geometry.size.height - height / 2 - 8, centre))
             well
-                .frame(width: ShellTokens.toolWellWidth)
-                .position(x: ShellTokens.toolWellInset + ShellTokens.toolWellWidth / 2, y: y)
+                .frame(width: model.toolWellWidth)
+                .position(x: ShellTokens.toolWellInset + model.toolWellWidth / 2, y: y)
                 .environment(\.wellGeometryHeight, geometry.size.height)
         }
     }
@@ -84,7 +84,7 @@ private struct Grip: View {
         Image(systemName: "line.3.horizontal")
             .font(.system(size: 9, weight: .semibold))
             .foregroundStyle(model.theme.chromeColor)
-            .frame(width: ShellTokens.toolWellWidth, height: 22)
+            .frame(width: model.toolWellWidth, height: ShellTokens.toolGripSide)
             .contentShape(Rectangle())
             .onTapGesture(count: 2) { model.run("view.tool_palette") }
             .gesture(
