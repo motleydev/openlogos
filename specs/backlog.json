@@ -1457,6 +1457,137 @@
       ],
       "initial_status": "blocked",
       "human_gate": false
+    },
+    {
+      "id": "B070",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Core shell model, command registry and palette query",
+      "depends_on": [
+        "B040",
+        "B062"
+      ],
+      "acceptance": [
+        "Session, workspace, numbered column and tab model in crates/workspaces with a lossless migration from workspace 1.x to the new MAJOR schema (ADR 0003), schema and examples validated",
+        "One command registry in the core (id, title, aliases, scope, arguments, per-platform default shortcut, undoable) and an apply function with undo for every layout command; hosts dispatch only registered commands",
+        "Palette query in the core returning one ranked, sectioned list (passage, commands, tabs and workspaces across every workspace, text) with the grammar of specs/22 §3, exposed through UniFFI and wasm-bindgen with conformance cases run by all hosts",
+        "Palette, tab-switch and workspace-switch core timings measured against specs/22 §7 in a repeatable bench"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/21-reading-interactions.md",
+        "specs/12-workspace-ux.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B071",
+      "phase": "P1",
+      "owner_role": "data-engineer",
+      "title": "Preview text pack for the three approved editions",
+      "depends_on": [
+        "B003",
+        "B064"
+      ],
+      "acceptance": [
+        "BSB, SBLGNT and WLC/OSHB from the NAS artifacts packed by the B064 engine into a local preview pack outside the repository, with chapter text and FTS5 search, manifest hashes checked against the approved rights records",
+        "Text-search query time over the three editions measured against the 50 ms budget of specs/22 §7 on web (wasm) and Mac",
+        "No corpus bytes committed; the pack builds from one command and is documented"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/19-search-and-retrieval.md",
+        "specs/10-sources.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B072",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Shell on web and Mac: columns, tabs, palette field and tool palette",
+      "depends_on": [
+        "B070",
+        "B071",
+        "B005"
+      ],
+      "acceptance": [
+        "Web shell (apps/web) and Mac app render numbered columns with tabs from the core model, the always-visible palette field and the floating tool palette, on real chapters of the three editions",
+        "Every visible action dispatches a registered command; the keyboard table of specs/22 §6 works on both hosts",
+        "Text size, line spacing and theme controls exist on both hosts for readability review",
+        "Budgets of specs/22 §7 measured on both hosts; owner feedback session held and recorded"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/16-design-guide.md",
+        "specs/21-reading-interactions.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B073",
+      "phase": "P1",
+      "owner_role": "reader-design",
+      "title": "Usability baseline review of the shell",
+      "depends_on": [
+        "B072"
+      ],
+      "acceptance": [
+        "Owner feedback from ~/OpenLogosFeedback triaged into accepted changes with screenshots before and after",
+        "Task script of specs/12 run on web and Mac with errors, lost context and time recorded",
+        "specs/12, 16 and 21 revised to match specs/22 where they disagree"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/12-workspace-ux.md",
+        "specs/16-design-guide.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": true
+    },
+    {
+      "id": "B074",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Parallel workspaces, cross-workspace search and session restore",
+      "depends_on": [
+        "B072"
+      ],
+      "acceptance": [
+        "Create, rename, duplicate, close and switch workspaces on web and Mac within the 100 ms budget with ten workspaces of twelve tabs",
+        "Palette finds tabs and workspaces across all workspaces and switches to them",
+        "Session restore after quit reproduces every workspace, column, tab, scroll anchor and active tool; tab drag between columns and column resize are undoable"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/12-workspace-ux.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B075",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Shell on iPad: touch, Pencil, compact widths and accessibility",
+      "depends_on": [
+        "B074",
+        "B039"
+      ],
+      "acceptance": [
+        "iPad shell with the tool palette driven by Pencil and finger per B039 palm rules, measured on a real iPad",
+        "Compact and regular layouts reach every column by number without closing any",
+        "VoiceOver and full keyboard access to palette, columns, tabs and tools on iPad, Mac and web"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/18-platform-capabilities.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
     }
   ]
 }

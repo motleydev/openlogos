@@ -4,7 +4,7 @@
   "source_id": "S07",
   "artifact_sha256": "5e732216089b84f3499ac6904980b705642019ab1fd01ef08b1fec3f140b15bd",
   "edition_id": "oshb-wlc:4.20:morphhb-3d15126",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "LicenseRef-WLC-Public-Domain AND CC-BY-4.0",
   "evidence_url": "https://github.com/openscriptures/morphhb/blob/3d15126fb1ef74867fc1434be1942e837932691f/LICENSE.md",
   "license_artifact_sha256": "9bf4a2890c25372e4c1dc750d550bfb4eacfbfcb63c53123b0628159370d1878",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-10-30",
   "acquisition": {
     "upstream_url": "https://github.com/openscriptures/morphhb",
     "commit": "3d15126fb1ef74867fc1434be1942e837932691f",

@@ -4,7 +4,7 @@
   "source_id": "S06",
   "artifact_sha256": "30063eb00f1d81f1f56716ea95a07507f6d12b69ec0a5c37e1d05ae23b316faf",
   "edition_id": "sblgnt:v1.2:2023-07-10",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "CC-BY-4.0",
   "evidence_url": "https://github.com/Faithlife/SBLGNT/blob/d7f35adca9ec410e1d1499c63b4dd989d76c8d4d/LICENSE",
   "license_artifact_sha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-10-30",
   "acquisition": {
     "upstream_url": "https://github.com/Faithlife/SBLGNT",
     "commit": "d7f35adca9ec410e1d1499c63b4dd989d76c8d4d",
