@@ -55,6 +55,10 @@ pub struct Tab {
     /// The tab's own back and forward stacks.
     #[serde(default, skip_serializing_if = "PaneHistory::is_empty")]
     pub history: PaneHistory,
+    /// The word a Lexicon tab looks up, as the reader clicked it (B076, `tab.open_lexicon`);
+    /// `None` for every other tab.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lexicon_word: Option<String>,
 }
 
 impl Tab {
@@ -730,6 +734,7 @@ impl Workspace {
             link_group: p.link_group.clone(),
             pinned: p.pinned,
             history: PaneHistory::default(),
+            lexicon_word: None,
         };
         let structure = [
             DeviceClass::UltraWide,

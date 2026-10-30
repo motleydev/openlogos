@@ -205,6 +205,9 @@ final class CoreHostTests: XCTestCase {
         XCTAssertEqual(shell.session().effectiveTool, "pen")
         let rows = shell.paletteQuery(text: ":Jn 3:16", context: ShellPaletteContext(hasSelection: false, platform: .mac, focus: .notesDock))
         XCTAssertEqual(rows.groups.first?.items.map(\.commandId), ["nav.navigate", "note.link_passage"])
+        let opened = try shell.apply(commandId: "tab.open_lexicon", args: ShellCommandArgs(text: "ἀγάπη"), hasSelection: false)
+        XCTAssertTrue(opened.recorded)
+        XCTAssertEqual(shell.session().workspaces[0].columns[2].tabs[0].lexiconWord, "ἀγάπη")
     }
 
     // MARK: - Fixture decoding

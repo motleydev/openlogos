@@ -229,6 +229,9 @@ class CoreHostTest {
         shell.apply("column.focus", ShellCommandArgs(column = 2u), false)
         assertEquals("original", shell.session().toolContext)
         assertEquals("pen", shell.session().effectiveTool)
+        val opened = shell.apply("tab.open_lexicon", ShellCommandArgs(text = "ἀγάπη"), false)
+        assertTrue(opened.recorded)
+        assertEquals("ἀγάπη", shell.session().workspaces[0].columns[2].tabs[0].lexiconWord)
     }
 
     // Fixture decoding

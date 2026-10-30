@@ -156,6 +156,15 @@ the existing ones: Note on it appends the quoted text and its reference to the o
 Search this puts the selected text into the palette field, Copy reference copies the
 selection's reference in `formatHuman` form.
 
+**Word study results** open through `tab.open_lexicon` (`text`: the word as clicked,
+`reference`, and `column` or `new_column`). The target is the column given, else the column
+to the right of the active one, else a new column. A Lexicon tab already in the target column
+is reused (its word and passage change and it is shown); otherwise a new pinned Lexicon tab
+opens there. The target becomes the active column. The command is undoable like `tab.new`;
+the tab carries the word as `lexicon_word` (workspace schema 2.0, optional). In the palette,
+"Open in lexicon" takes the word inline (`open in lexicon agape`) and without one is disabled
+with "Needs a word to look up".
+
 **Effective tool.**
 
 | Rule | Behaviour |

@@ -46,6 +46,8 @@ pub struct TabView {
     pub can_go_back: bool,
     /// Whether Forward would move this tab.
     pub can_go_forward: bool,
+    /// The word a Lexicon tab looks up (B076, `tab.open_lexicon`).
+    pub lexicon_word: Option<String>,
 }
 
 /// One column; `number` is its position, 1-based.
@@ -147,6 +149,7 @@ fn tab_view(shell: &Shell, tab: &Tab) -> TabView {
         link_group,
         can_go_back: !tab.history.back.is_empty(),
         can_go_forward: !tab.history.forward.is_empty(),
+        lexicon_word: tab.lexicon_word.clone(),
     }
 }
 
