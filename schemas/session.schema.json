@@ -41,14 +41,14 @@
       "minimum": 0
     },
     "reading": {
-      "description": "Text size step from the platform default, line spacing and theme (B070 follow-up for B072); absent means the defaults (0, 1.5, system).",
+      "description": "Text size step from the platform default, line spacing and theme (B070 follow-up for B072); text_size_step indexes the seven token sizes 15/17/19/21/24/28/32 pt of design/tokens/shell.json with 0 = 19; absent means the defaults (0, 1.5, system).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "text_size_step": {
           "type": "integer",
-          "minimum": -3,
-          "maximum": 5
+          "minimum": -2,
+          "maximum": 4
         },
         "line_spacing": {
           "type": "number",
@@ -75,7 +75,7 @@
       ]
     },
     "ink": {
-      "description": "The tool palette's brush width and its two swatch wells, kept with the tool (specs/22 §4); absent means the defaults (4, #FFE066, #7FD1FF).",
+      "description": "The tool palette's brush width and its two swatch wells, kept with the tool (specs/22 §4); absent means the defaults (4, #F5D90A, #4CC38A, the token highlight colours).",
       "type": "object",
       "additionalProperties": false,
       "properties": {

@@ -17,11 +17,16 @@
 //! only from 600 up. A command whose title or alias is followed by an argument
 //! (`rename workspace Greek`, `move tab to column 3`, `set line spacing 1.7`) scores 950 and carries
 //! the argument; a
-//! trailing number fills a column-number argument. Within a section, results sort by score,
+//! trailing number fills a column-number argument. A command typed without the column, tab or
+//! workspace it needs expands into one concrete row per choice at the same score ("Move tab
+//! to column 2", "Move tab to new column", "Go to BSB · Rom 8:28"), omitting the current
+//! one; an empty `>` lists the commands themselves. Within a section, results sort by score,
 //! then enabled before disabled, then registry order (commands) or session order
-//! (workspaces, then tabs by workspace, column and position). A tab matches its resource id,
-//! its passage as written, in short form (`Gen 1:1`) and with the book's full name
-//! (`Genesis 1:1`); it also scores 800 when the
+//! (workspaces, then tabs by workspace, column and position). A tab row reads
+//! `resource · passage` with the resource's registered short name ([`Shell::set_resource_titles`],
+//! else its id) and the short reference (`BSB · Jn 3:16`, `ReferenceSet::to_short`). A tab
+//! matches its resource id and name, its passage as written, in display form (`John 3:16`),
+//! short form (`Jn 3:16`) and with the book's full name (`Genesis 1:1`); it also scores 800 when the
 //! query is a passage in the same book and chapter as its reference, 600 in the same book.
 //! The Text section keeps the provider's order. Each section shows
 //! [`DEFAULT_SECTION_LIMIT`] results (one passage) unless it is the expanded one.
@@ -204,6 +209,9 @@ pub struct PaletteItem {
     pub invocation: Invocation,
     /// Why Enter would do nothing now, if so.
     pub disabled: Option<DisabledReason>,
+    /// The same reason in words for the row ("Choose a tab"), so no host copies the core's
+    /// wording.
+    pub disabled_text: Option<String>,
     /// The platform's default shortcut, for a command.
     pub shortcut: Option<String>,
 }
@@ -365,12 +373,19 @@ impl PaletteIndex {
                         .and_then(|r| osis_verse(r).or_else(|| parse(r, table).ok()))
                         .filter(|set| !set.ranges.is_empty());
                     let human = parsed.as_ref().map(|set| set.to_human(table));
-                    let title = match &human {
-                        Some(h) => format!("{} · {h}", tab.content_id),
-                        None => tab.content_id.clone(),
+                    let short = parsed.as_ref().map(ReferenceSet::to_short);
+                    let resource = session.resource_title(&tab.content_id);
+                    let title = match &short {
+                        Some(s) => format!("{resource} · {s}"),
+                        None => resource.to_owned(),
                     };
-                    let mut folded = vec![fold(&tab.content_id)];
+                    // The row title too, so words can span resource and passage (`sblgnt jn`).
+                    let mut folded = vec![fold(&tab.content_id), fold(&title)];
+                    if resource != tab.content_id {
+                        folded.push(fold(resource));
+                    }
                     folded.extend(human.as_deref().map(fold));
+                    folded.extend(short.as_deref().map(fold));
                     // The book's full name too, so `@genesis` finds a tab at `Gen 1:1`.
                     if let (Some(set), Some(h)) = (&parsed, &human) {
                         let book = set.ranges[0].start.book;
@@ -426,6 +441,15 @@ fn osis_verse(text: &str) -> Option<ReferenceSet> {
     })
 }
 
+/// `1 column`, `3 columns`.
+fn count(n: usize, noun: &str) -> String {
+    if n == 1 {
+        format!("1 {noun}")
+    } else {
+        format!("{n} {noun}s")
+    }
+}
+
 fn target_args(target: Option<ColumnTarget>, reference: String) -> CommandArgs {
     CommandArgs {
         reference: Some(reference),
@@ -467,6 +491,7 @@ fn argument_from(shape: ArgumentShape, rest: &str) -> Option<CommandArgs> {
 
 fn command_items(
     shell: &Shell,
+    index: &PaletteIndex,
     query: &ParsedQuery,
     context: &PaletteContext,
 ) -> Vec<(PaletteItem, usize)> {
@@ -533,6 +558,34 @@ fn command_items(
         let Some((score, args)) = best else {
             continue;
         };
+        let shortcut = spec
+            .shortcuts
+            .for_platform(context.platform)
+            .first()
+            .cloned();
+        if !folded_query.is_empty() && args == CommandArgs::default() {
+            let rows = expansions(shell, index, &spec.id);
+            if !rows.is_empty() {
+                for (i, (title, subtitle, args)) in rows.into_iter().enumerate() {
+                    let invocation = Invocation::with(&spec.id, args);
+                    let disabled = shell.enabled(&invocation, &command_context).err();
+                    items.push((
+                        PaletteItem {
+                            section: PaletteSection::Commands,
+                            title,
+                            subtitle,
+                            score,
+                            invocation,
+                            disabled_text: disabled.as_ref().map(ToString::to_string),
+                            disabled,
+                            shortcut: shortcut.clone(),
+                        },
+                        folded.index * 1000 + i,
+                    ));
+                }
+                continue;
+            }
+        }
         let invocation = Invocation::with(&spec.id, args);
         let disabled = shell.enabled(&invocation, &command_context).err();
         let subtitle = match spec.id.as_str() {
@@ -547,17 +600,97 @@ fn command_items(
                 subtitle,
                 score,
                 invocation,
+                disabled_text: disabled.as_ref().map(ToString::to_string),
                 disabled,
-                shortcut: spec
-                    .shortcuts
-                    .for_platform(context.platform)
-                    .first()
-                    .cloned(),
+                shortcut,
             },
-            folded.index,
+            folded.index * 1000,
         ));
     }
     items
+}
+
+/// Concrete rows for a command typed without the argument it needs, so the palette offers
+/// "Move tab to column 2" instead of a disabled "Move tab to column": one row per other
+/// column (and a new column where the command can make one) for the column commands, one
+/// per other tab for Go to tab, one per other workspace for Switch to workspace. Empty for
+/// every other command, or when there is nothing to offer.
+fn expansions(
+    shell: &Shell,
+    index: &PaletteIndex,
+    command_id: &str,
+) -> Vec<(String, Option<String>, CommandArgs)> {
+    let session = &shell.session;
+    let ws = session.active();
+    let active = ws.active_index() + 1;
+    let column = |number: usize| CommandArgs {
+        column: Some(number as u32),
+        ..CommandArgs::default()
+    };
+    let new_column = CommandArgs {
+        new_column: true,
+        ..CommandArgs::default()
+    };
+    let other_columns = (1..=ws.columns.len()).filter(|n| *n != active);
+    match command_id {
+        "column.focus" => other_columns
+            .map(|n| (format!("Focus column {n}"), None, column(n)))
+            .collect(),
+        "tab.move_to_column" => {
+            let mut rows: Vec<_> = other_columns
+                .map(|n| (format!("Move tab to column {n}"), None, column(n)))
+                .collect();
+            if ws.active_column().tabs.len() > 1 {
+                rows.push(("Move tab to new column".to_owned(), None, new_column));
+            }
+            rows
+        }
+        "tab.duplicate_to_column" => {
+            let mut rows: Vec<_> = other_columns
+                .map(|n| (format!("Duplicate tab into column {n}"), None, column(n)))
+                .collect();
+            rows.push(("Duplicate tab into new column".to_owned(), None, new_column));
+            rows
+        }
+        "tab.focus" => {
+            let current = &ws.active_tab().id;
+            index
+                .tabs
+                .iter()
+                .filter(|t| !(t.workspace_id == ws.id && &t.tab_id == current))
+                .map(|t| {
+                    (
+                        format!("Go to {}", t.title),
+                        Some(format!(
+                            "{} · column {}",
+                            t.workspace_title, t.column_number
+                        )),
+                        CommandArgs {
+                            workspace_id: Some(t.workspace_id.clone()),
+                            tab_id: Some(t.tab_id.clone()),
+                            ..CommandArgs::default()
+                        },
+                    )
+                })
+                .collect()
+        }
+        "workspace.switch" => index
+            .workspaces
+            .iter()
+            .filter(|w| w.id != ws.id)
+            .map(|w| {
+                (
+                    format!("Switch to {}", w.title),
+                    None,
+                    CommandArgs {
+                        workspace_id: Some(w.id.clone()),
+                        ..CommandArgs::default()
+                    },
+                )
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// The original-case text after `name` when the folded query starts with `name` and a
@@ -599,8 +732,9 @@ fn tab_items(
                     section: PaletteSection::Tabs,
                     title: ws.title.clone(),
                     subtitle: Some(format!(
-                        "Workspace · {} columns, {} tabs",
-                        ws.columns, ws.tabs
+                        "Workspace · {}, {}",
+                        count(ws.columns, "column"),
+                        count(ws.tabs, "tab")
                     )),
                     score,
                     invocation: Invocation::with(
@@ -611,6 +745,7 @@ fn tab_items(
                         },
                     ),
                     disabled: None,
+                    disabled_text: None,
                     shortcut: None,
                 },
                 order,
@@ -656,6 +791,7 @@ fn tab_items(
                         },
                     ),
                     disabled: None,
+                    disabled_text: None,
                     shortcut: None,
                 },
                 order,
@@ -762,6 +898,7 @@ pub fn palette_query_indexed(
                     subtitle: Some(target_subtitle(query.target)),
                     score: 1000,
                     invocation,
+                    disabled_text: disabled.as_ref().map(ToString::to_string),
                     disabled,
                     shortcut: None,
                 },
@@ -774,7 +911,7 @@ pub fn palette_query_indexed(
     if mode == PaletteMode::Commands || (mode == PaletteMode::All && !blank) {
         groups.extend(group(
             PaletteSection::Commands,
-            command_items(shell, &query, context),
+            command_items(shell, index, &query, context),
             context,
         ));
     }
@@ -804,9 +941,9 @@ pub fn palette_query_indexed(
             .into_iter()
             .enumerate()
             .map(|(i, hit)| {
-                let human = parse(&hit.reference, english())
-                    .map(|set| set.to_human(english()))
-                    .unwrap_or_else(|_| hit.reference.clone());
+                let short = osis_verse(&hit.reference)
+                    .or_else(|| parse(&hit.reference, english()).ok())
+                    .map_or_else(|| hit.reference.clone(), |set| set.to_short());
                 let invocation = Invocation::with(
                     "nav.navigate",
                     target_args(query.target, hit.reference.clone()),
@@ -815,10 +952,14 @@ pub fn palette_query_indexed(
                 (
                     PaletteItem {
                         section: PaletteSection::Text,
-                        title: format!("{} · {human}", hit.edition_id),
+                        title: format!(
+                            "{} · {short}",
+                            shell.session.resource_title(&hit.edition_id)
+                        ),
                         subtitle: Some(hit.snippet),
                         score: 0,
                         invocation,
+                        disabled_text: disabled.as_ref().map(ToString::to_string),
                         disabled,
                         shortcut: None,
                     },
