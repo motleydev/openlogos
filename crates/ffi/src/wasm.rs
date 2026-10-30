@@ -24,7 +24,7 @@ use openlogos_core::reference::{AliasTable, ReferenceSet, parse};
 use openlogos_core::versification::{SchemeId, VerseMap};
 use openlogos_ink::{Easing, EndOptions, InputPoint, StrokeOptions, Taper};
 use openlogos_text::{Utf16Range, scalar_to_utf16, utf16_to_scalar};
-use openlogos_workspaces::commands::{CommandContext, Invocation, Shell, registry};
+use openlogos_workspaces::commands::{CommandContext, CommandError, Invocation, Shell, registry};
 use openlogos_workspaces::migrate_workspace_to_2;
 use openlogos_workspaces::palette::{
     PaletteContext, PaletteIndex, TextProvider, palette_query_indexed,
@@ -122,7 +122,7 @@ export type ReanchorResult =
 export interface CaseResult { fixture: string; name: string; passed: boolean; expected: string; actual: string }
 export interface ConformanceReport { api_version: string; passed: number; failed: number; cases: CaseResult[] }
 /** What a failing call throws: an Error with the variant tag and the whole error object. */
-export interface CoreError extends Error { kind: string; details: unknown }
+export interface CoreError extends Error { kind: string; details: unknown; /** B070: for a disabled shell command, the reason in words ("Choose a tab"). */ reason_text?: string }
 /** perfect-freehand options for `inkOutline` (B039); every field optional, upstream defaults. `taper*`: false/absent none, true full, a number a distance. */
 export interface InkOutlineOptions { size?: number; thinning?: number; smoothing?: number; streamline?: number; simulatePressure?: boolean; last?: boolean; capStart?: boolean; capEnd?: boolean; taperStart?: boolean | number; taperEnd?: boolean | number }
 export type InkTool = "pen" | "highlighter";
@@ -151,11 +151,11 @@ export interface ShellCommandContext { has_selection?: boolean }
 export type ShellPlatform = "web" | "mac" | "ipad";
 export interface ShellCommandSpec { id: string; title: string; aliases: string[]; keywords: string[]; scope: "session" | "workspace" | "column" | "tab" | "selection"; argument: "none" | "column_number" | "text" | "reference" | "workspace" | "tab" | "link_group" | "number" | "column_width" | "scroll"; shortcuts: { web: string[]; mac: string[]; ipad: string[] }; bare_key: boolean; undoable: boolean; handled_by_core: boolean; quiet: boolean }
 /** `disabled` is null when the command can run; otherwise `{ kind, ... }`. */
-export interface ShellCommandState { spec: ShellCommandSpec; disabled: { kind: string } | null }
+export interface ShellCommandState { spec: ShellCommandSpec; disabled: { kind: string } | null; disabled_text: string | null }
 export interface ShellOutcome { command_id: string; handled: boolean; recorded: boolean; effects: { followed_tab_ids: string[] }; revision: number }
 export type ShellPaletteSection = "passage" | "commands" | "tabs" | "text";
 export interface ShellPaletteContext { has_selection?: boolean; platform?: ShellPlatform; expanded?: ShellPaletteSection | null }
-export interface ShellPaletteItem { section: ShellPaletteSection; title: string; subtitle: string | null; score: number; invocation: ShellInvocation; disabled: { kind: string } | null; shortcut: string | null }
+export interface ShellPaletteItem { section: ShellPaletteSection; title: string; subtitle: string | null; score: number; invocation: ShellInvocation; disabled: { kind: string } | null; disabled_text: string | null; shortcut: string | null }
 export interface ShellPaletteResult { query: { mode: "all" | "commands" | "tabs" | "text" | "passage"; text: string; target: { kind: "column"; number: number } | { kind: "new" } | null }; groups: { section: ShellPaletteSection; items: ShellPaletteItem[]; total: number }[]; notice: string | null }
 export interface ShellRecords { session: ShellSessionRecord; workspaces: ShellWorkspace[] }
 export interface InkDocument { schema_version: "1.0" | "1.1"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
@@ -278,6 +278,14 @@ pub fn format_human(
 ) -> Result<String, JsValue> {
     let set: ReferenceSet = from_js("referenceSet", reference_set)?;
     Ok(set.to_human(&AliasTable::english()))
+}
+
+/// B070: the short form of a citation for tab labels and palette rows, from text (a tab's
+/// OSIS reference or anything `parseReference` reads): `Jn 3`, `Jn 3:16`, `Gen 1:1–2`.
+#[wasm_bindgen(js_name = formatShort)]
+pub fn format_short(reference: &str) -> Result<String, JsValue> {
+    let set = parse(reference, &AliasTable::english()).map_err(throw)?;
+    Ok(set.to_short())
 }
 
 /// The Psalm 9/10 fixture table, built once. Only this table exists until the package
@@ -501,6 +509,18 @@ impl ShellHandle {
         self.text = Some(openlogos_conformance::FixtureTextProvider::new());
     }
 
+    /// Registers the short names resources are shown under (`{ bsb: "BSB" }`); palette
+    /// rows read `BSB · Jn 3:16`. A resource without one shows its id.
+    #[wasm_bindgen(js_name = setResourceTitles)]
+    pub fn set_resource_titles(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Record<string, string>")] titles: JsValue,
+    ) -> Result<(), JsValue> {
+        let titles: std::collections::BTreeMap<String, String> = from_js("titles", titles)?;
+        self.shell.set_resource_titles(titles);
+        Ok(())
+    }
+
     /// The session.
     #[wasm_bindgen(unchecked_return_type = "ShellSession")]
     pub fn session(&self) -> Result<JsValue, JsValue> {
@@ -547,21 +567,24 @@ impl ShellHandle {
     ) -> Result<JsValue, JsValue> {
         let invocation: Invocation = from_js("invocation", invocation)?;
         let context: CommandContext = optional("context", context)?;
-        let outcome = self.shell.apply(&invocation, &context).map_err(throw)?;
+        let outcome = self
+            .shell
+            .apply(&invocation, &context)
+            .map_err(throw_command)?;
         to_js(&outcome)
     }
 
     /// Takes back the last undoable command.
     #[wasm_bindgen(unchecked_return_type = "ShellOutcome")]
     pub fn undo(&mut self) -> Result<JsValue, JsValue> {
-        let outcome = self.shell.undo().map_err(throw)?;
+        let outcome = self.shell.undo().map_err(throw_command)?;
         to_js(&outcome)
     }
 
     /// Runs the last undone command again.
     #[wasm_bindgen(unchecked_return_type = "ShellOutcome")]
     pub fn redo(&mut self) -> Result<JsValue, JsValue> {
-        let outcome = self.shell.redo().map_err(throw)?;
+        let outcome = self.shell.redo().map_err(throw_command)?;
         to_js(&outcome)
     }
 
@@ -587,6 +610,25 @@ impl ShellHandle {
             provider,
         ))
     }
+}
+
+/// A shell command error as a JS `Error` (see [`throw`]) that also carries, for a disabled
+/// command, `reason_text`: the reason in the words a host shows ("Choose a tab").
+fn throw_command(error: CommandError) -> JsValue {
+    let reason = match &error {
+        CommandError::Disabled { reason, .. } => Some(reason.to_string()),
+        _ => None,
+    };
+    let js = throw(error);
+    if let Some(reason) = reason {
+        // Setting a property on a fresh Error object cannot fail.
+        let _ = js_sys::Reflect::set(
+            &js,
+            &JsValue::from_str("reason_text"),
+            &JsValue::from_str(&reason),
+        );
+    }
+    js
 }
 
 /// A parameter that may be `undefined` or `null`, defaulting.

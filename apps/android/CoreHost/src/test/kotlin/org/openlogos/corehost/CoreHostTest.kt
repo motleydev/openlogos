@@ -28,6 +28,7 @@ import org.openlogos.core.anchorToUtf16
 import org.openlogos.core.apiVersion
 import org.openlogos.core.conformanceFixturesJson
 import org.openlogos.core.formatHuman
+import org.openlogos.core.formatShort
 import org.openlogos.core.layoutConstants
 import org.openlogos.core.formatOsis
 import org.openlogos.core.mapVerse
@@ -193,6 +194,15 @@ class CoreHostTest {
         shell.apply("tab.record_scroll", ShellCommandArgs(tabId = "t3", segmentId = "John.3.16", scalar = 4u), false)
         assertEquals(revision, shell.session().revision)
         assertEquals(640.0, layoutConstants().measureCapStandardPt)
+        // Short labels and registered resource names.
+        assertEquals("Jn 3:16", formatShort("John 3:16"))
+        shell.setResourceTitles(mapOf("bsb" to "BSB"))
+        assertEquals("BSB", shell.session().workspaces[0].columns[0].tabs[0].resourceTitle)
+        assertEquals("BSB · Jn 3:16", shell.paletteQuery("@bsb jn", context).groups.first().items.first().title)
+        val disabled = assertFailsWith<ShellCommandException.Disabled> {
+            shell.apply("tab.focus", ShellCommandArgs(), false)
+        }
+        assertEquals("Choose a tab", disabled.reason)
     }
 
     // Fixture decoding

@@ -56,7 +56,8 @@ pub enum Scope {
 pub enum ArgumentShape {
     /// None.
     None,
-    /// A column number, `column` in [`CommandArgs`].
+    /// A column number, `column` in [`CommandArgs`]; moving and duplicating a tab also take
+    /// `new_column` instead.
     ColumnNumber,
     /// Free text, `text` (a title, a theme name); optional where the command has a default.
     Text,
@@ -217,7 +218,9 @@ pub struct CommandContext {
     pub has_selection: bool,
 }
 
-/// Why a command cannot run now.
+/// Why a command cannot run now. The `Display` text is what a palette row or menu shows:
+/// plain words, never an argument's field name (the `shell-commands` fixture asserts no
+/// reason contains `_`); the serde tag (`kind`) is for code.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DisabledReason {
@@ -276,13 +279,13 @@ pub enum DisabledReason {
         mode: String,
     },
     /// The workspace id does not exist.
-    #[error("There is no workspace {workspace_id}")]
+    #[error("That workspace is not open")]
     NoSuchWorkspace {
         /// The id.
         workspace_id: String,
     },
     /// The tab id does not exist.
-    #[error("There is no tab {tab_id}")]
+    #[error("That tab is not open")]
     NoSuchTab {
         /// The id.
         tab_id: String,
@@ -300,11 +303,27 @@ pub enum DisabledReason {
         detail: String,
     },
     /// A required argument is missing or empty.
-    #[error("Needs {argument}")]
+    #[error("{}", argument_words(argument))]
     NeedsArgument {
         /// The [`CommandArgs`] field.
         argument: String,
     },
+}
+
+/// What a missing argument asks the reader for, in words: the reason a palette row shows,
+/// never a field name.
+fn argument_words(argument: &str) -> &'static str {
+    match argument {
+        "column" => "Needs a column number",
+        "reference" => "Needs a passage",
+        "text" => "Needs a name or value",
+        "workspace_id" => "Choose a workspace",
+        "tab_id" => "Choose a tab",
+        "group" => "Needs a link group",
+        "number" => "Needs a value",
+        "segment_id" | "scalar" => "Needs a scroll position",
+        _ => "Needs more information",
+    }
 }
 
 /// Why an invocation failed.
@@ -1137,6 +1156,11 @@ pub fn enabled(
                 number: ws.columns.len() as u32,
             })
         }
+        "tab.duplicate_to_column" if args.new_column => Ok(()),
+        "tab.move_to_column" if args.new_column && column.tabs.len() < 2 => {
+            Err(DisabledReason::OneTab)
+        }
+        "tab.move_to_column" if args.new_column => Ok(()),
         "column.focus" | "tab.duplicate_to_column" => column_number(ws, args).map(|_| ()),
         "tab.move_to_column" => {
             let number = column_number(ws, args)?;
@@ -1694,6 +1718,21 @@ fn apply_in_place(
             };
             column.shown_tab_id = column.tabs[next].id.clone();
         }
+        "tab.move_to_column" if args.new_column => {
+            // Its column keeps at least one tab (enabled), so it survives.
+            let ws = s.active_mut();
+            let index = ws.active_index();
+            let tab_id = ws.active_tab().id.clone();
+            let (tab, _) = take_tab(ws, index, &tab_id);
+            insert_column(ws, index + 1, tab);
+        }
+        "tab.duplicate_to_column" if args.new_column => {
+            let ws = s.active_mut();
+            let source = ws.active_tab().clone();
+            let tab_id = ws.mint_id("t");
+            let index = ws.active_index() + 1;
+            insert_column(ws, index, copy_tab(&source, tab_id));
+        }
         "tab.move_to_column" => {
             let ws = s.active_mut();
             let number = column_number(ws, args).expect("enabled");
@@ -1838,6 +1877,8 @@ pub struct CommandState {
     pub spec: CommandSpec,
     /// `None` when it can run; otherwise why not.
     pub disabled: Option<DisabledReason>,
+    /// The same reason in words, for a menu item or palette row.
+    pub disabled_text: Option<String>,
 }
 
 /// The outcome of [`Shell::apply`], [`Shell::undo`] or [`Shell::redo`].
@@ -1907,9 +1948,13 @@ impl Shell {
     pub fn commands(&self, context: &CommandContext) -> Vec<CommandState> {
         registry()
             .iter()
-            .map(|spec| CommandState {
-                spec: spec.clone(),
-                disabled: self.enabled(&Invocation::new(&spec.id), context).err(),
+            .map(|spec| {
+                let disabled = self.enabled(&Invocation::new(&spec.id), context).err();
+                CommandState {
+                    spec: spec.clone(),
+                    disabled_text: disabled.as_ref().map(ToString::to_string),
+                    disabled,
+                }
             })
             .collect()
     }
@@ -1956,6 +2001,13 @@ impl Shell {
             effects,
             revision: self.revision,
         })
+    }
+
+    /// Registers the short names resources are shown under (`bsb` → `BSB`), replacing any
+    /// registered before. Bumps the revision, since palette rows carry the names.
+    pub fn set_resource_titles(&mut self, titles: std::collections::BTreeMap<String, String>) {
+        self.session.resource_titles = titles;
+        self.revision += 1;
     }
 
     /// Swaps the session with a record's snapshot and returns the record that swaps back.

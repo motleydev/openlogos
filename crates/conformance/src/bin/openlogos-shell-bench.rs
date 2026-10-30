@@ -94,6 +94,7 @@ fn session() -> Session {
         next_serial: 100,
         reading: Default::default(),
         ink: Default::default(),
+        resource_titles: Default::default(),
     };
     session.check().expect("the bench session is valid");
     session

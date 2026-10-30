@@ -114,6 +114,57 @@
     "tool": "select",
     "next_serial": 3
   },
+  "resource_titles": {
+    "bsb": "BSB",
+    "sblgnt": "SBLGNT",
+    "wlc": "WLC"
+  },
+  "short_references": [
+    {
+      "input": "John 3",
+      "expected": "Jn 3"
+    },
+    {
+      "input": "John 3:16",
+      "expected": "Jn 3:16"
+    },
+    {
+      "input": "Gen 1:1-2",
+      "expected": "Gen 1:1–2"
+    },
+    {
+      "input": "1 John 4:8",
+      "expected": "1 Jn 4:8"
+    },
+    {
+      "input": "Matt 5:3-7:29",
+      "expected": "Mt 5:3–7:29"
+    },
+    {
+      "input": "Rom 8:28, 31; 12:1",
+      "expected": "Rom 8:28, 31; 12:1"
+    },
+    {
+      "input": "Jude 3",
+      "expected": "Jude 3"
+    },
+    {
+      "input": "Ps 23",
+      "expected": "Ps 23"
+    }
+  ],
+  "reason_texts": {
+    "tab.focus": "Choose a tab",
+    "workspace.switch": "Choose a workspace",
+    "column.focus": "Needs a column number",
+    "nav.navigate": "Needs a passage",
+    "tab.record_scroll": "Choose a tab",
+    "workspace.rename": "Needs a name or value",
+    "view.line_spacing": "Needs a value",
+    "selection.highlight": "Select some text first",
+    "edit.undo": "Nothing to undo",
+    "nav.back": "No earlier passage in this tab"
+  },
   "layout_constants": {
     "pane_minimum_standard_pt": 340.0,
     "pane_minimum_accessibility_pt": 480.0,
@@ -1262,13 +1313,9 @@
         },
         {
           "command": "view.text_size_down",
-          "expect": {}
-        },
-        {
-          "command": "view.text_size_down",
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.5,
               "theme": "system"
             }
@@ -1287,7 +1334,7 @@
           },
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.7,
               "theme": "system"
             }
@@ -1303,7 +1350,7 @@
           "command": "view.line_spacing_down",
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.5,
               "theme": "system"
             }
@@ -1313,7 +1360,7 @@
           "command": "view.line_spacing_down",
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.35,
               "theme": "system"
             }
@@ -1341,7 +1388,7 @@
           },
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.35,
               "theme": "sepia"
             }
@@ -1362,6 +1409,140 @@
             "error": "nothing_to_undo",
             "can_undo": false
           }
+        },
+        {
+          "command": "view.text_size_reset",
+          "expect": {
+            "reading": {
+              "text_size_step": 0,
+              "line_spacing": 1.35,
+              "theme": "sepia"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {
+            "reading": {
+              "text_size_step": 4,
+              "line_spacing": 1.35,
+              "theme": "sepia"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {
+            "error": "at_limit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tabs into new columns",
+      "steps": [
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "error": "one_tab"
+          }
+        },
+        {
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t11"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t11"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            }
+          }
         }
       ]
     },
@@ -1375,8 +1556,8 @@
             "recorded": false,
             "ink": {
               "width": 6,
-              "swatch": "#FFE066",
-              "alternate_swatch": "#7FD1FF"
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1388,8 +1569,8 @@
           "expect": {
             "ink": {
               "width": 16,
-              "swatch": "#FFE066",
-              "alternate_swatch": "#7FD1FF"
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1404,8 +1585,8 @@
           "expect": {
             "ink": {
               "width": 12,
-              "swatch": "#FFE066",
-              "alternate_swatch": "#7FD1FF"
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1427,7 +1608,7 @@
             "ink": {
               "width": 12,
               "swatch": "#A1B2C3",
-              "alternate_swatch": "#7FD1FF"
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1437,7 +1618,7 @@
             "handled": true,
             "ink": {
               "width": 12,
-              "swatch": "#7FD1FF",
+              "swatch": "#4CC38A",
               "alternate_swatch": "#A1B2C3"
             }
           }
@@ -1457,7 +1638,7 @@
             "tool": "pen",
             "ink": {
               "width": 12,
-              "swatch": "#7FD1FF",
+              "swatch": "#4CC38A",
               "alternate_swatch": "#A1B2C3"
             },
             "can_undo": false
@@ -1655,7 +1836,7 @@
         },
         {
           "section": "tabs",
-          "title": "bsb · John 3:16",
+          "title": "BSB · Jn 3:16",
           "command": "tab.focus",
           "args": {
             "workspace_id": "w1",
@@ -1664,7 +1845,7 @@
         },
         {
           "section": "tabs",
-          "title": "sblgnt · John 3:16",
+          "title": "SBLGNT · Jn 3:16",
           "command": "tab.focus",
           "args": {
             "workspace_id": "w1",
@@ -1673,7 +1854,7 @@
         },
         {
           "section": "tabs",
-          "title": "fixture:lexicon-1 · John 3:16",
+          "title": "fixture:lexicon-1 · Jn 3:16",
           "command": "tab.focus",
           "args": {
             "workspace_id": "w1",
@@ -1755,7 +1936,7 @@
         },
         {
           "section": "tabs",
-          "title": "wlc · Gen 1:1",
+          "title": "WLC · Gen 1:1",
           "command": "tab.focus",
           "args": {
             "workspace_id": "w2",
@@ -1764,6 +1945,229 @@
         }
       ],
       "count": 2
+    },
+    {
+      "name": "workspace and tab rows read in words",
+      "query": "@genesis",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "Genesis",
+          "command": "workspace.switch",
+          "subtitle": "Workspace · 1 column, 1 tab"
+        },
+        {
+          "section": "tabs",
+          "title": "WLC · Gen 1:1",
+          "command": "tab.focus",
+          "subtitle": "Genesis · column 1"
+        }
+      ]
+    },
+    {
+      "name": "a study workspace's counts",
+      "query": "@john study",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "John study",
+          "command": "workspace.switch",
+          "subtitle": "Workspace · 3 columns, 4 tabs"
+        }
+      ]
+    },
+    {
+      "name": "disabled rows carry their reason in words",
+      "query": ":Jn 3:16 @5",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate",
+          "disabled": "no_such_column",
+          "disabled_text": "There is no column 5",
+          "subtitle": "Open in column 5"
+        }
+      ]
+    },
+    {
+      "name": "enabled rows carry no reason",
+      "query": ">new tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "New tab",
+          "command": "tab.new",
+          "disabled": null,
+          "disabled_text": null
+        }
+      ]
+    },
+    {
+      "name": "move tab expands into columns",
+      "query": ">move tab to column",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Move tab to column 2",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Move tab to column 3",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Move tab to new column",
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "duplicate tab expands into columns",
+      "query": ">duplicate tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column 2",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column 3",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Duplicate tab into new column",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "new_column": true
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "focus column omits the current one",
+      "query": ">focus column",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Focus column 2",
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Focus column 3",
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "go to tab lists the other tabs",
+      "query": ">go to tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Go to BSB · Rom 8:28",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t2"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to SBLGNT · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t3"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to fixture:lexicon-1 · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t4"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to WLC · Gen 1:1",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w2",
+            "tab_id": "t1"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "switch workspace lists the others",
+      "query": ">switch to workspace",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Switch to Genesis",
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w2"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "a tab by its resource name",
+      "query": "@sblgnt jn",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "SBLGNT · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t3"
+          }
+        }
+      ]
     },
     {
       "name": "every tab and workspace",
@@ -1781,17 +2185,17 @@
         },
         {
           "section": "tabs",
-          "title": "bsb · John 3:16",
+          "title": "BSB · Jn 3:16",
           "command": "tab.focus"
         },
         {
           "section": "tabs",
-          "title": "bsb · Rom 8:28",
+          "title": "BSB · Rom 8:28",
           "command": "tab.focus"
         },
         {
           "section": "tabs",
-          "title": "sblgnt · John 3:16",
+          "title": "SBLGNT · Jn 3:16",
           "command": "tab.focus"
         }
       ],
@@ -1815,7 +2219,7 @@
       "expect": [
         {
           "section": "text",
-          "title": "bsb · John 3:16",
+          "title": "BSB · Jn 3:16",
           "command": "nav.navigate",
           "args": {
             "reference": "John.3.16"
@@ -1831,7 +2235,7 @@
       "expect": [
         {
           "section": "text",
-          "title": "wlc · Gen 1:1",
+          "title": "WLC · Gen 1:1",
           "command": "nav.navigate",
           "args": {
             "reference": "Gen.1.1",
@@ -1975,12 +2379,12 @@
       "expect": [
         {
           "section": "text",
-          "title": "bsb · John 3:16",
+          "title": "BSB · Jn 3:16",
           "command": "nav.navigate"
         },
         {
           "section": "text",
-          "title": "bsb · John 3:17",
+          "title": "BSB · Jn 3:17",
           "command": "nav.navigate"
         }
       ],

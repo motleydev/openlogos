@@ -285,8 +285,9 @@ impl Tool {
     }
 }
 
-/// Text size steps a reader can take below and above the default.
-pub const TEXT_SIZE_STEPS: std::ops::RangeInclusive<i32> = -3..=5;
+/// Text size steps a reader can take below and above the default: the seven sizes of
+/// design/tokens/shell.json (15, 17, 19, 21, 24, 28, 32 pt), step 0 being 19.
+pub const TEXT_SIZE_STEPS: std::ops::RangeInclusive<i32> = -2..=4;
 
 /// The line spacings offered (B072): compact, default and open.
 pub const LINE_SPACINGS: [f64; 3] = [1.35, 1.5, 1.7];
@@ -337,8 +338,9 @@ impl Default for InkSettings {
     fn default() -> Self {
         InkSettings {
             width: 4.0,
-            swatch: "#FFE066".to_owned(),
-            alternate_swatch: "#7FD1FF".to_owned(),
+            // The highlight colours of design/tokens/shell.json.
+            swatch: "#F5D90A".to_owned(),
+            alternate_swatch: "#4CC38A".to_owned(),
         }
     }
 }
@@ -397,6 +399,21 @@ pub struct Session {
     /// Brush width and swatches.
     #[serde(default)]
     pub ink: InkSettings,
+    /// Short display names of resources by content id (`bsb` → `BSB`), registered by the
+    /// host, which knows its installed editions; a resource without one shows its id.
+    /// Runtime state, not persisted.
+    #[serde(skip)]
+    pub resource_titles: BTreeMap<String, String>,
+}
+
+impl Session {
+    /// The name a resource is shown under: its registered title, else its id.
+    #[must_use]
+    pub fn resource_title<'a>(&'a self, content_id: &'a str) -> &'a str {
+        self.resource_titles
+            .get(content_id)
+            .map_or(content_id, String::as_str)
+    }
 }
 
 /// Why a shell document is rejected.
@@ -924,6 +941,7 @@ impl Session {
             next_serial: 1,
             reading: ReadingSettings::default(),
             ink: InkSettings::default(),
+            resource_titles: BTreeMap::new(),
         }
     }
 
@@ -1042,6 +1060,7 @@ impl Session {
             next_serial: record.next_serial,
             reading: record.reading,
             ink: record.ink,
+            resource_titles: BTreeMap::new(),
         };
         session.check()?;
         Ok(session)
