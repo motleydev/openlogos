@@ -209,6 +209,7 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(m["column_rule"], Double(ShellTokens.rule))
         XCTAssertEqual(m["shown_tab_underline"], Double(ShellTokens.accentUnderline))
         XCTAssertEqual(m["tool_well_width"], Double(ShellTokens.toolWellWidth))
+        XCTAssertEqual(m["tool_well_collapsed"], Double(ShellTokens.toolGripSide))
         XCTAssertEqual(m["tool_well_inset"], Double(ShellTokens.toolWellInset))
         XCTAssertEqual(m["tool_button"], Double(ShellTokens.toolButtonSide))
         let tools = try XCTUnwrap(json["tools"] as? [[String: String]])
