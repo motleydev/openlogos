@@ -39,6 +39,72 @@
     "next_serial": {
       "type": "integer",
       "minimum": 0
+    },
+    "reading": {
+      "description": "Text size step from the platform default, line spacing and theme (B070 follow-up for B072); absent means the defaults (0, 1.5, system).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text_size_step": {
+          "type": "integer",
+          "minimum": -3,
+          "maximum": 5
+        },
+        "line_spacing": {
+          "type": "number",
+          "enum": [
+            1.35,
+            1.5,
+            1.7
+          ]
+        },
+        "theme": {
+          "type": "string",
+          "enum": [
+            "system",
+            "light",
+            "dark",
+            "sepia"
+          ]
+        }
+      },
+      "required": [
+        "text_size_step",
+        "line_spacing",
+        "theme"
+      ]
+    },
+    "ink": {
+      "description": "The tool palette's brush width and its two swatch wells, kept with the tool (specs/22 §4); absent means the defaults (4, #FFE066, #7FD1FF).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            4,
+            6,
+            8,
+            12,
+            16
+          ]
+        },
+        "swatch": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "alternate_swatch": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      },
+      "required": [
+        "width",
+        "swatch",
+        "alternate_swatch"
+      ]
     }
   },
   "required": [

@@ -92,6 +92,8 @@ fn session() -> Session {
         workspaces,
         tool: Tool::Select,
         next_serial: 100,
+        reading: Default::default(),
+        ink: Default::default(),
     };
     session.check().expect("the bench session is valid");
     session

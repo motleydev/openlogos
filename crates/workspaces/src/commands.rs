@@ -27,8 +27,12 @@
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
+use crate::ScrollAnchor;
 use crate::navigation::{Visit, followers_among};
-use crate::shell::{CLOSED_TABS_KEPT, ClosedTab, Column, NotesDock, Session, Tab, Tool, Workspace};
+use crate::shell::{
+    CLOSED_TABS_KEPT, ClosedTab, Column, INK_WIDTHS, LINE_SPACINGS, NotesDock, Session,
+    TEXT_SIZE_STEPS, THEMES, Tab, Tool, Workspace, is_swatch,
+};
 
 /// What a command acts on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -64,6 +68,13 @@ pub enum ArgumentShape {
     Tab,
     /// A link group label, `group`; defaults to `1`.
     LinkGroup,
+    /// A number, `number` (a line spacing, a brush width).
+    Number,
+    /// A column number, `column`, and its new width share, `number`.
+    ColumnWidth,
+    /// A tab, `tab_id` (with an optional `workspace_id`), and where it is scrolled to,
+    /// `segment_id` and `scalar`.
+    Scroll,
 }
 
 /// The platforms whose default shortcuts the registry records.
@@ -126,10 +137,13 @@ pub struct CommandSpec {
     /// Whether the core performs it; `false` means [`apply`] returns `handled: false` and
     /// the host performs it.
     pub handled_by_core: bool,
+    /// Whether it records state without bumping [`Shell::revision`] (a scroll position:
+    /// frequent, and nothing the palette indexes or a layout draws from).
+    pub quiet: bool,
 }
 
 /// Arguments for an invocation; each command reads the fields its [`ArgumentShape`] names.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CommandArgs {
     /// A column number, 1-based.
@@ -153,11 +167,20 @@ pub struct CommandArgs {
     /// A link group label.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    /// A number: a line spacing, a brush width, a column's width share.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number: Option<f64>,
+    /// A scroll anchor's segment.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub segment_id: Option<String>,
+    /// A scroll anchor's offset in scalar values.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scalar: Option<u32>,
 }
 
 /// One command with its arguments: what every button, menu item, shortcut and palette row
 /// dispatches.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Invocation {
     /// A registered command id.
     pub command_id: String,
@@ -263,6 +286,18 @@ pub enum DisabledReason {
     NoSuchTab {
         /// The id.
         tab_id: String,
+    },
+    /// A setting is already at the end of its range.
+    #[error("The {setting} is already at its limit")]
+    AtLimit {
+        /// `text size`, `line spacing` or `brush width`.
+        setting: String,
+    },
+    /// An argument outside what the command accepts.
+    #[error("{detail}")]
+    InvalidValue {
+        /// What is accepted.
+        detail: String,
     },
     /// A required argument is missing or empty.
     #[error("Needs {argument}")]
@@ -392,6 +427,7 @@ struct Def {
     bare_key: bool,
     undoable: bool,
     core: bool,
+    quiet: bool,
 }
 
 const fn def(
@@ -414,6 +450,7 @@ const fn def(
         bare_key: false,
         undoable,
         core,
+        quiet: false,
     }
 }
 
@@ -432,6 +469,11 @@ impl Def {
     const fn keys(mut self, web: &'static [&'static str], mac: &'static [&'static str]) -> Def {
         self.web = web;
         self.mac = mac;
+        self
+    }
+
+    const fn quiet(mut self) -> Def {
+        self.quiet = true;
         self
     }
 
@@ -584,6 +626,27 @@ const DEFS: &[Def] = &[
     )
     .names(&[], &["reorder", "pane"]),
     def(
+        "column.resize",
+        "Resize column",
+        S::Workspace,
+        A::ColumnWidth,
+        true,
+        true,
+    )
+    .names(&["column width"], &["width", "wider", "narrower", "pane"]),
+    def(
+        "column.equalize",
+        "Equalize column widths",
+        S::Workspace,
+        A::None,
+        true,
+        true,
+    )
+    .names(
+        &["equal columns", "even columns"],
+        &["width", "balance", "reset"],
+    ),
+    def(
         "column.focus",
         "Focus column",
         S::Workspace,
@@ -640,6 +703,16 @@ const DEFS: &[Def] = &[
         true,
     )
     .names(&["duplicate tab", "copy tab"], &["clone"]),
+    def(
+        "tab.record_scroll",
+        "Record scroll position",
+        S::Tab,
+        A::Scroll,
+        false,
+        true,
+    )
+    .names(&[], &["scroll", "anchor"])
+    .quiet(),
     def("tab.focus", "Go to tab", S::Session, A::Tab, false, true).names(&["switch to tab"], &[]),
     def("tab.link", "Link tab", S::Tab, A::LinkGroup, true, true)
         .names(&["link", "join group"], &["group", "sync"])
@@ -738,12 +811,54 @@ const DEFS: &[Def] = &[
     .names(&["collect"], &["tool", "collection"])
     .bare(&["C"]),
     def(
+        "tool.swatch",
+        "Choose swatch",
+        S::Session,
+        A::Text,
+        false,
+        true,
+    )
+    .names(&["colour", "color", "swatch"], &["ink", "well", "tool"]),
+    def(
+        "tool.width",
+        "Set brush width",
+        S::Session,
+        A::Number,
+        false,
+        true,
+    )
+    .names(&["brush width", "pen width"], &["ink", "size", "tool"]),
+    def(
+        "tool.width_up",
+        "Thicker brush",
+        S::Session,
+        A::None,
+        false,
+        true,
+    )
+    .names(
+        &["increase brush width", "wider brush"],
+        &["ink", "size", "tool"],
+    ),
+    def(
+        "tool.width_down",
+        "Thinner brush",
+        S::Session,
+        A::None,
+        false,
+        true,
+    )
+    .names(
+        &["decrease brush width", "narrower brush"],
+        &["ink", "size", "tool"],
+    ),
+    def(
         "tool.swap_swatches",
         "Swap swatches",
         S::Session,
         A::None,
         false,
-        false,
+        true,
     )
     .names(&[], &["colour", "color", "tool"])
     .bare(&["X"]),
@@ -792,7 +907,7 @@ const DEFS: &[Def] = &[
         S::Session,
         A::None,
         false,
-        false,
+        true,
     )
     .names(
         &["text size up", "bigger text"],
@@ -804,7 +919,7 @@ const DEFS: &[Def] = &[
         S::Session,
         A::None,
         false,
-        false,
+        true,
     )
     .names(&["text size down", "smaller text"], &["zoom", "font"]),
     def(
@@ -813,18 +928,51 @@ const DEFS: &[Def] = &[
         S::Session,
         A::None,
         false,
-        false,
+        true,
     )
     .names(&["actual size"], &["zoom", "font"]),
+    def(
+        "view.line_spacing",
+        "Set line spacing",
+        S::Session,
+        A::Number,
+        false,
+        true,
+    )
+    .names(&["line spacing", "line height"], &["leading", "spacing"]),
+    def(
+        "view.line_spacing_up",
+        "Increase line spacing",
+        S::Session,
+        A::None,
+        false,
+        true,
+    )
+    .names(
+        &["more line spacing", "looser lines"],
+        &["leading", "spacing"],
+    ),
+    def(
+        "view.line_spacing_down",
+        "Decrease line spacing",
+        S::Session,
+        A::None,
+        false,
+        true,
+    )
+    .names(
+        &["less line spacing", "tighter lines"],
+        &["leading", "spacing"],
+    ),
     def(
         "view.theme",
         "Change theme",
         S::Session,
         A::Text,
         false,
-        false,
+        true,
     )
-    .names(&["theme"], &["dark", "light", "appearance"]),
+    .names(&["theme"], &["dark", "light", "sepia", "appearance"]),
     def(
         "view.focus_mode",
         "Focus mode",
@@ -877,6 +1025,7 @@ pub fn registry() -> &'static [CommandSpec] {
                 bare_key: d.bare_key,
                 undoable: d.undoable,
                 handled_by_core: d.core,
+                quiet: d.quiet,
             })
             .collect()
     })
@@ -1022,6 +1171,74 @@ pub fn enabled(
             }
             Ok(())
         }
+        "view.text_size_up" if session.reading.text_size_step >= *TEXT_SIZE_STEPS.end() => {
+            Err(limit("text size"))
+        }
+        "view.text_size_down" if session.reading.text_size_step <= *TEXT_SIZE_STEPS.start() => {
+            Err(limit("text size"))
+        }
+        "view.line_spacing" => one_of(args.number, &LINE_SPACINGS, "line spacing").map(|_| ()),
+        "view.line_spacing_up" | "view.line_spacing_down" => step(
+            &LINE_SPACINGS,
+            session.reading.line_spacing,
+            id_up(invocation),
+        )
+        .map(|_| ())
+        .ok_or_else(|| limit("line spacing")),
+        "view.theme" => {
+            let theme = non_empty(&args.text).ok_or_else(|| need("text"))?;
+            if THEMES.contains(&theme) {
+                Ok(())
+            } else {
+                Err(DisabledReason::InvalidValue {
+                    detail: format!("A theme is one of {}", THEMES.join(", ")),
+                })
+            }
+        }
+        "tool.width" => one_of(args.number, &INK_WIDTHS, "brush width").map(|_| ()),
+        "tool.width_up" | "tool.width_down" => {
+            step(&INK_WIDTHS, session.ink.width, id_up(invocation))
+                .map(|_| ())
+                .ok_or_else(|| limit("brush width"))
+        }
+        "tool.swatch" => {
+            let swatch = non_empty(&args.text).ok_or_else(|| need("text"))?;
+            if is_swatch(swatch) {
+                Ok(())
+            } else {
+                Err(DisabledReason::InvalidValue {
+                    detail: "A swatch is a colour as #RRGGBB".to_owned(),
+                })
+            }
+        }
+        "column.resize" | "column.equalize" if ws.columns.len() < 2 => {
+            Err(DisabledReason::OnlyColumn)
+        }
+        "column.resize" => {
+            column_number(ws, args)?;
+            let share = args.number.ok_or_else(|| need("number"))?;
+            let max = 1.0 - MIN_COLUMN_FRACTION * (ws.columns.len() - 1) as f64;
+            if share.is_finite() && (MIN_COLUMN_FRACTION..=max).contains(&share) {
+                Ok(())
+            } else {
+                Err(DisabledReason::InvalidValue {
+                    detail: format!(
+                        "A column's share is between {MIN_COLUMN_FRACTION} and {max:.2}"
+                    ),
+                })
+            }
+        }
+        "tab.record_scroll" => {
+            let tab_id = args.tab_id.as_ref().ok_or_else(|| need("tab_id"))?;
+            non_empty(&args.segment_id).ok_or_else(|| need("segment_id"))?;
+            args.scalar.ok_or_else(|| need("scalar"))?;
+            target_workspace(session, args)?
+                .find_tab(tab_id)
+                .map(|_| ())
+                .ok_or_else(|| DisabledReason::NoSuchTab {
+                    tab_id: tab_id.clone(),
+                })
+        }
         "tab.pin" if tab.pinned => Err(DisabledReason::AlreadyInMode {
             mode: "pinned".to_owned(),
         }),
@@ -1031,6 +1248,48 @@ pub fn enabled(
             })
         }
         _ => Ok(()),
+    }
+}
+
+/// The smallest share a column can be resized to.
+pub const MIN_COLUMN_FRACTION: f64 = 0.05;
+
+fn limit(setting: &str) -> DisabledReason {
+    DisabledReason::AtLimit {
+        setting: setting.to_owned(),
+    }
+}
+
+/// Whether a command id steps a setting up (`…_up`) rather than down.
+fn id_up(invocation: &Invocation) -> bool {
+    invocation.command_id.ends_with("_up")
+}
+
+/// The value of `values` that `number` names, within a rounding tolerance.
+fn one_of(number: Option<f64>, values: &[f64], setting: &str) -> Result<f64, DisabledReason> {
+    let number = number.ok_or_else(|| need("number"))?;
+    values
+        .iter()
+        .copied()
+        .find(|v| (v - number).abs() < 1e-6)
+        .ok_or_else(|| DisabledReason::InvalidValue {
+            detail: format!(
+                "A {setting} is one of {}",
+                values
+                    .iter()
+                    .map(f64::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        })
+}
+
+/// The next value of `values` above or below `current`; `None` at the end.
+fn step(values: &[f64], current: f64, up: bool) -> Option<f64> {
+    if up {
+        values.iter().copied().find(|v| *v > current + 1e-9)
+    } else {
+        values.iter().rev().copied().find(|v| *v < current - 1e-9)
     }
 }
 
@@ -1489,6 +1748,68 @@ fn apply_in_place(
                 }
             }
         }
+        "view.text_size_up" => s.reading.text_size_step += 1,
+        "view.text_size_down" => s.reading.text_size_step -= 1,
+        "view.text_size_reset" => s.reading.text_size_step = 0,
+        "view.line_spacing" => {
+            s.reading.line_spacing =
+                one_of(args.number, &LINE_SPACINGS, "line spacing").expect("enabled");
+        }
+        "view.line_spacing_up" | "view.line_spacing_down" => {
+            s.reading.line_spacing =
+                step(&LINE_SPACINGS, s.reading.line_spacing, id_up(invocation)).expect("enabled");
+        }
+        "view.theme" => s.reading.theme = non_empty(&args.text).expect("enabled").to_owned(),
+        "tool.width" => {
+            s.ink.width = one_of(args.number, &INK_WIDTHS, "brush width").expect("enabled")
+        }
+        "tool.width_up" | "tool.width_down" => {
+            s.ink.width = step(&INK_WIDTHS, s.ink.width, id_up(invocation)).expect("enabled");
+        }
+        "tool.swatch" => s.ink.swatch = non_empty(&args.text).expect("enabled").to_uppercase(),
+        "tool.swap_swatches" => {
+            let ink = &mut s.ink;
+            std::mem::swap(&mut ink.swatch, &mut ink.alternate_swatch);
+        }
+        "column.resize" => {
+            let ws = s.active_mut();
+            let index = column_number(ws, args).expect("enabled") - 1;
+            let share = args.number.expect("enabled");
+            let others: f64 = ws
+                .columns
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| *i != index)
+                .map(|(_, c)| c.width_fraction)
+                .sum();
+            for (i, column) in ws.columns.iter_mut().enumerate() {
+                column.width_fraction = if i == index {
+                    share
+                } else {
+                    column.width_fraction * (1.0 - share) / others
+                };
+            }
+        }
+        "column.equalize" => {
+            let ws = s.active_mut();
+            let n = ws.columns.len() as f64;
+            for column in &mut ws.columns {
+                column.width_fraction = 1.0 / n;
+            }
+        }
+        "tab.record_scroll" => {
+            let target = target_workspace(s, args).expect("enabled").id.clone();
+            let tab_id = args.tab_id.clone().expect("enabled");
+            let ws = s
+                .workspaces
+                .iter_mut()
+                .find(|w| w.id == target)
+                .expect("enabled");
+            tab_mut(ws, &tab_id).scroll_anchor = Some(ScrollAnchor {
+                segment_id: non_empty(&args.segment_id).expect("enabled").to_owned(),
+                scalar: args.scalar.expect("enabled"),
+            });
+        }
         "view.notes_dock" => {
             let ws = s.active_mut();
             ws.notes_dock.open = !ws.notes_dock.open;
@@ -1616,6 +1937,7 @@ impl Shell {
                 revision: self.revision,
             });
         }
+        let quiet = command(&invocation.command_id).is_some_and(|c| c.quiet);
         let recorded = undo.is_some();
         if let Some(record) = undo {
             self.undo_stack.push(record);
@@ -1624,7 +1946,9 @@ impl Shell {
             }
             self.redo_stack.clear();
         }
-        self.revision += 1;
+        if !quiet {
+            self.revision += 1;
+        }
         Ok(Outcome {
             command_id: invocation.command_id.clone(),
             handled: true,
@@ -1723,6 +2047,28 @@ pub(crate) mod tests {
                 args.tab_id = Some("t3".into());
             }
             ArgumentShape::LinkGroup => args.group = Some("2".into()),
+            ArgumentShape::Number => {
+                args.number = Some(if spec.id == "view.line_spacing" {
+                    1.7
+                } else {
+                    8.0
+                });
+            }
+            ArgumentShape::ColumnWidth => {
+                args.column = Some(2);
+                args.number = Some(0.5);
+            }
+            ArgumentShape::Scroll => {
+                args.tab_id = Some("t3".into());
+                args.segment_id = Some("John.3.16".into());
+                args.scalar = Some(12);
+            }
+        }
+        if spec.id == "view.theme" {
+            args.text = Some("dark".into());
+        }
+        if spec.id == "tool.swatch" {
+            args.text = Some("#a1b2c3".into());
         }
         args
     }

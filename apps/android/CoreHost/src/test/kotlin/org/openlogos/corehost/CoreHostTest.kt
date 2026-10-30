@@ -28,6 +28,7 @@ import org.openlogos.core.anchorToUtf16
 import org.openlogos.core.apiVersion
 import org.openlogos.core.conformanceFixturesJson
 import org.openlogos.core.formatHuman
+import org.openlogos.core.layoutConstants
 import org.openlogos.core.formatOsis
 import org.openlogos.core.mapVerse
 import org.openlogos.core.parseReference
@@ -185,6 +186,13 @@ class CoreHostTest {
         val records = shell.records()
         val reopened = ShellHandle.fromRecords(records.sessionJson, records.workspaceJsons)
         assertEquals(shell.session().workspaces, reopened.session().workspaces)
+        // Settings live in the session; a scroll position does not bump the revision.
+        shell.apply("view.line_spacing", ShellCommandArgs(number = 1.7), false)
+        assertEquals(1.7, shell.session().reading.lineSpacing)
+        val revision = shell.session().revision
+        shell.apply("tab.record_scroll", ShellCommandArgs(tabId = "t3", segmentId = "John.3.16", scalar = 4u), false)
+        assertEquals(revision, shell.session().revision)
+        assertEquals(640.0, layoutConstants().measureCapStandardPt)
     }
 
     // Fixture decoding
