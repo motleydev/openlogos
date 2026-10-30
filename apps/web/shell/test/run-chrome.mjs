@@ -524,8 +524,10 @@ const CASES = {
       expect(p, r[0] <= r[1] - 4, `${w}: well right ${r[0]} vs text left ${r[1]}`);
     }
     await click(...(await centre(".grip")), 2);
-    const r = await js(`return document.querySelector('#columns > .column .measure').getBoundingClientRect().left + parseFloat(getComputedStyle(document.querySelector('#columns > .column .measure')).paddingLeft)`);
-    expect(p, r < 40, `collapsed: the inset is given back (${r})`);
+    const c = await js(`const well = document.getElementById('well').getBoundingClientRect(); const t = document.querySelector('#columns > .column .measure .text').getBoundingClientRect(); return [well.width, well.height, well.right, t.left];`);
+    const m = tokens.metrics;
+    expect(p, c[0] === m.tool_well_collapsed && c[1] === m.tool_well_collapsed, `collapsed grip ${c[0]}×${c[1]}`);
+    expect(p, c[3] === m.tool_well_inset + m.tool_well_collapsed + 8 && c[2] <= c[3] - 8, `collapsed: text starts at ${c[3]}, clear of the grip (right ${c[2]})`);
     await setWindow(width, height);
   },
 

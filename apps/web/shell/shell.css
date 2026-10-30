@@ -25,6 +25,7 @@
   --column-rule: 1px;
   --shown-tab-underline: 2px;
   --tool-well-width: 40px;
+  --tool-well-collapsed: 22px;
   --tool-well-inset: 12px;
   --tool-button: 32px;
   /* highlight swatches: colour and the opacity it is painted at */
@@ -193,9 +194,13 @@ button { font: inherit; color: inherit; }
 .scroller { flex: 1; min-height: 0; overflow: auto; position: relative; outline: none; }
 .page { position: relative; min-height: 100%; }
 .measure { max-width: var(--measure); margin: 0 auto; padding: var(--space-5) var(--space-5) 96px; }
-/* The floating well sits over the first column's leading edge: its text starts clear of it. */
-:root:not(.well-collapsed) .column:first-child .measure, :root:not(.well-collapsed) .column:first-child .placeholder {
+/* The floating well sits over the first column's leading edge: its text starts clear of it,
+   expanded (12 + 40 + 8) or collapsed to the grip (12 + 22 + 8). */
+.column:first-child .measure, .column:first-child .placeholder {
   padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-width) + var(--space-2));
+}
+:root.well-collapsed .column:first-child .measure, :root.well-collapsed .column:first-child .placeholder {
+  padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-collapsed) + var(--space-2));
 }
 .measure .text {
   font-family: var(--font-reading); font-size: var(--reading-size); line-height: var(--reading-leading);
@@ -239,7 +244,9 @@ canvas.margin { position: absolute; inset: 0; pointer-events: none; touch-action
 .well .grip { width: 100%; height: 16px; cursor: grab; display: grid; place-items: center; color: var(--chrome); border-radius: var(--radius-tool-well) var(--radius-tool-well) 0 0; }
 .well .grip:active { cursor: grabbing; }
 .well .grip svg { width: 18px; height: 6px; }
-.well.collapsed { padding-bottom: 0; }
+.well.collapsed { padding: 0; width: var(--tool-well-collapsed); height: var(--tool-well-collapsed); }
+.well.collapsed .grip { height: 100%; border-radius: var(--radius-tool-well); }
+.well.collapsed .grip svg { width: 12px; }
 .well.collapsed > :not(.grip) { display: none; }
 .tool {
   width: var(--tool-button); height: var(--tool-button); border: 0; border-radius: var(--radius-control); background: none;

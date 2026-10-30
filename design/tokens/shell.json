@@ -41,6 +41,8 @@
     "column_rule": 1,
     "shown_tab_underline": 2,
     "tool_well_width": 40,
+    "tool_well_collapsed": 22,
+    "$tool_well_collapsed": "Collapsed to the grip, the well is a 22 × 22 square; column 1's text inset is tool_well_inset + the well's width + 8, expanded or collapsed",
     "tool_well_inset": 12,
     "tool_button": 32
   },
