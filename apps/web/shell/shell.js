@@ -8,7 +8,7 @@
 // Keys come from the registry (keys.js); nothing is bound that it does not list.
 //
 // What the host keeps outside the session, because the registry has no command for it yet
-// (named in docs/evidence/B072.md): column widths after a drag, scroll positions, the tool
+// (named in docs/evidence/B072-web.md): column widths after a drag, scroll positions, the tool
 // well's position, line spacing, highlights and ink strokes (no annotation store until B073+).
 //
 // Rendering is per column: a column's DOM is rebuilt only when its tabs, shown tab or passage
@@ -401,7 +401,11 @@ function saveScroll(view) { host.scroll.set(view.key, view.scroller.scrollTop); 
 function restoreScroll(view) {
   if (view.scrollTo) { view.scroller.scrollTop = Math.max(0, view.scrollTo.offsetTop - 24); view.scrollTo = null; return; }
   const top = host.scroll.get(view.key);
-  if (top) view.scroller.scrollTop = top;
+  if (top) { view.scroller.scrollTop = top; return; }
+  // First show: the tab's stored scroll_anchor (its segment) from the session.
+  const anchor = view.tab.scroll_anchor;
+  const verse = anchor && view.text && view.text.querySelector(`[data-segment="${CSS.escape(anchor.segment_id)}"]`);
+  if (verse) view.scroller.scrollTop = Math.max(0, verse.offsetTop - 24);
 }
 
 function viewOfNode(node) {
@@ -836,8 +840,9 @@ function renderPalette(result) {
     for (const item of group.items) {
       const i = rows.length;
       rows.push({ kind: "item", item, section: group.section });
-      const sub = item.disabled ? reasonText(item.disabled) : item.subtitle || "";
-      parts.push(`<div class="row${item.disabled ? " disabled" : ""}" role="option" id="pr-${i}" data-i="${i}" aria-selected="false"${item.disabled ? ' aria-disabled="true"' : ""}><span class="title">${escapeHtml(item.title)}</span>${item.shortcut ? `<span class="key">${escapeHtml(shortcutGlyphs(item.shortcut))}</span>` : ""}${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ""}</div>`);
+      const [title, subtitle] = rowText(item);
+      const sub = item.disabled ? reasonText(item.disabled) : subtitle;
+      parts.push(`<div class="row${item.disabled ? " disabled" : ""}" role="option" id="pr-${i}" data-i="${i}" aria-selected="false"${item.disabled ? ' aria-disabled="true"' : ""}><span class="title">${escapeHtml(title)}</span>${item.shortcut ? `<span class="key">${escapeHtml(shortcutGlyphs(item.shortcut))}</span>` : ""}${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ""}</div>`);
     }
     if (group.total > group.items.length) {
       const i = rows.length;
@@ -857,6 +862,18 @@ function renderPalette(result) {
   field.setAttribute("aria-expanded", "true");
   const firstEnabled = rows.findIndex((r) => r.kind === "item" && !r.item.disabled);
   select(firstEnabled >= 0 ? firstEnabled : rows.length ? 0 : -1);
+}
+
+/** A tab row in the chrome's own words: the tab label the strip shows (the core titles a tab
+ *  by its raw resource id) and "workspace › column N". Other rows are the core's. */
+function rowText(item) {
+  const args = item.invocation.args || {};
+  if (item.invocation.command_id === "tab.focus" && args.tab_id) {
+    const ws = host.session.workspaces.find((w) => w.id === args.workspace_id);
+    const n = ws ? ws.columns.findIndex((c) => c.tabs.some((t) => t.id === args.tab_id)) : -1;
+    if (n >= 0) return [tabLabel(ws.columns[n].tabs.find((t) => t.id === args.tab_id)), `${ws.title} › column ${n + 1}`];
+  }
+  return [item.title, item.subtitle || ""];
 }
 
 function select(i) {
@@ -893,8 +910,20 @@ function activate(i, { expandSection = false } = {}) {
 }
 
 field.addEventListener("focus", () => { if (results.hidden) queryPalette(); });
-field.addEventListener("input", () => { host.palette.expanded = null; queryPalette(); });
+field.addEventListener("input", (e) => {
+  host.palette.expanded = null;
+  queryPalette();
+  if (e.isTrusted && host.recordKeys) {
+    // From the keydown that typed the character (the input event is created after it).
+    const start = host.keyDownAt ?? e.timeStamp;
+    void document.body.offsetHeight;
+    const sample = { done: performance.now() - start };
+    keyLatency.push(sample);
+    requestAnimationFrame(() => { sample.frame = performance.now() - start; });
+  }
+});
 field.addEventListener("keydown", (e) => {
+  host.keyDownAt = e.timeStamp;
   const rows = host.palette.rows;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault();
@@ -972,23 +1001,34 @@ function stats(values) {
   return { n: sorted.length, p50: +q(0.5).toFixed(3), p95: +q(0.95).toFixed(3), max: +sorted[sorted.length - 1].toFixed(3) };
 }
 
-/** One interaction, `samples` times: `work` is the synchronous script, style and layout of the
- *  change (performance.now() around the action with a forced layout), `frame` the time from
- *  the action to the requestAnimationFrame callback of the frame that paints it. */
+/** One interaction, `samples` times, each started as a task at a random point of a frame (as
+ *  an input event arrives): `work` is the synchronous script, style and layout of the change
+ *  (performance.now() around the action with a forced layout), `frame` the time from the start
+ *  of the action to the requestAnimationFrame callback of the next frame, the one that paints
+ *  it (so it includes waiting for that frame: up to one 16.7 ms interval at 60 Hz). */
 async function measure(name, samples, action) {
   const work = [], frame = [];
   for (let i = 0; i < samples; i++) {
     await nextFrame();
+    await new Promise((ok) => setTimeout(ok, Math.random() * 15));
     const t0 = performance.now();
     action(i);
     void document.body.offsetHeight;
     const t1 = performance.now();
-    await nextFrame();
-    const t2 = performance.now();
+    const t2 = await new Promise((ok) => requestAnimationFrame(() => ok(performance.now())));
     work.push(t1 - t0);
     frame.push(t2 - t0);
   }
   return { name, work_ms: stats(work), frame_ms: stats(frame) };
+}
+
+/** Trusted keystrokes (typed by the WebDriver runner into the field): from the event's
+ *  timeStamp to the end of the handler (results rendered and laid out) and to the next frame. */
+const keyLatency = [];
+export function keyReport(reset) {
+  const out = keyLatency.length ? { n: keyLatency.length, handler_done_ms: stats(keyLatency.map((k) => k.done)), next_frame_ms: stats(keyLatency.map((k) => k.frame)) } : { n: 0 };
+  if (reset) keyLatency.length = 0;
+  return out;
 }
 
 export async function bench({ samples = 200 } = {}) {
@@ -1055,7 +1095,7 @@ async function main() {
   host.theme = TOKENS.themes.includes(theme) ? theme : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   buildWell();
   render();
-  window.openlogosShell = { core, host, run, render, snapshot, bench, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab };
+  window.openlogosShell = { core, host, run, render, snapshot, bench, keyReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab };
   window.openlogosReady = true;
 }
 

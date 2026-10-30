@@ -256,6 +256,8 @@ const CASES = {
     await type("@");
     const sections = await js("return [...document.querySelectorAll('.results h3')].map((h) => h.textContent)");
     expect(p, eq(sections, ["Tabs and workspaces"]), `@ → ${sections}`);
+    const tabRow = await js("const r = [...document.querySelectorAll('.results .row')].find((x) => x.querySelector('.title').textContent === 'BSB Jn 3'); return r && r.querySelector('.sub').textContent");
+    expect(p, tabRow === "Study › column 1", `tab row subtitle ${tabRow}`);
     await chord("Meta", "a");
     await type("#loved");
     const text = await js("return [...document.querySelectorAll('.results h3')].map((h) => h.textContent)");
@@ -545,6 +547,7 @@ try {
   const session = await wd("POST", "/session", { capabilities });
   sessionId = session.sessionId;
   S = `/session/${sessionId}`;
+  await wd("POST", `${S}/timeouts`, { script: 900000 }); // the speed runs take minutes
   await setWindow(width, height);
   await load();
   const agent = await js("return [navigator.userAgent, window.openlogosShell.core.apiVersion(), innerWidth, innerHeight]");
@@ -574,6 +577,22 @@ try {
         console.log(JSON.stringify({ bench: label, ...row }));
         if (row.work_ms.n < samples) failures += 1;
       }
+      // Trusted keystrokes typed through the driver, every prefix of the queries.
+      await js("window.openlogosShell.host.recordKeys = true; window.openlogosShell.keyReport(true); document.getElementById('palette-field').focus()");
+      const queries = ["jn 3:16", "move tab to column 3", "bench 7", "@rom 8", "theme dark", "new col", "#loved", "gen 1:1"];
+      let typed = 0;
+      while (typed < samples) {
+        for (const q of queries) {
+          await chord("Meta", "a");
+          await type(q);
+          typed += q.length;
+        }
+      }
+      await sleep(100);
+      const keys = await js("return window.openlogosShell.keyReport(true)");
+      result[label].trusted_keystrokes = keys;
+      console.log(JSON.stringify({ bench: label, name: "trusted keystroke → palette rendered", ...keys }));
+      if (keys.n < samples) failures += 1;
     }
     if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, ...result }, null, 2)); console.log(`bench json ${benchJson}`); }
     summary.push(`bench: ${headed ? "headed" : "headless"} Chrome, ${samples} samples per interaction`);
