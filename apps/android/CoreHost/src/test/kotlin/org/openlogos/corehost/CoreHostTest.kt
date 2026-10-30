@@ -16,7 +16,9 @@ import org.openlogos.core.Revision
 import org.openlogos.core.ScalarRange
 import org.openlogos.core.Segment
 import org.openlogos.core.ShellCommandArgs
+import org.openlogos.core.ShellCommandContext
 import org.openlogos.core.ShellCommandException
+import org.openlogos.core.ShellFocus
 import org.openlogos.core.ShellHandle
 import org.openlogos.core.ShellPaletteContext
 import org.openlogos.core.ShellPaletteSection
@@ -204,6 +206,29 @@ class CoreHostTest {
             shell.apply("tab.focus", ShellCommandArgs(), false)
         }
         assertEquals("Choose a tab", disabled.reason)
+    }
+
+    // B076: the contextual tool well through the UniFFI handle.
+    @Test
+    fun toolWellFollowsFocus() {
+        val shell = ShellHandle.fixture()
+        val tab = ShellCommandContext(hasSelection = false, focus = ShellFocus.TAB)
+        val well = shell.toolWell(tab)
+        assertEquals("translation", well.context)
+        assertEquals(listOf("tools", "ink"), well.groups.map { it.kind })
+        shell.applyIn("tool.pen", ShellCommandArgs(), tab)
+        val dock = ShellCommandContext(hasSelection = true, focus = ShellFocus.NOTES_DOCK)
+        val notes = shell.toolWell(dock)
+        assertEquals(listOf("notes", "pen", "type"), listOf(notes.context, notes.tool, notes.effectiveTool))
+        assertEquals(listOf("tools", "selection"), notes.groups.map { it.kind })
+        val refused = assertFailsWith<ShellCommandException.Disabled> {
+            shell.applyIn("tool.eraser", ShellCommandArgs(), dock)
+        }
+        assertEquals("wrong_context", refused.kind)
+        assertEquals("Eraser works on Bible text", refused.reason)
+        shell.apply("column.focus", ShellCommandArgs(column = 2u), false)
+        assertEquals("original", shell.session().toolContext)
+        assertEquals("pen", shell.session().effectiveTool)
     }
 
     // Fixture decoding

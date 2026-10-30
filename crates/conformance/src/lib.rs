@@ -42,7 +42,9 @@ pub use shell::{
     ShellScenario, ShellStep, StepExpectation, fixture_session,
 };
 
-pub use well::{GroupView, ToolWellFixture, WellCase, WellExpectation, WellStep};
+pub use well::{
+    GroupView, ToolWellFixture, WellCase, WellExpectation, WellStep, fixture_resource_languages,
+};
 
 pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 

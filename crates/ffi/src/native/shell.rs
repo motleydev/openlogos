@@ -6,12 +6,16 @@
 //! call `paletteQuery` on every keystroke and pay for indexing only after a command changed
 //! the session. Session state crosses as read-only view records; persistence crosses as the
 //! schema JSON of the session record and each workspace record.
+//!
+//! B076 adds the contextual tool well: `tool_well` with a [`ShellCommandContext`] (the
+//! selection and where focus is), `set_resource_languages`, and `commands_in` / `apply_in`,
+//! the context-taking forms of `commands` / `apply` (which keep meaning "focus on the tab").
 
 use std::sync::{Arc, Mutex};
 
 use openlogos_conformance::FixtureTextProvider;
 use openlogos_workspaces::commands::{
-    ArgumentShape, CommandArgs, CommandContext, CommandError, CommandSpec, DisabledReason,
+    ArgumentShape, CommandArgs, CommandContext, CommandError, CommandSpec, DisabledReason, Focus,
     Invocation, Outcome, Platform, Scope, Shell, registry,
 };
 use openlogos_workspaces::migrate_workspace_to_2;
@@ -21,6 +25,7 @@ use openlogos_workspaces::palette::{
 };
 use openlogos_workspaces::shell::{Session, SessionRecord};
 use openlogos_workspaces::view::TabView;
+use openlogos_workspaces::well::ToolWell;
 
 /// Why a shell call failed. No field is called `message` or `cause` (Kotlin's `Throwable`).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -159,8 +164,13 @@ pub struct ShellSession {
     pub workspaces: Vec<ShellWorkspace>,
     /// The active workspace.
     pub active_workspace_id: String,
-    /// The selected tool (`select`, `highlight`, `pen`, `highlighter_pen`, `eraser`, `collect`).
+    /// The selected tool (`select`, `highlight`, `pen`, `highlighter_pen`, `eraser`, `collect`,
+    /// `word_study`, `type`), as stored.
     pub tool: String,
+    /// The tool in effect for the active tab (B076); `tool_well` answers for the dock.
+    pub effective_tool: String,
+    /// The active tab's tool-well context: `translation`, `original`, `notes`, `reference`.
+    pub tool_context: String,
     /// Bumped by every change.
     pub revision: u64,
     /// The command Undo would take back, if any.
@@ -446,6 +456,122 @@ pub struct ShellPaletteContext {
     /// The expanded section, if any.
     #[uniffi(default = None)]
     pub expanded: Option<ShellPaletteSection>,
+    /// Where focus is (B076); `None` means the tab.
+    #[uniffi(default = None)]
+    pub focus: Option<ShellFocus>,
+}
+
+/// Where focus is, as far as the tool well cares (`commands::Focus`, B076).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ShellFocus {
+    /// The active column's shown tab.
+    Tab,
+    /// The notes dock.
+    NotesDock,
+    /// A column showing no tab.
+    Empty,
+}
+
+impl From<ShellFocus> for Focus {
+    fn from(f: ShellFocus) -> Self {
+        match f {
+            ShellFocus::Tab => Focus::Tab,
+            ShellFocus::NotesDock => Focus::NotesDock,
+            ShellFocus::Empty => Focus::Empty,
+        }
+    }
+}
+
+/// What the host knows that the session does not (`commands::CommandContext`, B076).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct ShellCommandContext {
+    /// Whether text is selected.
+    pub has_selection: bool,
+    /// Where focus is.
+    pub focus: ShellFocus,
+}
+
+impl From<ShellCommandContext> for CommandContext {
+    fn from(c: ShellCommandContext) -> Self {
+        CommandContext {
+            has_selection: c.has_selection,
+            focus: c.focus.into(),
+        }
+    }
+}
+
+/// One button of the tool well (`well::ToolWellItem`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ShellToolWellItem {
+    /// The command a click dispatches (`apply_in`).
+    pub command_id: String,
+    /// The tool it chooses, for a mode tool.
+    pub tool: Option<String>,
+    /// Tooltip and accessibility label.
+    pub label: String,
+    /// The default key (`V`, `Cmd+B`), the same on web and Mac.
+    pub key: Option<String>,
+    /// A neutral icon name the host maps to an SF Symbol.
+    pub icon: String,
+    /// Whether it is the tool in effect.
+    pub active: bool,
+    /// An ink item's value: the swatch `#RRGGBB`, the brush width.
+    pub value: Option<String>,
+    /// Why it cannot run now, in words.
+    pub disabled_text: Option<String>,
+}
+
+/// One group of the well.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ShellToolWellGroup {
+    /// `tools`, `ink` or `selection`.
+    pub kind: String,
+    /// Its buttons, in order.
+    pub items: Vec<ShellToolWellItem>,
+}
+
+/// The tool well for what has focus (specs/22 §4.1).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ShellToolWell {
+    /// `translation`, `original`, `notes`, `reference` or `none`.
+    pub context: String,
+    /// The stored tool.
+    pub tool: String,
+    /// The tool in effect.
+    pub effective_tool: String,
+    /// `tools`, then `ink` and `selection` where they apply.
+    pub groups: Vec<ShellToolWellGroup>,
+}
+
+impl From<ToolWell> for ShellToolWell {
+    fn from(w: ToolWell) -> Self {
+        ShellToolWell {
+            context: w.context.name().to_owned(),
+            tool: w.tool.name().to_owned(),
+            effective_tool: w.effective_tool.name().to_owned(),
+            groups: w
+                .groups
+                .into_iter()
+                .map(|g| ShellToolWellGroup {
+                    kind: name_of(&g.kind),
+                    items: g
+                        .items
+                        .into_iter()
+                        .map(|i| ShellToolWellItem {
+                            command_id: i.command_id,
+                            tool: i.tool.map(|t| t.name().to_owned()),
+                            label: i.label,
+                            key: i.key,
+                            icon: i.icon,
+                            active: i.active,
+                            value: i.value,
+                            disabled_text: i.disabled_text,
+                        })
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
 }
 
 /// One result row.
@@ -560,6 +686,8 @@ fn view(shell: &Shell) -> ShellSession {
             .collect(),
         active_workspace_id: v.active_workspace_id,
         tool: v.tool,
+        effective_tool: v.effective_tool,
+        tool_context: v.tool_context,
         revision: v.revision,
         undo_title: v.undo_title,
         redo_title: v.redo_title,
@@ -642,7 +770,13 @@ impl ShellHandle {
     pub fn fixture() -> Arc<ShellHandle> {
         let session = openlogos_conformance::fixture_session();
         let handle = ShellHandle::from_session(session).expect("the fixture session checks");
-        handle.lock().text = Some(FixtureTextProvider::new());
+        {
+            let mut state = handle.lock();
+            state.text = Some(FixtureTextProvider::new());
+            // Set directly, so a fresh fixture handle is still at revision 0.
+            state.shell.session.resource_languages =
+                openlogos_conformance::fixture_resource_languages();
+        }
         handle
     }
 
@@ -657,6 +791,48 @@ impl ShellHandle {
         self.lock()
             .shell
             .set_resource_titles(titles.into_iter().collect());
+    }
+
+    /// Registers resource languages as BCP 47 tags (`sblgnt` → `grc`, `wlc` → `hbo`); the
+    /// tool well shows the original-language tools on Reading tabs of `grc`, `hbo`, `arc`,
+    /// `he` or `heb` resources. A resource without one reads as a translation.
+    pub fn set_resource_languages(&self, languages: std::collections::HashMap<String, String>) {
+        self.lock()
+            .shell
+            .set_resource_languages(languages.into_iter().collect());
+    }
+
+    /// The tool well for what has focus: its context, the stored and effective tool, and
+    /// the groups to draw. Call it on every render; it costs microseconds.
+    pub fn tool_well(&self, context: ShellCommandContext) -> ShellToolWell {
+        self.lock().shell.tool_well(&context.into()).into()
+    }
+
+    /// `commands` with where focus is, so tool and note commands carry their context's
+    /// reasons.
+    pub fn commands_in(&self, context: ShellCommandContext) -> Vec<ShellCommandInfo> {
+        let state = self.lock();
+        state
+            .shell
+            .commands(&context.into())
+            .into_iter()
+            .map(|c| command_info(&c.spec, c.disabled))
+            .collect()
+    }
+
+    /// `apply` with where focus is: a tool or note action outside its context fails as
+    /// `Disabled` with kind `wrong_context`.
+    pub fn apply_in(
+        &self,
+        command_id: String,
+        args: ShellCommandArgs,
+        context: ShellCommandContext,
+    ) -> Result<ShellOutcome, ShellCommandError> {
+        let mut state = self.lock();
+        let outcome = state
+            .shell
+            .apply(&Invocation::with(&command_id, args.into()), &context.into())?;
+        Ok(outcome.into())
     }
 
     /// The session as a host renders it.
@@ -686,7 +862,10 @@ impl ShellHandle {
         let state = self.lock();
         state
             .shell
-            .commands(&CommandContext { has_selection })
+            .commands(&CommandContext {
+                has_selection,
+                ..CommandContext::default()
+            })
             .into_iter()
             .map(|c| command_info(&c.spec, c.disabled))
             .collect()
@@ -702,7 +881,10 @@ impl ShellHandle {
         let mut state = self.lock();
         let outcome = state.shell.apply(
             &Invocation::with(&command_id, args.into()),
-            &CommandContext { has_selection },
+            &CommandContext {
+                has_selection,
+                ..CommandContext::default()
+            },
         )?;
         Ok(outcome.into())
     }
@@ -734,6 +916,7 @@ impl ShellHandle {
                 ShellPlatform::Ipad => Platform::Ipad,
             },
             expanded: context.expanded.map(Into::into),
+            focus: context.focus.map_or(Focus::Tab, Into::into),
         };
         let provider = state.text.as_ref().map(|p| p as &dyn TextProvider);
         let result = palette_query_indexed(&state.shell, index, &text, &context, provider);
@@ -826,6 +1009,7 @@ mod tests {
             has_selection: false,
             platform: ShellPlatform::Mac,
             expanded: None,
+            focus: None,
         };
         let result = shell.palette_query("Jn 3:16 @2".into(), context);
         assert_eq!(result.target_column, Some(2));
@@ -887,6 +1071,80 @@ mod tests {
                 .iter()
                 .any(|c| c.id == "edit.undo" && c.disabled_kind.is_none())
         );
+    }
+
+    #[test]
+    fn the_tool_well_follows_focus_through_the_handle() {
+        let shell = ShellHandle::fixture();
+        let tab = ShellCommandContext {
+            has_selection: false,
+            focus: ShellFocus::Tab,
+        };
+        let well = shell.tool_well(tab);
+        assert_eq!(well.context, "translation");
+        assert_eq!(well.groups[0].items[0].icon, "select");
+        assert!(well.groups[0].items[0].active);
+        assert_eq!(well.groups[1].kind, "ink");
+        shell
+            .apply_in("tool.pen".into(), ShellCommandArgs::default(), tab)
+            .unwrap();
+        let dock = ShellCommandContext {
+            has_selection: true,
+            focus: ShellFocus::NotesDock,
+        };
+        let notes = shell.tool_well(dock);
+        assert_eq!(
+            (
+                notes.context.as_str(),
+                notes.tool.as_str(),
+                notes.effective_tool.as_str()
+            ),
+            ("notes", "pen", "type")
+        );
+        assert_eq!(notes.groups.last().unwrap().kind, "selection");
+        let error = shell
+            .apply_in("tool.eraser".into(), ShellCommandArgs::default(), dock)
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ShellCommandError::Disabled { ref kind, ref reason, .. }
+                if kind == "wrong_context" && reason == "Eraser works on Bible text"
+        ));
+        assert!(
+            shell
+                .commands_in(dock)
+                .iter()
+                .any(|c| c.id == "note.bold" && c.disabled_kind.is_none())
+        );
+        shell
+            .apply(
+                "column.focus".into(),
+                ShellCommandArgs {
+                    column: Some(2),
+                    ..Default::default()
+                },
+                false,
+            )
+            .unwrap();
+        let session = shell.session();
+        assert_eq!(
+            (
+                session.tool_context.as_str(),
+                session.effective_tool.as_str()
+            ),
+            ("original", "pen"),
+            "the fixture registers sblgnt as grc"
+        );
+        let rows = shell.palette_query(
+            ":Jn 3:16".into(),
+            ShellPaletteContext {
+                has_selection: false,
+                platform: ShellPlatform::Mac,
+                expanded: None,
+                focus: Some(ShellFocus::NotesDock),
+            },
+        );
+        assert_eq!(rows.groups[0].items[1].command_id, "note.link_passage");
     }
 
     #[test]

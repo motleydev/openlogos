@@ -102,6 +102,21 @@ pub struct ToolWellFixture {
     pub palette: Vec<PaletteCase>,
 }
 
+/// The languages of the fixture editions (`bsb` → `en`, `sblgnt` → `grc`, `wlc` → `hbo`),
+/// read from the `tool-well` fixture: what the bindings' `ShellHandle.fixture()` registers.
+#[must_use]
+pub fn fixture_resource_languages() -> BTreeMap<String, String> {
+    let json = crate::FIXTURE_FILES
+        .iter()
+        .find(|(id, _)| *id == "tool-well")
+        .map(|(_, json)| *json)
+        .expect("the tool well fixture is compiled in");
+    match serde_json::from_str::<crate::Fixture>(json) {
+        Ok(crate::Fixture::ToolWell(fixture)) => fixture.resource_languages,
+        _ => panic!("the tool well fixture parses"),
+    }
+}
+
 fn groups_view(well: &ToolWell) -> Vec<GroupView> {
     well.groups
         .iter()
