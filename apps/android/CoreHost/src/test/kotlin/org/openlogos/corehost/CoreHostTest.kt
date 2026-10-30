@@ -198,6 +198,7 @@ class CoreHostTest {
         assertEquals("Jn 3:16", formatShort("John 3:16"))
         shell.setResourceTitles(mapOf("bsb" to "BSB"))
         assertEquals("BSB", shell.session().workspaces[0].columns[0].tabs[0].resourceTitle)
+        assertEquals("Jn 3", shell.session().workspaces[0].columns[0].tabs[0].chapterLabel)
         assertEquals("BSB · Jn 3:16", shell.paletteQuery("@bsb jn", context).groups.first().items.first().title)
         val disabled = assertFailsWith<ShellCommandException.Disabled> {
             shell.apply("tab.focus", ShellCommandArgs(), false)

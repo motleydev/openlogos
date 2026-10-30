@@ -166,6 +166,9 @@ pub struct StepExpectation {
     pub anchors: Option<BTreeMap<String, Option<String>>>,
     /// The shell revision.
     pub revision: Option<u64>,
+    /// Tab labels in the active workspace from `Shell::view`: `[reference_label,
+    /// chapter_label]`.
+    pub labels: Option<BTreeMap<String, [Option<String>; 2]>>,
 }
 
 /// One command of a scenario.
@@ -213,6 +216,9 @@ pub struct ExpectedItem {
     /// The second line.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subtitle: Option<Option<String>>,
+    /// The shortcut shown, `{n}` filled; `null` for none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shortcut: Option<Option<String>>,
 }
 
 /// One palette query against the fixture session.
@@ -456,6 +462,27 @@ fn check_step(
             .collect();
         r.check(&format!("{name} anchors"), anchors, &actual);
     }
+    if let Some(labels) = &expect.labels {
+        let view = shell.view();
+        let active = view
+            .workspaces
+            .iter()
+            .find(|w| w.id == view.active_workspace_id);
+        let actual: BTreeMap<String, [Option<String>; 2]> = labels
+            .keys()
+            .map(|id| {
+                let tab = active
+                    .into_iter()
+                    .flat_map(|w| w.columns.iter().flat_map(|c| c.tabs.iter()))
+                    .find(|t| &t.id == id);
+                let pair = tab.map_or([None, None], |t| {
+                    [t.reference_label.clone(), t.chapter_label.clone()]
+                });
+                (id.clone(), pair)
+            })
+            .collect();
+        r.check(&format!("{name} labels"), labels, &actual);
+    }
     if let Some(revision) = &expect.revision {
         r.check(&format!("{name} revision"), revision, &shell.revision);
     }
@@ -487,6 +514,7 @@ fn actual_item(
             .as_ref()
             .map(|_| item.disabled_text.clone()),
         subtitle: expected.subtitle.as_ref().map(|_| item.subtitle.clone()),
+        shortcut: expected.shortcut.as_ref().map(|_| item.shortcut.clone()),
     }
 }
 

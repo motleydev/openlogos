@@ -157,6 +157,11 @@ export type ShellPaletteSection = "passage" | "commands" | "tabs" | "text";
 export interface ShellPaletteContext { has_selection?: boolean; platform?: ShellPlatform; expanded?: ShellPaletteSection | null }
 export interface ShellPaletteItem { section: ShellPaletteSection; title: string; subtitle: string | null; score: number; invocation: ShellInvocation; disabled: { kind: string } | null; disabled_text: string | null; shortcut: string | null }
 export interface ShellPaletteResult { query: { mode: "all" | "commands" | "tabs" | "text" | "passage"; text: string; target: { kind: "column"; number: number } | { kind: "new" } | null }; groups: { section: ShellPaletteSection; items: ShellPaletteItem[]; total: number }[]; notice: string | null }
+/** B070: what a host renders; labels come from the core (`formatShort`), never the host. */
+export interface ShellTabView { id: string; kind: string; content_id: string; content_revision: string; reference: string | null; resource_title: string; reference_label: string | null; chapter_label: string | null; scroll_segment_id: string | null; scroll_scalar: number | null; link_mode: "pinned" | "follows" | "group"; link_group: string | null; can_go_back: boolean; can_go_forward: boolean }
+export interface ShellColumnView { id: string; number: number; tabs: ShellTabView[]; shown_tab_id: string; width_fraction: number }
+export interface ShellWorkspaceView { id: string; title: string; columns: ShellColumnView[]; active_column_number: number; notes_dock_note_id: string | null; notes_dock_open: boolean }
+export interface ShellSessionView { workspaces: ShellWorkspaceView[]; active_workspace_id: string; tool: ShellTool; revision: number; undo_title: string | null; redo_title: string | null; reading: ShellReading; ink: ShellInk }
 export interface ShellRecords { session: ShellSessionRecord; workspaces: ShellWorkspace[] }
 export interface InkDocument { schema_version: "1.0" | "1.1"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
 "#;
@@ -525,6 +530,13 @@ impl ShellHandle {
     #[wasm_bindgen(unchecked_return_type = "ShellSession")]
     pub fn session(&self) -> Result<JsValue, JsValue> {
         to_js(&self.shell.session)
+    }
+
+    /// The session as a host renders it: column numbers, resource names, and each tab's
+    /// `reference_label` (`Jn 3:16`, identity rows) and `chapter_label` (`Jn 3`, tab strips).
+    #[wasm_bindgen(unchecked_return_type = "ShellSessionView")]
+    pub fn view(&self) -> Result<JsValue, JsValue> {
+        to_js(&self.shell.view())
     }
 
     /// Bumped by every change.
