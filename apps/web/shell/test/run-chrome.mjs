@@ -836,8 +836,7 @@ async function wellScreenshots() {
   await chord("Alt", "2");
   await type("w");
   await click(...(await word(2, "ἠγάπησεν")));
-  await chord("Alt", "2");
-  await shot("web-well-original-lexicon");
+  await shot("web-well-original-lexicon"); // focus stays on the Greek column (tab.open_lexicon)
   await load("?theme=light&autotest=1");
   await click(...(await centre('#columns > .column[data-number="3"] .note-editor')));
   await js("const e = document.querySelector('#columns > .column[data-number=\"3\"] .note-editor'); const r = document.createRange(); r.selectNodeContents(e); r.collapse(false); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r);");
