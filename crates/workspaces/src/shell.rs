@@ -285,6 +285,70 @@ impl Tool {
     }
 }
 
+/// Text size steps a reader can take below and above the default.
+pub const TEXT_SIZE_STEPS: std::ops::RangeInclusive<i32> = -3..=5;
+
+/// The line spacings offered (B072): compact, default and open.
+pub const LINE_SPACINGS: [f64; 3] = [1.35, 1.5, 1.7];
+
+/// The themes a host offers; `system` follows the platform's appearance.
+pub const THEMES: [&str; 4] = ["system", "light", "dark", "sepia"];
+
+/// Ink brush widths in coordinate units, smallest first; the pen default is 4 and the
+/// highlighter's 12 (crates/ink brushes).
+pub const INK_WIDTHS: [f64; 7] = [1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0];
+
+/// How the reader has set up the text: one place for every host to read and the commands
+/// `view.text_size_*`, `view.line_spacing*` and `view.theme` to change.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ReadingSettings {
+    /// Steps from the platform's default text size, within [`TEXT_SIZE_STEPS`].
+    pub text_size_step: i32,
+    /// Line height as a multiple of the font size, one of [`LINE_SPACINGS`].
+    pub line_spacing: f64,
+    /// One of [`THEMES`].
+    pub theme: String,
+}
+
+impl Default for ReadingSettings {
+    fn default() -> Self {
+        ReadingSettings {
+            text_size_step: 0,
+            line_spacing: 1.5,
+            theme: "system".to_owned(),
+        }
+    }
+}
+
+/// The tool palette's wells and brush width (specs/22 §4), kept with the tool.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct InkSettings {
+    /// Brush width, one of [`INK_WIDTHS`].
+    pub width: f64,
+    /// The current swatch, `#RRGGBB`.
+    pub swatch: String,
+    /// The alternate swatch `X` swaps in.
+    pub alternate_swatch: String,
+}
+
+impl Default for InkSettings {
+    fn default() -> Self {
+        InkSettings {
+            width: 4.0,
+            swatch: "#FFE066".to_owned(),
+            alternate_swatch: "#7FD1FF".to_owned(),
+        }
+    }
+}
+
+/// Whether a string is a `#RRGGBB` swatch.
+#[must_use]
+pub fn is_swatch(text: &str) -> bool {
+    text.len() == 7 && text.starts_with('#') && text[1..].chars().all(|c| c.is_ascii_hexdigit())
+}
+
 /// The session record as stored (schemas/session.schema.json 1.0): workspace order and the
 /// active workspace; each workspace is its own record.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -302,6 +366,12 @@ pub struct SessionRecord {
     pub tool: Tool,
     /// The next serial for workspace ids.
     pub next_serial: u64,
+    /// Text size, line spacing and theme.
+    #[serde(default)]
+    pub reading: ReadingSettings,
+    /// Brush width and swatches.
+    #[serde(default)]
+    pub ink: InkSettings,
 }
 
 /// Every open workspace, in order, with the active one and the tool: the in-memory union of
@@ -321,6 +391,12 @@ pub struct Session {
     pub tool: Tool,
     /// The next serial for workspace ids.
     pub next_serial: u64,
+    /// Text size, line spacing and theme.
+    #[serde(default)]
+    pub reading: ReadingSettings,
+    /// Brush width and swatches.
+    #[serde(default)]
+    pub ink: InkSettings,
 }
 
 /// Why a shell document is rejected.
@@ -846,6 +922,8 @@ impl Session {
             workspaces: vec![workspace],
             tool: Tool::Select,
             next_serial: 1,
+            reading: ReadingSettings::default(),
+            ink: InkSettings::default(),
         }
     }
 
@@ -929,6 +1007,8 @@ impl Session {
                 active_workspace_id: self.active_workspace_id.clone(),
                 tool: self.tool,
                 next_serial: self.next_serial,
+                reading: self.reading.clone(),
+                ink: self.ink.clone(),
             },
             self.workspaces.clone(),
         )
@@ -960,6 +1040,8 @@ impl Session {
             active_workspace_id: record.active_workspace_id,
             tool: record.tool,
             next_serial: record.next_serial,
+            reading: record.reading,
+            ink: record.ink,
         };
         session.check()?;
         Ok(session)

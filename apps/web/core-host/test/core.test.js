@@ -133,4 +133,11 @@ test("B070: the workspace shell runs commands, undo and the palette", () => {
   const reopened = core.ShellHandle.fromRecords(session, workspaces);
   assert.deepEqual(reopened.session(), shell.session());
   assert.equal(core.migrateWorkspace({ ...workspaces[0] }).schema_version, "2.0");
+  // Settings live in the session; a scroll position does not bump the revision.
+  shell.apply({ command_id: "view.line_spacing", args: { number: 1.7 } });
+  assert.equal(shell.session().reading.line_spacing, 1.7);
+  const revision = shell.revision();
+  shell.apply({ command_id: "tab.record_scroll", args: { tab_id: "t3", segment_id: "John.3.16", scalar: 4 } });
+  assert.equal(shell.revision(), revision);
+  assert.equal(core.layoutConstants().measure_cap_standard_pt, 640);
 });

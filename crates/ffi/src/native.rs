@@ -34,10 +34,11 @@ pub use reference::{
     parse_reference,
 };
 pub use shell::{
-    ShellColumn, ShellCommandArgs, ShellCommandError, ShellCommandInfo, ShellHandle, ShellOutcome,
-    ShellPaletteContext, ShellPaletteGroup, ShellPaletteItem, ShellPaletteResult,
-    ShellPaletteSection, ShellPlatform, ShellRecords, ShellSession, ShellShortcuts, ShellTab,
-    ShellWorkspace, migrate_workspace_json, shell_registry,
+    ShellColumn, ShellCommandArgs, ShellCommandError, ShellCommandInfo, ShellHandle, ShellInk,
+    ShellLayoutConstants, ShellOutcome, ShellPaletteContext, ShellPaletteGroup, ShellPaletteItem,
+    ShellPaletteResult, ShellPaletteSection, ShellPlatform, ShellReading, ShellRecords,
+    ShellSession, ShellShortcuts, ShellTab, ShellWorkspace, layout_constants,
+    migrate_workspace_json, shell_registry,
 };
 pub use versification::{
     MappingResult, MappingStatus, VerseMapRow, VerseMapRowKind, VersificationError, map_verse,

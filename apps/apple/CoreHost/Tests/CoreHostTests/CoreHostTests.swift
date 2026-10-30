@@ -163,6 +163,13 @@ final class CoreHostTests: XCTestCase {
         let records = shell.records()
         let reopened = try ShellHandle.fromRecords(sessionJson: records.sessionJson, workspaceJsons: records.workspaceJsons)
         XCTAssertEqual(reopened.session().workspaces, shell.session().workspaces)
+        // Settings live in the session; a scroll position does not bump the revision.
+        _ = try shell.apply(commandId: "view.line_spacing", args: ShellCommandArgs(number: 1.7), hasSelection: false)
+        XCTAssertEqual(shell.session().reading.lineSpacing, 1.7)
+        let revision = shell.session().revision
+        _ = try shell.apply(commandId: "tab.record_scroll", args: ShellCommandArgs(tabId: "t3", segmentId: "John.3.16", scalar: 4), hasSelection: false)
+        XCTAssertEqual(shell.session().revision, revision)
+        XCTAssertEqual(layoutConstants().measureCapStandardPt, 640)
     }
 
     // MARK: - Fixture decoding

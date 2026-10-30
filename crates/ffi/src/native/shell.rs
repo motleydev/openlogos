@@ -160,6 +160,58 @@ pub struct ShellSession {
     pub undo_title: Option<String>,
     /// The command Redo would run again, if any.
     pub redo_title: Option<String>,
+    /// Text size, line spacing and theme.
+    pub reading: ShellReading,
+    /// Brush width and swatches.
+    pub ink: ShellInk,
+}
+
+/// How the reader has set up the text (`shell::ReadingSettings`).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ShellReading {
+    /// Steps from the platform's default text size.
+    pub text_size_step: i32,
+    /// Line height as a multiple of the font size: 1.35, 1.5 or 1.7.
+    pub line_spacing: f64,
+    /// `system`, `light`, `dark` or `sepia`.
+    pub theme: String,
+}
+
+/// The tool palette's brush width and wells (`shell::InkSettings`).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ShellInk {
+    /// Brush width.
+    pub width: f64,
+    /// The current swatch, `#RRGGBB`.
+    pub swatch: String,
+    /// The alternate swatch.
+    pub alternate_swatch: String,
+}
+
+/// The core's pane minimums and measure caps (`workspaces::layout_constants`), in points.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
+pub struct ShellLayoutConstants {
+    /// Narrowest useful reading pane at standard text sizes.
+    pub pane_minimum_standard_pt: f64,
+    /// The same at accessibility text sizes.
+    pub pane_minimum_accessibility_pt: f64,
+    /// Column width above which text is centred at the measure, standard sizes.
+    pub measure_cap_standard_pt: f64,
+    /// The same at accessibility sizes.
+    pub measure_cap_accessibility_pt: f64,
+}
+
+/// The pane minimums and measure caps, so hosts stop mirroring the constants.
+#[uniffi::export]
+#[must_use]
+pub fn layout_constants() -> ShellLayoutConstants {
+    let c = openlogos_workspaces::layout_constants();
+    ShellLayoutConstants {
+        pane_minimum_standard_pt: c.pane_minimum_standard_pt,
+        pane_minimum_accessibility_pt: c.pane_minimum_accessibility_pt,
+        measure_cap_standard_pt: c.measure_cap_standard_pt,
+        measure_cap_accessibility_pt: c.measure_cap_accessibility_pt,
+    }
 }
 
 /// The persisted form: the session record and one record per workspace, as schema JSON.
@@ -172,7 +224,7 @@ pub struct ShellRecords {
 }
 
 /// Arguments for a command (`commands::CommandArgs`).
-#[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, Default, PartialEq, uniffi::Record)]
 pub struct ShellCommandArgs {
     /// A column number, 1-based.
     #[uniffi(default = None)]
@@ -195,6 +247,15 @@ pub struct ShellCommandArgs {
     /// A link group.
     #[uniffi(default = None)]
     pub group: Option<String>,
+    /// A number: a line spacing, a brush width, a column's width share.
+    #[uniffi(default = None)]
+    pub number: Option<f64>,
+    /// A scroll anchor's segment.
+    #[uniffi(default = None)]
+    pub segment_id: Option<String>,
+    /// A scroll anchor's offset in scalar values.
+    #[uniffi(default = None)]
+    pub scalar: Option<u32>,
 }
 
 impl From<ShellCommandArgs> for CommandArgs {
@@ -207,6 +268,9 @@ impl From<ShellCommandArgs> for CommandArgs {
             workspace_id: a.workspace_id,
             tab_id: a.tab_id,
             group: a.group,
+            number: a.number,
+            segment_id: a.segment_id,
+            scalar: a.scalar,
         }
     }
 }
@@ -221,6 +285,9 @@ impl From<CommandArgs> for ShellCommandArgs {
             workspace_id: a.workspace_id,
             tab_id: a.tab_id,
             group: a.group,
+            number: a.number,
+            segment_id: a.segment_id,
+            scalar: a.scalar,
         }
     }
 }
@@ -259,6 +326,8 @@ pub struct ShellCommandInfo {
     pub undoable: bool,
     /// Whether the core performs it.
     pub handled_by_core: bool,
+    /// Whether it records state without bumping the revision (`tab.record_scroll`).
+    pub quiet: bool,
     /// The disabled reason's tag, `None` when it can run.
     pub disabled_kind: Option<String>,
     /// The disabled reason for display.
@@ -281,6 +350,7 @@ fn command_info(spec: &CommandSpec, disabled: Option<DisabledReason>) -> ShellCo
         bare_key: spec.bare_key,
         undoable: spec.undoable,
         handled_by_core: spec.handled_by_core,
+        quiet: spec.quiet,
         disabled_kind: disabled.as_ref().map(kind_of),
         disabled_reason: disabled.as_ref().map(ToString::to_string),
     }
@@ -372,7 +442,7 @@ pub struct ShellPaletteContext {
 }
 
 /// One result row.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ShellPaletteItem {
     /// Its section.
     pub section: ShellPaletteSection,
@@ -411,7 +481,7 @@ impl From<PaletteItem> for ShellPaletteItem {
 }
 
 /// One section of results.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ShellPaletteGroup {
     /// The section.
     pub section: ShellPaletteSection,
@@ -422,7 +492,7 @@ pub struct ShellPaletteGroup {
 }
 
 /// The answer to one query.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ShellPaletteResult {
     /// `all`, `commands`, `tabs`, `text` or `passage`.
     pub mode: String,
@@ -490,6 +560,16 @@ fn view(shell: &Shell) -> ShellSession {
         revision: shell.revision,
         undo_title: shell.undo_stack.last().map(|r| r.title.clone()),
         redo_title: shell.redo_stack.last().map(|r| r.title.clone()),
+        reading: ShellReading {
+            text_size_step: shell.session.reading.text_size_step,
+            line_spacing: shell.session.reading.line_spacing,
+            theme: shell.session.reading.theme.clone(),
+        },
+        ink: ShellInk {
+            width: shell.session.ink.width,
+            swatch: shell.session.ink.swatch.clone(),
+            alternate_swatch: shell.session.ink.alternate_swatch.clone(),
+        },
     }
 }
 
@@ -753,6 +833,32 @@ mod tests {
             ShellHandle::from_records(records.session_json, records.workspace_jsons).unwrap();
         assert_eq!(reopened.session().workspaces, shell.session().workspaces);
         assert_eq!(shell_registry().len(), registry().len());
+        shell
+            .apply(
+                "view.line_spacing".into(),
+                ShellCommandArgs {
+                    number: Some(1.7),
+                    ..Default::default()
+                },
+                false,
+            )
+            .unwrap();
+        assert_eq!(shell.session().reading.line_spacing, 1.7);
+        let revision = shell.session().revision;
+        shell
+            .apply(
+                "tab.record_scroll".into(),
+                ShellCommandArgs {
+                    tab_id: Some("t3".into()),
+                    segment_id: Some("John.3.16".into()),
+                    scalar: Some(4),
+                    ..Default::default()
+                },
+                false,
+            )
+            .unwrap();
+        assert_eq!(shell.session().revision, revision);
+        assert_eq!(layout_constants().measure_cap_standard_pt, 640.0);
         assert!(
             shell
                 .commands(false)

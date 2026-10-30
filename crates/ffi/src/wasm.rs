@@ -137,13 +137,19 @@ export interface ShellColumn { id: string; tabs: ShellTab[]; shown_tab_id: strin
 export interface ShellWorkspace { schema_version: "2.0"; fixture_only: boolean; id: string; title: string; columns: ShellColumn[]; active_column_id: string; notes_dock: { note_id: string | null; open: boolean }; layout_profiles?: Record<string, { visible_column_ids: string[]; widths?: Record<string, number>; notes_dock_open: boolean }>; next_serial: number }
 export type ShellTool = "select" | "highlight" | "pen" | "highlighter_pen" | "eraser" | "collect";
 /** The in-memory session: the session record with its workspaces inline. */
-export interface ShellSession { schema_version: "1.0"; fixture_only: boolean; workspaces: ShellWorkspace[]; active_workspace_id: string; tool: ShellTool; next_serial: number }
-export interface ShellSessionRecord { schema_version: "1.0"; fixture_only: boolean; workspace_ids: string[]; active_workspace_id: string; tool: ShellTool; next_serial: number }
-export interface ShellCommandArgs { column?: number; new_column?: boolean; text?: string; reference?: string; workspace_id?: string; tab_id?: string; group?: string }
+/** Text size step from the platform default, line spacing (1.35, 1.5 or 1.7) and theme. */
+export interface ShellReading { text_size_step: number; line_spacing: number; theme: "system" | "light" | "dark" | "sepia" }
+/** Brush width and the two swatch wells (`#RRGGBB`). */
+export interface ShellInk { width: number; swatch: string; alternate_swatch: string }
+export interface ShellSession { schema_version: "1.0"; fixture_only: boolean; workspaces: ShellWorkspace[]; active_workspace_id: string; tool: ShellTool; next_serial: number; reading: ShellReading; ink: ShellInk }
+export interface ShellSessionRecord { schema_version: "1.0"; fixture_only: boolean; workspace_ids: string[]; active_workspace_id: string; tool: ShellTool; next_serial: number; reading?: ShellReading; ink?: ShellInk }
+export interface ShellCommandArgs { column?: number; new_column?: boolean; text?: string; reference?: string; workspace_id?: string; tab_id?: string; group?: string; number?: number; segment_id?: string; scalar?: number }
+/** The core's pane minimums and measure caps, in points. */
+export interface LayoutConstants { pane_minimum_standard_pt: number; pane_minimum_accessibility_pt: number; measure_cap_standard_pt: number; measure_cap_accessibility_pt: number }
 export interface ShellInvocation { command_id: string; args?: ShellCommandArgs }
 export interface ShellCommandContext { has_selection?: boolean }
 export type ShellPlatform = "web" | "mac" | "ipad";
-export interface ShellCommandSpec { id: string; title: string; aliases: string[]; keywords: string[]; scope: "session" | "workspace" | "column" | "tab" | "selection"; argument: "none" | "column_number" | "text" | "reference" | "workspace" | "tab" | "link_group"; shortcuts: { web: string[]; mac: string[]; ipad: string[] }; bare_key: boolean; undoable: boolean; handled_by_core: boolean }
+export interface ShellCommandSpec { id: string; title: string; aliases: string[]; keywords: string[]; scope: "session" | "workspace" | "column" | "tab" | "selection"; argument: "none" | "column_number" | "text" | "reference" | "workspace" | "tab" | "link_group" | "number" | "column_width" | "scroll"; shortcuts: { web: string[]; mac: string[]; ipad: string[] }; bare_key: boolean; undoable: boolean; handled_by_core: boolean; quiet: boolean }
 /** `disabled` is null when the command can run; otherwise `{ kind, ... }`. */
 export interface ShellCommandState { spec: ShellCommandSpec; disabled: { kind: string } | null }
 export interface ShellOutcome { command_id: string; handled: boolean; recorded: boolean; effects: { followed_tab_ids: string[] }; revision: number }
@@ -608,4 +614,10 @@ pub fn migrate_workspace(
 ) -> Result<JsValue, JsValue> {
     let value: serde_json::Value = from_js("document", document)?;
     to_js(&migrate_workspace_to_2(value).map_err(throw)?)
+}
+
+/// The core's pane minimums and measure caps, so the web shell does not mirror them.
+#[wasm_bindgen(js_name = layoutConstants, unchecked_return_type = "LayoutConstants")]
+pub fn layout_constants() -> Result<JsValue, JsValue> {
+    to_js(&openlogos_workspaces::layout_constants())
 }

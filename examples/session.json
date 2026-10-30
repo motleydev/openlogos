@@ -6,5 +6,15 @@
   ],
   "active_workspace_id": "fixture:workspace:2",
   "tool": "select",
-  "next_serial": 1
+  "next_serial": 1,
+  "reading": {
+    "text_size_step": 0,
+    "line_spacing": 1.5,
+    "theme": "system"
+  },
+  "ink": {
+    "width": 4.0,
+    "swatch": "#FFE066",
+    "alternate_swatch": "#7FD1FF"
+  }
 }
