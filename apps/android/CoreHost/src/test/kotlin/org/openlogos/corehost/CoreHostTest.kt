@@ -15,6 +15,12 @@ import org.openlogos.core.ReviewFlag
 import org.openlogos.core.Revision
 import org.openlogos.core.ScalarRange
 import org.openlogos.core.Segment
+import org.openlogos.core.ShellCommandArgs
+import org.openlogos.core.ShellCommandException
+import org.openlogos.core.ShellHandle
+import org.openlogos.core.ShellPaletteContext
+import org.openlogos.core.ShellPaletteSection
+import org.openlogos.core.ShellPlatform
 import org.openlogos.core.TokenSpan
 import org.openlogos.core.Utf16Range
 import org.openlogos.core.MappingStatus
@@ -28,6 +34,7 @@ import org.openlogos.core.parseReference
 import org.openlogos.core.reanchor
 import org.openlogos.core.runConformance
 import org.openlogos.core.selectionToAnchors
+import org.openlogos.core.shellRegistry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -149,6 +156,35 @@ class CoreHostTest {
         assertTrue(report.passed > 0u)
         assertEquals(report.cases.size, report.passed.toInt())
         println("conformance cases: ${report.passed} passed, ${report.failed} failed")
+    }
+
+    // B070: the workspace shell through the UniFFI handle.
+    @Test
+    fun shellCommandsUndoAndPalette() {
+        val shell = ShellHandle.fixture()
+        assertEquals(2, shell.session().workspaces.size)
+        val outcome = shell.apply("column.new", ShellCommandArgs(), false)
+        assertTrue(outcome.handled && outcome.recorded)
+        assertEquals(listOf(1u, 2u, 3u, 4u), shell.session().workspaces[0].columns.map { it.number })
+        assertEquals("New column", shell.session().undoTitle)
+        shell.undo()
+        assertEquals(3, shell.session().workspaces[0].columns.size)
+        val error = assertFailsWith<ShellCommandException.Disabled> {
+            shell.apply("column.focus", ShellCommandArgs(column = 9u), false)
+        }
+        assertEquals("no_such_column", error.kind)
+        val context = ShellPaletteContext(hasSelection = false, platform = ShellPlatform.WEB)
+        val result = shell.paletteQuery("Jn 3:16 @2", context)
+        assertEquals(2u, result.targetColumn)
+        val first = result.groups.first().items.first()
+        assertEquals(ShellPaletteSection.PASSAGE, first.section)
+        val navigated = shell.apply(first.commandId, first.args, false)
+        assertEquals(listOf("t1", "t4"), navigated.followedTabIds)
+        assertEquals(ShellPaletteSection.TEXT, shell.paletteQuery("#loved", context).groups.first().section)
+        assertEquals(listOf("Alt+T"), shellRegistry().first { it.id == "tab.new" }.shortcuts.web)
+        val records = shell.records()
+        val reopened = ShellHandle.fromRecords(records.sessionJson, records.workspaceJsons)
+        assertEquals(shell.session().workspaces, reopened.session().workspaces)
     }
 
     // Fixture decoding

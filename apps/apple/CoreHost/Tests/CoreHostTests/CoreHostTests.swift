@@ -137,6 +137,34 @@ final class CoreHostTests: XCTestCase {
         print("conformance cases: \(report.passed) passed, \(report.failed) failed")
     }
 
+    // B070: the workspace shell through the UniFFI handle.
+    func testShellCommandsUndoAndPalette() throws {
+        let shell = ShellHandle.fixture()
+        XCTAssertEqual(shell.session().workspaces.count, 2)
+        let outcome = try shell.apply(commandId: "column.new", args: ShellCommandArgs(), hasSelection: false)
+        XCTAssertTrue(outcome.handled && outcome.recorded)
+        XCTAssertEqual(shell.session().workspaces[0].columns.map(\.number), [1, 2, 3, 4])
+        XCTAssertEqual(shell.session().undoTitle, "New column")
+        _ = try shell.undo()
+        XCTAssertEqual(shell.session().workspaces[0].columns.count, 3)
+        XCTAssertThrowsError(try shell.apply(commandId: "column.focus", args: ShellCommandArgs(column: 9), hasSelection: false)) { error in
+            guard case ShellCommandError.Disabled(_, let kind, _) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(kind, "no_such_column")
+        }
+        let context = ShellPaletteContext(hasSelection: false, platform: .mac)
+        let result = shell.paletteQuery(text: "Jn 3:16 @2", context: context)
+        XCTAssertEqual(result.targetColumn, 2)
+        let first = try XCTUnwrap(result.groups.first?.items.first)
+        XCTAssertEqual(first.section, .passage)
+        let navigated = try shell.apply(commandId: first.commandId, args: first.args, hasSelection: false)
+        XCTAssertEqual(navigated.followedTabIds, ["t1", "t4"])
+        XCTAssertEqual(shell.paletteQuery(text: "#loved", context: context).groups.first?.section, .text)
+        XCTAssertEqual(shellRegistry().first { $0.id == "tab.new" }?.shortcuts.mac, ["Alt+T", "Cmd+T"])
+        let records = shell.records()
+        let reopened = try ShellHandle.fromRecords(sessionJson: records.sessionJson, workspaceJsons: records.workspaceJsons)
+        XCTAssertEqual(reopened.session().workspaces, shell.session().workspaces)
+    }
+
     // MARK: - Fixture decoding
 
     struct Span: Decodable { let start: UInt32; let end: UInt32 }

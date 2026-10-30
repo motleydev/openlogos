@@ -108,3 +108,29 @@ test("runConformance() passes every fixture case", () => {
   assert.ok(report.passed > 100);
   console.log(`conformance cases: ${report.passed} passed, ${report.failed} failed (api ${report.api_version})`);
 });
+
+test("B070: the workspace shell runs commands, undo and the palette", () => {
+  const shell = core.ShellHandle.fixture();
+  assert.equal(shell.session().workspaces.length, 2);
+  const outcome = shell.apply({ command_id: "column.new" });
+  assert.ok(outcome.handled && outcome.recorded);
+  assert.equal(shell.session().workspaces[0].columns.length, 4);
+  shell.undo();
+  assert.equal(shell.session().workspaces[0].columns.length, 3);
+  assert.throws(
+    () => shell.apply({ command_id: "column.focus", args: { column: 9 } }),
+    (error) => error.kind === "disabled" && error.details.reason.kind === "no_such_column",
+  );
+  const result = shell.paletteQuery("Jn 3:16 @2", { platform: "web" });
+  assert.deepEqual(result.query.target, { kind: "column", number: 2 });
+  const first = result.groups[0].items[0];
+  assert.equal(first.section, "passage");
+  const navigated = shell.apply(first.invocation);
+  assert.deepEqual(navigated.effects.followed_tab_ids, ["t1", "t4"]);
+  assert.equal(shell.paletteQuery("#loved").groups[0].section, "text");
+  assert.deepEqual(core.shellRegistry().find((c) => c.id === "tab.new").shortcuts.web, ["Alt+T"]);
+  const { session, workspaces } = shell.records();
+  const reopened = core.ShellHandle.fromRecords(session, workspaces);
+  assert.deepEqual(reopened.session(), shell.session());
+  assert.equal(core.migrateWorkspace({ ...workspaces[0] }).schema_version, "2.0");
+});

@@ -156,6 +156,22 @@ fn conformance_suite_passes() {
     );
 }
 
+/// B070: the shell handle runs a command, undoes it and answers the palette in the worker.
+#[wasm_bindgen_test]
+fn shell_handle_runs_commands_and_the_palette() {
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    let invocation =
+        serde_wasm_bindgen::to_value(&serde_json::json!({"command_id": "column.new"})).unwrap();
+    shell.apply(invocation, JsValue::UNDEFINED).unwrap();
+    assert_eq!(shell.revision(), 1.0);
+    shell.undo().unwrap();
+    let result: serde_json::Value =
+        serde_wasm_bindgen::from_value(shell.palette_query("Jn 3:16", JsValue::UNDEFINED).unwrap())
+            .unwrap();
+    assert_eq!(result["groups"][0]["section"], "passage");
+    console_log!("palette: {}", result["groups"][0]["items"][0]["title"]);
+}
+
 /// B064: with `--features retrieval`, SQLite with FTS5 and the `openlogos` tokenizer run
 /// inside the worker's module and answer an unaccented query against accented text.
 #[cfg(feature = "retrieval")]
