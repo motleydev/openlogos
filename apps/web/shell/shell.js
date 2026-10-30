@@ -1519,6 +1519,30 @@ export async function bench({ samples = 200 } = {}) {
   const tools = ["select", "highlight", "pen", "highlighter_pen", "eraser", "collect"].map((id) => `tool.${id}`);
   out.push(await measure("tool change (tool.*)", samples, (i) => run({ command_id: tools[i % tools.length] })));
   run({ command_id: "tool.select" });
+  // B076: the well changes with the context. Columns by what they show (the seed has a
+  // translation, an original and a notes column; the bench session only translations).
+  const columns = activeWorkspace().columns.map((c, i) => ({ n: i + 1, tab: shownTab(c) }));
+  const translation = columns.find((c) => c.tab.kind === "reading" && !["grc", "he", "hbo"].includes(host.text.resource(c.tab.content_id).lang));
+  const original = columns.find((c) => c.tab.kind === "reading" && ["grc", "he", "hbo"].includes(host.text.resource(c.tab.content_id).lang));
+  const notes = columns.find((c) => c.tab.kind === "notes");
+  if (translation && original) {
+    out.push(await measure("B076 column focus translation ↔ original (well changes)", samples, (i) => run({ command_id: "column.focus", args: { column: i % 2 ? original.n : translation.n } })));
+  }
+  if (translation && notes) {
+    out.push(await measure("B076 translation → notes (well changes)", samples, (i) => run({ command_id: "column.focus", args: { column: i % 2 ? notes.n : translation.n } })));
+  }
+  if (translation) {
+    run({ command_id: "column.focus", args: { column: translation.n } });
+    const view = host.views.get(`${activeWorkspace().id}/${activeColumn().id}`);
+    const t = view.text.querySelector(".t").firstChild;
+    out.push(await measure("B076 selection appears → selection group drawn", samples, (i) => {
+      const sel = document.getSelection();
+      if (i % 2) { sel.removeAllRanges(); } else { const r = document.createRange(); r.setStart(t, 4); r.setEnd(t, 12); sel.removeAllRanges(); sel.addRange(r); }
+      selectionChanged();
+    }));
+    document.getSelection().removeAllRanges();
+    selectionChanged();
+  }
   out.push(await measure("open a chapter in a tab, warm (nav.navigate)", samples, (i) => run({ command_id: "nav.navigate", args: { reference: ["John.3", "Gen.1", "John.3.16", "Gen.1.2"][i % 4] } })));
   return { user_agent: navigator.userAgent, dpr: window.devicePixelRatio, viewport: [innerWidth, innerHeight], workspaces: host.session.workspaces.length, tabs: host.session.workspaces.reduce((a, w) => a + w.columns.reduce((b, c) => b + c.tabs.length, 0), 0), rows: out };
 }
