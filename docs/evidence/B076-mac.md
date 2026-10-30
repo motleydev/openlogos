@@ -111,9 +111,9 @@ group). `scripts/b076-mac-shots.sh` retakes them.
 
 | Command | Result |
 |---|---|
-| `nix develop .#core -c just ci` | exit 0. `Summary [   6.900s] 306 tests run: 306 passed, 0 skipped` |
+| `nix develop .#core -c just ci` | exit 0. `Summary [   6.839s] 306 tests run: 306 passed, 0 skipped` |
 | `nix develop .#apple -c just test-reader mac` | exit 0. `Executed 44 tests, with 0 failures (0 unexpected)` |
-| `nix develop .#apple -c just test-swift` | exit 0. `Executed 8 tests, with 0 failures (0 unexpected)`; `conformance cases: 1355 passed, 0 failed` |
+| `nix develop .#apple -c just test-swift` | exit 0. `Executed 8 tests, with 0 failures (0 unexpected)`; `conformance cases: 1371 passed, 0 failed` |
 | `nix develop .#core -c python3 tools/validate.py` | PASS: 33 schema/example validations; 76 acyclic tasks; 19 conformance fixtures; 125 negative tests |
 
 ## Deviations
