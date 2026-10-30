@@ -68,7 +68,7 @@ const host = {
   well: { top: null, collapsed: false },
   highlights: [], ink: new Map(),
   palette: { expanded: null, rows: [], index: -1, result: null, returnTo: null },
-  menu: null, log: [], targets: new Map(), colourRules: new Set(),
+  menu: null, log: [], targets: new Map(), colourRules: new Set(), labels: new Map(),
 };
 
 // MARK: - Commands
@@ -91,9 +91,9 @@ export function run(invocation) {
   }
   host.log.push({ command_id: invocation.command_id, handled: outcome.handled });
   const spec = host.specs.get(invocation.command_id);
-  if (spec && spec.quiet) { host.session = host.handle.session(); return outcome; }
+  if (spec && spec.quiet) { sync(); return outcome; }
   if (outcome.handled) {
-    host.session = host.handle.session();
+    sync();
     if (invocation.command_id === "nav.navigate" && invocation.args && invocation.args.reference) {
       host.targets.set(activeTab().id, invocation.args.reference);
     }
@@ -145,16 +145,26 @@ const activeTab = () => { const c = activeColumn(); return c.tabs.find((t) => t.
 const shownTab = (c) => c.tabs.find((t) => t.id === c.shown_tab_id);
 const tabKey = (ws, tab) => `${ws.id}/${tab.id}`;
 
+/** Reads the session and the core's labelled view of it (`view()`: each tab's resource title
+ *  and chapter_label) after a change. */
+function sync() {
+  host.session = host.handle.session();
+  const labels = new Map();
+  for (const ws of host.handle.view().workspaces) {
+    for (const column of ws.columns) for (const t of column.tabs) labels.set(`${ws.id}/${t.id}`, t.chapter_label ? `${t.resource_title} ${t.chapter_label}` : t.resource_title);
+  }
+  host.labels = labels;
+}
+
 /** The core's short form of a reference (`Jn 3:16`, `Gen 1:1–2`), or the text as given. */
 function short(reference) {
   try { return core.formatShort(reference); } catch { return reference; }
 }
 
-/** The strip label: resource short name and chapter (`BSB Jn 3`), whatever verse is shown. */
-function tabLabel(tab) {
-  const r = host.text.resource(tab.content_id);
-  if (r.kind === "notes" || tab.kind === "notes" || !tab.reference) return r.short;
-  return `${r.short} ${short(tab.reference.split("-")[0].split(".").slice(0, 2).join("."))}`;
+/** The strip label from the core: resource title and chapter_label (`BSB Jn 3`), or the title
+ *  alone for a tab with no passage (`Note`). */
+function tabLabel(tab, ws = activeWorkspace()) {
+  return host.labels.get(`${ws.id}/${tab.id}`) || tab.content_id;
 }
 
 /** The reading settings in effect: size in px, line spacing, resolved theme, measure cap. */
@@ -271,7 +281,7 @@ function buildColumn(ws, column, number) {
   section.className = "column";
   section.dataset.number = String(number);
   section.dataset.columnId = column.id;
-  section.setAttribute("aria-label", `Column ${number}: ${tabLabel(tab)}`);
+  section.setAttribute("aria-label", `Column ${number}: ${tabLabel(tab, ws)}`);
 
   // Tab strip
   const strip = document.createElement("div");
@@ -287,12 +297,12 @@ function buildColumn(ws, column, number) {
     el.tabIndex = shown ? 0 : -1;
     el.dataset.tabId = t.id;
     const label = document.createElement("span");
-    label.textContent = tabLabel(t);
+    label.textContent = tabLabel(t, ws);
     const close = document.createElement("button");
     close.type = "button";
     close.className = "close";
     close.textContent = "×";
-    close.setAttribute("aria-label", `Close ${tabLabel(t)}`);
+    close.setAttribute("aria-label", `Close ${tabLabel(t, ws)}`);
     close.title = `Close tab (${shortcutGlyphs(shortcutOf("tab.close"))})`;
     close.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1164,7 +1174,7 @@ export function snapshot() {
     size: reading().size, spacing: host.session.reading.line_spacing, swatches: [swatchName(host.session.ink.swatch) || host.session.ink.swatch, swatchName(host.session.ink.alternate_swatch) || host.session.ink.alternate_swatch], width: host.session.ink.width,
     widths: activeWorkspace().columns.map((c) => +c.width_fraction.toFixed(4)), anchors: activeWorkspace().columns.map((c) => shownTab(c).scroll_anchor || null), wellCollapsed: host.well.collapsed, focusMode: host.focusMode,
     active: ws.columns.findIndex((c) => c.id === ws.active_column_id) + 1,
-    columns: ws.columns.map((c, i) => ({ number: i + 1, tabs: c.tabs.map(tabLabel), shown: tabLabel(shownTab(c)), reference: shownTab(c).reference, link: linkWord(shownTab(c)) })),
+    columns: ws.columns.map((c, i) => ({ number: i + 1, tabs: c.tabs.map((t) => tabLabel(t, ws)), shown: tabLabel(shownTab(c), ws), reference: shownTab(c).reference, link: linkWord(shownTab(c)) })),
     dom: [...document.querySelectorAll("#columns > .column")].map((s) => ({
       number: s.dataset.number, active: s.classList.contains("active"), badge: s.querySelector(".badge").textContent,
       tabs: [...s.querySelectorAll(".tab")].map((t) => t.firstChild.textContent), shown: s.querySelector('.tab[aria-selected="true"]')?.firstChild.textContent,
@@ -1191,7 +1201,7 @@ async function main() {
   host.handle = new core.ShellHandle(session);
   host.handle.useFixtureText();
   host.handle.setResourceTitles(host.text.titles());
-  host.session = host.handle.session();
+  sync();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();
   render();

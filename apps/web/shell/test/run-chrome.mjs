@@ -255,6 +255,8 @@ const CASES = {
     await chord("Tab");
     count = await js("return document.querySelectorAll('.results .row:not(.more)').length");
     expect(p, count > 5, `Tab expands the section (${count})`);
+    const keysShown = await js("return [...document.querySelectorAll('.results .row .key')].map((k) => k.textContent).join(' ')");
+    expect(p, !keysShown.includes("{n}") && !keysShown.includes("…"), `no family placeholder in the keys: ${keysShown}`);
     const disabled = await js("return [...document.querySelectorAll('.results .row.disabled')].map((r) => r.querySelector('.title').textContent + ' — ' + ((r.querySelector('.sub') || {}).textContent || ''))");
     expect(p, disabled.some((d) => d.startsWith("Reopen closed tab — No closed tab to reopen")), `disabled with reason: ${JSON.stringify(disabled.slice(0, 4))}`);
     await chord("Meta", "a");
@@ -265,8 +267,8 @@ const CASES = {
     expect(p, tabRow === "Study · column 1", `tab row (the core's label) subtitle ${tabRow}`);
     await chord("Meta", "a");
     await type("move tab to column");
-    const expansion = await js("return [...document.querySelectorAll('.results .row')].map((r) => r.querySelector('.title').textContent)");
-    expect(p, eq(expansion.slice(0, 3), ["Move tab to column 2", "Move tab to column 3", "Move tab to new column"]), `argument expansion rows ${JSON.stringify(expansion)}`);
+    const expansion = await js("return [...document.querySelectorAll('.results .row')].map((r) => [r.querySelector('.title').textContent, (r.querySelector('.key') || {}).textContent || ''])");
+    expect(p, eq(expansion.slice(0, 3), [["Move tab to column 2", "⌥⇧2"], ["Move tab to column 3", "⌥⇧3"], ["Move tab to new column", ""]]), `argument expansion rows with concrete keys ${JSON.stringify(expansion)}`);
     await chord("Meta", "a");
     await type("#loved");
     const text = await js("return [...document.querySelectorAll('.results h3')].map((h) => h.textContent)");

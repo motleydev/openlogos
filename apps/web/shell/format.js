@@ -10,10 +10,11 @@ export function humanPassage(core, reference) {
 
 const GLYPHS = { Cmd: "⌘", Alt: "⌥", Shift: "⇧", Ctrl: "⌃" };
 
-/** `Alt+Shift+{n}` → `⌥⇧1…9`; `Cmd+K` → `⌘K`; `/` → `/`. */
+/** `Alt+Shift+2` → `⌥⇧2`; `Cmd+K` → `⌘K`; `/` → `/`. Palette rows carry concrete keys (the
+ *  core fills a column family's number in). */
 export function shortcutGlyphs(shortcut) {
   if (!shortcut) return "";
-  return shortcut.split("+").map((part) => GLYPHS[part] || (part === "{n}" ? "1…9" : part)).join("");
+  return shortcut.split("+").map((part) => GLYPHS[part] || part).join("");
 }
 
 /** The link state word of the identity row (specs/21 §2). */
