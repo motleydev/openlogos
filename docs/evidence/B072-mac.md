@@ -25,7 +25,7 @@ of B072 is `b072-web-shell` and has its own evidence (B072-web.md).
 | `TextSource`: resource id and reference in, display content and segments out. The fixture source covers BSB John 3:16–17, SBLGNT John 3:16, WLC Genesis 1:1–2 and the study note, and registers the short names with `setResourceTitles`. | `Sources/Shell/TextSource.swift` |
 | Seed session: Study is BSB John 3:16 + WLC Gen 1:1 \| SBLGNT John 3:16 (group 1) \| `fixture:note:1` pinned as a tab, widths 0.4/0.35/0.25. Hebrew is WLC Gen 1:1. The bench session is 10 × 3 × 4. Only `reading.theme: "light"` overrides a core default. | `Sources/Shell/ShellSeed.swift` |
 | Tokens: the values of `design/tokens/shell.json` as a Swift enum. The measure caps come from the core. | `Sources/Shell/ShellTokens.swift` |
-| XCTest cases in the Mac test target | `Tests/ShellTests/ShellTests.swift` (17 cases), wired into `OpenLogosMacTests` in `project.yml` |
+| XCTest cases in the Mac test target | `Tests/ShellTests/ShellTests.swift` (16 cases), wired into `OpenLogosMacTests` in `project.yml` |
 | `just preview-mac` opens the shell | `scripts/preview.sh` (hint text) |
 | Pictures and measurement | `scripts/b072-mac-shots.sh`, `Sources/Shell/ShellLaunch.swift`, `ShellMeasure.swift`; `apps/apple/README.md` "The workspace shell (B072)" |
 
@@ -73,8 +73,8 @@ The cases are hosted in the app, run natively and drive the real UniFFI `ShellHa
 `testInkFollowsTheTool` ·
 `testEscapeReturnsFocusToTheActiveTab`.
 
-**34 cases** in OpenLogosMacTests: 8 reader, 10 ink and 16 shell ran, and the token-file test
-is skipped on this tree.
+**34 cases** in OpenLogosMacTests: 8 reader, 10 ink and 16 shell. Of the shell cases, the
+token-file test is skipped on this tree.
 
 ## Speed (specs/22 §7)
 
