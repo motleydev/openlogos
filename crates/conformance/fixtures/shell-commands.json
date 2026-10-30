@@ -1817,6 +1817,63 @@
       "count": 2
     },
     {
+      "name": "workspace and tab rows read in words",
+      "query": "@genesis",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "Genesis",
+          "command": "workspace.switch",
+          "subtitle": "Workspace · 1 column, 1 tab"
+        },
+        {
+          "section": "tabs",
+          "title": "WLC · Gen 1:1",
+          "command": "tab.focus",
+          "subtitle": "Genesis · column 1"
+        }
+      ]
+    },
+    {
+      "name": "a study workspace's counts",
+      "query": "@john study",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "John study",
+          "command": "workspace.switch",
+          "subtitle": "Workspace · 3 columns, 4 tabs"
+        }
+      ]
+    },
+    {
+      "name": "disabled rows carry their reason in words",
+      "query": ":Jn 3:16 @5",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate",
+          "disabled": "no_such_column",
+          "disabled_text": "There is no column 5",
+          "subtitle": "Open in column 5"
+        }
+      ]
+    },
+    {
+      "name": "enabled rows carry no reason",
+      "query": ">new tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "New tab",
+          "command": "tab.new",
+          "disabled": null,
+          "disabled_text": null
+        }
+      ]
+    },
+    {
       "name": "a tab by its resource name",
       "query": "@sblgnt jn",
       "expect": [

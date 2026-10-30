@@ -166,6 +166,13 @@ fn shell_handle_runs_commands_and_the_palette() {
     shell.apply(invocation, JsValue::UNDEFINED).unwrap();
     assert_eq!(shell.revision(), 1.0);
     shell.undo().unwrap();
+    // A disabled command throws with the reason in words beside its kind.
+    let focus = js_sys::JSON::parse(r#"{"command_id": "tab.focus"}"#).unwrap();
+    let error = shell.apply(focus, JsValue::UNDEFINED).unwrap_err();
+    assert_eq!(
+        property(&error, "reason_text").as_string().as_deref(),
+        Some("Choose a tab")
+    );
     let result: serde_json::Value =
         serde_wasm_bindgen::from_value(shell.palette_query("Jn 3:16", JsValue::UNDEFINED).unwrap())
             .unwrap();

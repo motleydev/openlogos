@@ -206,6 +206,9 @@ pub struct PaletteItem {
     pub invocation: Invocation,
     /// Why Enter would do nothing now, if so.
     pub disabled: Option<DisabledReason>,
+    /// The same reason in words for the row ("Choose a tab"), so no host copies the core's
+    /// wording.
+    pub disabled_text: Option<String>,
     /// The platform's default shortcut, for a command.
     pub shortcut: Option<String>,
 }
@@ -435,6 +438,15 @@ fn osis_verse(text: &str) -> Option<ReferenceSet> {
     })
 }
 
+/// `1 column`, `3 columns`.
+fn count(n: usize, noun: &str) -> String {
+    if n == 1 {
+        format!("1 {noun}")
+    } else {
+        format!("{n} {noun}s")
+    }
+}
+
 fn target_args(target: Option<ColumnTarget>, reference: String) -> CommandArgs {
     CommandArgs {
         reference: Some(reference),
@@ -556,6 +568,7 @@ fn command_items(
                 subtitle,
                 score,
                 invocation,
+                disabled_text: disabled.as_ref().map(ToString::to_string),
                 disabled,
                 shortcut: spec
                     .shortcuts
@@ -608,8 +621,9 @@ fn tab_items(
                     section: PaletteSection::Tabs,
                     title: ws.title.clone(),
                     subtitle: Some(format!(
-                        "Workspace · {} columns, {} tabs",
-                        ws.columns, ws.tabs
+                        "Workspace · {}, {}",
+                        count(ws.columns, "column"),
+                        count(ws.tabs, "tab")
                     )),
                     score,
                     invocation: Invocation::with(
@@ -620,6 +634,7 @@ fn tab_items(
                         },
                     ),
                     disabled: None,
+                    disabled_text: None,
                     shortcut: None,
                 },
                 order,
@@ -665,6 +680,7 @@ fn tab_items(
                         },
                     ),
                     disabled: None,
+                    disabled_text: None,
                     shortcut: None,
                 },
                 order,
@@ -771,6 +787,7 @@ pub fn palette_query_indexed(
                     subtitle: Some(target_subtitle(query.target)),
                     score: 1000,
                     invocation,
+                    disabled_text: disabled.as_ref().map(ToString::to_string),
                     disabled,
                     shortcut: None,
                 },
@@ -831,6 +848,7 @@ pub fn palette_query_indexed(
                         subtitle: Some(hit.snippet),
                         score: 0,
                         invocation,
+                        disabled_text: disabled.as_ref().map(ToString::to_string),
                         disabled,
                         shortcut: None,
                     },

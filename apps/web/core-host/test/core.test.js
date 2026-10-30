@@ -146,6 +146,8 @@ test("B070: the workspace shell runs commands, undo and the palette", () => {
   assert.equal(shell.paletteQuery("@bsb jn").groups[0].items[0].title, "BSB · Jn 3:16");
   assert.throws(
     () => shell.apply({ command_id: "tab.focus" }),
-    (error) => error.message.endsWith("Choose a tab"),
+    (error) => error.reason_text === "Choose a tab" && error.details.reason.kind === "needs_argument",
   );
+  const missing = shell.paletteQuery(":Jn 3:16 @5").groups[0].items[0];
+  assert.equal(missing.disabled_text, "There is no column 5");
 });

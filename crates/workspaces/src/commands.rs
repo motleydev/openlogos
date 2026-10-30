@@ -1856,6 +1856,8 @@ pub struct CommandState {
     pub spec: CommandSpec,
     /// `None` when it can run; otherwise why not.
     pub disabled: Option<DisabledReason>,
+    /// The same reason in words, for a menu item or palette row.
+    pub disabled_text: Option<String>,
 }
 
 /// The outcome of [`Shell::apply`], [`Shell::undo`] or [`Shell::redo`].
@@ -1925,9 +1927,13 @@ impl Shell {
     pub fn commands(&self, context: &CommandContext) -> Vec<CommandState> {
         registry()
             .iter()
-            .map(|spec| CommandState {
-                spec: spec.clone(),
-                disabled: self.enabled(&Invocation::new(&spec.id), context).err(),
+            .map(|spec| {
+                let disabled = self.enabled(&Invocation::new(&spec.id), context).err();
+                CommandState {
+                    spec: spec.clone(),
+                    disabled_text: disabled.as_ref().map(ToString::to_string),
+                    disabled,
+                }
             })
             .collect()
     }

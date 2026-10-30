@@ -207,6 +207,12 @@ pub struct ExpectedItem {
     /// The disabled reason kind, or `null` for enabled.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disabled: Option<Option<String>>,
+    /// The disabled reason in words, or `null` for enabled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled_text: Option<Option<String>>,
+    /// The second line.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtitle: Option<Option<String>>,
 }
 
 /// One palette query against the fixture session.
@@ -476,6 +482,11 @@ fn actual_item(
             .disabled
             .as_ref()
             .map(|_| item.disabled.as_ref().map(kind_of)),
+        disabled_text: expected
+            .disabled_text
+            .as_ref()
+            .map(|_| item.disabled_text.clone()),
+        subtitle: expected.subtitle.as_ref().map(|_| item.subtitle.clone()),
     }
 }
 
