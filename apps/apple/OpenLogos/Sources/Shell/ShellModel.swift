@@ -2,7 +2,9 @@
 // its reading settings, ink width and swatches, column widths and scroll anchors), the
 // registry, apply/undo and the palette query live in the core; this model keeps what only the
 // host knows (the palette's field and list, the tool well's place, highlights, ink strokes,
-// toasts) and performs the commands the core returns `handled == false` for.
+// toasts, the notes being edited) and performs the commands the core returns
+// `handled == false` for. B076: the tool well comes from the core for what has focus (a tab,
+// the notes dock) and whether text is selected; every command carries that context.
 // Every button, menu item and shortcut goes through `run(_:args:)`, which dispatches a
 // registered command; the view re-renders from `session` after each.
 import Combine
@@ -50,11 +52,25 @@ final class ShellModel: ObservableObject {
     /// The well's centre as a fraction of the columns' height.
     @Published var toolWellPosition: CGFloat = 0.5
 
+    // MARK: Focus and the well (B076)
+
+    /// Where focus is: the active column's shown tab, or the notes dock's editor.
+    @Published private(set) var focus: ShellFocus = .tab
+    /// The core's well for `commandContext`, rebuilt on every focus, tab, selection and
+    /// session change.
+    @Published private(set) var well: ShellToolWell
+    /// The notes being edited, in memory until B074.
+    let notes = NoteStore()
+
     // MARK: Per tab
 
     @Published private(set) var marks: [String: [ReaderMark]] = [:]
+    /// What each Lexicon tab shows, by tab id (B076 Word study).
+    @Published private(set) var lexiconEntries: [String: LexiconEntry] = [:]
     @Published private(set) var toast: String?
-    @Published private(set) var selection: ReaderSelection?
+    @Published private(set) var selection: ReaderSelection? {
+        didSet { if selection != oldValue { refreshWell() } }
+    }
     /// Column widths while a rule is dragged; the drag's end commits `column.resize`.
     @Published var widthOverrides: [String: CGFloat] = [:]
     /// The core's layout constants (measure caps, pane minimums).
@@ -75,7 +91,11 @@ final class ShellModel: ObservableObject {
         keymap = ShellKeymap(registry: registry, platform: .mac)
         // Tab views and palette rows name resources by these (`BSB · Jn 3:16`).
         handle.setResourceTitles(titles: textSource.resourceTitles)
+        // Original-language tabs get the original tools (Word study).
+        handle.setResourceLanguages(languages: textSource.resourceLanguages)
         session = handle.session()
+        well = handle.toolWell(context: ShellCommandContext(hasSelection: false, focus: .tab))
+        notes.model = self
     }
 
     convenience init(sessionJSON: String = ShellSeed.json) {
@@ -102,7 +122,28 @@ final class ShellModel: ObservableObject {
 
     var activeTab: ShellTab? { activeColumn.tabs.first { $0.id == activeColumn.shownTabId } }
 
+    /// The stored tool; moving focus never changes it.
     var tool: String { session.tool }
+    /// The tool in effect where focus is: the stored one, or the context's default when the
+    /// context does not offer it (Pen stored, notes focused: Type).
+    var effectiveTool: String { well.effectiveTool }
+
+    /// What the core needs to know that the session does not.
+    var commandContext: ShellCommandContext {
+        ShellCommandContext(hasSelection: selection != nil, focus: focus)
+    }
+
+    /// Focus moved to a tab or into the notes dock's editor.
+    func setFocus(_ next: ShellFocus) {
+        guard next != focus else { return }
+        focus = next
+        refreshWell()
+    }
+
+    func refreshWell() {
+        let next = handle.toolWell(context: commandContext)
+        if next != well { well = next }
+    }
 
     // MARK: Reading and ink settings (session.reading, session.ink)
 
@@ -135,6 +176,13 @@ final class ShellModel: ObservableObject {
         )
     }
 
+    #if canImport(AppKit)
+    /// A note's fonts and colours: the reading size, spacing and theme.
+    var noteTypography: NoteTypography {
+        NoteTypography(size: readingSize, lineSpacing: lineSpacing, text: theme.text, accent: theme.accent)
+    }
+    #endif
+
     func command(_ id: String) -> ShellCommandInfo? { registry.first { $0.id == id } }
 
     /// The Mac default shortcut of a command, for tooltips and menus.
@@ -145,13 +193,14 @@ final class ShellModel: ObservableObject {
             .replacingOccurrences(of: "Shift+", with: "⇧").replacingOccurrences(of: "Ctrl+", with: "⌃")
     }
 
-    /// Whether the command can run now, from the core (`commands(hasSelection:)`), asked once
-    /// per session revision: every menu item of every column reads it on each render.
+    /// Whether the command can run now, from the core (`commandsIn(context:)`), asked once
+    /// per session revision and context: every menu item of every column reads it on each
+    /// render.
     func disabledReason(_ id: String) -> String? {
-        let key = "\(session.revision)-\(selection != nil)"
+        let key = "\(session.revision)-\(selection != nil)-\(focus)"
         if key != disabledKey {
             disabledKey = key
-            disabled = Dictionary(uniqueKeysWithValues: handle.commands(hasSelection: selection != nil).map { ($0.id, $0.disabledReason) })
+            disabled = Dictionary(uniqueKeysWithValues: handle.commandsIn(context: commandContext).map { ($0.id, $0.disabledReason) })
         }
         return disabled[id] ?? nil
     }
@@ -166,12 +215,13 @@ final class ShellModel: ObservableObject {
     func run(_ id: String, args: ShellCommandArgs = ShellCommandArgs()) -> Bool {
         rememberScroll()
         do {
-            let outcome = try handle.apply(commandId: id, args: args, hasSelection: selection != nil)
+            let outcome = try handle.applyIn(commandId: id, args: args, context: commandContext)
             if !outcome.handled { performHost(id, args: args) }
             refresh()
             return true
         } catch let error as ShellCommandError {
             switch error {
+            // A bare key outside its context (`wrong_context`) says so in words, briefly.
             case .Disabled(_, _, let reason): show(toast: reason)
             case .UnknownCommand(let commandId): show(toast: "Unknown command \(commandId)")
             case .InvalidDocument(let detail): show(toast: detail)
@@ -186,8 +236,20 @@ final class ShellModel: ObservableObject {
     func refresh() {
         let next = handle.session()
         if next != session { session = next }
+        // The dock closed under the focus: focus is back on the tab.
+        if focus == .notesDock, !activeWorkspace.notesDockOpen { focus = .tab }
+        refreshWell()
         if paletteOpen { query() }
         syncInk()
+    }
+
+    /// A well button: its command, or, for an item that takes a value, the host's question.
+    func runWellItem(_ item: ShellToolWellItem) {
+        switch item.commandId {
+        case "tool.width": cycleInkWidth()
+        case "note.link_passage": askForPassageLink()
+        default: run(item.commandId)
+        }
     }
 
     private func performHost(_ id: String, args: ShellCommandArgs) {
@@ -200,6 +262,18 @@ final class ShellModel: ObservableObject {
             if let selection { collect(selection) }
         case "selection.study":
             show(toast: "Study: \(selection.map { ShellReference.short($0.anchors.first?.segmentId ?? "") } ?? "") (no study drawer yet)")
+        case "selection.note":
+            if let selection { noteOn(selection) }
+        case "selection.search":
+            if let selection { search(selection.text) }
+        case "selection.copy_reference":
+            if let selection { copyReference(selection) }
+        case "note.bold": notes.toggle(.bold)
+        case "note.italic": notes.toggle(.italic)
+        case "note.heading": notes.toggleHeading()
+        case "note.list": notes.toggleList()
+        case "note.link_passage":
+            if let reference = args.reference { notes.insertLink(to: reference) } else { askForPassageLink() }
         case "view.collection_drawer", "view.study_drawer", "view.focus_mode", "workspace.export":
             show(toast: "\(command(id)?.title ?? id): not in this preview yet")
         default:
@@ -210,6 +284,7 @@ final class ShellModel: ObservableObject {
     // MARK: Convenience dispatch for the chrome
 
     func focusColumn(_ number: UInt32) {
+        setFocus(.tab)
         guard number != activeWorkspace.activeColumnNumber else { return }
         run("column.focus", args: ShellCommandArgs(column: number))
     }
@@ -231,7 +306,7 @@ final class ShellModel: ObservableObject {
     // MARK: Palette
 
     var paletteContext: ShellPaletteContext {
-        ShellPaletteContext(hasSelection: selection != nil, platform: .mac, expanded: expandedSection)
+        ShellPaletteContext(hasSelection: selection != nil, platform: .mac, expanded: expandedSection, focus: focus)
     }
 
     private var queriedText = ""
@@ -366,14 +441,16 @@ final class ShellModel: ObservableObject {
         switch mode {
         case .highlight: highlight(selection)
         case .collect: collect(selection)
+        case .word: openWordStudy(selection)
         case .select: break
         }
     }
 
     var dragMode: ReaderDragMode {
-        switch tool {
+        switch effectiveTool {
         case "highlight": return .highlight
         case "collect": return .collect
+        case "word_study": return .word
         default: return .select
         }
     }
@@ -393,9 +470,99 @@ final class ShellModel: ObservableObject {
         self.selection = nil
     }
 
+    // MARK: Selection actions and notes (B076)
+
+    /// Note on it: the quoted text and its passage appended to the open note, opening the
+    /// dock when no note is open.
+    private func noteOn(_ selection: ReaderSelection) {
+        let ws = activeWorkspace
+        let open = ws.notesDockOpen || ws.columns.contains { column in column.tabs.contains { $0.id == column.shownTabId && $0.kind == "notes" } }
+        if !open { run("view.notes_dock") }
+        notes.appendQuote(selection.text, reference: selection.reference, to: openNoteID)
+    }
+
+    /// The note `selection.note` writes to: the dock's while it is open, else a shown notes
+    /// tab's, else the dock's.
+    var openNoteID: String {
+        let ws = activeWorkspace
+        if !ws.notesDockOpen,
+           let tab = ws.columns.lazy.compactMap({ column in column.tabs.first { $0.id == column.shownTabId && $0.kind == "notes" } }).first {
+            return tab.contentId
+        }
+        return ws.notesDockNoteId ?? Self.defaultNoteID
+    }
+
+    static let defaultNoteID = "fixture:note:1"
+
+    /// Word study: the clicked word opens in a Lexicon tab in the next column to the right,
+    /// reusing that column's Lexicon tab, or a new column when there is none.
+    private func openWordStudy(_ selection: ReaderSelection) {
+        let ws = activeWorkspace
+        guard let index = ws.columns.firstIndex(where: { $0.shownTabId == selection.paneID }),
+              let source = ws.columns[index].tabs.first(where: { $0.id == selection.paneID }) else { return }
+        let entry = LexiconEntry(word: selection.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)),
+                                 language: textSource.resource(source.contentId).language,
+                                 reference: selection.anchors.first?.segmentId ?? source.reference ?? "")
+        guard let tabID = lexiconTab(after: ws.columns[index]) else { return }
+        lexiconEntries[tabID] = entry
+    }
+
+    /// The Lexicon tab in the column after `column`, shown; nil when none can be opened.
+    private func lexiconTab(after column: ShellColumn) -> String? {
+        let ws = activeWorkspace
+        if let next = ws.columns.first(where: { $0.number == column.number + 1 }),
+           let tab = next.tabs.first(where: { $0.kind == "lexicon" }) {
+            focusColumn(next.number)
+            if next.shownTabId != tab.id { showTab(tab.id) }
+            return tab.id
+        }
+        show(toast: "Lexicon tabs need the core's open command (pending)")
+        return nil
+    }
+
+    /// Search this: the selected text in the palette field, the palette open.
+    private func search(_ text: String) {
+        focusPalette()
+        paletteText = text
+        paletteTextChanged()
+    }
+
+    /// Copy reference: the selection's passage in full words on the pasteboard.
+    private func copyReference(_ selection: ReaderSelection) {
+        let label = ShellReference.humanRange(selection.reference)
+        #if canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(label, forType: .string)
+        #endif
+        lastCopied = label
+        show(toast: "Copied \(label)")
+    }
+
+    /// What Copy reference put on the pasteboard last (the tests read it).
+    private(set) var lastCopied: String?
+
+    /// Link passage without a passage: the palette asks for it (`link passage Jn 3:16`).
+    func askForPassageLink() {
+        focusPalette()
+        paletteText = "link passage "
+        paletteTextChanged()
+    }
+
+    /// A passage link in a note was clicked: the passage opens in the column the note sits
+    /// beside (the active column when it reads Bible text, else the first reading column).
+    func openPassageLink(_ reference: String) {
+        let ws = activeWorkspace
+        let reading = ws.columns.first { column in
+            column.number == ws.activeColumnNumber && column.tabs.first { $0.id == column.shownTabId }?.kind == "reading"
+        } ?? ws.columns.first { column in column.tabs.first { $0.id == column.shownTabId }?.kind == "reading" }
+        guard let column = reading else { return show(toast: "No Bible text open for \(ShellReference.human(reference))") }
+        setFocus(.tab)
+        run("nav.navigate", args: ShellCommandArgs(column: column.number, reference: reference))
+    }
+
     // MARK: Ink
 
-    var inkActive: Bool { ["pen", "highlighter_pen", "eraser"].contains(tool) }
+    var inkActive: Bool { ["pen", "highlighter_pen", "eraser"].contains(effectiveTool) }
 
     func inkSheet(for tabID: String) -> InkSheet {
         if let sheet = inkSheets[tabID] { return sheet }
@@ -410,6 +577,7 @@ final class ShellModel: ObservableObject {
     private func syncInk() { inkSheets.values.forEach(configure) }
 
     private func configure(_ sheet: InkSheet) {
+        let tool = effectiveTool
         switch tool {
         case "highlighter_pen": sheet.tool = .highlighter
         case "eraser": sheet.tool = .eraser
@@ -452,6 +620,8 @@ final class ShellModel: ObservableObject {
     func handle(chord: KeyChord, inTextField: Bool) -> Bool {
         guard let binding = keymap.binding(for: chord) else { return false }
         if binding.bare && inTextField { return false }
+        // ⌘B and ⌘I are the note editor's only while it has focus; elsewhere they pass on.
+        if binding.commandID.hasPrefix("note."), !notes.editing { return false }
         // In a field ⌘Z and ⌘⇧Z belong to the field's own editing.
         if inTextField, ["edit.undo", "edit.redo"].contains(binding.commandID) { return false }
         run(binding.commandID, args: ShellCommandArgs(column: binding.column))

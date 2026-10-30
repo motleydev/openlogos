@@ -329,7 +329,20 @@ struct TabBody: View {
             let width = min(geometry.size.width - leadingInset, model.measureCap)
             let padding = width < 420 ? ShellTokens.Spacing.l : ShellTokens.Spacing.xl
             ZStack {
-                if let text = model.text(for: tab) {
+                #if os(macOS)
+                let isNote = tab.kind == "notes"
+                #else
+                let isNote = false
+                #endif
+                if isNote {
+                    #if os(macOS)
+                    // B076: notes are edited in place (Type).
+                    NoteEditorView(store: model.notes, noteID: tab.contentId, paneID: tab.id, typography: model.noteTypography,
+                                   horizontalPadding: padding, onFocus: { model.focusColumn(column.number) })
+                    #endif
+                } else if tab.kind == "lexicon" {
+                    LexiconView(model: model, tab: tab)
+                } else if let text = model.text(for: tab) {
                     ReaderTextView(
                         paneID: tab.id,
                         content: text.content,
