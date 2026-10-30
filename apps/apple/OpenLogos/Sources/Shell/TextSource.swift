@@ -13,6 +13,9 @@ struct ResourceInfo: Equatable {
     /// The identity row: `Berean Standard Bible`.
     let name: String
     let isRightToLeft: Bool
+    /// BCP 47 language tag (`en`, `grc`, `hbo`), registered with the core
+    /// (`setResourceLanguages`) so original-language tabs get the original tools.
+    var language = "en"
 }
 
 /// What a tab shows.
@@ -24,6 +27,8 @@ struct SourceText {
 protocol TextSource {
     /// Every resource's short name by id, registered with the core (`setResourceTitles`).
     var resourceTitles: [String: String] { get }
+    /// Every resource's language tag by id (`setResourceLanguages`).
+    var resourceLanguages: [String: String] { get }
     func resource(_ id: String) -> ResourceInfo
     /// The text of `resourceID` at `reference` (OSIS, `John.3.16`), or nil when there is none.
     func text(resourceID: String, reference: String?) -> SourceText?
@@ -38,8 +43,8 @@ struct FixtureTextSource: TextSource {
 
     private static let resources: [String: ResourceInfo] = [
         "bsb": ResourceInfo(id: "bsb", shortName: "BSB", name: "Berean Standard Bible", isRightToLeft: false),
-        "sblgnt": ResourceInfo(id: "sblgnt", shortName: "SBLGNT", name: "SBL Greek New Testament", isRightToLeft: false),
-        "wlc": ResourceInfo(id: "wlc", shortName: "WLC", name: "Westminster Leningrad Codex", isRightToLeft: true),
+        "sblgnt": ResourceInfo(id: "sblgnt", shortName: "SBLGNT", name: "SBL Greek New Testament", isRightToLeft: false, language: "grc"),
+        "wlc": ResourceInfo(id: "wlc", shortName: "WLC", name: "Westminster Leningrad Codex", isRightToLeft: true, language: "hbo"),
         "fixture:note:1": ResourceInfo(id: "fixture:note:1", shortName: "Note", name: "Study note", isRightToLeft: false),
     ]
 
@@ -51,6 +56,7 @@ struct FixtureTextSource: TextSource {
     ]
 
     var resourceTitles: [String: String] { Self.resources.mapValues(\.shortName) }
+    var resourceLanguages: [String: String] { Self.resources.mapValues(\.language) }
 
     func resource(_ id: String) -> ResourceInfo {
         Self.resources[id] ?? ResourceInfo(id: id, shortName: id, name: id, isRightToLeft: false)
@@ -87,6 +93,25 @@ enum ShellReference {
     /// `John.3.16` → `Jn 3:16`.
     static func short(_ reference: String) -> String {
         (try? formatShort(reference: reference)) ?? reference
+    }
+
+    /// `John.3.16–17` (ReaderSelection.reference) → `John 3:16–17`; one verse as `human`.
+    static func humanRange(_ reference: String) -> String {
+        let parts = reference.split(separator: "–", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return human(reference) }
+        let tail = parts[1].contains(".") ? human(parts[1]) : parts[1]
+        return "\(human(parts[0]))–\(tail)"
+    }
+
+    /// `grc` → `Greek`, for the lexicon tab.
+    static func languageName(_ tag: String) -> String {
+        switch tag {
+        case "grc", "el": return "Greek"
+        case "hbo", "he", "heb": return "Hebrew"
+        case "arc": return "Aramaic"
+        case "en": return "English"
+        default: return tag
+        }
     }
 
     /// `John.3.16` → `John 3:16`.
