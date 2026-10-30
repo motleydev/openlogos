@@ -26,7 +26,9 @@ enum ShellTokens {
     static let paletteHeight: CGFloat = 44
     /// The result list: anchored under the field, at most this share of the window tall.
     static let paletteResultsMaxFraction: CGFloat = 0.5
-    static let paletteResultsWidth: CGFloat = 770
+    /// `metrics.palette_dropdown_max_width`: the field and its result list are at most this
+    /// wide (in a narrower window, the window less the trailing menus).
+    static let paletteDropdownMaxWidth: CGFloat = 770
     static let tabStripHeight: CGFloat = 28
     static let identityRowHeight: CGFloat = 32
     static let badgeSide: CGFloat = 20

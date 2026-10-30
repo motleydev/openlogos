@@ -198,9 +198,11 @@ final class ShellTests: XCTestCase {
         let radius = try XCTUnwrap(json["radius"] as? [String: Double])
         XCTAssertEqual(radius["control"], Double(ShellTokens.Radius.control))
         XCTAssertEqual(radius["tool_well"], Double(ShellTokens.Radius.toolWell))
-        let m = try XCTUnwrap(json["metrics"] as? [String: Double])
+        // `$…` keys are notes; the metrics are the numbers.
+        let m = try XCTUnwrap(json["metrics"] as? [String: Any]).compactMapValues { $0 as? Double }
         XCTAssertEqual(m["palette_field_height"], Double(ShellTokens.paletteHeight))
         XCTAssertEqual(m["palette_results_max_fraction"], Double(ShellTokens.paletteResultsMaxFraction))
+        XCTAssertEqual(m["palette_dropdown_max_width"], Double(ShellTokens.paletteDropdownMaxWidth))
         XCTAssertEqual(m["tab_strip_height"], Double(ShellTokens.tabStripHeight))
         XCTAssertEqual(m["identity_row_height"], Double(ShellTokens.identityRowHeight))
         XCTAssertEqual(m["column_badge"], Double(ShellTokens.badgeSide))

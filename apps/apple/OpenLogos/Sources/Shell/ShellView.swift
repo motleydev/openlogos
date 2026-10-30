@@ -87,7 +87,7 @@ struct ShellView: View {
 
     /// 770 pt, less what the traffic lights and the trailing menus need in a narrow window.
     static func fieldWidth(_ window: CGFloat) -> CGFloat {
-        max(240, min(ShellTokens.paletteResultsWidth, window - 360))
+        max(240, min(ShellTokens.paletteDropdownMaxWidth, window - 360))
     }
 }
 
@@ -272,7 +272,7 @@ struct PaletteResults: View {
     @ObservedObject var palette: PaletteState
     let result: ShellPaletteResult
     let maxHeight: CGFloat
-    var width: CGFloat = ShellTokens.paletteResultsWidth
+    var width: CGFloat = ShellTokens.paletteDropdownMaxWidth
 
     var body: some View {
         let rows = model.paletteRows
