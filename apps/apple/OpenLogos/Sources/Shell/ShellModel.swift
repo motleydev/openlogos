@@ -498,8 +498,10 @@ final class ShellModel: ObservableObject {
 
     static let defaultNoteID = "fixture:note:1"
 
-    /// Word study: the clicked word opens in a Lexicon tab in the next column to the right,
-    /// reusing that column's Lexicon tab, or a new column when there is none.
+    /// Word study: the clicked word opens in the Lexicon tab of the next column to the right
+    /// (`tab.open_lexicon` reuses it, or adds one, or a new column after the last). Focus
+    /// stays on the clicked column, so Word study goes on there. The core keeps the verse;
+    /// the host keeps the word as clicked.
     private func openWordStudy(_ selection: ReaderSelection) {
         let ws = activeWorkspace
         guard let index = ws.columns.firstIndex(where: { $0.shownTabId == selection.paneID }),
@@ -507,21 +509,11 @@ final class ShellModel: ObservableObject {
         let entry = LexiconEntry(word: selection.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)),
                                  language: textSource.resource(source.contentId).language,
                                  reference: selection.anchors.first?.segmentId ?? source.reference ?? "")
-        guard let tabID = lexiconTab(after: ws.columns[index]) else { return }
-        lexiconEntries[tabID] = entry
-    }
-
-    /// The Lexicon tab in the column after `column`, shown; nil when none can be opened.
-    private func lexiconTab(after column: ShellColumn) -> String? {
-        let ws = activeWorkspace
-        if let next = ws.columns.first(where: { $0.number == column.number + 1 }),
-           let tab = next.tabs.first(where: { $0.kind == "lexicon" }) {
-            focusColumn(next.number)
-            if next.shownTabId != tab.id { showTab(tab.id) }
-            return tab.id
-        }
-        show(toast: "Lexicon tabs need the core's open command (pending)")
-        return nil
+        focusColumn(ws.columns[index].number)
+        guard run("tab.open_lexicon", args: ShellCommandArgs(reference: entry.reference)) else { return }
+        let next = activeWorkspace.columns.first { $0.number == ws.columns[index].number + 1 }
+        guard let tab = next?.tabs.first(where: { $0.id == next?.shownTabId && $0.kind == "lexicon" }) else { return }
+        lexiconEntries[tab.id] = entry
     }
 
     /// Search this: the selected text in the palette field, the palette open.

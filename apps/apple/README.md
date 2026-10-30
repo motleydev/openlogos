@@ -153,6 +153,24 @@ scripts/b072-mac-shots.sh measure    # Release build in artifacts/mac-release fi
 just test-reader mac                 # Tests/ReaderTests and Tests/ShellTests in the Mac app
 ```
 
+## The contextual tool well (B076)
+
+The well is drawn from the core's `toolWell(context:)` for what has focus (`ShellModel.focus`:
+the active column's tab, or the notes dock's editor) and whether text is selected; every
+command goes through `applyIn` / `commandsIn` with that context. Translation, original
+(Word study), notes (Type and the note actions) and reference tabs each get their tools; the
+ink group shows on Bible text and the selection group below it while text is selected, with
+the well's top kept in place. Notes tabs and the dock are `NSTextView` editors in memory
+(`Sources/Shell/NoteEditor.swift`), Word study opens the clicked word in a Lexicon tab
+(`tab.open_lexicon`, `Sources/Shell/LexiconView.swift`). Extra launch arguments:
+`-OPENLOGOS_SELECT "2:the world"`, `-OPENLOGOS_WORD "2:ἠγάπησεν"`, `-OPENLOGOS_NOTE_DEMO 1`,
+`-OPENLOGOS_FOCUS dock`.
+
+```sh
+scripts/b076-mac-shots.sh            # the B076 pictures into docs/evidence/B076/mac-*.png
+scripts/b076-mac-shots.sh measure    # the §7 run with the well rows (Release, ARCHS=arm64)
+```
+
 ## CoreHost: the UniFFI Swift bindings test host (B061)
 
 `CoreHost/` is a SwiftPM package for macOS, not the app. It proves that the Swift bindings

@@ -154,6 +154,48 @@ final class ToolWellTests: XCTestCase {
         XCTAssertEqual(model.well.groups.map(\.kind), ["tools", "ink"])
     }
 
+    func testWordStudyOpensTheWordInALexiconTabInTheNextColumn() throws {
+        let model = ShellModel()
+        let window = host(model)
+        defer { window.close() }
+        spin()
+        model.focusColumn(2)
+        model.run("tool.word_study")
+        spin(0.2)
+        let surface = try XCTUnwrap(model.surface(for: "t3"))
+        XCTAssertEqual(surface.dragMode, .word)
+        let layout = try XCTUnwrap(surface.layout)
+        surface.select(display: layout.runMap.displayRange(fromCore: try XCTUnwrap(layout.coreRange(ofPhrase: "ἠγάπησεν"))))
+        surface.dragEnded()
+        let third = model.activeWorkspace.columns[2]
+        let lexicon = try XCTUnwrap(third.tabs.first { $0.kind == "lexicon" })
+        XCTAssertEqual(third.shownTabId, lexicon.id, "shown in column 3, beside the note")
+        XCTAssertEqual(TabTitle.label(lexicon), "Lexicon Jn 3")
+        XCTAssertEqual(model.activeWorkspace.activeColumnNumber, 2, "focus stays where the word was clicked")
+        XCTAssertEqual(model.lexiconEntries[lexicon.id], LexiconEntry(word: "ἠγάπησεν", language: "grc", reference: "John.3.16"))
+        XCTAssertEqual(model.effectiveTool, "word_study")
+
+        surface.select(display: layout.runMap.displayRange(fromCore: try XCTUnwrap(layout.coreRange(ofPhrase: "κόσμον"))))
+        surface.dragEnded()
+        XCTAssertEqual(model.activeWorkspace.columns[2].tabs.filter { $0.kind == "lexicon" }.count, 1, "the Lexicon tab is reused")
+        XCTAssertEqual(model.lexiconEntries[lexicon.id]?.word, "κόσμον")
+        spin(0.2)
+        XCTAssertNotNil(LexiconView.placeholder.range(of: "lexicon import"), "no glosses, an honest line")
+
+        // From the last column a new column opens to its right.
+        model.run("column.move_right")
+        XCTAssertEqual(model.activeWorkspace.activeColumnNumber, 3)
+        spin(0.2)
+        let moved = try XCTUnwrap(model.surface(for: "t3"))
+        let movedLayout = try XCTUnwrap(moved.layout)
+        moved.select(display: movedLayout.runMap.displayRange(fromCore: try XCTUnwrap(movedLayout.coreRange(ofPhrase: "θεὸς"))))
+        moved.dragEnded()
+        XCTAssertEqual(model.activeWorkspace.columns.count, 4)
+        XCTAssertEqual(model.activeWorkspace.columns[3].tabs.map(\.kind), ["lexicon"])
+        XCTAssertTrue(model.handle(chord: KeyChord(key: "Z", command: true), inTextField: false), "undoable")
+        XCTAssertEqual(model.activeWorkspace.columns.count, 3)
+    }
+
     func testCopyReferenceAndSearchThis() throws {
         let model = ShellModel()
         let window = host(model)

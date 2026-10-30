@@ -46,6 +46,8 @@ struct FixtureTextSource: TextSource {
         "sblgnt": ResourceInfo(id: "sblgnt", shortName: "SBLGNT", name: "SBL Greek New Testament", isRightToLeft: false, language: "grc"),
         "wlc": ResourceInfo(id: "wlc", shortName: "WLC", name: "Westminster Leningrad Codex", isRightToLeft: true, language: "hbo"),
         "fixture:note:1": ResourceInfo(id: "fixture:note:1", shortName: "Note", name: "Study note", isRightToLeft: false),
+        // B076: the Lexicon tab Word study opens (`tab.open_lexicon`).
+        "lexicon": ResourceInfo(id: "lexicon", shortName: "Lexicon", name: "Lexicon", isRightToLeft: false),
     ]
 
     private static let entries: [String: Entry] = [
