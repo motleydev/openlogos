@@ -231,6 +231,15 @@ pub fn format_human(reference: Reference) -> Result<String, ReferenceError> {
     Ok(reference.to_human(&AliasTable::english()))
 }
 
+/// The short form of a citation for tab labels and palette rows (B070): `Jn 3`, `Jn 3:16`,
+/// `Gen 1:1–2`. Takes the citation as text (a tab's OSIS reference, or anything
+/// `parseReference` reads) and uses the English table's short names (the SBL abbreviations,
+/// with `Mt`, `Mk`, `Lk`, `Jn` and `1 Jn`–`3 Jn`).
+#[uniffi::export]
+pub fn format_short(reference: String) -> Result<String, ReferenceError> {
+    Ok(core::parse(&reference, &AliasTable::english())?.to_short())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

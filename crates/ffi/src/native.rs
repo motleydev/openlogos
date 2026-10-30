@@ -17,6 +17,7 @@ pub mod ink;
 pub mod reference;
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
+pub mod shell;
 pub mod versification;
 
 pub use anchor::{
@@ -30,7 +31,14 @@ pub use ink::{
 };
 pub use reference::{
     Reference, ReferenceError, ReferenceRange, ReferenceSet, ReviewFlag, format_human, format_osis,
-    parse_reference,
+    format_short, parse_reference,
+};
+pub use shell::{
+    ShellColumn, ShellCommandArgs, ShellCommandError, ShellCommandInfo, ShellHandle, ShellInk,
+    ShellLayoutConstants, ShellOutcome, ShellPaletteContext, ShellPaletteGroup, ShellPaletteItem,
+    ShellPaletteResult, ShellPaletteSection, ShellPlatform, ShellReading, ShellRecords,
+    ShellSession, ShellShortcuts, ShellTab, ShellWorkspace, layout_constants,
+    migrate_workspace_json, shell_registry,
 };
 pub use versification::{
     MappingResult, MappingStatus, VerseMapRow, VerseMapRowKind, VersificationError, map_verse,

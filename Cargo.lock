@@ -751,6 +751,7 @@ dependencies = [
  "openlogos-retrieval",
  "openlogos-retrieval-sqlite",
  "openlogos-text",
+ "openlogos-workspaces",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -848,6 +849,7 @@ dependencies = [
 name = "openlogos-workspaces"
 version = "0.1.0"
 dependencies = [
+ "openlogos-core",
  "serde",
  "serde_json",
  "thiserror",

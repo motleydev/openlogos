@@ -1,0 +1,2827 @@
+{
+  "id": "shell-commands",
+  "kind": "shell_commands",
+  "description": "The workspace shell of specs/22: command sequences through the one registry (columns, tabs, navigation with link groups and follow mode, workspaces, tools, host-performed commands) with undo and redo, palette queries over every section of the grammar, the registry's ids, and the 1.x to 2.0 migration of both workspace examples. Edition ids name the conformance text fixtures; no text is quoted beyond those fixtures' own segments, which the palette's fixture text provider searches.",
+  "license": "Synthetic data, CC0-1.0; snippets come from the conformance text fixtures under their own licenses (BSB public domain, SBLGNT CC BY 4.0, WLC public domain)",
+  "source": "specs/22-workspace-shell.md §2, §3, §4, §6; specs/21-reading-interactions.md §2; docs/adr/0003-identity-and-schema-versioning.md; examples/archive/workspace-1.0.json, examples/archive/workspace-1.1.json, examples/workspace.json",
+  "session": {
+    "schema_version": "1.0",
+    "fixture_only": true,
+    "workspaces": [
+      {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "w1",
+        "title": "John study",
+        "columns": [
+          {
+            "id": "c1",
+            "tabs": [
+              {
+                "id": "t1",
+                "kind": "reading",
+                "content_id": "bsb",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": "1",
+                "pinned": false
+              },
+              {
+                "id": "t2",
+                "kind": "reading",
+                "content_id": "bsb",
+                "content_revision": "0",
+                "reference": "Rom.8.28",
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t1",
+            "width_fraction": 0.4
+          },
+          {
+            "id": "c2",
+            "tabs": [
+              {
+                "id": "t3",
+                "kind": "reading",
+                "content_id": "sblgnt",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t3",
+            "width_fraction": 0.4
+          },
+          {
+            "id": "c3",
+            "tabs": [
+              {
+                "id": "t4",
+                "kind": "lexicon",
+                "content_id": "fixture:lexicon-1",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": null,
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t4",
+            "width_fraction": 0.2
+          }
+        ],
+        "active_column_id": "c1",
+        "notes_dock": {
+          "note_id": "fixture:note:1",
+          "open": false
+        },
+        "next_serial": 10
+      },
+      {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "w2",
+        "title": "Genesis",
+        "columns": [
+          {
+            "id": "c1",
+            "tabs": [
+              {
+                "id": "t1",
+                "kind": "reading",
+                "content_id": "wlc",
+                "content_revision": "0",
+                "reference": "Gen.1.1",
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t1",
+            "width_fraction": 1.0
+          }
+        ],
+        "active_column_id": "c1",
+        "notes_dock": {
+          "note_id": null,
+          "open": false
+        },
+        "next_serial": 10
+      }
+    ],
+    "active_workspace_id": "w1",
+    "tool": "select",
+    "next_serial": 3
+  },
+  "resource_titles": {
+    "bsb": "BSB",
+    "sblgnt": "SBLGNT",
+    "wlc": "WLC"
+  },
+  "short_references": [
+    {
+      "input": "John 3",
+      "expected": "Jn 3"
+    },
+    {
+      "input": "John 3:16",
+      "expected": "Jn 3:16"
+    },
+    {
+      "input": "Gen 1:1-2",
+      "expected": "Gen 1:1–2"
+    },
+    {
+      "input": "1 John 4:8",
+      "expected": "1 Jn 4:8"
+    },
+    {
+      "input": "Matt 5:3-7:29",
+      "expected": "Mt 5:3–7:29"
+    },
+    {
+      "input": "Rom 8:28, 31; 12:1",
+      "expected": "Rom 8:28, 31; 12:1"
+    },
+    {
+      "input": "Jude 3",
+      "expected": "Jude 3"
+    },
+    {
+      "input": "Ps 23",
+      "expected": "Ps 23"
+    }
+  ],
+  "reason_texts": {
+    "tab.focus": "Choose a tab",
+    "workspace.switch": "Choose a workspace",
+    "column.focus": "Needs a column number",
+    "nav.navigate": "Needs a passage",
+    "tab.record_scroll": "Choose a tab",
+    "workspace.rename": "Needs a name or value",
+    "view.line_spacing": "Needs a value",
+    "selection.highlight": "Select some text first",
+    "edit.undo": "Nothing to undo",
+    "nav.back": "No earlier passage in this tab"
+  },
+  "layout_constants": {
+    "pane_minimum_standard_pt": 340.0,
+    "pane_minimum_accessibility_pt": 480.0,
+    "measure_cap_standard_pt": 640.0,
+    "measure_cap_accessibility_pt": 900.0
+  },
+  "registry_ids": [
+    "palette.focus",
+    "nav.navigate",
+    "nav.back",
+    "nav.forward",
+    "workspace.new",
+    "workspace.close",
+    "workspace.rename",
+    "workspace.duplicate",
+    "workspace.switch",
+    "workspace.next",
+    "workspace.previous",
+    "column.new",
+    "column.close",
+    "column.move_left",
+    "column.move_right",
+    "column.resize",
+    "column.equalize",
+    "column.focus",
+    "tab.new",
+    "tab.close",
+    "tab.reopen_closed",
+    "tab.next",
+    "tab.previous",
+    "tab.move_to_column",
+    "tab.duplicate_to_column",
+    "tab.record_scroll",
+    "tab.focus",
+    "tab.link",
+    "tab.pin",
+    "tab.follow",
+    "view.notes_dock",
+    "view.collection_drawer",
+    "view.study_drawer",
+    "tool.select",
+    "tool.highlight",
+    "tool.pen",
+    "tool.highlighter_pen",
+    "tool.eraser",
+    "tool.collect",
+    "tool.swatch",
+    "tool.width",
+    "tool.width_up",
+    "tool.width_down",
+    "tool.swap_swatches",
+    "view.tool_palette",
+    "selection.highlight",
+    "selection.collect",
+    "selection.study",
+    "view.text_size_up",
+    "view.text_size_down",
+    "view.text_size_reset",
+    "view.line_spacing",
+    "view.line_spacing_up",
+    "view.line_spacing_down",
+    "view.theme",
+    "view.focus_mode",
+    "workspace.export",
+    "edit.undo",
+    "edit.redo"
+  ],
+  "scenarios": [
+    {
+      "name": "columns",
+      "steps": [
+        {
+          "command": "column.new",
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t10"
+            }
+          }
+        },
+        {
+          "command": "column.move_right",
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t10"
+            }
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          },
+          "expect": {
+            "recorded": false,
+            "active": {
+              "workspace": "w1",
+              "column": 4,
+              "tab": "t4"
+            }
+          }
+        },
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 1
+          },
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "t2",
+                "*t4"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t10"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t4"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 4,
+              "tab": "t4"
+            },
+            "can_redo": true
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t10"
+            }
+          }
+        },
+        {
+          "command": "edit.redo",
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t10"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 4,
+              "tab": "t4"
+            }
+          }
+        },
+        {
+          "command": "edit.redo",
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "t2",
+                "*t4"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t10"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t4"
+            },
+            "can_redo": false
+          }
+        },
+        {
+          "command": "edit.redo",
+          "expect": {
+            "error": "nothing_to_redo"
+          }
+        },
+        {
+          "command": "column.close",
+          "expect": {
+            "columns": [
+              [
+                "*t3"
+              ],
+              [
+                "*t10"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t3"
+            }
+          }
+        },
+        {
+          "command": "tab.reopen_closed",
+          "expect": {
+            "columns": [
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t10"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t4"
+            }
+          }
+        },
+        {
+          "command": "column.move_left",
+          "expect": {
+            "columns": [
+              [
+                "*t4"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t10"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t4"
+            }
+          }
+        },
+        {
+          "command": "column.move_left",
+          "expect": {
+            "error": "at_edge"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tabs",
+      "steps": [
+        {
+          "command": "tab.next",
+          "expect": {
+            "recorded": false,
+            "columns": [
+              [
+                "t1",
+                "*t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t2"
+            },
+            "can_undo": false
+          }
+        },
+        {
+          "command": "tab.new",
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "t1",
+                "t2",
+                "*t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "tab.previous",
+          "expect": {
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t2"
+            }
+          }
+        },
+        {
+          "command": "tab.close",
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t10"
+            }
+          }
+        },
+        {
+          "command": "tab.reopen_closed",
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t2",
+                "t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 3
+          },
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t2",
+                "t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "t4",
+                "*t11"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t11"
+            },
+            "links": {
+              "t11": "pinned"
+            }
+          }
+        },
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 3
+          },
+          "expect": {
+            "error": "already_in_column"
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 9
+          },
+          "expect": {
+            "error": "no_such_column"
+          }
+        },
+        {
+          "command": "tab.move_to_column",
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "tab.next",
+          "expect": {
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t4"
+            }
+          }
+        },
+        {
+          "command": "tab.close",
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t2",
+                "t10"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t11"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "tab.close",
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t2",
+                "t10"
+              ],
+              [
+                "*t3"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t3"
+            }
+          }
+        },
+        {
+          "command": "column.close",
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t2",
+                "t10"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "column.close",
+          "expect": {
+            "error": "only_column"
+          }
+        },
+        {
+          "command": "tab.close",
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t10"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "tab.close",
+          "expect": {
+            "columns": [
+              [
+                "*t1"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "tab.close",
+          "expect": {
+            "error": "last_tab"
+          }
+        }
+      ]
+    },
+    {
+      "name": "navigation",
+      "steps": [
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.3.17"
+          },
+          "expect": {
+            "recorded": true,
+            "followed": [
+              "t3",
+              "t4"
+            ],
+            "references": {
+              "t1": "John.3.17",
+              "t2": "Rom.8.28",
+              "t3": "John.3.17",
+              "t4": "John.3.17"
+            },
+            "labels": {
+              "t1": [
+                "Jn 3:17",
+                "Jn 3"
+              ],
+              "t2": [
+                "Rom 8:28",
+                "Rom 8"
+              ]
+            }
+          }
+        },
+        {
+          "command": "nav.back",
+          "expect": {
+            "references": {
+              "t1": "John.3.16",
+              "t3": "John.3.17"
+            },
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "nav.forward",
+          "expect": {
+            "references": {
+              "t1": "John.3.17"
+            }
+          }
+        },
+        {
+          "command": "nav.forward",
+          "expect": {
+            "error": "no_forward_history"
+          }
+        },
+        {
+          "command": "nav.back",
+          "expect": {
+            "references": {
+              "t1": "John.3.16"
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.3.18"
+          },
+          "expect": {
+            "references": {
+              "t1": "John.3.18",
+              "t3": "John.3.18",
+              "t4": "John.3.18"
+            }
+          }
+        },
+        {
+          "command": "nav.forward",
+          "expect": {
+            "error": "no_forward_history"
+          }
+        },
+        {
+          "command": "tab.next",
+          "expect": {
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t2"
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Rom.8.29"
+          },
+          "expect": {
+            "followed": [
+              "t4"
+            ],
+            "references": {
+              "t1": "John.3.18",
+              "t2": "Rom.8.29",
+              "t4": "Rom.8.29"
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.3.20",
+            "column": 2
+          },
+          "expect": {
+            "followed": [
+              "t1",
+              "t4"
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t3"
+            },
+            "references": {
+              "t1": "John.3.20",
+              "t2": "Rom.8.29",
+              "t3": "John.3.20",
+              "t4": "John.3.20"
+            }
+          }
+        },
+        {
+          "command": "tab.pin",
+          "expect": {
+            "links": {
+              "t1": "group 1",
+              "t3": "pinned",
+              "t4": "follows"
+            }
+          }
+        },
+        {
+          "command": "tab.pin",
+          "expect": {
+            "error": "already_in_mode"
+          }
+        },
+        {
+          "command": "tab.link",
+          "args": {
+            "group": "2"
+          },
+          "expect": {
+            "links": {
+              "t3": "group 2"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "links": {
+              "t3": "pinned"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "links": {
+              "t3": "group 1"
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.3.21",
+            "new_column": true
+          },
+          "expect": {
+            "followed": [
+              "t4"
+            ],
+            "columns": [
+              [
+                "t1",
+                "*t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t14"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t14"
+            },
+            "links": {
+              "t14": "pinned"
+            },
+            "references": {
+              "t14": "John.3.21",
+              "t3": "John.3.20",
+              "t4": "John.3.21"
+            }
+          }
+        },
+        {
+          "command": "tab.follow",
+          "expect": {
+            "links": {
+              "t14": "follows"
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "  "
+          },
+          "expect": {
+            "error": "needs_argument"
+          }
+        }
+      ]
+    },
+    {
+      "name": "workspaces",
+      "steps": [
+        {
+          "command": "workspace.next",
+          "expect": {
+            "recorded": false,
+            "active": {
+              "workspace": "w2",
+              "column": 1,
+              "tab": "t1"
+            },
+            "labels": {
+              "t1": [
+                "Gen 1:1",
+                "Gen 1"
+              ]
+            }
+          }
+        },
+        {
+          "command": "workspace.new",
+          "args": {
+            "text": "Romans"
+          },
+          "expect": {
+            "workspaces": [
+              "w1: John study",
+              "w2: Genesis",
+              "w3: Romans"
+            ],
+            "active": {
+              "workspace": "w3",
+              "column": 1,
+              "tab": "t1"
+            },
+            "references": {
+              "t1": "Gen.1.1"
+            },
+            "links": {
+              "t1": "pinned"
+            }
+          }
+        },
+        {
+          "command": "workspace.rename",
+          "args": {
+            "text": "Romans 8"
+          },
+          "expect": {
+            "workspaces": [
+              "w1: John study",
+              "w2: Genesis",
+              "w3: Romans 8"
+            ]
+          }
+        },
+        {
+          "command": "workspace.previous",
+          "expect": {
+            "active": {
+              "workspace": "w2",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "workspaces": [
+              "w1: John study",
+              "w2: Genesis",
+              "w3: Romans"
+            ],
+            "active": {
+              "workspace": "w3",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "workspaces": [
+              "w1: John study",
+              "w2: Genesis"
+            ],
+            "active": {
+              "workspace": "w2",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "edit.redo",
+          "expect": {
+            "workspaces": [
+              "w1: John study",
+              "w2: Genesis",
+              "w3: Romans"
+            ],
+            "active": {
+              "workspace": "w3",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "workspace.close",
+          "expect": {
+            "workspaces": [
+              "w1: John study",
+              "w2: Genesis"
+            ],
+            "active": {
+              "workspace": "w2",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "workspace.duplicate",
+          "expect": {
+            "workspaces": [
+              "w1: John study",
+              "w2: Genesis",
+              "w4: Genesis copy"
+            ],
+            "active": {
+              "workspace": "w4",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w1"
+          },
+          "expect": {
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w9"
+          },
+          "expect": {
+            "error": "no_such_workspace"
+          }
+        },
+        {
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w2",
+            "tab_id": "t1"
+          },
+          "expect": {
+            "active": {
+              "workspace": "w2",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t3"
+          },
+          "expect": {
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t3"
+            }
+          }
+        },
+        {
+          "command": "workspace.rename",
+          "args": {
+            "text": " "
+          },
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "workspace.close",
+          "expect": {
+            "workspaces": [
+              "w2: Genesis",
+              "w4: Genesis copy"
+            ],
+            "active": {
+              "workspace": "w2",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "workspace.close",
+          "expect": {}
+        },
+        {
+          "command": "workspace.close",
+          "expect": {
+            "error": "only_workspace"
+          }
+        },
+        {
+          "command": "workspace.next",
+          "expect": {
+            "error": "only_workspace"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tools and host commands",
+      "steps": [
+        {
+          "command": "tool.pen",
+          "expect": {
+            "recorded": false,
+            "tool": "pen",
+            "can_undo": false
+          }
+        },
+        {
+          "command": "tool.highlighter_pen",
+          "expect": {
+            "tool": "highlighter_pen"
+          }
+        },
+        {
+          "command": "selection.highlight",
+          "expect": {
+            "error": "needs_selection"
+          }
+        },
+        {
+          "command": "selection.highlight",
+          "context": {
+            "has_selection": true
+          },
+          "expect": {
+            "handled": false,
+            "recorded": false
+          }
+        },
+        {
+          "command": "view.study_drawer",
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "workspace.export",
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "view.notes_dock",
+          "expect": {
+            "recorded": true,
+            "notes_dock_open": true
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "notes_dock_open": false,
+            "tool": "highlighter_pen",
+            "can_undo": false,
+            "can_redo": true
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "error": "nothing_to_undo"
+          }
+        },
+        {
+          "command": "bogus.command",
+          "expect": {
+            "error": "unknown_command"
+          }
+        }
+      ]
+    },
+    {
+      "name": "reading settings",
+      "steps": [
+        {
+          "command": "view.text_size_up",
+          "expect": {
+            "handled": true,
+            "recorded": false,
+            "reading": {
+              "text_size_step": 1,
+              "line_spacing": 1.5,
+              "theme": "system"
+            },
+            "revision": 1
+          }
+        },
+        {
+          "command": "view.text_size_reset",
+          "expect": {
+            "reading": {
+              "text_size_step": 0,
+              "line_spacing": 1.5,
+              "theme": "system"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_down",
+          "expect": {
+            "reading": {
+              "text_size_step": -1,
+              "line_spacing": 1.5,
+              "theme": "system"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_down",
+          "expect": {
+            "reading": {
+              "text_size_step": -2,
+              "line_spacing": 1.5,
+              "theme": "system"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_down",
+          "expect": {
+            "error": "at_limit"
+          }
+        },
+        {
+          "command": "view.line_spacing",
+          "args": {
+            "number": 1.7
+          },
+          "expect": {
+            "reading": {
+              "text_size_step": -2,
+              "line_spacing": 1.7,
+              "theme": "system"
+            }
+          }
+        },
+        {
+          "command": "view.line_spacing_up",
+          "expect": {
+            "error": "at_limit"
+          }
+        },
+        {
+          "command": "view.line_spacing_down",
+          "expect": {
+            "reading": {
+              "text_size_step": -2,
+              "line_spacing": 1.5,
+              "theme": "system"
+            }
+          }
+        },
+        {
+          "command": "view.line_spacing_down",
+          "expect": {
+            "reading": {
+              "text_size_step": -2,
+              "line_spacing": 1.35,
+              "theme": "system"
+            }
+          }
+        },
+        {
+          "command": "view.line_spacing_down",
+          "expect": {
+            "error": "at_limit"
+          }
+        },
+        {
+          "command": "view.line_spacing",
+          "args": {
+            "number": 1.6
+          },
+          "expect": {
+            "error": "invalid_value"
+          }
+        },
+        {
+          "command": "view.theme",
+          "args": {
+            "text": "sepia"
+          },
+          "expect": {
+            "reading": {
+              "text_size_step": -2,
+              "line_spacing": 1.35,
+              "theme": "sepia"
+            }
+          }
+        },
+        {
+          "command": "view.theme",
+          "args": {
+            "text": "neon"
+          },
+          "expect": {
+            "error": "invalid_value"
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "error": "nothing_to_undo",
+            "can_undo": false
+          }
+        },
+        {
+          "command": "view.text_size_reset",
+          "expect": {
+            "reading": {
+              "text_size_step": 0,
+              "line_spacing": 1.35,
+              "theme": "sepia"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {
+            "reading": {
+              "text_size_step": 4,
+              "line_spacing": 1.35,
+              "theme": "sepia"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {
+            "error": "at_limit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tabs into new columns",
+      "steps": [
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "error": "one_tab"
+          }
+        },
+        {
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t11"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t11"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ink settings",
+      "steps": [
+        {
+          "command": "tool.width_up",
+          "expect": {
+            "handled": true,
+            "recorded": false,
+            "ink": {
+              "width": 6,
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
+            }
+          }
+        },
+        {
+          "command": "tool.width",
+          "args": {
+            "number": 16
+          },
+          "expect": {
+            "ink": {
+              "width": 16,
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
+            }
+          }
+        },
+        {
+          "command": "tool.width_up",
+          "expect": {
+            "error": "at_limit"
+          }
+        },
+        {
+          "command": "tool.width_down",
+          "expect": {
+            "ink": {
+              "width": 12,
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
+            }
+          }
+        },
+        {
+          "command": "tool.width",
+          "args": {
+            "number": 5
+          },
+          "expect": {
+            "error": "invalid_value"
+          }
+        },
+        {
+          "command": "tool.swatch",
+          "args": {
+            "text": "#a1b2c3"
+          },
+          "expect": {
+            "ink": {
+              "width": 12,
+              "swatch": "#A1B2C3",
+              "alternate_swatch": "#4CC38A"
+            }
+          }
+        },
+        {
+          "command": "tool.swap_swatches",
+          "expect": {
+            "handled": true,
+            "ink": {
+              "width": 12,
+              "swatch": "#4CC38A",
+              "alternate_swatch": "#A1B2C3"
+            }
+          }
+        },
+        {
+          "command": "tool.swatch",
+          "args": {
+            "text": "red"
+          },
+          "expect": {
+            "error": "invalid_value"
+          }
+        },
+        {
+          "command": "tool.pen",
+          "expect": {
+            "tool": "pen",
+            "ink": {
+              "width": 12,
+              "swatch": "#4CC38A",
+              "alternate_swatch": "#A1B2C3"
+            },
+            "can_undo": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "column widths",
+      "steps": [
+        {
+          "command": "column.resize",
+          "args": {
+            "column": 3,
+            "number": 0.5
+          },
+          "expect": {
+            "recorded": true,
+            "widths_permille": [
+              250,
+              250,
+              500
+            ]
+          }
+        },
+        {
+          "command": "column.equalize",
+          "expect": {
+            "widths_permille": [
+              333,
+              333,
+              333
+            ]
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "widths_permille": [
+              250,
+              250,
+              500
+            ]
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "widths_permille": [
+              400,
+              400,
+              200
+            ]
+          }
+        },
+        {
+          "command": "column.resize",
+          "args": {
+            "column": 1,
+            "number": 0.99
+          },
+          "expect": {
+            "error": "invalid_value"
+          }
+        },
+        {
+          "command": "column.resize",
+          "args": {
+            "column": 4,
+            "number": 0.3
+          },
+          "expect": {
+            "error": "no_such_column"
+          }
+        },
+        {
+          "command": "column.resize",
+          "args": {
+            "column": 2
+          },
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "workspace.next",
+          "expect": {
+            "active": {
+              "workspace": "w2",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "column.equalize",
+          "expect": {
+            "error": "only_column"
+          }
+        }
+      ]
+    },
+    {
+      "name": "scroll anchors",
+      "steps": [
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t3",
+            "segment_id": "John.3.16",
+            "scalar": 12
+          },
+          "expect": {
+            "recorded": false,
+            "revision": 0,
+            "anchors": {
+              "t3": "John.3.16@12",
+              "t1": null
+            }
+          }
+        },
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "workspace_id": "w2",
+            "tab_id": "t1",
+            "segment_id": "Gen.1.1",
+            "scalar": 5
+          },
+          "expect": {
+            "revision": 0,
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t1"
+            },
+            "anchors": {
+              "t1": null
+            }
+          }
+        },
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t9",
+            "segment_id": "x",
+            "scalar": 0
+          },
+          "expect": {
+            "error": "no_such_tab"
+          }
+        },
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t3",
+            "scalar": 1
+          },
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "workspace.next",
+          "expect": {
+            "revision": 1,
+            "anchors": {
+              "t1": "Gen.1.1@5"
+            }
+          }
+        },
+        {
+          "command": "column.new",
+          "expect": {
+            "revision": 2,
+            "recorded": true
+          }
+        }
+      ]
+    }
+  ],
+  "palette": [
+    {
+      "name": "passage then tabs at it",
+      "query": "Jn 3:16",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.3.16"
+          },
+          "disabled": null
+        },
+        {
+          "section": "tabs",
+          "title": "BSB · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t1"
+          }
+        },
+        {
+          "section": "tabs",
+          "title": "SBLGNT · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t3"
+          }
+        },
+        {
+          "section": "tabs",
+          "title": "fixture:lexicon-1 · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t4"
+          }
+        }
+      ],
+      "count": 4
+    },
+    {
+      "name": "command prefix",
+      "query": ">new tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "New tab",
+          "command": "tab.new",
+          "args": {},
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "trailing column number",
+      "query": ">move tab to 3",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Move tab to column",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "focus a column by number",
+      "query": ">focus 2",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Focus column",
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "argument after the title",
+      "query": ">rename workspace Greek study",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Rename workspace",
+          "command": "workspace.rename",
+          "args": {
+            "text": "Greek study"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "tabs and workspaces",
+      "query": "@genesis",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "Genesis",
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w2"
+          }
+        },
+        {
+          "section": "tabs",
+          "title": "WLC · Gen 1:1",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w2",
+            "tab_id": "t1"
+          }
+        }
+      ],
+      "count": 2
+    },
+    {
+      "name": "workspace and tab rows read in words",
+      "query": "@genesis",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "Genesis",
+          "command": "workspace.switch",
+          "subtitle": "Workspace · 1 column, 1 tab"
+        },
+        {
+          "section": "tabs",
+          "title": "WLC · Gen 1:1",
+          "command": "tab.focus",
+          "subtitle": "Genesis · column 1"
+        }
+      ]
+    },
+    {
+      "name": "a study workspace's counts",
+      "query": "@john study",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "John study",
+          "command": "workspace.switch",
+          "subtitle": "Workspace · 3 columns, 4 tabs"
+        }
+      ]
+    },
+    {
+      "name": "disabled rows carry their reason in words",
+      "query": ":Jn 3:16 @5",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate",
+          "disabled": "no_such_column",
+          "disabled_text": "There is no column 5",
+          "subtitle": "Open in column 5"
+        }
+      ]
+    },
+    {
+      "name": "enabled rows carry no reason",
+      "query": ">new tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "New tab",
+          "command": "tab.new",
+          "disabled": null,
+          "disabled_text": null
+        }
+      ]
+    },
+    {
+      "name": "move tab expands into columns",
+      "query": ">move tab to column",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Move tab to column 2",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 2
+          },
+          "disabled": null,
+          "shortcut": "Alt+Shift+2"
+        },
+        {
+          "section": "commands",
+          "title": "Move tab to column 3",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 3
+          },
+          "disabled": null,
+          "shortcut": "Alt+Shift+3"
+        },
+        {
+          "section": "commands",
+          "title": "Move tab to new column",
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "disabled": null,
+          "shortcut": null
+        }
+      ]
+    },
+    {
+      "name": "expanded rows carry the platform's concrete key",
+      "query": ">focus column",
+      "context": {
+        "platform": "mac"
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Focus column 2",
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          },
+          "shortcut": "Alt+2"
+        },
+        {
+          "section": "commands",
+          "title": "Focus column 3",
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          },
+          "shortcut": "Alt+3"
+        }
+      ]
+    },
+    {
+      "name": "an explicit column fills the key",
+      "query": ">move tab to 3",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Move tab to column",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 3
+          },
+          "shortcut": "Alt+Shift+3"
+        }
+      ]
+    },
+    {
+      "name": "rows without a key carry none",
+      "query": ">duplicate tab into column 2",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 2
+          },
+          "shortcut": null
+        }
+      ]
+    },
+    {
+      "name": "duplicate tab expands into columns",
+      "query": ">duplicate tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column 2",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column 3",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Duplicate tab into new column",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "new_column": true
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "focus column omits the current one",
+      "query": ">focus column",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Focus column 2",
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Focus column 3",
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "go to tab lists the other tabs",
+      "query": ">go to tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Go to BSB · Rom 8:28",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t2"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to SBLGNT · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t3"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to fixture:lexicon-1 · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t4"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to WLC · Gen 1:1",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w2",
+            "tab_id": "t1"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "switch workspace lists the others",
+      "query": ">switch to workspace",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Switch to Genesis",
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w2"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "a tab by its resource name",
+      "query": "@sblgnt jn",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "SBLGNT · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t3"
+          }
+        }
+      ]
+    },
+    {
+      "name": "every tab and workspace",
+      "query": "@",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "John study",
+          "command": "workspace.switch"
+        },
+        {
+          "section": "tabs",
+          "title": "Genesis",
+          "command": "workspace.switch"
+        },
+        {
+          "section": "tabs",
+          "title": "BSB · Jn 3:16",
+          "command": "tab.focus"
+        },
+        {
+          "section": "tabs",
+          "title": "BSB · Rom 8:28",
+          "command": "tab.focus"
+        },
+        {
+          "section": "tabs",
+          "title": "SBLGNT · Jn 3:16",
+          "command": "tab.focus"
+        }
+      ],
+      "count": 5,
+      "totals": {
+        "tabs": 7
+      }
+    },
+    {
+      "name": "every tab expanded",
+      "query": "@",
+      "context": {
+        "expanded": "tabs"
+      },
+      "expect": [],
+      "count": 7
+    },
+    {
+      "name": "text only",
+      "query": "#loved",
+      "expect": [
+        {
+          "section": "text",
+          "title": "BSB · Jn 3:16",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.3.16"
+          },
+          "disabled": null
+        }
+      ],
+      "count": 1
+    },
+    {
+      "name": "text in a column",
+      "query": "#ברא @2",
+      "expect": [
+        {
+          "section": "text",
+          "title": "WLC · Gen 1:1",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Gen.1.1",
+            "column": 2
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "passage range in column 2",
+      "query": ":Rom 8:28-30 @2",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Rom 8:28–30",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Rom.8.28-Rom.8.30",
+            "column": 2
+          },
+          "disabled": null
+        }
+      ],
+      "count": 1
+    },
+    {
+      "name": "passage in a missing column",
+      "query": ":Jn 3:16 @5",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.3.16",
+            "column": 5
+          },
+          "disabled": "no_such_column"
+        }
+      ]
+    },
+    {
+      "name": "passage in a new column",
+      "query": "Gen 1:1 @new",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Gen 1:1",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Gen.1.1",
+            "new_column": true
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "not a passage",
+      "query": ":nonsense 1",
+      "expect": [],
+      "count": 0,
+      "notice": "unknown book `nonsense`"
+    },
+    {
+      "name": "blank",
+      "query": "  ",
+      "expect": [],
+      "count": 0
+    },
+    {
+      "name": "a number argument after an alias",
+      "query": ">line spacing 1.7",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Set line spacing",
+          "command": "view.line_spacing",
+          "args": {
+            "number": 1.7
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "undo is listed disabled",
+      "query": ">undo",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Undo",
+          "command": "edit.undo",
+          "disabled": "nothing_to_undo"
+        }
+      ]
+    },
+    {
+      "name": "alias outranks a title prefix",
+      "query": ">highlight",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Highlight tool",
+          "command": "tool.highlight",
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Highlight selection",
+          "command": "selection.highlight",
+          "disabled": "needs_selection"
+        },
+        {
+          "section": "commands",
+          "title": "Highlighter pen tool",
+          "command": "tool.highlighter_pen",
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "selection enables selection commands",
+      "query": ">highlight sel",
+      "context": {
+        "has_selection": true
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Highlight selection",
+          "command": "selection.highlight",
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "plain words reach commands and text",
+      "query": "world",
+      "expect": [
+        {
+          "section": "text",
+          "title": "BSB · Jn 3:16",
+          "command": "nav.navigate"
+        },
+        {
+          "section": "text",
+          "title": "BSB · Jn 3:17",
+          "command": "nav.navigate"
+        }
+      ],
+      "totals": {
+        "text": 2
+      }
+    }
+  ],
+  "migrations": [
+    {
+      "name": "1.0 example",
+      "input": {
+        "schema_version": "1.0",
+        "fixture_only": true,
+        "id": "fixture:workspace:1",
+        "title": "Three texts plus optional notes dock",
+        "panes": [
+          {
+            "id": "p1",
+            "kind": "reading",
+            "content_id": "fixture:edition-1",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": "A",
+            "pinned": false,
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "id": "p2",
+            "kind": "reading",
+            "content_id": "fixture:edition-2",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": "A",
+            "pinned": false,
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "id": "p3",
+            "kind": "reading",
+            "content_id": "fixture:edition-3",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": null,
+            "pinned": true,
+            "width_fraction": 0.3333333333333333
+          }
+        ],
+        "notes_dock_id": "fixture:note:1",
+        "active_pane_id": "p1"
+      },
+      "expected": {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "fixture:workspace:1",
+        "title": "Three texts plus optional notes dock",
+        "columns": [
+          {
+            "id": "col-p1",
+            "tabs": [
+              {
+                "id": "p1",
+                "kind": "reading",
+                "content_id": "fixture:edition-1",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "link_group": "A",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "p1",
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "id": "col-p2",
+            "tabs": [
+              {
+                "id": "p2",
+                "kind": "reading",
+                "content_id": "fixture:edition-2",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "link_group": "A",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "p2",
+            "width_fraction": 0.3333333333333333
+          },
+          {
+            "id": "col-p3",
+            "tabs": [
+              {
+                "id": "p3",
+                "kind": "reading",
+                "content_id": "fixture:edition-3",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "p3",
+            "width_fraction": 0.3333333333333333
+          }
+        ],
+        "active_column_id": "col-p1",
+        "notes_dock": {
+          "note_id": "fixture:note:1",
+          "open": false
+        },
+        "next_serial": 1
+      }
+    },
+    {
+      "name": "1.1 example",
+      "input": {
+        "schema_version": "1.1",
+        "fixture_only": true,
+        "id": "fixture:workspace:2",
+        "title": "Five panes in two link groups, made on a Mac, with the iPad arrangement saved",
+        "panes": [
+          {
+            "id": "p1",
+            "kind": "reading",
+            "content_id": "fixture:edition-1",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": "1",
+            "pinned": false,
+            "width_fraction": 0.2,
+            "scroll_anchor": {
+              "segment_id": "fixture:segment:1",
+              "scalar": 0
+            }
+          },
+          {
+            "id": "p2",
+            "kind": "reading",
+            "content_id": "fixture:edition-2",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": "1",
+            "pinned": false,
+            "width_fraction": 0.2,
+            "scroll_anchor": {
+              "segment_id": "fixture:segment:1",
+              "scalar": 12
+            }
+          },
+          {
+            "id": "p3",
+            "kind": "reading",
+            "content_id": "fixture:edition-3",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": "1",
+            "pinned": false,
+            "width_fraction": 0.2,
+            "scroll_anchor": {
+              "segment_id": "fixture:segment:1",
+              "scalar": 7
+            }
+          },
+          {
+            "id": "p4",
+            "kind": "reading",
+            "content_id": "fixture:edition-greek",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": "2",
+            "pinned": false,
+            "width_fraction": 0.2,
+            "scroll_anchor": {
+              "segment_id": "fixture:segment:1-greek",
+              "scalar": 3
+            }
+          },
+          {
+            "id": "p5",
+            "kind": "lexicon",
+            "content_id": "fixture:lexicon-1",
+            "content_revision": "0",
+            "reference": "fixture:passage:1",
+            "link_group": "2",
+            "pinned": false,
+            "width_fraction": 0.2
+          }
+        ],
+        "notes_dock_id": "fixture:note:1",
+        "active_pane_id": "p1",
+        "layout_profiles": {
+          "wide": {
+            "visible_pane_ids": [
+              "p1",
+              "p2",
+              "p3",
+              "p4",
+              "p5"
+            ],
+            "tab_order": [],
+            "widths": {
+              "p1": 0.22,
+              "p2": 0.22,
+              "p3": 0.22,
+              "p4": 0.2,
+              "p5": 0.14
+            },
+            "notes_dock_open": false
+          },
+          "regular": {
+            "visible_pane_ids": [
+              "p1",
+              "p2",
+              "p3"
+            ],
+            "tab_order": [
+              "p4",
+              "p5"
+            ],
+            "notes_dock_open": false
+          }
+        }
+      },
+      "expected": {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "fixture:workspace:2",
+        "title": "Five panes in two link groups, made on a Mac, with the iPad arrangement saved",
+        "columns": [
+          {
+            "id": "col-p1",
+            "tabs": [
+              {
+                "id": "p1",
+                "kind": "reading",
+                "content_id": "fixture:edition-1",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "scroll_anchor": {
+                  "segment_id": "fixture:segment:1",
+                  "scalar": 0
+                },
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "p1",
+            "width_fraction": 0.22
+          },
+          {
+            "id": "col-p2",
+            "tabs": [
+              {
+                "id": "p2",
+                "kind": "reading",
+                "content_id": "fixture:edition-2",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "scroll_anchor": {
+                  "segment_id": "fixture:segment:1",
+                  "scalar": 12
+                },
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "p2",
+            "width_fraction": 0.22
+          },
+          {
+            "id": "col-p3",
+            "tabs": [
+              {
+                "id": "p3",
+                "kind": "reading",
+                "content_id": "fixture:edition-3",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "scroll_anchor": {
+                  "segment_id": "fixture:segment:1",
+                  "scalar": 7
+                },
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "p3",
+            "width_fraction": 0.22
+          },
+          {
+            "id": "col-p4",
+            "tabs": [
+              {
+                "id": "p4",
+                "kind": "reading",
+                "content_id": "fixture:edition-greek",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "scroll_anchor": {
+                  "segment_id": "fixture:segment:1-greek",
+                  "scalar": 3
+                },
+                "link_group": "2",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "p4",
+            "width_fraction": 0.2
+          },
+          {
+            "id": "col-p5",
+            "tabs": [
+              {
+                "id": "p5",
+                "kind": "lexicon",
+                "content_id": "fixture:lexicon-1",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "link_group": "2",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "p5",
+            "width_fraction": 0.14
+          }
+        ],
+        "active_column_id": "col-p1",
+        "notes_dock": {
+          "note_id": "fixture:note:1",
+          "open": false
+        },
+        "layout_profiles": {
+          "regular": {
+            "visible_column_ids": [
+              "col-p1",
+              "col-p2",
+              "col-p3"
+            ],
+            "notes_dock_open": false
+          },
+          "wide": {
+            "visible_column_ids": [
+              "col-p1",
+              "col-p2",
+              "col-p3",
+              "col-p4",
+              "col-p5"
+            ],
+            "widths": {
+              "col-p1": 0.22,
+              "col-p2": 0.22,
+              "col-p3": 0.22,
+              "col-p4": 0.2,
+              "col-p5": 0.14
+            },
+            "notes_dock_open": false
+          }
+        },
+        "next_serial": 1
+      }
+    }
+  ]
+}

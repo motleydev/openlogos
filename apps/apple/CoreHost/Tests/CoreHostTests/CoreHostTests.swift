@@ -137,6 +137,51 @@ final class CoreHostTests: XCTestCase {
         print("conformance cases: \(report.passed) passed, \(report.failed) failed")
     }
 
+    // B070: the workspace shell through the UniFFI handle.
+    func testShellCommandsUndoAndPalette() throws {
+        let shell = ShellHandle.fixture()
+        XCTAssertEqual(shell.session().workspaces.count, 2)
+        let outcome = try shell.apply(commandId: "column.new", args: ShellCommandArgs(), hasSelection: false)
+        XCTAssertTrue(outcome.handled && outcome.recorded)
+        XCTAssertEqual(shell.session().workspaces[0].columns.map(\.number), [1, 2, 3, 4])
+        XCTAssertEqual(shell.session().undoTitle, "New column")
+        _ = try shell.undo()
+        XCTAssertEqual(shell.session().workspaces[0].columns.count, 3)
+        XCTAssertThrowsError(try shell.apply(commandId: "column.focus", args: ShellCommandArgs(column: 9), hasSelection: false)) { error in
+            guard case ShellCommandError.Disabled(_, let kind, _) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(kind, "no_such_column")
+        }
+        let context = ShellPaletteContext(hasSelection: false, platform: .mac)
+        let result = shell.paletteQuery(text: "Jn 3:16 @2", context: context)
+        XCTAssertEqual(result.targetColumn, 2)
+        let first = try XCTUnwrap(result.groups.first?.items.first)
+        XCTAssertEqual(first.section, .passage)
+        let navigated = try shell.apply(commandId: first.commandId, args: first.args, hasSelection: false)
+        XCTAssertEqual(navigated.followedTabIds, ["t1", "t4"])
+        XCTAssertEqual(shell.paletteQuery(text: "#loved", context: context).groups.first?.section, .text)
+        XCTAssertEqual(shellRegistry().first { $0.id == "tab.new" }?.shortcuts.mac, ["Alt+T", "Cmd+T"])
+        let records = shell.records()
+        let reopened = try ShellHandle.fromRecords(sessionJson: records.sessionJson, workspaceJsons: records.workspaceJsons)
+        XCTAssertEqual(reopened.session().workspaces, shell.session().workspaces)
+        // Settings live in the session; a scroll position does not bump the revision.
+        _ = try shell.apply(commandId: "view.line_spacing", args: ShellCommandArgs(number: 1.7), hasSelection: false)
+        XCTAssertEqual(shell.session().reading.lineSpacing, 1.7)
+        let revision = shell.session().revision
+        _ = try shell.apply(commandId: "tab.record_scroll", args: ShellCommandArgs(tabId: "t3", segmentId: "John.3.16", scalar: 4), hasSelection: false)
+        XCTAssertEqual(shell.session().revision, revision)
+        XCTAssertEqual(layoutConstants().measureCapStandardPt, 640)
+        // Short labels and registered resource names.
+        XCTAssertEqual(try formatShort(reference: "John 3:16"), "Jn 3:16")
+        shell.setResourceTitles(titles: ["bsb": "BSB"])
+        XCTAssertEqual(shell.session().workspaces[0].columns[0].tabs[0].resourceTitle, "BSB")
+        XCTAssertEqual(shell.session().workspaces[0].columns[0].tabs[0].chapterLabel, "Jn 3")
+        XCTAssertEqual(shell.paletteQuery(text: "@bsb jn", context: context).groups.first?.items.first?.title, "BSB · Jn 3:16")
+        XCTAssertThrowsError(try shell.apply(commandId: "tab.focus", args: ShellCommandArgs(), hasSelection: false)) { error in
+            guard case ShellCommandError.Disabled(_, _, let reason) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(reason, "Choose a tab")
+        }
+    }
+
     // MARK: - Fixture decoding
 
     struct Span: Decodable { let start: UInt32; let end: UInt32 }

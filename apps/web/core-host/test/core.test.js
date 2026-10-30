@@ -108,3 +108,48 @@ test("runConformance() passes every fixture case", () => {
   assert.ok(report.passed > 100);
   console.log(`conformance cases: ${report.passed} passed, ${report.failed} failed (api ${report.api_version})`);
 });
+
+test("B070: the workspace shell runs commands, undo and the palette", () => {
+  const shell = core.ShellHandle.fixture();
+  assert.equal(shell.session().workspaces.length, 2);
+  const outcome = shell.apply({ command_id: "column.new" });
+  assert.ok(outcome.handled && outcome.recorded);
+  assert.equal(shell.session().workspaces[0].columns.length, 4);
+  shell.undo();
+  assert.equal(shell.session().workspaces[0].columns.length, 3);
+  assert.throws(
+    () => shell.apply({ command_id: "column.focus", args: { column: 9 } }),
+    (error) => error.kind === "disabled" && error.details.reason.kind === "no_such_column",
+  );
+  const result = shell.paletteQuery("Jn 3:16 @2", { platform: "web" });
+  assert.deepEqual(result.query.target, { kind: "column", number: 2 });
+  const first = result.groups[0].items[0];
+  assert.equal(first.section, "passage");
+  const navigated = shell.apply(first.invocation);
+  assert.deepEqual(navigated.effects.followed_tab_ids, ["t1", "t4"]);
+  assert.equal(shell.paletteQuery("#loved").groups[0].section, "text");
+  assert.deepEqual(core.shellRegistry().find((c) => c.id === "tab.new").shortcuts.web, ["Alt+T"]);
+  const { session, workspaces } = shell.records();
+  const reopened = core.ShellHandle.fromRecords(session, workspaces);
+  assert.deepEqual(reopened.session(), shell.session());
+  assert.equal(core.migrateWorkspace({ ...workspaces[0] }).schema_version, "2.0");
+  // Settings live in the session; a scroll position does not bump the revision.
+  shell.apply({ command_id: "view.line_spacing", args: { number: 1.7 } });
+  assert.equal(shell.session().reading.line_spacing, 1.7);
+  const revision = shell.revision();
+  shell.apply({ command_id: "tab.record_scroll", args: { tab_id: "t3", segment_id: "John.3.16", scalar: 4 } });
+  assert.equal(shell.revision(), revision);
+  assert.equal(core.layoutConstants().measure_cap_standard_pt, 640);
+  // Short labels and registered resource names.
+  assert.equal(core.formatShort("John 3:16"), "Jn 3:16");
+  shell.setResourceTitles({ bsb: "BSB" });
+  const viewTab = shell.view().workspaces[0].columns[0].tabs[0];
+  assert.deepEqual([viewTab.resource_title, viewTab.reference_label, viewTab.chapter_label], ["BSB", "Jn 3:16", "Jn 3"]);
+  assert.equal(shell.paletteQuery("@bsb jn").groups[0].items[0].title, "BSB · Jn 3:16");
+  assert.throws(
+    () => shell.apply({ command_id: "tab.focus" }),
+    (error) => error.reason_text === "Choose a tab" && error.details.reason.kind === "needs_argument",
+  );
+  const missing = shell.paletteQuery(":Jn 3:16 @5").groups[0].items[0];
+  assert.equal(missing.disabled_text, "There is no column 5");
+});

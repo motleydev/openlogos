@@ -234,6 +234,12 @@ closes other panes or clears a selection.
 
 ## 9. Keyboard commands
 
+> Revised by specs/22-workspace-shell.md §3 and §6 (B070): every command below is an entry in the
+> core command registry (`crates/workspaces`, `commands::registry`), ⌘K focuses the palette that
+> replaces the passage field and launcher, and the pane commands become the column and tab
+> bindings of specs/22 §6 (⌥1…⌥9 focus column N; ⌘⇧N is New workspace on native hosts, so the
+> notes dock is toggled from the palette). The rows not replaced there keep their bindings.
+
 Commands are available from the menu bar (macOS), the workspace menu, and the command launcher
 (⌘K) on every platform with a hardware keyboard. Shortcuts are enhancements; every command has a
 visible route.

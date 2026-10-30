@@ -133,20 +133,33 @@ pub fn link_groups(workspace: &Workspace) -> BTreeMap<String, Vec<String>> {
 /// follower with no mapping shows "unmapped here", never a guessed passage (specs/12).
 #[must_use]
 pub fn followers(workspace: &Workspace, driver: &str) -> Vec<String> {
-    let Some(pane) = workspace.pane(driver) else {
+    followers_among(
+        workspace
+            .panes
+            .iter()
+            .map(|p| (p.id.as_str(), p.link_group.as_deref(), p.pinned)),
+        driver,
+    )
+}
+
+/// [`followers`] over any list of `(id, link group, pinned)` members in order: the rule
+/// shared by 1.x panes and the shell's tabs (crate::shell), which span columns.
+pub fn followers_among<'a>(
+    members: impl Iterator<Item = (&'a str, Option<&'a str>, bool)> + Clone,
+    driver: &str,
+) -> Vec<String> {
+    let Some((_, group, pinned)) = members.clone().find(|(id, _, _)| *id == driver) else {
         return Vec::new();
     };
-    if pane.pinned {
+    if pinned {
         return Vec::new();
     }
-    let Some(group) = &pane.link_group else {
+    let Some(group) = group else {
         return Vec::new();
     };
-    workspace
-        .panes
-        .iter()
-        .filter(|p| p.id != driver && !p.pinned && p.link_group.as_ref() == Some(group))
-        .map(|p| p.id.clone())
+    members
+        .filter(|(id, g, p)| *id != driver && !*p && *g == Some(group))
+        .map(|(id, _, _)| id.to_owned())
         .collect()
 }
 
@@ -175,6 +188,12 @@ pub struct PaneHistory {
 }
 
 impl PaneHistory {
+    /// Whether the pane has never navigated.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.back.is_empty() && self.current.is_none() && self.forward.is_empty()
+    }
+
     /// Records a new visit: the current one moves to the back stack and the forward stack
     /// is cleared, as in a browser.
     pub fn visit(&mut self, visit: Visit) {

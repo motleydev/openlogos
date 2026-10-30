@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "fixture_only": true,
+  "workspace_ids": [
+    "fixture:workspace:2"
+  ],
+  "active_workspace_id": "fixture:workspace:2",
+  "tool": "select",
+  "next_serial": 1,
+  "reading": {
+    "text_size_step": 0,
+    "line_spacing": 1.5,
+    "theme": "system"
+  },
+  "ink": {
+    "width": 4.0,
+    "swatch": "#F5D90A",
+    "alternate_swatch": "#4CC38A"
+  }
+}
