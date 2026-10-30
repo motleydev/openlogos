@@ -13,9 +13,8 @@
 // `?autorun=1` runs them all and leaves the results on window.openlogosResults for the
 // headless test (test/run-chrome.mjs).
 import init, * as core from "../core-host/pkg/openlogos_ffi.js";
+import { JOINER, segmenter, coreTextOf, renderParagraph, coreOffset, domPoint, selectionAnchors } from "./surface.js";
 
-const JOINER = " ";
-const segmenter = typeof Intl !== "undefined" && Intl.Segmenter ? new Intl.Segmenter("und", { granularity: "grapheme" }) : null;
 
 /** The selections the evidence drives, matching the Apple AnchorCase table where the texts agree. */
 export const CASES = [
@@ -78,18 +77,6 @@ function pane(id, shortName, reference, fixture, dir, lang, link) {
   };
 }
 
-/** Segments joined by the joiner: what the core measures on; and where each segment starts. */
-function coreTextOf(paragraph) {
-  const offsets = {};
-  let text = "";
-  paragraph.segments.forEach((s, i) => {
-    if (i > 0) text += paragraph.joiner;
-    offsets[s.segment_id] = text.length;
-    text += s.text;
-  });
-  return { text, offsets };
-}
-
 // MARK: - Rendering
 
 function render(p, isDock) {
@@ -107,30 +94,7 @@ function render(p, isDock) {
     identity.innerHTML = `<b>${p.shortName}</b> <span class="ref">${p.reference}</span> <span class="link">${p.link}</span>`;
     section.appendChild(identity);
   }
-  const text = document.createElement("p");
-  text.className = "text";
-  text.dir = p.dir;
-  text.lang = p.lang;
-  p.paragraph.segments.forEach((s, i) => {
-    if (i > 0) text.appendChild(document.createTextNode(p.paragraph.joiner));
-    const verse = document.createElement("span");
-    verse.className = "verse";
-    verse.dataset.segment = s.segment_id;
-    const number = s.segment_id.split(".").pop();
-    if (/^\d+$/.test(number)) {
-      const marker = document.createElement("sup");
-      marker.className = "marker";
-      marker.textContent = number;
-      marker.setAttribute("aria-label", `verse ${number}`);
-      verse.appendChild(marker);
-    }
-    const t = document.createElement("span");
-    t.className = "t";
-    t.lang = p.lang;
-    t.textContent = s.text;
-    verse.appendChild(t);
-    text.appendChild(verse);
-  });
+  const text = renderParagraph(p.paragraph, p.dir, p.lang);
   section.appendChild(text);
   const attribution = document.createElement("p");
   attribution.className = "attribution";
@@ -155,67 +119,6 @@ function render(p, isDock) {
   readout.setAttribute("aria-live", "polite");
   section.appendChild(readout);
   return { section, text, readout, actions: section.querySelector(".actions") };
-}
-
-// MARK: - Offsets between the DOM and the core text
-
-function isCore(node) {
-  return !(node.parentElement && node.parentElement.closest(".marker"));
-}
-
-function* textNodes(root) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let node;
-  while ((node = walker.nextNode())) yield node;
-}
-
-/** Core UTF-16 offset of a DOM point: the core text length before it, markers excluded. */
-function coreOffset(root, container, offset) {
-  const point = document.createRange();
-  point.setStart(container, offset);
-  point.collapse(true);
-  let total = 0;
-  for (const node of textNodes(root)) {
-    if (!isCore(node)) continue;
-    const probe = document.createRange();
-    probe.selectNodeContents(node);
-    // compareBoundaryPoints(how, source) compares this range's point named second in `how`
-    // with the source's point named first: START_TO_END is this.end against point.start.
-    if (probe.compareBoundaryPoints(Range.START_TO_END, point) <= 0) { total += node.length; continue; } // node ends at or before the point
-    if (probe.compareBoundaryPoints(Range.START_TO_START, point) >= 0) break; // node starts at or after the point
-    total += container === node ? offset : 0;
-    break;
-  }
-  return total;
-}
-
-/** The DOM point of a core offset; a start lands after a marker, an end before it. */
-function domPoint(root, offset, isStart) {
-  let total = 0;
-  let last = null;
-  for (const node of textNodes(root)) {
-    if (!isCore(node)) continue;
-    const end = total + node.length;
-    if (isStart ? offset >= total && offset < end : offset > total && offset <= end) return { node, offset: offset - total };
-    if (isStart && offset === total && node.length === 0) return { node, offset: 0 };
-    total = end;
-    last = node;
-  }
-  if (last && offset === total) return { node: last, offset: last.length };
-  if (!last) return { node: root, offset: 0 };
-  return isStart ? { node: last, offset: last.length } : { node: last, offset: last.length };
-}
-
-function snapToClusters(text, start, end) {
-  if (!segmenter) return [start, end];
-  let s = start, e = end;
-  for (const { index, segment } of segmenter.segment(text)) {
-    const stop = index + segment.length;
-    if (index < start && start < stop) s = index;
-    if (index < end && end < stop) e = stop;
-    if (index > end) break;
-  }
-  return [s, e];
 }
 
 // MARK: - Painting
@@ -255,28 +158,10 @@ function roundTrip(paneState, range) {
   const { pane, text } = paneState;
   const started = performance.now();
   const { text: coreText, offsets } = coreTextOf(pane.paragraph);
-  let start = coreOffset(text, range.startContainer, range.startOffset);
-  let end = coreOffset(text, range.endContainer, range.endOffset);
-  const [s, e] = snapToClusters(coreText, start, end);
-  const snapped = s !== start || e !== end;
-  start = s; end = e;
-  if (end <= start) return null;
-  const anchors = core.selectionToAnchor(pane.paragraph, start, end);
-  const painted = [];
-  const ranges = [];
-  for (const anchor of anchors) {
-    const segment = pane.paragraph.segments.find((x) => x.segment_id === anchor.segment_id);
-    const back = core.anchorToUtf16(anchor, segment.text);
-    const from = offsets[anchor.segment_id] + back.start;
-    const to = offsets[anchor.segment_id] + back.end;
-    const r = document.createRange();
-    const a = domPoint(text, from, true);
-    const b = domPoint(text, to, false);
-    r.setStart(a.node, a.offset);
-    r.setEnd(b.node, b.offset);
-    ranges.push(r);
-    painted.push(r.toString());
-  }
+  const trip = selectionAnchors(core, pane.paragraph, text, range);
+  if (!trip) return null;
+  const { start, end, snapped, anchors, ranges } = trip;
+  const painted = ranges.map((r) => r.toString());
   const elapsed = performance.now() - started;
   const method = paint(ranges);
   const quoted = anchors.map((a) => (a.quote ? a.quote.exact : ""));
