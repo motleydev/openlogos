@@ -134,6 +134,7 @@ enum ShellLaunch {
         editor.setSelectedRange(NSRange(location: start, length: 8))
         model.run("note.bold")
         editor.setSelectedRange(NSRange(location: storage.length, length: 0))
+        editor.typingAttributes[.font] = editor.typography.body
         editor.insertText(" the world: see ", replacementRange: editor.selectedRange())
         model.run("note.link_passage", args: ShellCommandArgs(reference: "John.3.16"))
     }
