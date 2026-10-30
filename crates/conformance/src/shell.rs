@@ -303,7 +303,7 @@ fn not_words(text: &str) -> bool {
     text.contains('_')
 }
 
-fn error_kind(error: &CommandError) -> String {
+pub(crate) fn error_kind(error: &CommandError) -> String {
     match error {
         CommandError::Disabled { reason, .. } => kind_of(reason),
         other => kind_of(other),
@@ -496,7 +496,7 @@ fn check_step(
     }
 }
 
-fn actual_item(
+pub(crate) fn actual_item(
     item: &openlogos_workspaces::palette::PaletteItem,
     expected: &ExpectedItem,
 ) -> ExpectedItem {

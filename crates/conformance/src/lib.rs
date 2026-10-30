@@ -30,6 +30,7 @@ pub mod identity;
 pub mod layout;
 pub mod locators;
 pub mod shell;
+pub mod well;
 
 pub use contracts::{
     AuthorityScenario, AuthorityStep, MigrationCase, MigrationLayout, NoteAuthorityFixture,
@@ -40,6 +41,8 @@ pub use shell::{
     ActiveView, ExpectedItem, FixtureTextProvider, PaletteCase, ShellFixture, ShellMigrationCase,
     ShellScenario, ShellStep, StepExpectation, fixture_session,
 };
+
+pub use well::{GroupView, ToolWellFixture, WellCase, WellExpectation, WellStep};
 
 pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 
@@ -55,7 +58,7 @@ pub use locators::{
 };
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 17] = [
+pub const FIXTURE_FILES: [(&str, &str); 18] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -124,6 +127,7 @@ pub const FIXTURE_FILES: [(&str, &str); 17] = [
         "shell-commands",
         include_str!("../fixtures/shell-commands.json"),
     ),
+    ("tool-well", include_str!("../fixtures/tool-well.json")),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -164,6 +168,8 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/note-authority-transitions.json"),
         ",",
         include_str!("../fixtures/shell-commands.json"),
+        ",",
+        include_str!("../fixtures/tool-well.json"),
         "]"
     )
 }
@@ -530,6 +536,8 @@ pub enum Fixture {
     NoteAuthority(Box<NoteAuthorityFixture>),
     /// Shell commands, undo, palette queries and the 2.0 migration (B070).
     ShellCommands(Box<ShellFixture>),
+    /// The contextual tool well (B076).
+    ToolWell(Box<ToolWellFixture>),
 }
 
 impl Fixture {
@@ -549,6 +557,7 @@ impl Fixture {
             Fixture::WorkspaceMigration(f) => &f.id,
             Fixture::NoteAuthority(f) => &f.id,
             Fixture::ShellCommands(f) => &f.id,
+            Fixture::ToolWell(f) => &f.id,
         }
     }
 }
@@ -666,6 +675,7 @@ pub fn run_all() -> ConformanceReport {
                 contracts::run_note_authority(&fixture, &mut recorder);
             }
             Ok(Fixture::ShellCommands(fixture)) => shell::run_shell(&fixture, &mut recorder),
+            Ok(Fixture::ToolWell(fixture)) => well::run_tool_well(&fixture, &mut recorder),
             Err(error) => recorder.fail(
                 "fixture parses",
                 "a fixture of a known kind",
