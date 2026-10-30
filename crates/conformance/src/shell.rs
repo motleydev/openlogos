@@ -596,7 +596,10 @@ pub(crate) fn run_shell(fixture: &ShellFixture, r: &mut Recorder) {
     };
     let mut listed: Vec<String> = Vec::new();
     for has_selection in [false, true] {
-        for state in shell.commands(&CommandContext { has_selection }) {
+        for state in shell.commands(&CommandContext {
+            has_selection,
+            ..CommandContext::default()
+        }) {
             if let Some(reason) = state.disabled {
                 let text = reason.to_string();
                 if !has_selection && let Some(expected) = fixture.reason_texts.get(&state.spec.id) {

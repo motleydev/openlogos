@@ -96,6 +96,7 @@ fn session() -> Session {
         reading: Default::default(),
         ink: Default::default(),
         resource_titles: Default::default(),
+        resource_languages: Default::default(),
     };
     session.check().expect("the bench session is valid");
     session

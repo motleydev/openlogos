@@ -87,8 +87,14 @@ pub struct SessionView {
     pub workspaces: Vec<WorkspaceView>,
     /// The active workspace.
     pub active_workspace_id: String,
-    /// The selected tool.
+    /// The selected tool, as stored.
     pub tool: String,
+    /// The tool in effect for the active tab (B076): `tool` when the tab's context offers
+    /// it, else the context's default. [`Shell::tool_well`] answers for the notes dock.
+    pub effective_tool: String,
+    /// The active tab's tool-well context: `translation`, `original`, `notes` or
+    /// `reference` (B076).
+    pub tool_context: String,
     /// Bumped by every change.
     pub revision: u64,
     /// The command Undo would take back, if any.
@@ -179,6 +185,12 @@ impl Shell {
                 .collect(),
             active_workspace_id: self.session.active_workspace_id.clone(),
             tool: self.session.tool.name().to_owned(),
+            effective_tool: crate::well::effective_tool(&self.session, &Default::default())
+                .name()
+                .to_owned(),
+            tool_context: crate::well::tool_context(&self.session, &Default::default())
+                .name()
+                .to_owned(),
             revision: self.revision,
             undo_title: self.undo_stack.last().map(|r| r.title.clone()),
             redo_title: self.redo_stack.last().map(|r| r.title.clone()),

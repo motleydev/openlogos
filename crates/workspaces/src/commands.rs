@@ -210,12 +210,28 @@ impl Invocation {
     }
 }
 
+/// Where keyboard focus is, as far as the tool well cares (B076): the session knows the
+/// active column, not whether the notes dock or an empty column holds focus.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Focus {
+    /// The active column's shown tab; the default.
+    #[default]
+    Tab,
+    /// The notes dock.
+    NotesDock,
+    /// Nothing to act on: a column showing no tab.
+    Empty,
+}
+
 /// What the host knows that the session does not.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CommandContext {
     /// Whether text is selected in some tab.
     pub has_selection: bool,
+    /// Where focus is (B076); decides the tool well's context ([`crate::well`]).
+    pub focus: Focus,
 }
 
 /// Why a command cannot run now. The `Display` text is what a palette row or menu shows:
@@ -307,6 +323,15 @@ pub enum DisabledReason {
     NeedsArgument {
         /// The [`CommandArgs`] field.
         argument: String,
+    },
+    /// A tool or note action that does not fit what has focus (B076): `Pen works on Bible
+    /// text`, `Bold works in notes`.
+    #[error("{what} works {place}")]
+    WrongContext {
+        /// The tool or action, as the well labels it.
+        what: String,
+        /// Where it works.
+        place: String,
     },
 }
 
@@ -1017,6 +1042,76 @@ const DEFS: &[Def] = &[
     def("edit.redo", "Redo", S::Session, A::None, false, true)
         .names(&[], &[])
         .keys(&["Cmd+Shift+Z"], &["Cmd+Shift+Z"]),
+    // B076: the contextual tool well (specs/22 §4.1), appended so no earlier id moves.
+    def(
+        "tool.word_study",
+        "Word study tool",
+        S::Session,
+        A::None,
+        false,
+        true,
+    )
+    .names(
+        &["word study"],
+        &["tool", "lexicon", "greek", "hebrew", "lemma"],
+    )
+    .bare(&["W"]),
+    def("tool.type", "Type tool", S::Session, A::None, false, true)
+        .names(&["type", "edit note"], &["tool", "notes", "write"])
+        .bare(&["T"]),
+    def("note.bold", "Bold", S::Tab, A::None, false, false)
+        .names(&["bold text"], &["note", "format", "strong"])
+        .keys(&["Cmd+B"], &["Cmd+B"]),
+    def("note.italic", "Italic", S::Tab, A::None, false, false)
+        .names(&["italic text"], &["note", "format", "emphasis"])
+        .keys(&["Cmd+I"], &["Cmd+I"]),
+    def("note.heading", "Heading", S::Tab, A::None, false, false)
+        .names(&["make heading"], &["note", "format", "title"]),
+    def("note.list", "List", S::Tab, A::None, false, false)
+        .names(&["bulleted list", "bullet list"], &["note", "format"]),
+    def(
+        "note.link_passage",
+        "Link passage",
+        S::Tab,
+        A::Reference,
+        false,
+        false,
+    )
+    .names(
+        &["insert passage link", "link verse"],
+        &["note", "reference", "cite"],
+    ),
+    def(
+        "selection.note",
+        "Note on selection",
+        S::Selection,
+        A::None,
+        false,
+        false,
+    )
+    .names(&["note on it", "add to note"], &["quote", "notes"]),
+    def(
+        "selection.search",
+        "Search selection",
+        S::Selection,
+        A::None,
+        false,
+        false,
+    )
+    .names(&["search this", "find selection"], &["palette", "find"])
+    .keys(&["Cmd+E"], &["Cmd+E"]),
+    def(
+        "selection.copy_reference",
+        "Copy reference",
+        S::Selection,
+        A::None,
+        false,
+        false,
+    )
+    .names(
+        &["copy selection reference", "copy passage reference"],
+        &["clipboard", "cite"],
+    ),
 ];
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -1056,7 +1151,8 @@ pub fn command(id: &str) -> Option<&'static CommandSpec> {
     registry().iter().find(|c| c.id == id)
 }
 
-fn tool_of(id: &str) -> Option<Tool> {
+/// The tool a `tool.*` mode command chooses.
+pub(crate) fn tool_of(id: &str) -> Option<Tool> {
     Some(match id {
         "tool.select" => Tool::Select,
         "tool.highlight" => Tool::Highlight,
@@ -1064,6 +1160,8 @@ fn tool_of(id: &str) -> Option<Tool> {
         "tool.highlighter_pen" => Tool::HighlighterPen,
         "tool.eraser" => Tool::Eraser,
         "tool.collect" => Tool::Collect,
+        "tool.word_study" => Tool::WordStudy,
+        "tool.type" => Tool::Type,
         _ => return None,
     })
 }
@@ -1114,14 +1212,25 @@ pub fn enabled(
     let ws = session.active();
     let column = ws.active_column();
     let tab = ws.active_tab();
+    if let Some(reason) = crate::well::context_reason(session, &invocation.command_id, context) {
+        return Err(reason);
+    }
     match invocation.command_id.as_str() {
         "edit.undo" if !can_undo => Err(DisabledReason::NothingToUndo),
         "edit.redo" if !can_redo => Err(DisabledReason::NothingToRedo),
-        "selection.highlight" | "selection.collect" | "selection.study"
+        "selection.highlight"
+        | "selection.collect"
+        | "selection.study"
+        | "selection.note"
+        | "selection.search"
+        | "selection.copy_reference"
             if !context.has_selection =>
         {
             Err(DisabledReason::NeedsSelection)
         }
+        "note.link_passage" => non_empty(&args.reference)
+            .map(|_| ())
+            .ok_or_else(|| need("reference")),
         "nav.navigate" => {
             non_empty(&args.reference).ok_or_else(|| need("reference"))?;
             if args.column.is_some() && !args.new_column {
@@ -2010,6 +2119,17 @@ impl Shell {
         self.revision += 1;
     }
 
+    /// Registers resource languages as BCP 47 tags (`sblgnt` → `grc`, `wlc` → `hbo`),
+    /// replacing any registered before (B076). Bumps the revision, since the tool well
+    /// tells an original-language reading tab from a translation by them.
+    pub fn set_resource_languages(
+        &mut self,
+        languages: std::collections::BTreeMap<String, String>,
+    ) {
+        self.session.resource_languages = languages;
+        self.revision += 1;
+    }
+
     /// Swaps the session with a record's snapshot and returns the record that swaps back.
     fn swap(&mut self, record: UndoRecord) -> UndoRecord {
         let mut touched: Vec<String> = record
@@ -2169,12 +2289,21 @@ pub(crate) mod tests {
     #[test]
     fn every_command_runs_and_every_undo_restores_the_session_exactly() {
         let session = fixture_session();
-        let context = CommandContext {
-            has_selection: true,
-        };
         for spec in registry() {
             let invocation = Invocation::with(&spec.id, args_for(spec));
             let mut shell = Shell::new(session.clone()).unwrap();
+            // Tools and note actions run where the tool well offers them (B076).
+            let context = CommandContext {
+                has_selection: true,
+                focus: if spec.id == "tool.type" || spec.id.starts_with("note.") {
+                    Focus::NotesDock
+                } else {
+                    Focus::Tab
+                },
+            };
+            if spec.id == "tool.word_study" {
+                shell.set_resource_languages([("bsb".to_owned(), "grc".to_owned())].into());
+            }
             // Give back and forward something to do.
             shell
                 .apply(

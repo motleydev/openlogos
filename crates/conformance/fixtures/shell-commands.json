@@ -230,7 +230,17 @@
     "view.focus_mode",
     "workspace.export",
     "edit.undo",
-    "edit.redo"
+    "edit.redo",
+    "tool.word_study",
+    "tool.type",
+    "note.bold",
+    "note.italic",
+    "note.heading",
+    "note.list",
+    "note.link_passage",
+    "selection.note",
+    "selection.search",
+    "selection.copy_reference"
   ],
   "scenarios": [
     {
