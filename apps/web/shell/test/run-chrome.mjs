@@ -710,10 +710,10 @@ const CASES = {
     expect(p, s.tool === "word_study" && eq(s.well.pressed, ["tool.word_study"]), `W on Greek (${s.well.pressed})`);
     await click(...(await word(2, "ἠγάπησεν")));
     s = await snap();
-    expect(p, s.active === 3 && eq(s.dom[2].tabs, ["Note", "Lexicon Jn 3"]) && s.dom[2].shown === "Lexicon Jn 3", `a Lexicon tab in column 3: ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    expect(p, s.active === 2 && eq(s.dom[2].tabs, ["Note", "Lexicon Jn 3"]) && s.dom[2].shown === "Lexicon Jn 3", `a Lexicon tab in column 3: ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
     let shown = await page();
     expect(p, eq(shown, ["ἠγάπησεν", "Greek · John 3:16", "Lexicon entries arrive with the lexicon import."]), `lexicon page ${JSON.stringify(shown)}`);
-    expect(p, s.well.context === "reference" && s.well.effective === "select", `the lexicon tab's well (${s.well.context})`);
+    expect(p, s.well.context === "original" && s.well.effective === "word_study", `focus stays on the Greek column, Word study still in effect (${s.well.context}, ${s.well.effective})`);
     await click(...(await word(2, "κόσμον")));
     s = await snap();
     shown = await page();
@@ -724,7 +724,7 @@ const CASES = {
     await click(...(await word(1, "אֱלֹהִ֑ים")));
     s = await snap();
     shown = await page();
-    expect(p, s.dom.length === 2 && s.active === 2 && shown && shown[0] === "אֱלֹהִ֑ים" && shown[1] === "Hebrew · Gen 1:1", `Hebrew: ${s.dom.length} columns, ${JSON.stringify(shown)}`);
+    expect(p, s.dom.length === 2 && s.active === 1 && shown && shown[0] === "אֱלֹהִ֑ים" && shown[1] === "Hebrew · Gen 1:1", `Hebrew: ${s.dom.length} columns, ${JSON.stringify(shown)}`);
     // Word study does nothing on a translation (Select is in effect there).
     await chord("Alt", "Shift", "[");
     await click(...(await word(1, "loved")));
