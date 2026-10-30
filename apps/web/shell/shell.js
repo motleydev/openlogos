@@ -1011,7 +1011,7 @@ function buildWell() {
   });
 }
 
-/** One well button: `Label (key)` in the tooltip, `Label — reason` when disabled. */
+/** One well button: `Label (key)` in the tooltip, `Label (key) — reason` when disabled. */
 function wellButton(item) {
   const b = document.createElement("button");
   b.type = "button";
@@ -1096,7 +1096,7 @@ function renderWell() {
     if (!b) continue;
     const key = shortcutGlyphs(item.key);
     let title = key ? `${item.label} (${key})` : item.label;
-    if (item.disabled_text) title = `${item.label} — ${item.disabled_text}`;
+    if (item.disabled_text) title = `${title} — ${item.disabled_text}`;
     if (item.command_id === "tool.swatch") title = `Swatch: ${swatchName(item.value) || item.value} (choose)`;
     if (item.command_id === "tool.swap_swatches") title = `Alternate: ${swatchName(item.value) || item.value} (${key} swaps)`;
     if (item.command_id === "tool.width") title = `Brush width ${item.value}`;
