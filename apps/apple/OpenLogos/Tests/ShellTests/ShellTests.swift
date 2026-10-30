@@ -89,7 +89,7 @@ final class ShellTests: XCTestCase {
         let study = model.session.workspaces[0]
         XCTAssertEqual(study.columns.map(\.number), [1, 2, 3])
         let labels = study.columns.map { $0.tabs.map(TabTitle.label) }
-        XCTAssertEqual(labels, [["BSB Jn 3:16", "WLC Gen 1:1"], ["SBLGNT Jn 3:16"], ["Note"]], "the core's resource titles and short references")
+        XCTAssertEqual(labels, [["BSB Jn 3", "WLC Gen 1"], ["SBLGNT Jn 3"], ["Note"]], "the core's resource titles and chapter labels")
         XCTAssertEqual(model.session.ink.swatch, "#F5D90A", "the core's default swatches are the tokens'")
         XCTAssertEqual(model.session.ink.alternateSwatch, "#4CC38A")
         XCTAssertEqual(study.columns.map { TabTitle.linkState($0.tabs[0]) }, ["Group 1", "Group 1", "Pinned"])
@@ -242,8 +242,8 @@ final class ShellTests: XCTestCase {
         XCTAssertFalse(moves.isEmpty, "a command typed without its column expands into one row per column")
         XCTAssertFalse(moves.contains { $0.args.column == 1 }, "not the current column")
         let two = try! XCTUnwrap(moves.first { $0.args.column == 2 })
-        XCTAssertEqual(ShellModel.rowShortcut(two), "⌥⇧2", "the {n} family shows the row's column")
-        XCTAssertNil(moves.first { $0.args.newColumn }.flatMap(ShellModel.rowShortcut), "no key for a new column")
+        XCTAssertEqual(two.shortcut.map(ShellModel.symbols), "⌥⇧2", "the core fills the column into the row's key")
+        XCTAssertFalse(model.paletteRows.contains { $0.shortcut?.contains("{n}") ?? false }, "no placeholder reaches a row")
         model.paletteText = "Jn 3:16 @2"
         model.paletteTextChanged()
         let first = try! XCTUnwrap(model.paletteRows.first)

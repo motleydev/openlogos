@@ -193,10 +193,10 @@ struct TabLabel: View {
 }
 
 enum TabTitle {
-    /// `BSB Jn 3:16`, from the core's tab view (registered short name and `formatShort`); a
-    /// tab with no passage shows its resource alone.
+    /// `BSB Jn 3`, from the core's tab view (registered short name and the chapter's short
+    /// form); a tab with no passage shows its resource alone.
     static func label(_ tab: ShellTab) -> String {
-        tab.referenceLabel.map { "\(tab.resourceTitle) \($0)" } ?? tab.resourceTitle
+        tab.chapterLabel.map { "\(tab.resourceTitle) \($0)" } ?? tab.resourceTitle
     }
 
     /// `Group 1`, `Pinned`, `Follows`.

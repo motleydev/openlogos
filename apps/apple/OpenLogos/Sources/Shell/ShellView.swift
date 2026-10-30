@@ -366,8 +366,8 @@ struct PaletteRow: View {
             Spacer(minLength: ShellTokens.Spacing.s)
             if let reason = item.disabledReason {
                 Text(reason).font(.system(size: 12)).foregroundStyle(model.theme.chromeColor).lineLimit(1)
-            } else if let shortcut = ShellModel.rowShortcut(item) {
-                Text(shortcut)
+            } else if let shortcut = item.shortcut {
+                Text(ShellModel.symbols(shortcut))
                     .font(.system(size: 12).monospaced())
                     .foregroundStyle(model.theme.chromeColor)
             }
