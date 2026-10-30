@@ -22,6 +22,8 @@ const RESOURCES = {
   sblgnt: { short: "SBLGNT", name: "SBL Greek New Testament", dir: "ltr", lang: "grc", fixture: "greek-diacritics-john-3-sblgnt" },
   wlc: { short: "WLC", name: "Westminster Leningrad Codex", dir: "rtl", lang: "he", fixture: "hebrew-cantillation-genesis-1" },
   "fixture:note:1": { short: "Note", name: "Study note", dir: "ltr", lang: "en", fixture: "bidi-isolation-note", kind: "notes" },
+  // B076: Word study's tab. It has no text until the lexicon import; the shell shows the word.
+  lexicon: { short: "Lexicon", name: "Lexicon", dir: "ltr", lang: "en", kind: "lexicon" },
 };
 
 /** `Book.C[.V[-…]]` → [book, chapter] (OSIS, as the core stores tab references). */
@@ -57,7 +59,7 @@ export function fixtureTextSource(core) {
       return Object.fromEntries(Object.entries(RESOURCES).map(([id, r]) => [id, r.short]));
     },
     languages() {
-      return Object.fromEntries(Object.entries(RESOURCES).map(([id, r]) => [id, r.lang]));
+      return Object.fromEntries(Object.entries(RESOURCES).filter(([, r]) => !r.kind).map(([id, r]) => [id, r.lang]));
     },
     resource(contentId) {
       const r = RESOURCES[contentId];

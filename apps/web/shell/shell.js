@@ -84,7 +84,8 @@ const host = {
   // B076: what has focus for the core's context (`tab`, `notes_dock`; `empty` never arises, a
   // column always has a tab), the last tool well drawn, the notes as edited (HTML per note id,
   // in memory until B074) and the column a passage link navigates.
-  focus: "tab", toolWell: null, notes: new Map(), readingColumn: 1, lexicon: new Map(),
+  focus: "tab", toolWell: null, notes: new Map(), readingColumn: 1,
+  lexicon: new Map(), // "word@reference" → the language of the text it was clicked in
 };
 
 // MARK: - Commands
@@ -250,7 +251,7 @@ function renderSwitcher() {
 }
 
 function columnSignature(ws, column, number) {
-  const tabs = column.tabs.map((t) => `${t.id}:${t.content_id}:${t.reference}:${t.link_group}:${t.pinned}`).join("|");
+  const tabs = column.tabs.map((t) => `${t.id}:${t.content_id}:${t.reference}:${t.link_group}:${t.pinned}:${t.lexicon_word || ""}`).join("|");
   return `${ws.id}#${number}#${column.shown_tab_id}#${tabs}#${host.targets.get(column.shown_tab_id) || ""}`;
 }
 
@@ -395,6 +396,8 @@ function buildColumn(ws, column, number) {
     article.className = "measure";
     article.appendChild(noteEditor(tab.content_id, `${resource.name}, column ${number}`));
     page.appendChild(article);
+  } else if (resource.kind === "lexicon") {
+    page.appendChild(lexiconPage(tab));
   } else if (passageText) {
     const article = document.createElement("article");
     article.className = "measure";
@@ -407,6 +410,7 @@ function buildColumn(ws, column, number) {
     page.appendChild(article);
     view.text = text;
     view.paragraph = passageText.paragraph;
+    text.addEventListener("click", (e) => studyWordAt(view, e));
     const target = host.targets.get(tab.id);
     if (target && /\.\d+$/.test(target.split("-")[0])) {
       const verse = text.querySelector(`[data-segment="${target.split("-")[0]}"]`);
@@ -704,6 +708,61 @@ function copyReference() {
   host.copied = text;
   if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
   toast(`Copied ${text}`);
+}
+
+// MARK: - Word study (B076): a click on a word with Word study in effect
+
+const LANGUAGES = { grc: "Greek", hbo: "Hebrew", he: "Hebrew", heb: "Hebrew", arc: "Aramaic" };
+const wordSegmenter = typeof Intl !== "undefined" && Intl.Segmenter ? new Intl.Segmenter("und", { granularity: "word" }) : null;
+
+/** The word under a point of a column's text, as it appears there, and its verse. */
+function wordAt(view, x, y) {
+  const caret = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+  const node = caret && caret.startContainer;
+  if (!node || node.nodeType !== 3 || !node.parentElement.classList.contains("t") || !view.text.contains(node)) return null;
+  const verse = node.parentElement.closest("[data-segment]");
+  const offset = caret.startOffset;
+  if (!wordSegmenter) return null;
+  for (const part of wordSegmenter.segment(node.data)) {
+    if (part.index <= offset && offset <= part.index + part.segment.length && part.isWordLike) return { word: part.segment, segment_id: verse.dataset.segment };
+  }
+  return null;
+}
+
+function studyWordAt(view, event) {
+  if (host.toolWell.effective_tool !== "word_study" || !document.getSelection().isCollapsed) return;
+  const found = wordAt(view, event.clientX, event.clientY);
+  if (!found) return;
+  // tab.open_lexicon reuses the Lexicon tab in the next column or opens one (a new column when
+  // there is none), and focuses it; the word's language is the host's to show.
+  host.lexicon.set(`${found.word}@${found.segment_id}`, view.resource.lang);
+  run({ command_id: "tab.open_lexicon", args: { text: found.word, reference: found.segment_id } });
+}
+
+/** The lexicon tab's page: the word as clicked, its language and passage, and an honest line
+ *  that the entries are not there yet (no glosses are made up). */
+function lexiconPage(tab) {
+  const lang = host.lexicon.get(`${tab.lexicon_word}@${tab.reference}`);
+  const article = document.createElement("article");
+  article.className = "measure lexicon";
+  const word = document.createElement("h2");
+  word.className = "word";
+  const where = document.createElement("p");
+  where.className = "where";
+  if (tab.lexicon_word) {
+    word.textContent = tab.lexicon_word;
+    if (lang) word.lang = lang;
+    word.dir = "auto";
+    where.textContent = [LANGUAGES[lang], humanPassage(core, tab.reference)].filter(Boolean).join(" · ");
+  } else {
+    word.textContent = "Lexicon";
+    where.textContent = "Choose Word study and click a Greek or Hebrew word.";
+  }
+  const pending = document.createElement("p");
+  pending.className = "pending";
+  pending.textContent = "Lexicon entries arrive with the lexicon import.";
+  article.append(word, where, pending);
+  return article;
 }
 
 // MARK: - Notes (B076): an editable note in memory until B074

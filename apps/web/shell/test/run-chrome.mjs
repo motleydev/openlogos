@@ -217,7 +217,7 @@ const CASES = {
     const r = await js(`const h = window.openlogosShell.host; const n = h.registry.reduce((a, s) => a + s.shortcuts.web.length, 0);
       return { bindings: h.bindings.length, shortcuts: n, commands: h.registry.length, wellKeys: [...document.querySelectorAll('.tool')].map((b) => b.getAttribute('aria-keyshortcuts')) };`);
     expect(p, r.bindings === r.shortcuts, `${r.bindings} bindings for ${r.shortcuts} registry shortcuts`);
-    expect(p, r.commands === 69, `${r.commands} commands`);
+    expect(p, r.commands === 70, `${r.commands} commands`);
     expect(p, eq(r.wellKeys, ["V", "H", "P", "M", "E", "C"]), `tool keys from the registry ${r.wellKeys}`);
   },
 
@@ -686,6 +686,37 @@ const CASES = {
     await click(...(await centre('#columns > .column[data-number="3"] a.passage-link')));
     s = await snap();
     expect(p, s.columns[0].reference === "John.3.17" && s.active === 1, `the link navigates column 1 (${s.columns[0].reference}, active ${s.active})`);
+  },
+
+  async "word-study-lexicon"(p) {
+    const word = async (column, w) => { const pts = await phrasePoints(column, w); return [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2]; };
+    const page = () => js("const l = document.querySelector('#columns .lexicon'); return l && [...l.children].map((e) => e.textContent)");
+    await chord("Alt", "2");
+    await type("w");
+    let s = await snap();
+    expect(p, s.tool === "word_study" && eq(s.well.pressed, ["tool.word_study"]), `W on Greek (${s.well.pressed})`);
+    await click(...(await word(2, "ἠγάπησεν")));
+    s = await snap();
+    expect(p, s.active === 3 && eq(s.dom[2].tabs, ["Note", "Lexicon Jn 3"]) && s.dom[2].shown === "Lexicon Jn 3", `a Lexicon tab in column 3: ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    let shown = await page();
+    expect(p, eq(shown, ["ἠγάπησεν", "Greek · John 3:16", "Lexicon entries arrive with the lexicon import."]), `lexicon page ${JSON.stringify(shown)}`);
+    expect(p, s.well.context === "reference" && s.well.effective === "select", `the lexicon tab's well (${s.well.context})`);
+    await click(...(await word(2, "κόσμον")));
+    s = await snap();
+    shown = await page();
+    expect(p, eq(s.dom[2].tabs, ["Note", "Lexicon Jn 3"]) && shown && shown[0] === "κόσμον", `reused: ${JSON.stringify(s.dom[2].tabs)} ${JSON.stringify(shown)}`);
+    expect(p, s.log.some((l) => l.command_id === "tab.open_lexicon" && l.handled), "tab.open_lexicon dispatched");
+    // Hebrew, one column: the lexicon opens in a new column 2.
+    await chord("Alt", "Shift", "]");
+    await click(...(await word(1, "אֱלֹהִ֑ים")));
+    s = await snap();
+    shown = await page();
+    expect(p, s.dom.length === 2 && s.active === 2 && shown && shown[0] === "אֱלֹהִ֑ים" && shown[1] === "Hebrew · Gen 1:1", `Hebrew: ${s.dom.length} columns, ${JSON.stringify(shown)}`);
+    // Word study does nothing on a translation (Select is in effect there).
+    await chord("Alt", "Shift", "[");
+    await click(...(await word(1, "loved")));
+    s = await snap();
+    expect(p, s.active === 1 && s.dom[2].tabs.length === 2, `no lexicon from BSB (active ${s.active})`);
   },
 
   async "only-registered-commands"(p) {
