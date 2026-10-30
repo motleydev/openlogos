@@ -174,6 +174,7 @@ final class CoreHostTests: XCTestCase {
         XCTAssertEqual(try formatShort(reference: "John 3:16"), "Jn 3:16")
         shell.setResourceTitles(titles: ["bsb": "BSB"])
         XCTAssertEqual(shell.session().workspaces[0].columns[0].tabs[0].resourceTitle, "BSB")
+        XCTAssertEqual(shell.session().workspaces[0].columns[0].tabs[0].chapterLabel, "Jn 3")
         XCTAssertEqual(shell.paletteQuery(text: "@bsb jn", context: context).groups.first?.items.first?.title, "BSB · Jn 3:16")
         XCTAssertThrowsError(try shell.apply(commandId: "tab.focus", args: ShellCommandArgs(), hasSelection: false)) { error in
             guard case ShellCommandError.Disabled(_, _, let reason) = error else { return XCTFail("\(error)") }

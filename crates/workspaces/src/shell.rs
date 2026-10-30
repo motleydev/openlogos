@@ -285,6 +285,17 @@ impl Tool {
     }
 }
 
+/// A pane or tab kind as the schemas spell it.
+#[must_use]
+pub fn kind_name(kind: PaneKind) -> &'static str {
+    match kind {
+        PaneKind::Reading => "reading",
+        PaneKind::Notes => "notes",
+        PaneKind::Research => "research",
+        PaneKind::Lexicon => "lexicon",
+    }
+}
+
 /// Text size steps a reader can take below and above the default: the seven sizes of
 /// design/tokens/shell.json (15, 17, 19, 21, 24, 28, 32 pt), step 0 being 19.
 pub const TEXT_SIZE_STEPS: std::ops::RangeInclusive<i32> = -2..=4;

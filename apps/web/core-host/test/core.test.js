@@ -143,6 +143,8 @@ test("B070: the workspace shell runs commands, undo and the palette", () => {
   // Short labels and registered resource names.
   assert.equal(core.formatShort("John 3:16"), "Jn 3:16");
   shell.setResourceTitles({ bsb: "BSB" });
+  const viewTab = shell.view().workspaces[0].columns[0].tabs[0];
+  assert.deepEqual([viewTab.resource_title, viewTab.reference_label, viewTab.chapter_label], ["BSB", "Jn 3:16", "Jn 3"]);
   assert.equal(shell.paletteQuery("@bsb jn").groups[0].items[0].title, "BSB · Jn 3:16");
   assert.throws(
     () => shell.apply({ command_id: "tab.focus" }),

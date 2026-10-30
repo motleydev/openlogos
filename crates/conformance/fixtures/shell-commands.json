@@ -765,6 +765,16 @@
               "t2": "Rom.8.28",
               "t3": "John.3.17",
               "t4": "John.3.17"
+            },
+            "labels": {
+              "t1": [
+                "Jn 3:17",
+                "Jn 3"
+              ],
+              "t2": [
+                "Rom 8:28",
+                "Rom 8"
+              ]
             }
           }
         },
@@ -986,6 +996,12 @@
               "workspace": "w2",
               "column": 1,
               "tab": "t1"
+            },
+            "labels": {
+              "t1": [
+                "Gen 1:1",
+                "Gen 1"
+              ]
             }
           }
         },
@@ -2014,7 +2030,8 @@
           "args": {
             "column": 2
           },
-          "disabled": null
+          "disabled": null,
+          "shortcut": "Alt+Shift+2"
         },
         {
           "section": "commands",
@@ -2023,7 +2040,8 @@
           "args": {
             "column": 3
           },
-          "disabled": null
+          "disabled": null,
+          "shortcut": "Alt+Shift+3"
         },
         {
           "section": "commands",
@@ -2032,7 +2050,65 @@
           "args": {
             "new_column": true
           },
-          "disabled": null
+          "disabled": null,
+          "shortcut": null
+        }
+      ]
+    },
+    {
+      "name": "expanded rows carry the platform's concrete key",
+      "query": ">focus column",
+      "context": {
+        "platform": "mac"
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Focus column 2",
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          },
+          "shortcut": "Alt+2"
+        },
+        {
+          "section": "commands",
+          "title": "Focus column 3",
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          },
+          "shortcut": "Alt+3"
+        }
+      ]
+    },
+    {
+      "name": "an explicit column fills the key",
+      "query": ">move tab to 3",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Move tab to column",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 3
+          },
+          "shortcut": "Alt+Shift+3"
+        }
+      ]
+    },
+    {
+      "name": "rows without a key carry none",
+      "query": ">duplicate tab into column 2",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 2
+          },
+          "shortcut": null
         }
       ]
     },

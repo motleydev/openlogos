@@ -32,6 +32,7 @@ pub mod migration;
 pub mod navigation;
 pub mod palette;
 pub mod shell;
+pub mod view;
 
 pub use migration::{
     MigrationError, STEPS, Step, migrate_workspace, migrate_workspace_to_2,

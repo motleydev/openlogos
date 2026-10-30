@@ -19,7 +19,8 @@ use openlogos_workspaces::palette::{
     ColumnTarget, PaletteContext, PaletteIndex, PaletteItem, PaletteMode, PaletteSection,
     TextProvider, palette_query_indexed,
 };
-use openlogos_workspaces::shell::{LinkMode, Session, SessionRecord, Workspace};
+use openlogos_workspaces::shell::{Session, SessionRecord};
+use openlogos_workspaces::view::TabView;
 
 /// Why a shell call failed. No field is called `message` or `cause` (Kotlin's `Throwable`).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -101,8 +102,10 @@ pub struct ShellTab {
     pub reference: Option<String>,
     /// The resource's registered short name, else its id (`setResourceTitles`).
     pub resource_title: String,
-    /// The passage in short form for the tab label (`Jn 3:16`), if it parses.
+    /// The passage in short form for the identity row (`Jn 3:16`), if it parses.
     pub reference_label: Option<String>,
+    /// The chapter in short form for the tab strip (`Jn 3`), if the passage parses.
+    pub chapter_label: Option<String>,
     /// Scroll anchor segment, if scrolled.
     pub scroll_segment_id: Option<String>,
     /// Scroll anchor offset in scalar values.
@@ -512,74 +515,63 @@ pub struct ShellPaletteResult {
     pub notice: Option<String>,
 }
 
+/// The core's [`Shell::view`] as UniFFI records: field moves only, so `session()` costs what
+/// the core view costs (`just bench-shell`, "session view").
 fn view(shell: &Shell) -> ShellSession {
-    let english = openlogos_core::reference::AliasTable::english();
-    let tab_view = |t: &openlogos_workspaces::shell::Tab| {
-        let (link_mode, link_group) = match t.link_mode() {
-            LinkMode::Pinned => ("pinned", None),
-            LinkMode::Follows => ("follows", None),
-            LinkMode::Group { group } => ("group", Some(group)),
-        };
-        ShellTab {
-            id: t.id.clone(),
-            kind: name_of(&t.kind),
-            content_id: t.content_id.clone(),
-            content_revision: t.content_revision.clone(),
-            reference: t.reference.clone(),
-            resource_title: shell.session.resource_title(&t.content_id).to_owned(),
-            reference_label: t
-                .reference
-                .as_deref()
-                .and_then(|r| openlogos_core::reference::parse(r, &english).ok())
-                .map(|set| set.to_short()),
-            scroll_segment_id: t.scroll_anchor.as_ref().map(|a| a.segment_id.clone()),
-            scroll_scalar: t.scroll_anchor.as_ref().map(|a| a.scalar),
-            link_mode: link_mode.to_owned(),
-            link_group,
-            can_go_back: !t.history.back.is_empty(),
-            can_go_forward: !t.history.forward.is_empty(),
-        }
-    };
-    let workspace_view = |w: &Workspace| ShellWorkspace {
-        id: w.id.clone(),
-        title: w.title.clone(),
-        columns: w
-            .columns
-            .iter()
-            .enumerate()
-            .map(|(i, c)| ShellColumn {
-                id: c.id.clone(),
-                number: i as u32 + 1,
-                tabs: c.tabs.iter().map(tab_view).collect(),
-                shown_tab_id: c.shown_tab_id.clone(),
-                width_fraction: c.width_fraction,
-            })
-            .collect(),
-        active_column_number: w.active_index() as u32 + 1,
-        notes_dock_note_id: w.notes_dock.note_id.clone(),
-        notes_dock_open: w.notes_dock.open,
+    let v = shell.view();
+    let tab = |t: TabView| ShellTab {
+        id: t.id,
+        kind: t.kind,
+        content_id: t.content_id,
+        content_revision: t.content_revision,
+        reference: t.reference,
+        resource_title: t.resource_title,
+        reference_label: t.reference_label,
+        chapter_label: t.chapter_label,
+        scroll_segment_id: t.scroll_segment_id,
+        scroll_scalar: t.scroll_scalar,
+        link_mode: t.link_mode,
+        link_group: t.link_group,
+        can_go_back: t.can_go_back,
+        can_go_forward: t.can_go_forward,
     };
     ShellSession {
-        workspaces: shell
-            .session
+        workspaces: v
             .workspaces
-            .iter()
-            .map(workspace_view)
+            .into_iter()
+            .map(|w| ShellWorkspace {
+                id: w.id,
+                title: w.title,
+                columns: w
+                    .columns
+                    .into_iter()
+                    .map(|c| ShellColumn {
+                        id: c.id,
+                        number: c.number,
+                        tabs: c.tabs.into_iter().map(tab).collect(),
+                        shown_tab_id: c.shown_tab_id,
+                        width_fraction: c.width_fraction,
+                    })
+                    .collect(),
+                active_column_number: w.active_column_number,
+                notes_dock_note_id: w.notes_dock_note_id,
+                notes_dock_open: w.notes_dock_open,
+            })
             .collect(),
-        active_workspace_id: shell.session.active_workspace_id.clone(),
-        tool: shell.session.tool.name().to_owned(),
-        revision: shell.revision,
-        undo_title: shell.undo_stack.last().map(|r| r.title.clone()),
-        redo_title: shell.redo_stack.last().map(|r| r.title.clone()),
+        active_workspace_id: v.active_workspace_id,
+        tool: v.tool,
+        revision: v.revision,
+        undo_title: v.undo_title,
+        redo_title: v.redo_title,
         reading: ShellReading {
-            text_size_step: shell.session.reading.text_size_step,
-            line_spacing: shell.session.reading.line_spacing,
-            theme: shell.session.reading.theme.clone(),
+            text_size_step: v.reading.text_size_step,
+            line_spacing: v.reading.line_spacing,
+            theme: v.reading.theme,
         },
         ink: ShellInk {
-            width: shell.session.ink.width,
-            swatch: shell.session.ink.swatch.clone(),
-            alternate_swatch: shell.session.ink.alternate_swatch.clone(),
+            width: v.ink.width,
+            swatch: v.ink.swatch,
+            alternate_swatch: v.ink.alternate_swatch,
         },
     }
 }
@@ -882,6 +874,7 @@ mod tests {
         let tab = &shell.session().workspaces[0].columns[0].tabs[0];
         assert_eq!(tab.resource_title, "BSB");
         assert_eq!(tab.reference_label.as_deref(), Some("Jn 3:16"));
+        assert_eq!(tab.chapter_label.as_deref(), Some("Jn 3"));
         let rows = shell.palette_query("@bsb jn".into(), context);
         assert_eq!(rows.groups[0].items[0].title, "BSB · Jn 3:16");
         assert_eq!(
