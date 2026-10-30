@@ -16,7 +16,10 @@ use openlogos_workspaces::migrate_workspace_to_2;
 use openlogos_workspaces::palette::{
     PaletteContext, PaletteSection, TextHit, TextProvider, palette_query,
 };
-use openlogos_workspaces::shell::{LinkMode, Session, Tool, Workspace};
+use openlogos_workspaces::shell::{
+    InkSettings, LinkMode, ReadingSettings, Session, Tool, Workspace,
+};
+use openlogos_workspaces::{LayoutConstants, layout_constants};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -123,7 +126,7 @@ pub struct ActiveView {
 }
 
 /// What a step must leave behind; only the fields present are checked.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct StepExpectation {
     /// The error kind: a [`openlogos_workspaces::commands::DisabledReason`] kind for a
@@ -153,10 +156,20 @@ pub struct StepExpectation {
     pub can_undo: Option<bool>,
     /// Whether redo is possible.
     pub can_redo: Option<bool>,
+    /// Text size, line spacing and theme.
+    pub reading: Option<ReadingSettings>,
+    /// Brush width and swatches.
+    pub ink: Option<InkSettings>,
+    /// The active workspace's column widths in thousandths, rounded.
+    pub widths_permille: Option<Vec<u32>>,
+    /// Scroll anchors in the active workspace as `segment@scalar`, `null` for none.
+    pub anchors: Option<BTreeMap<String, Option<String>>>,
+    /// The shell revision.
+    pub revision: Option<u64>,
 }
 
 /// One command of a scenario.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShellStep {
     /// The command id (`edit.undo` and `edit.redo` included).
     pub command: String,
@@ -171,7 +184,7 @@ pub struct ShellStep {
 }
 
 /// Commands run in order from the fixture session.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShellScenario {
     /// Unique within the fixture.
     pub name: String,
@@ -180,7 +193,7 @@ pub struct ShellScenario {
 }
 
 /// One expected palette row; `args` and `disabled` are checked when present.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExpectedItem {
     /// Its section.
     pub section: PaletteSection,
@@ -251,6 +264,8 @@ pub struct ShellFixture {
     pub palette: Vec<PaletteCase>,
     /// Workspace migrations to 2.0.
     pub migrations: Vec<ShellMigrationCase>,
+    /// The pane minimums and measure caps every host reads from the core.
+    pub layout_constants: LayoutConstants,
 }
 
 fn error_kind(error: &CommandError) -> String {
@@ -384,6 +399,37 @@ fn check_step(
             &!shell.redo_stack.is_empty(),
         );
     }
+    if let Some(reading) = &expect.reading {
+        r.check(&format!("{name} reading"), reading, &session.reading);
+    }
+    if let Some(ink) = &expect.ink {
+        r.check(&format!("{name} ink"), ink, &session.ink);
+    }
+    if let Some(widths) = &expect.widths_permille {
+        let actual: Vec<u32> = ws
+            .columns
+            .iter()
+            .map(|c| (c.width_fraction * 1000.0).round() as u32)
+            .collect();
+        r.check(&format!("{name} widths"), widths, &actual);
+    }
+    if let Some(anchors) = &expect.anchors {
+        let actual: BTreeMap<String, Option<String>> = anchors
+            .keys()
+            .map(|id| {
+                let anchor = ws.find_tab(id).and_then(|(_, t)| {
+                    t.scroll_anchor
+                        .as_ref()
+                        .map(|a| format!("{}@{}", a.segment_id, a.scalar))
+                });
+                (id.clone(), anchor)
+            })
+            .collect();
+        r.check(&format!("{name} anchors"), anchors, &actual);
+    }
+    if let Some(revision) = &expect.revision {
+        r.check(&format!("{name} revision"), revision, &shell.revision);
+    }
     match session.check() {
         Ok(()) => {}
         Err(error) => r.fail(
@@ -413,6 +459,11 @@ fn actual_item(
 pub(crate) fn run_shell(fixture: &ShellFixture, r: &mut Recorder) {
     let ids: Vec<String> = registry().iter().map(|c| c.id.clone()).collect();
     r.check("registry ids", &fixture.registry_ids, &ids);
+    r.check(
+        "layout constants",
+        &fixture.layout_constants,
+        &layout_constants(),
+    );
 
     for case in &fixture.migrations {
         match migrate_workspace_to_2(case.input.clone()) {

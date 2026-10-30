@@ -15,7 +15,8 @@
 //! query 600; holds the query's characters in order 300 minus the gaps (at most 200). A
 //! command scores its best field: the title as is, an alias 30 lower, a keyword 100 lower and
 //! only from 600 up. A command whose title or alias is followed by an argument
-//! (`rename workspace Greek`, `move tab to column 3`) scores 950 and carries the argument; a
+//! (`rename workspace Greek`, `move tab to column 3`, `set line spacing 1.7`) scores 950 and carries
+//! the argument; a
 //! trailing number fills a column-number argument. Within a section, results sort by score,
 //! then enabled before disabled, then registry order (commands) or session order
 //! (workspaces, then tabs by workspace, column and position). A tab matches its resource id,
@@ -189,7 +190,7 @@ pub trait TextProvider {
 }
 
 /// One result row.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PaletteItem {
     /// Its section.
     pub section: PaletteSection,
@@ -208,7 +209,7 @@ pub struct PaletteItem {
 }
 
 /// One section of results.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PaletteGroup {
     /// The section.
     pub section: PaletteSection,
@@ -219,7 +220,7 @@ pub struct PaletteGroup {
 }
 
 /// The answer to one query.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PaletteResult {
     /// The query as the grammar split it.
     pub query: ParsedQuery,
@@ -456,6 +457,9 @@ fn argument_from(shape: ArgumentShape, rest: &str) -> Option<CommandArgs> {
         ArgumentShape::ColumnNumber => args.column = Some(rest.parse().ok()?),
         ArgumentShape::Text => args.text = Some(rest.to_owned()),
         ArgumentShape::LinkGroup => args.group = Some(rest.to_owned()),
+        ArgumentShape::Number => {
+            args.number = Some(rest.parse().ok().filter(|n: &f64| n.is_finite())?)
+        }
         _ => return None,
     }
     Some(args)

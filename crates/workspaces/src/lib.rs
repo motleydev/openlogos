@@ -73,6 +73,30 @@ pub const MEASURE_CAP_STANDARD_PT: f64 = 640.0;
 /// pane minimum (640 × 480 ÷ 340, rounded). Not measured; the host's scaled metric wins.
 pub const MEASURE_CAP_ACCESSIBILITY_PT: f64 = 900.0;
 
+/// The layout constants a host needs to size and centre text, so no host mirrors them.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LayoutConstants {
+    /// [`PANE_MINIMUM_STANDARD_PT`].
+    pub pane_minimum_standard_pt: f64,
+    /// [`PANE_MINIMUM_ACCESSIBILITY_PT`].
+    pub pane_minimum_accessibility_pt: f64,
+    /// [`MEASURE_CAP_STANDARD_PT`].
+    pub measure_cap_standard_pt: f64,
+    /// [`MEASURE_CAP_ACCESSIBILITY_PT`].
+    pub measure_cap_accessibility_pt: f64,
+}
+
+/// The pane minimums and measure caps, as one value for the bindings.
+#[must_use]
+pub fn layout_constants() -> LayoutConstants {
+    LayoutConstants {
+        pane_minimum_standard_pt: PANE_MINIMUM_STANDARD_PT,
+        pane_minimum_accessibility_pt: PANE_MINIMUM_ACCESSIBILITY_PT,
+        measure_cap_standard_pt: MEASURE_CAP_STANDARD_PT,
+        measure_cap_accessibility_pt: MEASURE_CAP_ACCESSIBILITY_PT,
+    }
+}
+
 /// What a pane shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

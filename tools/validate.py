@@ -547,6 +547,11 @@ def main():
     expect_rejected(lambda:check_session(elsewhere,[wp2]),'session whose active workspace is not open')
     bad_tool=copy.deepcopy(session); bad_tool['tool']='lasso'
     expect_rejected(lambda:validate('session',bad_tool),'unknown tool')
+    assert session['reading']=={'text_size_step':0,'line_spacing':1.5,'theme':'system'} and session['ink']['width']==4
+    bad_spacing=copy.deepcopy(session); bad_spacing['reading']['line_spacing']=1.6
+    expect_rejected(lambda:validate('session',bad_spacing),'line spacing outside 1.35, 1.5, 1.7')
+    bad_swatch=copy.deepcopy(session); bad_swatch['ink']['swatch']='yellow'
+    expect_rejected(lambda:validate('session',bad_swatch),'swatch that is not #RRGGBB')
     sn=load('examples/reading-snapshot.json')
     ink=load('examples/ink-document.json')
     check_ink(sn,ink)
