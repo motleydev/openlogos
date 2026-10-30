@@ -23,6 +23,8 @@
 //! numbered columns of tabs, workspace schema 2.0 and its migration from 1.x),
 //! [`commands`] (the one command registry, `apply` with undo, the [`commands::Shell`] that
 //! holds the stacks) and [`palette`] (the sectioned, ranked palette query).
+//!
+//! B076 adds [`well`]: the tool well fitted to what has focus (specs/22 §4.1).
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -33,6 +35,7 @@ pub mod navigation;
 pub mod palette;
 pub mod shell;
 pub mod view;
+pub mod well;
 
 pub use migration::{
     MigrationError, STEPS, Step, migrate_workspace, migrate_workspace_to_2,
