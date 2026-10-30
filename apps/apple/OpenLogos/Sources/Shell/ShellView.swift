@@ -43,15 +43,15 @@ struct ShellView: View {
         .preferredColorScheme(model.theme.isDark ? .dark : .light)
         #if os(macOS)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                PaletteField(model: model, palette: model.palette)
-                    .frame(width: Self.fieldWidth(width))
-            }
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: ShellTokens.Spacing.m) {
-                    WorkspaceSwitcher(model: model)
-                    TextSizeMenu(model: model)
-                }
+            if #available(macOS 26.0, *) {
+                // No glass capsule behind the items: the row is the page colour of the theme.
+                ToolbarItem(placement: .principal) { paletteField }
+                    .sharedBackgroundVisibility(.hidden)
+                ToolbarItem(placement: .primaryAction) { trailingMenus }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .principal) { paletteField }
+                ToolbarItem(placement: .primaryAction) { trailingMenus }
             }
         }
         .toolbar(removing: .title)
@@ -70,6 +70,20 @@ struct ShellView: View {
         .task { await ShellLaunch.apply(to: model) }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
+
+    #if os(macOS)
+    private var paletteField: some View {
+        PaletteField(model: model, palette: model.palette)
+            .frame(width: Self.fieldWidth(width))
+    }
+
+    private var trailingMenus: some View {
+        HStack(spacing: ShellTokens.Spacing.m) {
+            WorkspaceSwitcher(model: model)
+            TextSizeMenu(model: model)
+        }
+    }
+    #endif
 
     /// 770 pt, less what the traffic lights and the trailing menus need in a narrow window.
     static func fieldWidth(_ window: CGFloat) -> CGFloat {
