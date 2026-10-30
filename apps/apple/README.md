@@ -118,6 +118,41 @@ xcodebuild … -only-testing:OpenLogosTests/InkTests test        # unit cases; O
 
 The measurements, the PencilKit export gaps and the Excalidraw comparison are docs/evidence/B039.md.
 
+## The workspace shell (B072)
+
+`OpenLogos/Sources/Shell/` is the Mac app's view (specs/22): a SwiftUI shell around the B005
+reading surface, driven by the UniFFI `ShellHandle` (crates/workspaces through crates/ffi).
+The palette field sits in the window's toolbar row beside the traffic lights, with the
+workspace switcher and the text menu; below it the numbered columns (tab strip, identity row,
+text capped at the core's measure from `layoutConstants()`), and the floating tool well. Every
+button, menu item and shortcut dispatches a registered command through `ShellModel.run`;
+shortcuts are read from the registry's Mac list (`ShellKeymap`). Reading settings, ink width
+and swatches, column widths and scroll anchors are session state in the core
+(`session.reading`, `session.ink`, `column.resize`, `tab.record_scroll`); the host keeps only
+the palette's field, the well's place, highlights, ink strokes and toasts. `ShellTokens`
+carries the values of design/tokens/shell.json; `TextSource` puts the conformance fixture
+texts behind one interface for B071's pack. The B004 prototype is the Debug menu's
+"B004 prototype" item, and opens directly when `-OPENLOGOS_VIEW` names a prototype view.
+
+Launch arguments (`ShellLaunch.swift`): `-OPENLOGOS_WINDOW 1440x900`, `-OPENLOGOS_THEME`,
+`-OPENLOGOS_PALETTE "text"` with `-OPENLOGOS_PALETTE_EXPAND <section>`, `-OPENLOGOS_TOOL`,
+`-OPENLOGOS_RUN "cmd,cmd:arg"`, `-OPENLOGOS_SHELL_DEMO 1`, and two that quit when done:
+
+- `-OPENLOGOS_SNAPSHOT <png>`: the app draws its own window (the frame view, toolbar row
+  included, through `NSView.cacheDisplay`) into a PNG after `-OPENLOGOS_SNAPSHOT_DELAY`
+  seconds. No screen-recording permission is needed, so it works where `screencapture -l`
+  cannot (an agent session without the grant) and never catches another window or dialog.
+- `-OPENLOGOS_SHELL_MEASURE <json>`: the specs/22 §7 interactions over ten workspaces of three
+  columns × four tabs, one per display-link frame, each timed through a synchronous layout and
+  display of the window.
+
+```sh
+just preview-mac                     # Debug build into artifacts/mac, opens the shell
+scripts/b072-mac-shots.sh            # the evidence pictures into artifacts/b072/shots/
+scripts/b072-mac-shots.sh measure    # Release build in artifacts/mac-release first; JSON per width
+just test-reader mac                 # Tests/ReaderTests and Tests/ShellTests in the Mac app
+```
+
 ## CoreHost: the UniFFI Swift bindings test host (B061)
 
 `CoreHost/` is a SwiftPM package for macOS, not the app. It proves that the Swift bindings
