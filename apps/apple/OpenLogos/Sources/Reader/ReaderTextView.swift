@@ -42,6 +42,20 @@ enum SelectionAction: String, CaseIterable {
     static let more: [SelectionAction] = [.copyWithReference, .openInPane, .searchForThis, .shortObservation, .compareRenderings]
 }
 
+/// What a drag over the text does (B072's tool palette): select natively, or, when the drag
+/// ends, hand the selection to the host to highlight or collect.
+enum ReaderDragMode: Equatable {
+    case select, highlight, collect
+}
+
+/// A highlight the host keeps on the text: core ranges painted in a colour (B072).
+struct ReaderMark: Equatable {
+    let id: String
+    /// Display ranges, as `ReaderSelection.highlights` returns them.
+    let ranges: [NSRange]
+    let color: PlatformColor
+}
+
 /// Something the host asks the surface to do; a new id is a new command.
 struct ReaderCommand: Equatable {
     enum Kind: Equatable {
@@ -75,6 +89,17 @@ struct ReaderTextView {
     var onSelection: (ReaderSelection?) -> Void = { _ in }
     var onAction: (SelectionAction, ReaderSelection?) -> Void = { _, _ in }
     var onMeasurement: (String) -> Void = { _ in }
+    /// B072: a host typography (size step, spacing, theme); nil keeps Dynamic Type.
+    var typography: ReaderTypography?
+    /// B072: highlights the host keeps, painted under the selection.
+    var marks: [ReaderMark] = []
+    var dragMode: ReaderDragMode = .select
+    /// B072: a drag in highlight or collect mode ended over this selection.
+    var onDragEnd: (ReaderDragMode, ReaderSelection) -> Void = { _, _ in }
+    /// B072: the surface, once made, so the host can focus and scroll it.
+    var onSurface: (ReaderSurface) -> Void = { _ in }
+    /// B072: a click or tap in the text (activates the column).
+    var onActivate: () -> Void = {}
 
     func makeCoordinator() -> ReaderSurface {
         ReaderSurface(paneID: paneID, onSelection: onSelection, onAction: onAction, onMeasurement: onMeasurement)
@@ -84,7 +109,12 @@ struct ReaderTextView {
         surface.onSelection = onSelection
         surface.onAction = onAction
         surface.onMeasurement = onMeasurement
-        surface.apply(content: content, padding: horizontalPadding)
+        surface.onDragEnd = onDragEnd
+        surface.onActivate = onActivate
+        surface.dragMode = dragMode
+        surface.apply(content: content, padding: horizontalPadding, typography: typography)
+        surface.setMarks(marks)
+        onSurface(surface)
         if let command { surface.perform(command) }
     }
 }
@@ -124,6 +154,11 @@ final class ReaderSurface: NSObject {
     var onSelection: (ReaderSelection?) -> Void
     var onAction: (SelectionAction, ReaderSelection?) -> Void
     var onMeasurement: (String) -> Void
+    var onDragEnd: (ReaderDragMode, ReaderSelection) -> Void = { _, _ in }
+    var onActivate: () -> Void = {}
+    var dragMode: ReaderDragMode = .select
+    private var marks: [ReaderMark] = []
+    private var typographyKey: String?
 
     private(set) var layout: ReaderLayout?
     private(set) var textView: PlatformTextView?
@@ -155,11 +190,13 @@ final class ReaderSurface: NSObject {
 
     // MARK: Content
 
-    func apply(content: ReaderContent, padding: CGFloat) {
+    func apply(content: ReaderContent, padding: CGFloat, typography: ReaderTypography? = nil) {
         let samePadding = padding == self.padding
         self.padding = padding
-        if let layout, layout.content == content, samePadding { return }
-        let built = ReaderLayout(content: content)
+        let key = typography?.key
+        if let layout, layout.content == content, samePadding, key == typographyKey { return }
+        typographyKey = key
+        let built = typography.map { ReaderLayout(content: content, typography: $0) } ?? ReaderLayout(content: content)
         layout = built
         current = nil
         lastError = nil
@@ -183,7 +220,7 @@ final class ReaderSurface: NSObject {
 
     /// Rebuilds the layout with the current Dynamic Type fonts (iOS content size changes).
     private func rebuildForTypography() {
-        guard let content = layout?.content else { return }
+        guard let content = layout?.content, typographyKey == nil else { return }
         layout = nil
         apply(content: content, padding: padding)
     }
@@ -287,6 +324,7 @@ final class ReaderSurface: NSObject {
     /// verse number, so the markers keep their own attributes.
     func paint(_ selection: ReaderSelection?) {
         clearHighlights()
+        paintMarks()
         guard let selection, let storage = storage else { return }
         storage.beginEditing()
         for range in selection.highlights where range.location + range.length <= storage.length {
@@ -297,6 +335,73 @@ final class ReaderSurface: NSObject {
             ], range: range)
         }
         storage.endEditing()
+    }
+
+    /// B072: the host's highlights, replaced when they change.
+    func setMarks(_ marks: [ReaderMark]) {
+        guard marks != self.marks else { return }
+        self.marks = marks
+        paint(current)
+    }
+
+    private func paintMarks() {
+        guard !marks.isEmpty, let storage else { return }
+        storage.beginEditing()
+        for mark in marks {
+            for range in mark.ranges where range.location + range.length <= storage.length {
+                storage.addAttribute(.backgroundColor, value: mark.color, range: range)
+            }
+        }
+        storage.endEditing()
+    }
+
+    /// B072: a drag ended; in highlight or collect mode the selection goes to the host and
+    /// the platform selection collapses.
+    func dragEnded() {
+        guard dragMode != .select, let selection = current, selection.displayRange.length > 0 else { return }
+        let mode = dragMode
+        clearSelection()
+        onDragEnd(mode, selection)
+    }
+
+    /// B072: the segment at the top of the visible text, for the tab's scroll anchor.
+    var topSegmentID: String? {
+        guard let layout, let storage, storage.length > 0 else { return nil }
+        #if canImport(UIKit)
+        guard let textView else { return nil }
+        let point = CGPoint(x: textView.textContainerInset.left + 4, y: textView.contentOffset.y + textView.textContainerInset.top + 4)
+        let position = textView.closestPosition(to: point) ?? textView.beginningOfDocument
+        let offset = textView.offset(from: textView.beginningOfDocument, to: position)
+        #else
+        guard let textView, let scrollView else { return nil }
+        let visible = scrollView.contentView.bounds
+        let point = NSPoint(x: visible.minX + textView.textContainerInset.width + 4, y: visible.minY + textView.textContainerInset.height + 4)
+        let offset = textView.characterIndexForInsertion(at: point)
+        #endif
+        let index = min(max(0, offset), storage.length - 1)
+        if let segment = storage.attribute(.openLogosSegment, at: index, effectiveRange: nil) as? String { return segment }
+        return layout.markers.last { $0.range.location <= index }?.segmentId ?? layout.markers.first?.segmentId
+    }
+
+    /// B072: scrolls so the segment's verse starts the visible text.
+    func scroll(toSegment id: String) {
+        guard let layout, let marker = layout.markers.first(where: { $0.segmentId == id }) else { return }
+        #if canImport(UIKit)
+        textView?.scrollRangeToVisible(marker.range)
+        #else
+        // Never touch `layoutManager`: asking for it drops the view back to TextKit 1.
+        textView?.scrollRangeToVisible(marker.range)
+        #endif
+    }
+
+    /// B072: makes the text view the first responder (Esc from the palette returns here).
+    func focus() {
+        #if canImport(UIKit)
+        textView?.becomeFirstResponder()
+        #else
+        guard let textView else { return }
+        textView.window?.makeFirstResponder(textView)
+        #endif
     }
 
     private var storage: NSTextStorage? {
@@ -523,6 +628,13 @@ extension ReaderSurface: NSTextViewDelegate {
 /// The NSTextView subclass: the context menu with the project group and the surface reference.
 final class ReaderNSTextView: NSTextView {
     weak var surface: ReaderSurface?
+
+    /// AppKit tracks a selecting drag inside `mouseDown`; when it returns the drag is over.
+    override func mouseDown(with event: NSEvent) {
+        surface?.onActivate()
+        super.mouseDown(with: event)
+        surface?.dragEnded()
+    }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         guard let menu = super.menu(for: event) else { return nil }
