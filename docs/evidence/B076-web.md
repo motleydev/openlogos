@@ -67,7 +67,8 @@ B076-mac.md for what it ships.
 | `fc5be3a` | screenshots |
 | `623e2d2` | this file, first version |
 | `55b1faf` | merge of `b076-core-well` at 3702fc5 (focus stays on the clicked column) |
-| `82a21fe` | `word-study-lexicon` follows it; the screenshots are unchanged |
+| `82a21fe` | `word-study-lexicon` follows it |
+| `33972f7` | the lexicon screenshot is taken straight after the click, with no ⌥2; it is byte-identical, column 2 keeps the badge |
 | this commit | this file, updated |
 
 ## Cases (`just test-shell-web`, WebDriver Actions: trusted keys and pointer)
@@ -134,11 +135,11 @@ There is no regression past noise. Seed column focus (1.4 → 2.7 ms headless) a
 The core's `tool_well` call takes 8 µs (B076-core), so the rest is the DOM. Every row is far
 inside its budget. The raw JSON is in the scratchpad, not the repo.
 
-## Lanes (committed tree 82a21fe; this file is documentation only)
+## Lanes (committed tree 33972f7; this file is documentation only)
 
 | Command | Result |
 |---|---|
-| `nix develop .#core -c just ci` | exit 0. `Summary [   6.695s] 306 tests run: 306 passed, 0 skipped` |
+| `nix develop .#core -c just ci` | exit 0. `Summary [   7.686s] 306 tests run: 306 passed, 0 skipped` |
 | `nix develop .#web -c just test-web` | exit 0. `tests 8, pass 8, fail 0`; `conformance cases: 1371 passed, 0 failed (api 0.1.2)` |
 | `nix develop .#web -c just test-wasm` | exit 0. `test result: ok. 7 passed; 0 failed` |
 | `nix develop .#web -c just test-dom-reader` | exit 0. `DOM reader: 13/13 cases passed` |
