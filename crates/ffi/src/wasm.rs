@@ -132,10 +132,10 @@ export interface InkStroke { id: string; tool: InkTool; brush_version: string; w
 export interface InkViewportTransform { scale: number; translate_x: number; translate_y: number }
 /** The portable ink record, field names as the schema. */
 /** B070 workspace shell (specs/22): a tab is specs/21's pane; column numbers are positions. */
-export interface ShellTab { id: string; kind: "reading" | "notes" | "research" | "lexicon"; content_id: string; content_revision: string; reference: string | null; scroll_anchor?: { segment_id: string; scalar: number }; link_group: string | null; pinned: boolean; history?: { back: unknown[]; current: unknown | null; forward: unknown[] } }
+export interface ShellTab { id: string; kind: "reading" | "notes" | "research" | "lexicon"; content_id: string; content_revision: string; reference: string | null; scroll_anchor?: { segment_id: string; scalar: number }; link_group: string | null; pinned: boolean; history?: { back: unknown[]; current: unknown | null; forward: unknown[] }; lexicon_word?: string }
 export interface ShellColumn { id: string; tabs: ShellTab[]; shown_tab_id: string; width_fraction: number }
 export interface ShellWorkspace { schema_version: "2.0"; fixture_only: boolean; id: string; title: string; columns: ShellColumn[]; active_column_id: string; notes_dock: { note_id: string | null; open: boolean }; layout_profiles?: Record<string, { visible_column_ids: string[]; widths?: Record<string, number>; notes_dock_open: boolean }>; next_serial: number }
-export type ShellTool = "select" | "highlight" | "pen" | "highlighter_pen" | "eraser" | "collect";
+export type ShellTool = "select" | "highlight" | "pen" | "highlighter_pen" | "eraser" | "collect" | "word_study" | "type";
 /** The in-memory session: the session record with its workspaces inline. */
 /** Text size step from the platform default, line spacing (1.35, 1.5 or 1.7) and theme. */
 export interface ShellReading { text_size_step: number; line_spacing: number; theme: "system" | "light" | "dark" | "sepia" }
@@ -147,22 +147,29 @@ export interface ShellCommandArgs { column?: number; new_column?: boolean; text?
 /** The core's pane minimums and measure caps, in points. */
 export interface LayoutConstants { pane_minimum_standard_pt: number; pane_minimum_accessibility_pt: number; measure_cap_standard_pt: number; measure_cap_accessibility_pt: number }
 export interface ShellInvocation { command_id: string; args?: ShellCommandArgs }
-export interface ShellCommandContext { has_selection?: boolean }
+/** B076: where focus is; the tool well and tool/note command availability follow it. */
+export type ShellFocus = "tab" | "notes_dock" | "empty";
+export interface ShellCommandContext { has_selection?: boolean; focus?: ShellFocus }
 export type ShellPlatform = "web" | "mac" | "ipad";
 export interface ShellCommandSpec { id: string; title: string; aliases: string[]; keywords: string[]; scope: "session" | "workspace" | "column" | "tab" | "selection"; argument: "none" | "column_number" | "text" | "reference" | "workspace" | "tab" | "link_group" | "number" | "column_width" | "scroll"; shortcuts: { web: string[]; mac: string[]; ipad: string[] }; bare_key: boolean; undoable: boolean; handled_by_core: boolean; quiet: boolean }
 /** `disabled` is null when the command can run; otherwise `{ kind, ... }`. */
 export interface ShellCommandState { spec: ShellCommandSpec; disabled: { kind: string } | null; disabled_text: string | null }
 export interface ShellOutcome { command_id: string; handled: boolean; recorded: boolean; effects: { followed_tab_ids: string[] }; revision: number }
 export type ShellPaletteSection = "passage" | "commands" | "tabs" | "text";
-export interface ShellPaletteContext { has_selection?: boolean; platform?: ShellPlatform; expanded?: ShellPaletteSection | null }
+export interface ShellPaletteContext { has_selection?: boolean; platform?: ShellPlatform; expanded?: ShellPaletteSection | null; focus?: ShellFocus }
 export interface ShellPaletteItem { section: ShellPaletteSection; title: string; subtitle: string | null; score: number; invocation: ShellInvocation; disabled: { kind: string } | null; disabled_text: string | null; shortcut: string | null }
 export interface ShellPaletteResult { query: { mode: "all" | "commands" | "tabs" | "text" | "passage"; text: string; target: { kind: "column"; number: number } | { kind: "new" } | null }; groups: { section: ShellPaletteSection; items: ShellPaletteItem[]; total: number }[]; notice: string | null }
 /** B070: what a host renders; labels come from the core (`formatShort`), never the host. */
-export interface ShellTabView { id: string; kind: string; content_id: string; content_revision: string; reference: string | null; resource_title: string; reference_label: string | null; chapter_label: string | null; scroll_segment_id: string | null; scroll_scalar: number | null; link_mode: "pinned" | "follows" | "group"; link_group: string | null; can_go_back: boolean; can_go_forward: boolean }
+export interface ShellTabView { id: string; kind: string; content_id: string; content_revision: string; reference: string | null; resource_title: string; reference_label: string | null; chapter_label: string | null; scroll_segment_id: string | null; scroll_scalar: number | null; link_mode: "pinned" | "follows" | "group"; link_group: string | null; can_go_back: boolean; can_go_forward: boolean; lexicon_word: string | null }
 export interface ShellColumnView { id: string; number: number; tabs: ShellTabView[]; shown_tab_id: string; width_fraction: number }
 export interface ShellWorkspaceView { id: string; title: string; columns: ShellColumnView[]; active_column_number: number; notes_dock_note_id: string | null; notes_dock_open: boolean }
-export interface ShellSessionView { workspaces: ShellWorkspaceView[]; active_workspace_id: string; tool: ShellTool; revision: number; undo_title: string | null; redo_title: string | null; reading: ShellReading; ink: ShellInk }
+export interface ShellSessionView { workspaces: ShellWorkspaceView[]; active_workspace_id: string; tool: ShellTool; effective_tool: ShellTool; tool_context: ShellToolContext; revision: number; undo_title: string | null; redo_title: string | null; reading: ShellReading; ink: ShellInk }
 export interface ShellRecords { session: ShellSessionRecord; workspaces: ShellWorkspace[] }
+/** B076 contextual tool well (specs/22 §4.1). `icon` is a neutral name the host maps to inline SVG. */
+export type ShellToolContext = "translation" | "original" | "notes" | "reference" | "none";
+export interface ShellToolWellItem { command_id: string; tool: ShellTool | null; label: string; key: string | null; icon: string; active: boolean; value: string | null; disabled_text: string | null }
+export interface ShellToolWellGroup { kind: "tools" | "ink" | "selection"; items: ShellToolWellItem[] }
+export interface ShellToolWell { context: ShellToolContext; tool: ShellTool; effective_tool: ShellTool; groups: ShellToolWellGroup[] }
 export interface InkDocument { schema_version: "1.0" | "1.1"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
 "#;
 
@@ -505,6 +512,9 @@ impl ShellHandle {
         let session = openlogos_conformance::fixture_session();
         let mut handle = shell_of(session).expect("the fixture session checks");
         handle.text = Some(openlogos_conformance::FixtureTextProvider::new());
+        // Set directly, so a fresh fixture handle is still at revision 0.
+        handle.shell.session.resource_languages =
+            openlogos_conformance::fixture_resource_languages();
         handle
     }
 
@@ -524,6 +534,31 @@ impl ShellHandle {
         let titles: std::collections::BTreeMap<String, String> = from_js("titles", titles)?;
         self.shell.set_resource_titles(titles);
         Ok(())
+    }
+
+    /// B076: registers resource languages as BCP 47 tags (`{ sblgnt: "grc", wlc: "hbo" }`);
+    /// the tool well shows the original-language tools on Reading tabs of `grc`, `hbo`,
+    /// `arc`, `he` or `heb` resources. A resource without one reads as a translation.
+    #[wasm_bindgen(js_name = setResourceLanguages)]
+    pub fn set_resource_languages(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Record<string, string>")] languages: JsValue,
+    ) -> Result<(), JsValue> {
+        let languages: std::collections::BTreeMap<String, String> =
+            from_js("languages", languages)?;
+        self.shell.set_resource_languages(languages);
+        Ok(())
+    }
+
+    /// B076: the tool well for what has focus (`context.focus`, default the tab): its
+    /// context, the stored and effective tool, and the groups to draw.
+    #[wasm_bindgen(js_name = toolWell, unchecked_return_type = "ShellToolWell")]
+    pub fn tool_well(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "ShellCommandContext | undefined")] context: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let context: CommandContext = optional("context", context)?;
+        to_js(&self.shell.tool_well(&context))
     }
 
     /// The session.
