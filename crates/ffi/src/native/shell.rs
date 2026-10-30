@@ -557,12 +557,7 @@ impl ShellHandle {
     /// workspaces over the fixture editions, for test hosts and previews.
     #[uniffi::constructor]
     pub fn fixture() -> Arc<ShellHandle> {
-        let fixture: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../conformance/fixtures/shell-commands.json"
-        ))
-        .expect("the fixture parses");
-        let session: Session =
-            serde_json::from_value(fixture["session"].clone()).expect("the fixture session parses");
+        let session = openlogos_conformance::fixture_session();
         let handle = ShellHandle::from_session(session).expect("the fixture session checks");
         handle.lock().text = Some(FixtureTextProvider::new());
         handle

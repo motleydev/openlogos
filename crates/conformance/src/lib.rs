@@ -38,7 +38,7 @@ pub use contracts::{
 
 pub use shell::{
     ActiveView, ExpectedItem, FixtureTextProvider, PaletteCase, ShellFixture, ShellMigrationCase,
-    ShellScenario, ShellStep, StepExpectation,
+    ShellScenario, ShellStep, StepExpectation, fixture_session,
 };
 
 pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};

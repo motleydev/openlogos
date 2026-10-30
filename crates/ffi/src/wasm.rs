@@ -483,12 +483,7 @@ impl ShellHandle {
     /// The `shell-commands` conformance session with the fixture text provider.
     #[must_use]
     pub fn fixture() -> ShellHandle {
-        let fixture: serde_json::Value = serde_json::from_str(include_str!(
-            "../../conformance/fixtures/shell-commands.json"
-        ))
-        .expect("the fixture parses");
-        let session: Session =
-            serde_json::from_value(fixture["session"].clone()).expect("the fixture session parses");
+        let session = openlogos_conformance::fixture_session();
         let mut handle = shell_of(session).expect("the fixture session checks");
         handle.text = Some(openlogos_conformance::FixtureTextProvider::new());
         handle

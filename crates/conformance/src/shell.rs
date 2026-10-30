@@ -96,6 +96,21 @@ impl TextProvider for FixtureTextProvider {
     }
 }
 
+/// The session of the `shell-commands` fixture: what the bindings' `ShellHandle.fixture()`
+/// opens, read from the copy [`FIXTURE_FILES`] already embeds.
+#[must_use]
+pub fn fixture_session() -> Session {
+    let json = FIXTURE_FILES
+        .iter()
+        .find(|(id, _)| *id == "shell-commands")
+        .map(|(_, json)| *json)
+        .expect("the shell fixture is compiled in");
+    match serde_json::from_str::<Fixture>(json) {
+        Ok(Fixture::ShellCommands(fixture)) => fixture.session,
+        _ => panic!("the shell fixture parses"),
+    }
+}
+
 /// Where focus is.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActiveView {
