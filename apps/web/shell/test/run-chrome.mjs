@@ -439,7 +439,7 @@ const CASES = {
     s = await snap();
     expect(p, s.size === 21 && s.theme === "sepia" && s.spacing === 1.7, `text menu → ${s.size} ${s.theme} ${s.spacing}`);
     const fs = await js("return getComputedStyle(document.querySelector('.measure .text')).fontSize");
-    expect(p, fs === "24.15px" || fs === "21px", `text size applied (${fs})`); // WLC is set 1.15× for Hebrew
+    expect(p, fs === "21px", `text size applied (${fs})`);
     await chord("Escape");
     await chord("Meta", "k");
     await type("theme dark");

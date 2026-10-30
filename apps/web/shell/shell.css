@@ -201,7 +201,7 @@ button { font: inherit; color: inherit; }
   font-family: var(--font-reading); font-size: var(--reading-size); line-height: var(--reading-leading);
   margin: 0; unicode-bidi: plaintext; color: var(--text);
 }
-.measure .text[dir="rtl"] { text-align: right; font-size: calc(var(--reading-size) * 1.15); }
+.measure .text[dir="rtl"] { text-align: right; }
 .measure .marker { font-size: 0.55em; color: var(--chrome); vertical-align: 0.5em; line-height: 0; margin-inline-end: 0.2em; font-family: var(--font-chrome); }
 .measure .attribution { font-size: 12px; color: var(--chrome); margin: var(--space-4) 0 0; }
 .measure .verse.target .t { text-decoration: underline 2px color-mix(in srgb, var(--accent) 60%, transparent); text-underline-offset: 0.2em; }
