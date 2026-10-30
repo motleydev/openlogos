@@ -21,16 +21,23 @@ final class ShellModel: ObservableObject {
 
     // MARK: Palette
 
-    @Published var paletteText = ""
-    @Published private(set) var paletteResult: ShellPaletteResult?
-    @Published var paletteOpen = false
+    /// The palette's state, observed only by the field and the result list, so a keystroke
+    /// never re-renders the columns.
+    let palette = PaletteState()
+    var paletteText: String {
+        get { palette.text }
+        set { palette.text = newValue }
+    }
+    var paletteResult: ShellPaletteResult? { palette.result }
+    var paletteOpen: Bool { palette.open }
     /// Index into `paletteRows`.
-    @Published var paletteSelection = 0
-    @Published private(set) var expandedSection: ShellPaletteSection?
+    var paletteSelection: Int {
+        get { palette.selection }
+        set { palette.selection = newValue }
+    }
+    var expandedSection: ShellPaletteSection? { palette.expanded }
     /// Set once the window has settled; focus before that is the system's default focus.
     var launched = false
-    /// Bumped to ask the view to focus the field.
-    @Published private(set) var paletteFocusRequest = 0
 
     // MARK: Appearance
 
@@ -122,10 +129,19 @@ final class ShellModel: ObservableObject {
             .replacingOccurrences(of: "Shift+", with: "⇧").replacingOccurrences(of: "Ctrl+", with: "⌃")
     }
 
-    /// Whether the command can run now, from the core (`commands(hasSelection:)`).
+    /// Whether the command can run now, from the core (`commands(hasSelection:)`), asked once
+    /// per session revision: every menu item of every column reads it on each render.
     func disabledReason(_ id: String) -> String? {
-        handle.commands(hasSelection: selection != nil).first { $0.id == id }?.disabledReason
+        let key = "\(session.revision)-\(selection != nil)"
+        if key != disabledKey {
+            disabledKey = key
+            disabled = Dictionary(uniqueKeysWithValues: handle.commands(hasSelection: selection != nil).map { ($0.id, $0.disabledReason) })
+        }
+        return disabled[id] ?? nil
     }
+
+    private var disabledKey = ""
+    private var disabled: [String: String?] = [:]
 
     // MARK: Running commands
 
@@ -213,25 +229,30 @@ final class ShellModel: ObservableObject {
         ShellPaletteContext(hasSelection: selection != nil, platform: .mac, expanded: expandedSection)
     }
 
+    private var queriedText = ""
+
     /// The rows in display order (the flat list ↑/↓ walk).
     var paletteRows: [ShellPaletteItem] { paletteResult?.groups.flatMap(\.items) ?? [] }
 
     /// Called on every keystroke; no debounce (specs/22 §7: 16 ms).
     func query() {
-        paletteResult = handle.paletteQuery(text: paletteText, context: paletteContext)
+        queriedText = paletteText
+        palette.result = handle.paletteQuery(text: paletteText, context: paletteContext)
         paletteSelection = min(paletteSelection, max(0, paletteRows.count - 1))
     }
 
     func paletteTextChanged() {
-        paletteOpen = true
-        expandedSection = nil
+        // The field's onChange repeats a change made in code; the second call is a no-op.
+        guard palette.result == nil || paletteText != queriedText else { return }
+        palette.open = true
+        palette.expanded = nil
         paletteSelection = 0
         query()
     }
 
     func focusPalette() {
-        paletteOpen = true
-        paletteFocusRequest += 1
+        palette.open = true
+        palette.focusRequest += 1
         query()
     }
 
@@ -248,7 +269,7 @@ final class ShellModel: ObservableObject {
     }
 
     func expand(_ section: ShellPaletteSection) {
-        expandedSection = expandedSection == section ? nil : section
+        palette.expanded = expandedSection == section ? nil : section
         query()
         if let first = paletteRows.firstIndex(where: { $0.section == section }) { paletteSelection = first }
     }
@@ -269,11 +290,11 @@ final class ShellModel: ObservableObject {
 
     /// Esc: closes the list and returns focus to the tab that had it.
     func closePalette() {
-        paletteOpen = false
-        paletteText = ""
-        expandedSection = nil
-        paletteSelection = 0
-        paletteResult = nil
+        palette.open = false
+        palette.text = ""
+        palette.expanded = nil
+        palette.selection = 0
+        palette.result = nil
         focusActiveTab()
     }
 
@@ -430,6 +451,18 @@ final class ShellModel: ObservableObject {
         monitor = nil
     }
     #endif
+}
+
+/// The palette field's text, its results, the selected row and the expanded section.
+@MainActor
+final class PaletteState: ObservableObject {
+    @Published var text = ""
+    @Published var result: ShellPaletteResult?
+    @Published var open = false
+    @Published var selection = 0
+    @Published var expanded: ShellPaletteSection?
+    /// Bumped to ask the view to focus the field.
+    @Published var focusRequest = 0
 }
 
 private struct WeakSurface {

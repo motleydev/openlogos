@@ -4,6 +4,8 @@
 //   -OPENLOGOS_PALETTE "text"           opens the palette with this text typed
 //   -OPENLOGOS_PALETTE_EXPAND commands  expands a section (passage, commands, tabs, text)
 //   -OPENLOGOS_TOOL pen                 runs tool.<name>
+//   -OPENLOGOS_RUN "a,b:arg"            runs registered commands in order; `:arg` is a column
+//                                       number, else a reference (nav.navigate) or text
 //   -OPENLOGOS_SHELL_DEMO 1             a highlight, ink strokes and a collect toast on screen
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
@@ -34,6 +36,14 @@ enum ShellLaunch {
         }
         if let tool = defaults.string(forKey: "OPENLOGOS_TOOL") {
             model.run("tool.\(tool)")
+        }
+        for step in (defaults.string(forKey: "OPENLOGOS_RUN") ?? "").split(separator: ",") {
+            let parts = step.split(separator: ":", maxSplits: 1).map(String.init)
+            var args = ShellCommandArgs()
+            if parts.count == 2 {
+                if let n = UInt32(parts[1]) { args.column = n } else if parts[0] == "nav.navigate" { args.reference = parts[1] } else { args.text = parts[1] }
+            }
+            model.run(parts[0], args: args)
         }
         // Let the columns lay out before anything reads the surfaces.
         try? await Task.sleep(nanoseconds: 600_000_000)

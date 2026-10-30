@@ -14,7 +14,7 @@ struct ShellView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                PaletteBar(model: model)
+                PaletteBar(model: model, palette: model.palette)
                 Rectangle().fill(model.theme.rulesColor).frame(height: ShellTokens.rule)
                 ZStack(alignment: .topLeading) {
                     ColumnsView(model: model)
@@ -22,9 +22,7 @@ struct ShellView: View {
                         ShellNotesDock(model: model)
                     }
                     ToolWell(model: model)
-                    if model.paletteOpen, let result = model.paletteResult {
-                        PaletteResults(model: model, result: result, maxHeight: geometry.size.height * 0.5)
-                    }
+                    PaletteOverlay(model: model, palette: model.palette, maxHeight: geometry.size.height * 0.5)
                     if let toast = model.toast {
                         ToastView(text: toast, theme: model.theme)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -57,6 +55,7 @@ struct ShellView: View {
 
 struct PaletteBar: View {
     @ObservedObject var model: ShellModel
+    @ObservedObject var palette: PaletteState
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -65,17 +64,17 @@ struct PaletteBar: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(model.theme.chromeColor)
                     .accessibilityHidden(true)
-                TextField("", text: $model.paletteText, prompt: Text("Passage, word, command, tab…  ⌘K").foregroundStyle(model.theme.chromeColor))
+                TextField("", text: $palette.text, prompt: Text("Passage, word, command, tab…  ⌘K").foregroundStyle(model.theme.chromeColor))
                     .textFieldStyle(.plain)
                     .font(ShellTokens.chromeFont)
                     .focused($focused)
                     .accessibilityLabel("Command palette")
                     .accessibilityIdentifier("shell-palette-field")
-                    .onChange(of: model.paletteText) { _, _ in model.paletteTextChanged() }
+                    .onChange(of: palette.text) { _, _ in model.paletteTextChanged() }
                     // A click in the field opens the list; the launch-time default focus does not.
                     .onChange(of: focused) { _, isFocused in if isFocused && model.launched && !model.paletteOpen { model.focusPalette() } }
-                    .onChange(of: model.paletteFocusRequest) { _, _ in focused = true }
-                    .onChange(of: model.paletteOpen) { _, open in if !open { focused = false } }
+                    .onChange(of: palette.focusRequest) { _, _ in focused = true }
+                    .onChange(of: palette.open) { _, open in if !open { focused = false } }
                     .onKeyPress(.downArrow) { model.movePaletteSelection(1); return .handled }
                     .onKeyPress(.upArrow) { model.movePaletteSelection(-1); return .handled }
                     .onKeyPress(.escape) { model.closePalette(); return .handled }
@@ -191,8 +190,22 @@ struct CommandButton: View {
 
 // MARK: - Palette results
 
+/// The result list, shown while the palette is open.
+struct PaletteOverlay: View {
+    let model: ShellModel
+    @ObservedObject var palette: PaletteState
+    let maxHeight: CGFloat
+
+    var body: some View {
+        if palette.open, let result = palette.result {
+            PaletteResults(model: model, palette: palette, result: result, maxHeight: maxHeight)
+        }
+    }
+}
+
 struct PaletteResults: View {
-    @ObservedObject var model: ShellModel
+    let model: ShellModel
+    @ObservedObject var palette: PaletteState
     let result: ShellPaletteResult
     let maxHeight: CGFloat
 
@@ -264,7 +277,7 @@ struct PaletteResults: View {
 }
 
 struct PaletteRow: View {
-    @ObservedObject var model: ShellModel
+    let model: ShellModel
     let item: ShellPaletteItem
     let selected: Bool
 

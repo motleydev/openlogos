@@ -111,7 +111,8 @@ mac() {
   pkill -f "$app/Contents/MacOS/" 2>/dev/null || true
   open "$app"
   echo "  ✓ opened $app"
-  echo "  The bar at the top switches view, layout, state and width."
+  echo "  The workspace shell (B072): ⌘K or / for the palette, ⌥1…⌥9 for columns, V H P M E C for tools."
+  echo "  The B004 prototype is in the Debug menu."
   echo "  Feedback: just feedback \"what you saw\"   (shots and notes in $feedback_dir)"
 }
 
