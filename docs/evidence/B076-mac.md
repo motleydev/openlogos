@@ -1,7 +1,8 @@
 # B076 evidence (Mac) — the contextual tool well in the Mac shell
 
 Recorded 30 October 2026 on the Mac mini (Apple M1, Xcode 26.6) in the worktree
-`openlogos-b076mac`, branch `b076-mac-well`, cut from `b076-core-well` (a8f7433). Work was
+`openlogos-b076mac`, branch `b076-mac-well`, cut from `b076-core-well` (a8f7433) with
+`b076-core-well` merged in at 3702fc5 (`tab.open_lexicon`, `ShellTab.lexiconWord`). Work was
 done by a Claude Code subagent. Nothing was pushed or merged; no simulator, keychain or macOS
 user was touched. Only fixture text is on screen. The web half is `b076-web-well`
 (B076-web.md); the core part is B076-core.md.
@@ -15,9 +16,9 @@ user was touched. Only fixture text is on screen. The web half is `b076-web-well
 | Active = filled accent button, accessibility value "current tool". Tooltip `Label (⌘B)`, `Label` without a key, `Label (P) — reason` when disabled; disabled items at 40 % and not clickable. | `ToolWell.ToolButton`, `ToolWell.tooltip` |
 | Effective tool: drag mode, ink and the active button follow `well.effectiveTool`; the stored tool stays stored and comes back. A bare key outside its context shows the core's words as a toast (`Word study works on Greek and Hebrew text`). ⌘B / ⌘I pass on unless a note editor has focus. | `ShellModel.effectiveTool`, `handle(chord:)` |
 | Focus: a click in a column or its text is `tab`; the notes dock's editor taking focus is `notes_dock`; closing the dock gives focus back to the tab. | `ShellModel.setFocus`, `NoteEditorView.onFocus` |
-| Word study: in an original column with W, a click hands the word under it (through the anchor round trip) to the host; `tab.open_lexicon` opens or reuses the Lexicon tab in the next column (a new column after the last); focus stays on the clicked column so Word study goes on. The tab shows the word as clicked, `Greek · John 3:16` and "Lexicon entries arrive with the lexicon import." | `ReaderTextView.swift` (`ReaderDragMode.word`), `ShellModel.openWordStudy`, `Sources/Shell/LexiconView.swift` |
-| Notes: notes tabs and the dock are `NSTextView` editors (TextKit 2), in memory until B074, one document per note shared by its editors. Bold, Italic (⌘B/⌘I while editing), Heading (reading size + 4, semibold), List (`• ` bullets toggle), Link passage (well button opens the palette with `link passage `; the palette's row runs `note.link_passage` with the passage; selected words become the link, else `John 3:16` is inserted). Links are accent + underline; a click opens the passage in the active column if it reads Bible text, else the first reading column. Edits are undoable in the editor. | `Sources/Shell/NoteEditor.swift` |
-| Selection actions: Highlight now, Collect, Study as in B072; Note on it appends `> “quoted text” — John 3:16` (the passage a link) as a new paragraph to the open note (dock if open, else a shown notes tab, else it opens the dock); Search this (⌘E) puts the text in the palette and opens it; Copy reference puts `John 3:16` (`John 3:16–17` for a range) on the pasteboard and toasts `Copied John 3:16`. | `ShellModel` (MARK: Selection actions and notes) |
+| Word study: in an original column with W, a click hands the word under it (through the anchor round trip) to the host, which runs the core's `tab.open_lexicon` {text: the word, reference: its verse}. The core opens or reuses the pinned Lexicon tab in the next column (or a new column) and keeps focus on the clicked column, so Word study goes on. The tab shows the core's `lexiconWord` (reading serif, 1.5×, semibold), `Greek · John 3:16` (language from the word's script) and "Lexicon entries arrive with the lexicon import." The strip label is the core's: `Lexicon Jn 3`. | `ReaderTextView.swift` (`ReaderDragMode.word`), `ShellModel.openWordStudy`, `Sources/Shell/LexiconView.swift` |
+| Notes: notes tabs and the dock are `NSTextView` editors (TextKit 2), in memory until B074, one document per note shared by its editors. Bold, Italic (⌘B/⌘I while editing), Heading (1.25× the reading size, semibold), List (`• ` bullets toggle, hanging indent), Link passage (well button opens the palette with `link passage `; the palette's row runs `note.link_passage` with the passage; selected words become the link, else `John 3:16` is inserted). Links are accent + underline; a click moves the last-focused reading column (column 1 when none has had focus). Edits are undoable in the editor. | `Sources/Shell/NoteEditor.swift` |
+| Selection actions: Highlight now, Collect, Study as in B072; Note on it appends `“quoted text” — John 3:16` as a quote paragraph (indented 12, a 2 pt rule in the rules colour on the leading edge, not italic, the passage a link) to the open note (dock if open, else a shown notes tab, else it opens the dock); Search this (⌘E) puts the text in the palette and opens it; Copy reference puts `John 3:16` (`John 3:16–17` for a range) on the pasteboard and toasts `Copied John 3:16`. | `ShellModel` (MARK: Selection actions and notes) |
 | Launch hooks for the pictures: `-OPENLOGOS_SELECT`, `-OPENLOGOS_WORD`, `-OPENLOGOS_NOTE_DEMO`, `-OPENLOGOS_FOCUS dock`; speed rows in `ShellMeasure`. | `ShellLaunch.swift`, `ShellMeasure.swift`, `scripts/b076-mac-shots.sh` |
 | Fix found on the way: tab ids repeat across workspaces (`t1`), and a released workspace's reading surface could re-register under the shown tab's id after a workspace switch, so the host read the old text. `register` now ignores a surface whose content is not the tab's resource. | `ShellModel.register` |
 
@@ -44,20 +45,13 @@ user was touched. Only fixture text is on screen. The web half is `b076-web-well
 | `note` | `note.text.badge.plus` | note with a plus |
 | `search` | `magnifyingglass` | magnifier |
 | `copy-reference` | `doc.on.doc` | two stacked pages |
-| `study` | `book` | open book |
+| `study` | `text.book.closed` | closed book with lines |
 
-## Core change (additive, loud)
+## Core
 
-`73228e6` adds **one** command to `crates/`: `tab.open_lexicon` ("Open in lexicon", scope tab,
-argument reference, undoable, core-performed), appended after `selection.copy_reference`.
-Nothing in the core could create a tab of kind `lexicon` (`tab.new`, `column.new` and
-`nav.navigate` copy the active tab), so Word study could not open its tab otherwise. It opens or
-reuses the Lexicon tab (`content_id` `lexicon`, pinned) of the column after the active one,
-adds one to that column, or inserts a column after the last; the active column does not change.
-Conformance: the id in `shell-commands` `registry_ids` and a "word study lexicon tab" scenario
-(reuse, add to the next column, undo, new column after the last, missing passage). Total
-conformance is 1355 cases (host READMEs updated). No wasm or UniFFI type changed (it is a
-registry command). The web agent was told to cherry-pick `73228e6`.
+This branch changes nothing under `crates/` beyond the merge of `b076-core-well` (3702fc5):
+`git diff b076-core-well -- crates` is empty. An earlier host-made `tab.open_lexicon` commit
+was dropped from the branch history on the lead's ruling in favour of the core's.
 
 ## Speed (specs/22 §7, Release, 10 × 3 × 4 session, 240 samples per row)
 
@@ -65,20 +59,21 @@ registry command). The web agent was told to cherry-pick `73228e6`.
 
 | Interaction (budget) | 1440 × 900 work p50 / p95 / max ms | next frame p95 | 1024 × 768 work p50 / p95 / max ms | next frame p95 |
 |---|---:|---:|---:|---:|
-| **Column focus, original ↔ translation (the well changes)** (16) | 10.5 / 10.7 / 11.1 | 16.7 | 10.6 / 10.9 / 11.7 | 16.7 |
-| **Translation → notes dock (the well changes)** (16) | 7.0 / 7.6 / 10.0 | 22.4 | 7.1 / 7.5 / 8.9 | 22.4 |
-| **Selection appears → selection group drawn** (16) | 8.1 / 8.3 / 9.9 | 24.4 | 8.7 / 9.3 / 12.0 | 23.8 |
-| Palette keystroke (16) | 4.2 / 9.4 / 16.2 | 16.7 | 4.1 / 12.4 / 19.9 | 16.7 |
-| Tab switch within a column (16) | 11.6 / 14.1 / 17.8 | 16.7 | 11.6 / 13.9 / 14.6 | 16.7 |
-| Column focus, columns 1–3 (16) | 7.8 / 8.9 / 10.0 | 16.7 | 7.8 / 7.9 / 8.4 | 16.7 |
-| Workspace switch (100) | 37.0 / 39.4 / 50.1 | 56.7 | 37.6 / 39.6 / 48.6 | 56.3 |
-| Tool change (16) | 8.2 / 9.8 / 10.2 | 16.7 | 8.2 / 9.8 / 10.5 | 16.7 |
-| Open a chapter, warm (100) | 11.4 / 11.6 / 14.3 | 16.7 | 11.5 / 12.0 / 13.2 | 16.7 |
+| **Column focus, original ↔ translation (the well changes)** (16) | 10.5 / 11.0 / 12.7 | 16.7 | 10.2 / 10.7 / 10.9 | 16.7 |
+| **Translation → notes dock (the well changes)** (16) | 7.0 / 7.9 / 8.1 | 22.4 | 7.0 / 7.4 / 9.0 | 22.5 |
+| **Selection appears → selection group drawn** (16) | 8.2 / 8.9 / 9.8 | 24.5 | 8.7 / 9.4 / 12.7 | 23.7 |
+| Palette keystroke (16) | 4.1 / 12.0 / 20.2 | 16.7 | 4.2 / 12.1 / 19.8 | 16.7 |
+| Tab switch within a column (16) | 11.6 / 14.1 / 14.3 | 16.7 | 11.6 / 14.0 / 17.0 | 16.7 |
+| Column focus, columns 1–3 (16) | 7.8 / 9.0 / 10.4 | 16.7 | 7.8 / 7.9 / 9.2 | 16.7 |
+| Workspace switch (100) | 36.5 / 39.5 / 40.6 | 56.5 | 37.0 / 40.1 / 43.2 | 56.4 |
+| Tool change (16) | 8.2 / 9.8 / 10.1 | 16.7 | 8.2 / 9.8 / 10.0 | 16.7 |
+| Open a chapter, warm (100) | 11.5 / 11.7 / 14.3 | 16.7 | 11.5 / 11.7 / 13.2 | 16.7 |
 
 Every p95 is within budget, and the B072 rows are at B072's level (B072 p95 at 1440: palette
 8.6, tab switch 14.9, column focus 9.6, workspace 48.7, tool 10.0, chapter 12.6). Palette p95 at
-1024 is 12.4 (B072 12.4). Single runs vary by 1–3 ms p95 on this machine (an earlier run today
-had tab switch at 1024 at 15.6). The next-frame p95 of the two rows with a `prepare` step is
+1024 is 12.1 (B072 12.4); at 1440 it varies between 9.4 and 12.0 over today's runs (B072 8.6).
+Single runs vary by 1–3 ms p95 on this machine (an earlier run today had tab switch at 1024 at
+15.6). The next-frame p95 of the two rows with a `prepare` step is
 above 16.7 because the reset (back to the tab / clearing the selection) is drawn in the same
 display-link frame just before the timed action; the work column is the interaction itself.
 Raw JSON: `artifacts/b076/measure-1440.json`, `measure-1024.json` (gitignored).
@@ -105,7 +100,8 @@ palette's Link passage row).
 
 `mac-translation-well` (BSB focused: six tools and ink) · `mac-original-word-study` (SBLGNT with
 Word study active, ἠγάπησεν in the Lexicon tab of column 3) · `mac-notes-editing` (the notes
-column being edited: a heading, **so loved** in bold and a John 3:16 link; the notes well) ·
+column being edited: a heading, **so loved** in bold, a John 3:16 link and a quote paragraph
+with its leading rule; the notes well) ·
 `mac-selection-group` (a selection in BSB, the selection group under the ink) ·
 `mac-fallback-pen-notes` (Pen stored, the dock focused: Type active) ·
 `mac-original-selection-dark` (dark theme, Greek selection, original well with the selection
@@ -122,21 +118,17 @@ group). `scripts/b076-mac-shots.sh` retakes them.
 
 ## Deviations
 
-1. **A core command** (`tab.open_lexicon`), above; the brief asked for none unless needed.
-2. **Note on it** writes `> “quoted text” — John 3:16` with curly quotes around the quotation
-   and the passage as a link; the `> ` stays as text (no block-quote styling).
-3. **The note editor is rich text, not markdown**: bold, italic, headings and links are
-   attributes; nothing is persisted (B074 decides the stored form).
-4. **The swatch item's value** is chosen from a context menu on the swatch pair; a click
+1. **The note editor is rich text, not markdown**: bold, italic, headings, quotes and links are
+   attributes; nothing is persisted (B074 decides the stored form). Same as web.
+2. **The swatch item's value** is chosen from a context menu on the swatch pair; a click
    still swaps (B072 behaviour). The width dot still cycles widths on click.
-5. **Selection group in notes**: a reading selection stays the selection when focus moves to
+3. **Selection group in notes**: a reading selection stays the selection when focus moves to
    the note, so its group shows there and Note on it can be used from the note.
 
 ## For the owner
 
 - Should Word study's Lexicon tab sit in the next column even when that column is the notes
   column (it does today: it becomes a tab beside the note)?
-- Is `> “…” — John 3:16` the quoted form you want in notes, or a styled block quote?
 - Should ⌘B / ⌘I do anything outside a note (today they pass on to the system)?
 
 ## Skipped
