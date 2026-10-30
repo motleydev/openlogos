@@ -50,6 +50,17 @@ struct ReaderContent: Equatable {
         self.paragraphEvery = paragraphEvery ?? (content.verses.count > 20 ? 8 : nil)
     }
 
+    /// Content from a host's text source (B072's TextSource) rather than a prototype pane.
+    init(id: String, editionId: String, contentRevision: String, verses: [Passage.Verse], isRightToLeft: Bool, attribution: String) {
+        self.id = id
+        self.editionId = editionId
+        self.contentRevision = contentRevision
+        self.verses = verses
+        self.isRightToLeft = isRightToLeft
+        self.attribution = attribution
+        paragraphEvery = verses.count > 20 ? 8 : nil
+    }
+
     static func == (lhs: ReaderContent, rhs: ReaderContent) -> Bool {
         lhs.id == rhs.id && lhs.verses.count == rhs.verses.count && lhs.paragraphEvery == rhs.paragraphEvery
     }
@@ -124,6 +135,38 @@ struct ReaderTypography {
     let caption: PlatformFont
     let lineSpacing: CGFloat
     let markerBaselineOffset: CGFloat
+    /// Text and verse-number colours; the system label colours unless a host theme sets them.
+    var text: PlatformColor = .readerPrimary
+    var secondary: PlatformColor = .readerSecondary
+    /// Distinguishes two typographies for relayout (B072: size steps, spacing and theme).
+    var key = "dynamic"
+
+    /// A fixed size in the system serif (New York) at a line-height multiple, in a host
+    /// theme's colours (B072's tokens). The spacing follows `current()`: 1.5 → 0.45 × size.
+    static func fixed(size: CGFloat, lineHeight: CGFloat, text: PlatformColor, secondary: PlatformColor, key: String) -> ReaderTypography {
+        let marker = (size * 0.6).rounded()
+        let caption = (size * 0.68).rounded()
+        return ReaderTypography(
+            body: serif(size: size),
+            marker: serif(size: marker),
+            caption: serif(size: caption),
+            lineSpacing: (size * (lineHeight - 1.05)).rounded(),
+            markerBaselineOffset: (size * 0.35).rounded(),
+            text: text,
+            secondary: secondary,
+            key: key
+        )
+    }
+
+    private static func serif(size: CGFloat) -> PlatformFont {
+        let base = PlatformFont.systemFont(ofSize: size)
+        guard let descriptor = base.fontDescriptor.withDesign(.serif) else { return base }
+        #if canImport(UIKit)
+        return PlatformFont(descriptor: descriptor, size: size)
+        #else
+        return PlatformFont(descriptor: descriptor, size: size) ?? base
+        #endif
+    }
 
     static func current() -> ReaderTypography {
         let body = serif(.title3)
@@ -179,18 +222,18 @@ struct ReaderLayout {
         paragraphStyle.baseWritingDirection = content.isRightToLeft ? .rightToLeft : .leftToRight
         let bodyAttributes: [NSAttributedString.Key: Any] = [
             .font: typography.body,
-            .foregroundColor: PlatformColor.readerPrimary,
+            .foregroundColor: typography.text,
             .paragraphStyle: paragraphStyle,
         ]
         let markerAttributes: [NSAttributedString.Key: Any] = [
             .font: typography.marker,
-            .foregroundColor: PlatformColor.readerSecondary,
+            .foregroundColor: typography.secondary,
             .paragraphStyle: paragraphStyle,
             .baselineOffset: typography.markerBaselineOffset,
         ]
         let captionAttributes: [NSAttributedString.Key: Any] = [
             .font: typography.caption,
-            .foregroundColor: PlatformColor.readerSecondary,
+            .foregroundColor: typography.secondary,
             .paragraphStyle: paragraphStyle,
         ]
 

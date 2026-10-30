@@ -95,6 +95,8 @@ targets:
     platform: macOS
     sources:
       - path: Tests/ReaderTests
+      # B072: the workspace shell's cases (the shell is the Mac app's view).
+      - path: Tests/ShellTests
     dependencies:
       - target: OpenLogosMac
     settings:
