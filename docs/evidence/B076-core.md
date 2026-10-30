@@ -288,15 +288,15 @@ Commit `6611331` adds one core command so hosts can open Word study results.
 |---|---|
 | Command | `tab.open_lexicon`, "Open in lexicon", scope workspace, argument `text` (the word as clicked) with optional `reference` and `column` or `new_column`; undoable like `tab.new`; performed by the core |
 | Target | `column` if given, else the column right of the active one, else a new column after the active one (also with `new_column`) |
-| Reuse | a Lexicon tab already in the target column (the shown one first) gets the new word and passage (scroll reset) and is shown; its link mode is kept |
+| Reuse | a Lexicon tab already in the target column (the shown one first) gets the new word and passage (scroll reset), is pinned and is shown |
 | New tab | a pinned Lexicon tab at the passage given or the active tab's, with the content id and revision of an existing lexicon tab in the workspace, else `lexicon` (`commands::DEFAULT_LEXICON_CONTENT_ID`, for the host to resolve) |
-| Focus | the target column becomes active |
+| Focus | stays on the column where the word was clicked (amended); the lexicon tab is the shown tab of its column |
 | Word on the tab | `Tab.lexicon_word` (optional `lexicon_word` in workspace-2.schema.json, absent on other tabs); `TabView.lexicon_word`, UniFFI `ShellTab.lexiconWord`, wasm `ShellTabView.lexicon_word` / `ShellTab.lexicon_word?` (snake_case like every wasm field) |
 | Disabled | without a word: `needs_argument`, "Needs a word to look up"; a column that does not exist: "There is no column N" |
 | Palette | `open in lexicon agape` gives "Open in lexicon" with `{text: "agape"}`; `>open in lexicon` lists it disabled with "Needs a word to look up" |
 
 Conformance: a `shell-commands` scenario "open in lexicon" (new tab in the column to the
-right, reuse of the lexicon tab in column 3 with its follow mode kept, two undos, a new column,
+right, reuse of the lexicon tab in column 3 (pinned, follow mode back on undo), two undos, a new column,
 a new column from the last column, the two refusals, undo) checks columns, focus, passages,
 link modes and the view's `lexicon_word`; two palette cases. Total 1370 cases
 (`shell-commands` 294). Host assertions added in Rust (UniFFI), Node, Swift and Kotlin.
@@ -309,6 +309,25 @@ passed; `nix develop .#web -c just test-web` exit 0, tests 8 pass 8, 1370 passed
 .#web -c just test-wasm` exit 0, `7 passed; 0 failed`; validate.py PASS. Bench unaffected:
 tool well p50 8 µs, p95 9.5 µs; column focus p95 0.8 µs.
 
-Decisions to review: a new lexicon tab is pinned (the looked-up word keeps its passage when
-the reader navigates); a reused tab keeps its link mode; the word does not enter the tab's
+Amended 30 October 2026 (lead, agreed with the web host): focus stays on the column where the word was clicked, and a reused lexicon tab is pinned too. The lanes above ran before the amendment; the amended run is at the end of this file.
+
+Decisions to review: a new or reused lexicon tab is pinned (the looked-up word keeps its
+passage when the reader navigates); the word does not enter the tab's
 Back history; a workspace without any lexicon tab opens content id `lexicon`.
+
+### Amended run (`fabebff`, rustfmt fix `70596d1`)
+
+`tab.open_lexicon` now leaves the active column alone (the lexicon tab is the shown tab of
+its column) and pins a reused lexicon tab. Scenario focus and link assertions and the host
+tests changed accordingly; conformance is 1371 cases.
+
+| Command | Result |
+|---|---|
+| `nix develop .#core -c just ci` on `70596d1` | exit 0, `Summary [   7.454s] 306 tests run: 306 passed, 0 skipped` (on `fabebff` it failed at `cargo fmt --check` on the UniFFI test; fixed in `70596d1`) |
+| `just test-swift` on `fabebff` | exit 0, `Executed 8 tests, with 0 failures (0 unexpected)`, `conformance cases: 1371 passed, 0 failed` |
+| `nix develop .#android -c just test-kotlin` on `fabebff`, test-results cleared | exit 0, 8 tests 0 failures, `BUILD SUCCESSFUL`, 1371 passed |
+| `nix develop .#web -c just test-web` on `fabebff` | exit 0, tests 8 pass 8, `conformance cases: 1371 passed, 0 failed` |
+| `nix develop .#web -c just test-wasm` on `fabebff` | exit 0, `7 passed; 0 failed` |
+| `tools/validate.py` | PASS |
+
+`70596d1` changes only the formatting of one Rust test, so the host lanes on `fabebff` stand.

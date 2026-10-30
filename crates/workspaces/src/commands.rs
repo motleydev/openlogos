@@ -1993,6 +1993,8 @@ fn apply_in_place(
             let reference = non_empty(&args.reference)
                 .map(str::to_owned)
                 .or_else(|| ws.active_tab().reference.clone());
+            // The lexicon tab is shown in its column and pinned; focus stays where the word
+            // was clicked, so the reader keeps reading.
             let active = ws.active_index();
             // The column asked for, else the one right of the active column, else a new one.
             let target = if args.new_column {
@@ -2021,9 +2023,9 @@ fn apply_in_place(
                     tab.lexicon_word = Some(word);
                     tab.reference = reference;
                     tab.scroll_anchor = None;
-                    let column = &mut ws.columns[index];
-                    column.shown_tab_id = tab_id;
-                    ws.active_column_id = column.id.clone();
+                    tab.link_group = None;
+                    tab.pinned = true;
+                    ws.columns[index].shown_tab_id = tab_id;
                 }
                 (target, _) => {
                     let source = ws.tabs().find(|t| t.kind == crate::PaneKind::Lexicon);
@@ -2050,9 +2052,12 @@ fn apply_in_place(
                             let column = &mut ws.columns[index];
                             column.tabs.push(tab);
                             column.shown_tab_id = tab_id;
-                            ws.active_column_id = column.id.clone();
                         }
-                        None => insert_column(ws, active + 1, tab),
+                        None => {
+                            let reading = ws.active_column_id.clone();
+                            insert_column(ws, active + 1, tab);
+                            ws.active_column_id = reading;
+                        }
                     }
                 }
             }

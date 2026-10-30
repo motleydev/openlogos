@@ -1162,7 +1162,11 @@ mod tests {
         let session = shell.session();
         let column = &session.workspaces[0].columns[2];
         assert_eq!(column.tabs[0].lexicon_word.as_deref(), Some("ἀγάπη"));
-        assert_eq!(session.workspaces[0].active_column_number, 3);
+        assert_eq!(
+            session.workspaces[0].active_column_number, 2,
+            "focus stays put"
+        );
+        assert_eq!(column.shown_tab_id, column.tabs[0].id);
     }
 
     #[test]
