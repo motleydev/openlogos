@@ -14,13 +14,15 @@
 //! fixture provider, so its row measures the palette's overhead around a provider, not the
 //! B071 search. The view row is `Shell::view`, what both bindings return from `session()` /
 //! `view()` on every render, with every tab's reference and chapter labels. Command timings run `Shell::apply` (undo record included) and exclude any
-//! host rendering: they are the core's share of the frame.
+//! host rendering: they are the core's share of the frame. The tool well row (B076) is
+//! `Shell::tool_well` after each column focus, alternating the tab and the notes dock with a
+//! selection, so every group is built; it rides inside the column-focus budget.
 
 use std::time::{Duration, Instant};
 
 use openlogos_conformance::FixtureTextProvider;
 use openlogos_workspaces::PaneKind;
-use openlogos_workspaces::commands::{CommandArgs, CommandContext, Invocation, Shell};
+use openlogos_workspaces::commands::{CommandArgs, CommandContext, Focus, Invocation, Shell};
 use openlogos_workspaces::palette::{
     PaletteContext, PaletteIndex, TextProvider, palette_query_indexed,
 };
@@ -185,6 +187,16 @@ fn main() {
     let mut move_tab = Vec::new();
     let mut undo = Vec::new();
     let mut view = Vec::new();
+    let mut tool_well = Vec::new();
+    shell.set_resource_languages(
+        [("sblgnt", "grc"), ("wlc", "hbo"), ("bsb", "en")]
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .into(),
+    );
+    let dock = CommandContext {
+        has_selection: true,
+        focus: Focus::NotesDock,
+    };
 
     for round in 0..rounds {
         let mut index = PaletteIndex::new(&shell.session);
@@ -239,6 +251,11 @@ fn main() {
             time(&mut column_focus, || {
                 shell.apply(&focus, &command_context).expect("column.focus");
             });
+            for context in [&command_context, &dock] {
+                time(&mut tool_well, || {
+                    std::hint::black_box(shell.tool_well(context));
+                });
+            }
         }
         for _ in 0..10 {
             time(&mut workspace_switch, || {
@@ -303,6 +320,11 @@ fn main() {
             &mut tab_switch,
         ),
         row("column focus (column.focus N)", 16.0, &mut column_focus),
+        row(
+            "tool well for the focused tab or dock (Shell::tool_well)",
+            16.0,
+            &mut tool_well,
+        ),
         row(
             "workspace switch (workspace.next, 10 × 3 × 4)",
             100.0,
