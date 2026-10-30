@@ -321,7 +321,7 @@ pub enum DisabledReason {
     /// A required argument is missing or empty.
     #[error("{}", argument_words(argument))]
     NeedsArgument {
-        /// The [`CommandArgs`] field.
+        /// The [`CommandArgs`] field; `word` for the `text` of `tab.open_lexicon`.
         argument: String,
     },
     /// A tool or note action that does not fit what has focus (B076): `Pen works on Bible
@@ -347,6 +347,7 @@ fn argument_words(argument: &str) -> &'static str {
         "group" => "Needs a link group",
         "number" => "Needs a value",
         "segment_id" | "scalar" => "Needs a scroll position",
+        "word" => "Needs a word to look up",
         _ => "Needs more information",
     }
 }
@@ -1112,6 +1113,18 @@ const DEFS: &[Def] = &[
         &["copy selection reference", "copy passage reference"],
         &["clipboard", "cite"],
     ),
+    def(
+        "tab.open_lexicon",
+        "Open in lexicon",
+        S::Workspace,
+        A::Text,
+        true,
+        true,
+    )
+    .names(
+        &["look up", "word study results"],
+        &["lexicon", "define", "greek", "hebrew", "lemma"],
+    ),
 ];
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -1231,6 +1244,14 @@ pub fn enabled(
         "note.link_passage" => non_empty(&args.reference)
             .map(|_| ())
             .ok_or_else(|| need("reference")),
+        "tab.open_lexicon" => {
+            // Its `text` is a word, so a missing one asks for a word, not a name.
+            non_empty(&args.text).ok_or_else(|| need("word"))?;
+            if args.column.is_some() && !args.new_column {
+                column_number(ws, args)?;
+            }
+            Ok(())
+        }
         "nav.navigate" => {
             non_empty(&args.reference).ok_or_else(|| need("reference"))?;
             if args.column.is_some() && !args.new_column {
@@ -1425,6 +1446,10 @@ fn step(values: &[f64], current: f64, up: bool) -> Option<f64> {
         values.iter().rev().copied().find(|v| *v < current - 1e-9)
     }
 }
+
+/// The content id a new Lexicon tab opens when the workspace has no lexicon tab to copy it
+/// from; the host resolves it to its default lexicon.
+pub const DEFAULT_LEXICON_CONTENT_ID: &str = "lexicon";
 
 /// A copy of `source` under a new id, with an empty history.
 fn copy_tab(source: &Tab, id: String) -> Tab {
@@ -1961,6 +1986,81 @@ fn apply_in_place(
         "view.notes_dock" => {
             let ws = s.active_mut();
             ws.notes_dock.open = !ws.notes_dock.open;
+        }
+        "tab.open_lexicon" => {
+            let word = non_empty(&args.text).expect("enabled").to_owned();
+            let ws = s.active_mut();
+            let reference = non_empty(&args.reference)
+                .map(str::to_owned)
+                .or_else(|| ws.active_tab().reference.clone());
+            // The lexicon tab is shown in its column and pinned; focus stays where the word
+            // was clicked, so the reader keeps reading.
+            let active = ws.active_index();
+            // The column asked for, else the one right of the active column, else a new one.
+            let target = if args.new_column {
+                None
+            } else if let Some(number) = args.column {
+                Some(number as usize - 1)
+            } else {
+                Some(active + 1).filter(|i| *i < ws.columns.len())
+            };
+            let reuse = target.and_then(|index| {
+                let column = &ws.columns[index];
+                column
+                    .shown()
+                    .filter(|t| t.kind == crate::PaneKind::Lexicon)
+                    .or_else(|| {
+                        column
+                            .tabs
+                            .iter()
+                            .find(|t| t.kind == crate::PaneKind::Lexicon)
+                    })
+                    .map(|t| t.id.clone())
+            });
+            match (target, reuse) {
+                (Some(index), Some(tab_id)) => {
+                    let tab = tab_mut(ws, &tab_id);
+                    tab.lexicon_word = Some(word);
+                    tab.reference = reference;
+                    tab.scroll_anchor = None;
+                    tab.link_group = None;
+                    tab.pinned = true;
+                    ws.columns[index].shown_tab_id = tab_id;
+                }
+                (target, _) => {
+                    let source = ws.tabs().find(|t| t.kind == crate::PaneKind::Lexicon);
+                    let (content_id, content_revision) = source.map_or_else(
+                        || (DEFAULT_LEXICON_CONTENT_ID.to_owned(), "0".to_owned()),
+                        |t| (t.content_id.clone(), t.content_revision.clone()),
+                    );
+                    let tab_id = ws.mint_id("t");
+                    // Pinned: a looked-up word keeps its passage when the reader navigates.
+                    let tab = Tab {
+                        id: tab_id.clone(),
+                        kind: crate::PaneKind::Lexicon,
+                        content_id,
+                        content_revision,
+                        reference,
+                        scroll_anchor: None,
+                        link_group: None,
+                        pinned: true,
+                        history: Default::default(),
+                        lexicon_word: Some(word),
+                    };
+                    match target {
+                        Some(index) => {
+                            let column = &mut ws.columns[index];
+                            column.tabs.push(tab);
+                            column.shown_tab_id = tab_id;
+                        }
+                        None => {
+                            let reading = ws.active_column_id.clone();
+                            insert_column(ws, active + 1, tab);
+                            ws.active_column_id = reading;
+                        }
+                    }
+                }
+            }
         }
         _ => {
             if let Some(tool) = tool_of(id) {
