@@ -160,8 +160,9 @@ fn conformance_suite_passes() {
 #[wasm_bindgen_test]
 fn shell_handle_runs_commands_and_the_palette() {
     let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
-    let invocation =
-        serde_wasm_bindgen::to_value(&serde_json::json!({"command_id": "column.new"})).unwrap();
+    // A plain object, as a page passes it (serde_wasm_bindgen's default serializer would
+    // turn a JSON map into a JS Map, which the surface does not read).
+    let invocation = js_sys::JSON::parse(r#"{"command_id": "column.new"}"#).unwrap();
     shell.apply(invocation, JsValue::UNDEFINED).unwrap();
     assert_eq!(shell.revision(), 1.0);
     shell.undo().unwrap();
