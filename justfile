@@ -67,6 +67,13 @@ bench-retrieval dir="target/bench-retrieval" tf="" *args:
     target/release/openlogos-retrieval-bench r5 {{ dir }}/r5 {{ args }}
     target/release/openlogos-retrieval-bench r9 {{ dir }}/r9 {{ args }}
 
+# B070 shell benchmark (docs/evidence/B070.md): palette keystrokes, tab, column and workspace switches over ten workspaces of 3 columns × 4 tabs, against the specs/22 §7 budgets; extra arguments go to the binary, e.g. `just bench-shell --rounds 50`
+[group('2 · core')]
+bench-shell json="target/bench-shell/b070.json" *args:
+    cargo build --release -p openlogos-conformance --bin openlogos-shell-bench
+    mkdir -p "$(dirname {{ json }})"
+    target/release/openlogos-shell-bench --json {{ json }} {{ args }}
+
 # Validate the blueprint data (schemas, backlog DAG, source IDs); needs the pipeline or ops shell
 [group('3 · blueprint')]
 validate:

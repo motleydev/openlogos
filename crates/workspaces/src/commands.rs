@@ -1121,6 +1121,9 @@ fn current_visit(tab: &Tab, transaction_id: &str) -> Visit {
 /// Moves a tab to `reference` and records the visit in its history, seeding the history
 /// with where the tab was if it has never navigated.
 fn move_tab(tab: &mut Tab, reference: &str, transaction_id: &str, driven: bool) {
+    if tab.history.back.len() >= HISTORY_DEPTH {
+        tab.history.back.remove(0);
+    }
     if tab.history.current.is_none() {
         tab.history.current = Some(current_visit(tab, "restored"));
     }
@@ -1174,6 +1177,24 @@ pub fn apply(
     invocation: &Invocation,
     context: &CommandContext,
 ) -> Result<Applied, CommandError> {
+    let mut s = session.clone();
+    let (undo, effects, handled) = apply_in_place(&mut s, invocation, context)?;
+    Ok(Applied {
+        session: s,
+        undo,
+        effects,
+        handled,
+    })
+}
+
+/// [`apply`] without the copy: mutates `s` and copies only the workspaces an undoable
+/// command touches into its record, so a focus change costs no copy at all. On an error
+/// `s` is unchanged: every check runs before the first mutation.
+fn apply_in_place(
+    s: &mut Session,
+    invocation: &Invocation,
+    context: &CommandContext,
+) -> Result<(Option<UndoRecord>, Effects, bool), CommandError> {
     let id = invocation.command_id.as_str();
     let spec = command(id).ok_or_else(|| CommandError::UnknownCommand {
         command_id: id.to_owned(),
@@ -1183,30 +1204,22 @@ pub fn apply(
             command_id: id.to_owned(),
         });
     }
-    enabled(session, false, false, invocation, context).map_err(|reason| {
-        CommandError::Disabled {
-            command_id: id.to_owned(),
-            reason,
-        }
+    enabled(s, false, false, invocation, context).map_err(|reason| CommandError::Disabled {
+        command_id: id.to_owned(),
+        reason,
     })?;
     if !spec.handled_by_core {
-        return Ok(Applied {
-            session: session.clone(),
-            undo: None,
-            effects: Effects::default(),
-            handled: false,
-        });
+        return Ok((None, Effects::default(), false));
     }
 
     let args = &invocation.args;
-    let mut touched = vec![session.active_workspace_id.clone()];
+    let mut touched = vec![s.active_workspace_id.clone()];
     if let Some(w) = &args.workspace_id
         && !touched.contains(w)
     {
         touched.push(w.clone());
     }
-    let before = Snapshot::take(session, &touched);
-    let mut s = session.clone();
+    let before = spec.undoable.then(|| Snapshot::take(s, &touched));
     let mut effects = Effects::default();
 
     match id {
@@ -1271,7 +1284,7 @@ pub fn apply(
             s.active_workspace_id = id;
         }
         "workspace.close" => {
-            let target = target_workspace(&s, args).expect("enabled").id.clone();
+            let target = target_workspace(s, args).expect("enabled").id.clone();
             let index = s
                 .workspaces
                 .iter()
@@ -1285,7 +1298,7 @@ pub fn apply(
         }
         "workspace.rename" => {
             let title = non_empty(&args.text).expect("enabled").to_owned();
-            let target = target_workspace(&s, args).expect("enabled").id.clone();
+            let target = target_workspace(s, args).expect("enabled").id.clone();
             if let Some(ws) = s.workspaces.iter_mut().find(|w| w.id == target) {
                 ws.title = title;
             }
@@ -1449,7 +1462,7 @@ pub fn apply(
             ws.active_column_id = target.id.clone();
         }
         "tab.focus" => {
-            let target = target_workspace(&s, args).expect("enabled").id.clone();
+            let target = target_workspace(s, args).expect("enabled").id.clone();
             s.active_workspace_id = target;
             let tab_id = args.tab_id.clone().expect("enabled");
             let ws = s.active_mut();
@@ -1489,16 +1502,12 @@ pub fn apply(
         }
     }
     debug_assert!(s.check().is_ok(), "{id} broke the session: {:?}", s.check());
-    Ok(Applied {
-        undo: spec.undoable.then(|| UndoRecord {
-            command_id: id.to_owned(),
-            title: spec.title.clone(),
-            before,
-        }),
-        session: s,
-        effects,
-        handled: true,
-    })
+    let undo = before.map(|before| UndoRecord {
+        command_id: id.to_owned(),
+        title: spec.title.clone(),
+        before,
+    });
+    Ok((undo, effects, true))
 }
 
 /// A command with its state, for menus and the palette.
@@ -1537,6 +1546,9 @@ pub struct Shell {
     /// Bumped by every change to the session; a host keys caches on it.
     pub revision: u64,
 }
+
+/// Back visits a tab keeps; the oldest is dropped beyond this.
+pub const HISTORY_DEPTH: usize = 100;
 
 /// Undo records a shell keeps.
 pub const UNDO_DEPTH: usize = 100;
@@ -1594,31 +1606,30 @@ impl Shell {
             "edit.redo" => return self.redo(),
             _ => {}
         }
-        let applied = apply(&self.session, invocation, context)?;
-        if !applied.handled {
+        let (undo, effects, handled) = apply_in_place(&mut self.session, invocation, context)?;
+        if !handled {
             return Ok(Outcome {
                 command_id: invocation.command_id.clone(),
                 handled: false,
                 recorded: false,
-                effects: applied.effects,
+                effects,
                 revision: self.revision,
             });
         }
-        let recorded = applied.undo.is_some();
-        if let Some(record) = applied.undo {
+        let recorded = undo.is_some();
+        if let Some(record) = undo {
             self.undo_stack.push(record);
             if self.undo_stack.len() > UNDO_DEPTH {
                 self.undo_stack.remove(0);
             }
             self.redo_stack.clear();
         }
-        self.session = applied.session;
         self.revision += 1;
         Ok(Outcome {
             command_id: invocation.command_id.clone(),
             handled: true,
             recorded,
-            effects: applied.effects,
+            effects,
             revision: self.revision,
         })
     }

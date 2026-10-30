@@ -33,7 +33,9 @@
 //! **Text** comes from a [`TextProvider`]; B071 supplies the edition search, the conformance
 //! crate a fixture provider over its fixture texts.
 
-use openlogos_core::reference::{AliasTable, Reference, ReferenceSet, parse};
+use openlogos_core::reference::{
+    AliasTable, BookId, Reference, ReferenceRange, ReferenceSet, ReviewFlag, parse,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
@@ -359,7 +361,7 @@ impl PaletteIndex {
                     let parsed = tab
                         .reference
                         .as_deref()
-                        .and_then(|r| parse(r, table).ok())
+                        .and_then(|r| osis_verse(r).or_else(|| parse(r, table).ok()))
                         .filter(|set| !set.ranges.is_empty());
                     let human = parsed.as_ref().map(|set| set.to_human(table));
                     let title = match &human {
@@ -395,6 +397,32 @@ impl PaletteIndex {
         }
         PaletteIndex { workspaces, tabs }
     }
+}
+
+/// A single `Book.C` or `Book.C.V` OSIS reference without the alias table, which is what
+/// tabs store; anything else goes through [`parse`]. Indexing 120 tabs through the full
+/// parser cost about 5 ms (docs/evidence/B070.md), most of a frame.
+fn osis_verse(text: &str) -> Option<ReferenceSet> {
+    let mut parts = text.split('.');
+    let book = BookId::from_osis(parts.next()?)?;
+    let chapter: u32 = parts.next()?.parse().ok().filter(|c| *c > 0)?;
+    let (reference, flags) = match parts.next() {
+        Some(verse) => (
+            Reference::verse(book, chapter, verse.parse().ok()?),
+            Vec::new(),
+        ),
+        None => (
+            Reference::chapter(book, chapter),
+            vec![ReviewFlag::ChapterOnly { range: 0 }],
+        ),
+    };
+    if parts.next().is_some() {
+        return None;
+    }
+    Some(ReferenceSet {
+        ranges: vec![ReferenceRange::single(reference)],
+        flags,
+    })
 }
 
 fn target_args(target: Option<ColumnTarget>, reference: String) -> CommandArgs {
@@ -830,6 +858,22 @@ mod tests {
         assert_eq!(q("a@2").target, None);
         assert_eq!(q("x @two").target, None);
         assert_eq!(q("x @two").text, "x @two");
+    }
+
+    #[test]
+    fn the_osis_fast_path_agrees_with_the_parser() {
+        for text in ["John.3.16", "Gen.1", "1John.4.8", "Ps.119.105", "Rev.22.21"] {
+            assert_eq!(osis_verse(text), parse(text, english()).ok(), "{text}");
+        }
+        for text in [
+            "John.3.16-John.3.17",
+            "John.0.1",
+            "Nope.1.1",
+            "John",
+            "fixture:passage:1",
+        ] {
+            assert!(osis_verse(text).is_none(), "{text}");
+        }
     }
 
     #[test]
