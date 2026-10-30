@@ -85,9 +85,8 @@ button { font: inherit; color: inherit; }
 .chip:hover, .chip[aria-expanded="true"] { background: var(--hover); color: var(--text); }
 .chip b { color: var(--text); font-weight: 600; }
 .chip .count { font-variant-numeric: tabular-nums; }
-.chip.text-menu { font-family: var(--font-reading); padding: 0 10px; gap: 1px; align-items: baseline; padding-top: 4px; }
-.chip.text-menu .small { font-size: 12px; }
-.chip.text-menu .large { font-size: 18px; }
+.chip.text-menu .aa { font-family: var(--font-reading); font-size: 16px; color: var(--text); }
+.chip.text-menu .size { font-variant-numeric: tabular-nums; }
 
 /* MARK: Palette results */
 
@@ -195,7 +194,7 @@ button { font: inherit; color: inherit; }
 .measure { max-width: var(--measure); margin: 0 auto; padding: var(--space-5) var(--space-5) 96px; }
 /* The floating well sits over the first column's leading edge: its text starts clear of it. */
 :root:not(.well-collapsed) .column:first-child .measure, :root:not(.well-collapsed) .column:first-child .placeholder {
-  padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-width) + var(--space-3));
+  padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-width) + var(--space-2));
 }
 .measure .text {
   font-family: var(--font-reading); font-size: var(--reading-size); line-height: var(--reading-leading);
@@ -249,11 +248,12 @@ canvas.margin { position: absolute; inset: 0; pointer-events: none; touch-action
 .tool:hover { background: var(--hover); color: var(--text); }
 .tool[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .well hr { width: 24px; border: 0; border-top: 1px solid var(--rule); margin: 4px 0; }
-.swatches { position: relative; width: 32px; height: 32px; border: 0; background: none; padding: 0; cursor: pointer; }
-.swatches span { position: absolute; width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--page); box-shadow: 0 0 0 1px var(--rule); }
+.swatches { position: relative; width: 32px; height: 32px; }
+.swatches button { position: absolute; width: 18px; height: 18px; padding: 0; border-radius: 4px; border: 1.5px solid var(--page); box-shadow: 0 0 0 1px var(--rule); cursor: pointer; }
 .swatches .current { left: 3px; top: 3px; z-index: 1; }
 .swatches .alternate { right: 3px; bottom: 3px; }
-.width-dot { width: 32px; height: 24px; display: grid; place-items: center; }
+.width-dot { width: 32px; height: 24px; display: grid; place-items: center; border: 0; background: none; padding: 0; cursor: pointer; border-radius: var(--radius-control); }
+.width-dot:hover { background: var(--hover); }
 .width-dot span { border-radius: 50%; background: var(--text); }
 
 /* MARK: Toast */

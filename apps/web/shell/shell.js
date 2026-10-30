@@ -3,13 +3,15 @@
 //
 // Every button, menu item, key and palette row dispatches a registered command through
 // `run()` → `ShellHandle.apply`; when the core answers `handled: false` the host performs it
-// (`perform()`: text size, theme, focus mode, the tool well's visibility, swatches, selection
-// actions, export, focusing the palette), and the view is re-rendered from `handle.session()`.
-// Keys come from the registry (keys.js); nothing is bound that it does not list.
+// (`perform()`: focus mode, the tool well's visibility, selection actions, export, focusing
+// the palette), and the view is re-rendered from `handle.session()`: text size, line spacing
+// and theme from `session.reading`, brush width and swatches from `session.ink`, column widths
+// and scroll anchors from the workspace. Keys come from the registry (keys.js); nothing is
+// bound that it does not list.
 //
-// What the host keeps outside the session, because the registry has no command for it yet
-// (named in docs/evidence/B072-web.md): column widths after a drag, scroll positions, the tool
-// well's position, line spacing, highlights and ink strokes (no annotation store until B073+).
+// Host view state, outside the session (docs/evidence/B072-web.md): the tool well's position
+// and collapse, a column-rule drag until it ends in `column.resize`, and highlights and ink
+// strokes (in memory until the annotation store, B074).
 //
 // Rendering is per column: a column's DOM is rebuilt only when its tabs, shown tab or passage
 // change; focus, tool and theme changes touch classes and attributes only, so they cost a
@@ -28,15 +30,24 @@ const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
 
 // Mirrors of design/tokens/shell.json that the script needs as numbers (the test compares them).
+// The core's text_size_step 0 is the default size; a step indexes `sizes` from there.
 export const TOKENS = {
   sizes: [15, 17, 19, 21, 24, 28, 32], defaultSize: 19,
   spacings: [1.35, 1.5, 1.7], defaultSpacing: 1.5,
-  measure: { standard: 640, accessibility: 900 },
   swatches: { yellow: ["#F5D90A", 0.35], green: ["#4CC38A", 0.30], blue: ["#5B9BFF", 0.30], pink: ["#F25C9A", 0.28] },
   themes: ["light", "sepia", "dark"],
 };
 const SWATCH_ORDER = ["yellow", "green", "blue", "pink"];
-const PEN_WIDTHS = [2, 4, 6];
+// The width dot cycles these (core INK_WIDTHS holds more; the palette reaches all of them).
+const DOT_WIDTHS = [2, 4, 6];
+
+/** The swatch name of a `#RRGGBB` (the core stores colours), or null for another colour. */
+function swatchName(hex) {
+  const h = (hex || "").toUpperCase();
+  return SWATCH_ORDER.find((k) => TOKENS.swatches[k][0] === h) || null;
+}
+/** Colour and painted opacity of a stored swatch; an unknown colour paints at 30 %. */
+const swatchPaint = (hex) => { const n = swatchName(hex); return n ? TOKENS.swatches[n] : [hex, 0.3]; };
 
 // Inline SVG for the tool well (20 × 20, stroked with currentColor).
 const ICONS = {
@@ -54,13 +65,12 @@ const TOOLS = [
 
 const host = {
   handle: null, session: null, registry: [], specs: new Map(), bindings: [], text: null,
-  theme: "light", size: TOKENS.sizes.indexOf(TOKENS.defaultSize), spacing: TOKENS.spacings.indexOf(TOKENS.defaultSpacing), focusMode: false,
-  widths: new Map(), scroll: new Map(), views: new Map(), order: [],
+  focusMode: false, layout: null,
+  views: new Map(), order: [],
   well: { top: null, collapsed: false },
-  swatches: ["yellow", "green"], penWidth: 1,
   highlights: [], ink: new Map(),
   palette: { expanded: null, rows: [], index: -1, result: null, returnTo: null },
-  menu: null, log: [], targets: new Map(),
+  menu: null, log: [], targets: new Map(), colourRules: new Set(),
 };
 
 // MARK: - Commands
@@ -70,7 +80,8 @@ function hasSelection() {
   return !!s && s.rangeCount > 0 && !s.isCollapsed && !!viewOfNode(s.getRangeAt(0).commonAncestorContainer);
 }
 
-/** Dispatches one registered command; the only path from the UI to the session. */
+/** Dispatches one registered command; the only path from the UI to the session. A quiet
+ *  command (tab.record_scroll) changes nothing on screen, so it does not re-render. */
 export function run(invocation) {
   let outcome;
   try {
@@ -82,6 +93,8 @@ export function run(invocation) {
     return null;
   }
   host.log.push({ command_id: invocation.command_id, handled: outcome.handled });
+  const spec = host.specs.get(invocation.command_id);
+  if (spec && spec.quiet) { host.session = host.handle.session(); return outcome; }
   if (outcome.handled) {
     host.session = host.handle.session();
     if (invocation.command_id === "nav.navigate" && invocation.args && invocation.args.reference) {
@@ -95,24 +108,15 @@ export function run(invocation) {
 }
 
 /** The host's half of the commands the core leaves to it (`handled: false`). */
-function perform({ command_id: id, args = {} }) {
+function perform({ command_id: id }) {
   switch (id) {
     case "palette.focus": focusPalette(); break;
-    case "view.text_size_up": host.size = Math.min(TOKENS.sizes.length - 1, host.size + 1); break;
-    case "view.text_size_down": host.size = Math.max(0, host.size - 1); break;
-    case "view.text_size_reset": host.size = TOKENS.sizes.indexOf(TOKENS.defaultSize); break;
-    case "view.theme": {
-      const wanted = (args.text || "").trim().toLowerCase();
-      host.theme = TOKENS.themes.includes(wanted) ? wanted : TOKENS.themes[(TOKENS.themes.indexOf(host.theme) + 1) % TOKENS.themes.length];
-      break;
-    }
     case "view.focus_mode": host.focusMode = !host.focusMode; break;
     case "view.tool_palette":
       // Collapse to the grip where it is, so the grip stays under the pointer.
       if (host.well.top == null) host.well.top = $("well").getBoundingClientRect().top;
       host.well.collapsed = !host.well.collapsed;
       break;
-    case "tool.swap_swatches": host.swatches.reverse(); break;
     case "selection.highlight": highlightSelection(); break;
     case "selection.collect": collectSelection(); break;
     case "selection.study": toast("Word study is not built yet"); break;
@@ -144,10 +148,23 @@ const activeTab = () => { const c = activeColumn(); return c.tabs.find((t) => t.
 const shownTab = (c) => c.tabs.find((t) => t.id === c.shown_tab_id);
 const tabKey = (ws, tab) => `${ws.id}/${tab.id}`;
 
+/** The strip label: resource short name and chapter (`BSB Jn 3`), whatever verse is shown. */
 function tabLabel(tab) {
   const r = host.text.resource(tab.content_id);
   if (r.kind === "notes" || tab.kind === "notes") return r.short;
-  return `${r.short} ${shortPassage(tab.reference)}`.trim();
+  const chapter = tab.reference ? tab.reference.split("-")[0].split(".").slice(0, 2).join(".") : null;
+  return `${r.short} ${shortPassage(chapter)}`.trim();
+}
+
+/** The reading settings in effect: size in px, line spacing, resolved theme, measure cap. */
+function reading() {
+  const r = host.session.reading;
+  const base = TOKENS.sizes.indexOf(TOKENS.defaultSize);
+  const size = TOKENS.sizes[Math.max(0, Math.min(TOKENS.sizes.length - 1, base + r.text_size_step))];
+  const theme = r.theme === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : r.theme;
+  // The core's measure caps (layoutConstants); the accessibility cap from 28 pt up.
+  const measure = size >= 28 ? host.layout.measure_cap_accessibility_pt : host.layout.measure_cap_standard_pt;
+  return { size, spacing: r.line_spacing, theme, measure };
 }
 
 /** Runs `then` with column `number` active, focusing it first when it is not. */
@@ -160,15 +177,15 @@ function inColumn(number, then) {
 // MARK: - Rendering
 
 export function render() {
-  root.dataset.theme = host.theme;
+  const r = reading();
+  root.dataset.theme = r.theme;
   root.dataset.tool = host.session.tool;
   root.classList.toggle("focus-mode", host.focusMode);
   root.classList.toggle("well-collapsed", host.well.collapsed);
-  const size = TOKENS.sizes[host.size];
-  root.style.setProperty("--reading-size", `${size}px`);
-  root.style.setProperty("--reading-leading", String(TOKENS.spacings[host.spacing]));
-  root.style.setProperty("--measure", `${size >= 28 ? TOKENS.measure.accessibility : TOKENS.measure.standard}px`);
-  const [swatch, alpha] = TOKENS.swatches[host.swatches[0]];
+  root.style.setProperty("--reading-size", `${r.size}px`);
+  root.style.setProperty("--reading-leading", String(r.spacing));
+  root.style.setProperty("--measure", `${r.measure}px`);
+  const [swatch, alpha] = swatchPaint(host.session.ink.swatch);
   root.style.setProperty("--swatch", swatch);
   root.style.setProperty("--swatch-opacity", String(alpha));
   renderSwitcher();
@@ -184,6 +201,9 @@ function renderSwitcher() {
   const text = `<b>${escapeHtml(activeWorkspace().title)}</b> <span class="count">· ${index + 1}/${s.workspaces.length}</span> <span aria-hidden="true">▾</span>`;
   if (button.innerHTML !== text) button.innerHTML = text;
   button.setAttribute("aria-label", `Workspace ${activeWorkspace().title}, ${index + 1} of ${s.workspaces.length}`);
+  const size = $("text-menu").querySelector(".size");
+  const pt = String(reading().size);
+  if (size.textContent !== pt) size.textContent = pt;
 }
 
 function columnSignature(ws, column, number) {
@@ -202,7 +222,6 @@ function renderColumns() {
     const signature = columnSignature(ws, column, i + 1);
     let view = host.views.get(key);
     if (!view || view.signature !== signature) {
-      if (view) saveScroll(view);
       view = buildColumn(ws, column, i + 1);
       view.signature = signature;
       host.views.set(key, view);
@@ -210,7 +229,7 @@ function renderColumns() {
     const active = column.id === ws.active_column_id;
     view.section.classList.toggle("active", active);
     view.section.setAttribute("aria-current", active ? "true" : "false");
-    view.section.style.flexGrow = String(host.widths.get(key) ?? column.width_fraction);
+    view.section.style.flexGrow = String(column.width_fraction);
     if (i > 0) order.push(ruleBetween(ws, i));
     order.push(view.section);
   });
@@ -236,7 +255,9 @@ function ruleBetween(ws, index) {
     rule.setAttribute("role", "separator");
     rule.setAttribute("aria-orientation", "vertical");
     rule.setAttribute("aria-label", `Resize columns ${index} and ${index + 1}`);
+    rule.title = "Drag to resize · double-click to make the columns equal";
     rule.addEventListener("pointerdown", (e) => startResize(e, rule, index));
+    rule.addEventListener("dblclick", () => run({ command_id: "column.equalize" }));
     rules.set(key, rule);
   }
   return rule;
@@ -352,7 +373,10 @@ function buildColumn(ws, column, number) {
   } else {
     page.appendChild(placeholder(ws, tab, resource));
   }
-  scroller.addEventListener("scroll", () => saveScroll(view), { passive: true });
+  scroller.addEventListener("scroll", () => {
+    clearTimeout(view.scrollTimer);
+    view.scrollTimer = setTimeout(() => recordScroll(view), 150);
+  }, { passive: true });
   section.addEventListener("pointerdown", (e) => {
     if (e.target.closest(".tabstrip, .pane-menu")) return;
     if (activeWorkspace().active_column_id !== column.id) {
@@ -387,7 +411,7 @@ function dockView(ws) {
   h.textContent = "Notes";
   const scroller = document.createElement("div");
   scroller.className = "scroller";
-  const note = host.text.passage("notes", null);
+  const note = host.text.passage(ws.notes_dock.note_id || "fixture:note:1", null);
   const article = document.createElement("article");
   article.className = "measure";
   if (note) article.appendChild(renderParagraph(note.paragraph, "ltr", "en"));
@@ -397,15 +421,54 @@ function dockView(ws) {
   return el;
 }
 
-function saveScroll(view) { host.scroll.set(view.key, view.scroller.scrollTop); }
+/** Where the reader is: the segment and scalar at the top of the text, sent to the core as
+ *  `tab.record_scroll` once scrolling settles (a quiet command: no re-render, no undo). */
+function scrollAnchorOf(view) {
+  if (!view.text || !view.section.isConnected) return null;
+  const box = view.scroller.getBoundingClientRect();
+  const text = view.text.getBoundingClientRect();
+  const rtl = view.resource.dir === "rtl";
+  const x = rtl ? Math.min(text.right, box.right) - 2 : Math.max(text.left, box.left) + 2;
+  const y = box.top + 2;
+  const caret = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+  const node = caret && caret.startContainer;
+  const verse = node && node.parentElement && node.parentElement.closest("[data-segment]");
+  if (verse && view.text.contains(verse) && node.parentElement.classList.contains("t")) {
+    return { segment_id: verse.dataset.segment, scalar: [...node.data.slice(0, caret.startOffset)].length };
+  }
+  // Between lines or above the text: the first segment whose bottom is below the top edge.
+  for (const v of view.text.querySelectorAll("[data-segment]")) {
+    if (v.getBoundingClientRect().bottom > y) return { segment_id: v.dataset.segment, scalar: 0 };
+  }
+  return null;
+}
+
+function recordScroll(view) {
+  const anchor = scrollAnchorOf(view);
+  if (!anchor) return;
+  const old = view.tab.scroll_anchor;
+  if (!old && view.scroller.scrollTop < 4) return;
+  if (old && old.segment_id === anchor.segment_id && old.scalar === anchor.scalar) return;
+  run({ command_id: "tab.record_scroll", args: { workspace_id: view.ws.id, tab_id: view.tab.id, ...anchor } });
+  view.tab = { ...view.tab, scroll_anchor: anchor };
+}
+
+/** Scrolls a freshly built column to a navigation target, or to its tab's scroll_anchor. */
 function restoreScroll(view) {
   if (view.scrollTo) { view.scroller.scrollTop = Math.max(0, view.scrollTo.offsetTop - 24); view.scrollTo = null; return; }
-  const top = host.scroll.get(view.key);
-  if (top) { view.scroller.scrollTop = top; return; }
-  // First show: the tab's stored scroll_anchor (its segment) from the session.
   const anchor = view.tab.scroll_anchor;
   const verse = anchor && view.text && view.text.querySelector(`[data-segment="${CSS.escape(anchor.segment_id)}"]`);
-  if (verse) view.scroller.scrollTop = Math.max(0, verse.offsetTop - 24);
+  if (!verse) return;
+  const node = verse.querySelector(".t").firstChild;
+  let top = verse.getBoundingClientRect().top;
+  if (node && anchor.scalar > 0) {
+    const r = document.createRange();
+    const at = [...node.data].slice(0, anchor.scalar).join("").length;
+    r.setStart(node, Math.min(at, node.length));
+    r.setEnd(node, Math.min(at + 1, node.length));
+    top = r.getBoundingClientRect().top;
+  }
+  view.scroller.scrollTop += top - view.scroller.getBoundingClientRect().top - 1;
 }
 
 function viewOfNode(node) {
@@ -413,32 +476,35 @@ function viewOfNode(node) {
   return null;
 }
 
-// MARK: - Column resizing (host view state: no width command in the registry yet)
+// MARK: - Column resizing: a drag previews the core's rule and ends in `column.resize`
 
 function startResize(event, rule, index) {
   event.preventDefault();
   const ws = activeWorkspace();
-  const left = ws.columns[index - 1], right = ws.columns[index];
-  const kl = `${ws.id}/${left.id}`, kr = `${ws.id}/${right.id}`;
-  const fl = host.widths.get(kl) ?? left.width_fraction, fr = host.widths.get(kr) ?? right.width_fraction;
+  const shares = ws.columns.map((c) => c.width_fraction);
+  const views = ws.columns.map((c) => host.views.get(`${ws.id}/${c.id}`));
   const total = $("columns").getBoundingClientRect().width;
-  const sum = ws.columns.reduce((a, c) => a + (host.widths.get(`${ws.id}/${c.id}`) ?? c.width_fraction), 0);
   const x0 = event.clientX;
+  // A tenth of the window at least (the core accepts down to 0.05), the rest for the others.
+  const min = 0.1, max = 1 - min * (ws.columns.length - 1);
+  let share = shares[index - 1];
   rule.setPointerCapture(event.pointerId);
   rule.classList.add("dragging");
+  // column.resize gives column N its share and scales the others in proportion; the preview
+  // does the same, so the drop does not jump.
+  const apply = () => {
+    const others = 1 - shares[index - 1];
+    views.forEach((v, i) => { v.section.style.flexGrow = String(i === index - 1 ? share : (shares[i] * (1 - share)) / others); });
+  };
   const move = (e) => {
-    const d = ((e.clientX - x0) / total) * sum;
-    const min = 0.1 * sum;
-    const nl = Math.max(min, Math.min(fl + fr - min, fl + d));
-    host.widths.set(kl, nl);
-    host.widths.set(kr, fl + fr - nl);
-    host.views.get(kl).section.style.flexGrow = String(nl);
-    host.views.get(kr).section.style.flexGrow = String(fl + fr - nl);
+    share = Math.max(min, Math.min(max, shares[index - 1] + (e.clientX - x0) / total));
+    apply();
   };
   const up = () => {
     rule.classList.remove("dragging");
     rule.removeEventListener("pointermove", move);
     rule.removeEventListener("pointerup", up);
+    if (Math.abs(share - shares[index - 1]) > 1e-4) run({ command_id: "column.resize", args: { column: index, number: share } });
     for (const view of host.views.values()) if (view.section.isConnected) sizeCanvas(view);
   };
   rule.addEventListener("pointermove", move);
@@ -460,7 +526,7 @@ function selectionInView() {
 function highlightSelection() {
   const found = selectionInView();
   if (!found) return toast("Select some text first");
-  host.highlights.push({ edition_id: found.view.paragraph.edition_id, anchors: found.trip.anchors, swatch: host.swatches[0] });
+  host.highlights.push({ edition_id: found.view.paragraph.edition_id, anchors: found.trip.anchors, swatch: host.session.ink.swatch.toUpperCase() });
   document.getSelection().removeAllRanges();
 }
 
@@ -475,20 +541,37 @@ function collectSelection() {
   toast(`Collected: ${where}`);
 }
 
+/** The highlight name a swatch paints under: the token swatches have their rules in
+ *  shell.css; another colour gets a rule here, at 30 %. */
+function highlightName(hex) {
+  const known = swatchName(hex);
+  if (known) return `ol-${known}`;
+  const name = `ol-c${hex.slice(1).toLowerCase()}`;
+  if (!host.colourRules.has(name)) {
+    host.colourRules.add(name);
+    let sheet = $("swatch-rules");
+    if (!sheet) { sheet = document.createElement("style"); sheet.id = "swatch-rules"; document.head.appendChild(sheet); }
+    sheet.textContent += `::highlight(${name}) { background-color: color-mix(in srgb, ${hex} 30%, transparent); }\n`;
+  }
+  return name;
+}
+
 function paintHighlights() {
   if (!("highlights" in CSS)) return;
-  const bySwatch = new Map(SWATCH_ORDER.map((s) => [s, []]));
+  const bySwatch = new Map(SWATCH_ORDER.map((s) => [`ol-${s}`, []]));
   for (const view of host.views.values()) {
     if (!view.text || !view.section.isConnected) continue;
     for (const h of host.highlights) {
       if (h.edition_id !== view.paragraph.edition_id) continue;
       for (const anchor of h.anchors) {
         if (!view.paragraph.segments.some((s) => s.segment_id === anchor.segment_id)) continue;
-        bySwatch.get(h.swatch).push(anchorRange(core, view.paragraph, view.text, anchor));
+        const name = highlightName(h.swatch);
+        if (!bySwatch.has(name)) bySwatch.set(name, []);
+        bySwatch.get(name).push(anchorRange(core, view.paragraph, view.text, anchor));
       }
     }
   }
-  for (const [swatch, ranges] of bySwatch) CSS.highlights.set(`ol-${swatch}`, new Highlight(...ranges));
+  for (const [name, ranges] of bySwatch) CSS.highlights.set(name, new Highlight(...ranges));
 }
 
 // A drag with the Highlight or Collect tool ends in the command, with no menu (specs/22 §4).
@@ -555,8 +638,9 @@ function attachInk(view) {
     const tool = host.session.tool;
     if (tool === "eraser") { live = { eraser: true }; erase(point(e)); return; }
     const brush = tool === "highlighter_pen" ? BRUSHES.highlighter : BRUSHES.pen;
-    const width = PEN_WIDTHS[host.penWidth] * (tool === "highlighter_pen" ? HIGHLIGHTER_WIDTH_FACTOR * 2 : 1);
-    const color = tool === "highlighter_pen" ? TOKENS.swatches[host.swatches[0]][0] : getComputedStyle(root).getPropertyValue("--text").trim();
+    // The session's brush width; the highlighter band is wider (B039's factor).
+    const width = host.session.ink.width * (tool === "highlighter_pen" ? HIGHLIGHTER_WIDTH_FACTOR : 1);
+    const color = tool === "highlighter_pen" ? host.session.ink.swatch : getComputedStyle(root).getPropertyValue("--accent").trim();
     const p = point(e);
     live = { id: `stroke-${++inkOf(view.key).serial}`, tool: brush.tool, brush_version: brush.version, width, color, opacity: brush.opacity, points: [{ ...p, pressure: e.pointerType === "pen" ? e.pressure : null, elapsed_ms: 0 }], started: e.timeStamp };
   });
@@ -627,16 +711,23 @@ function buildWell() {
     well.appendChild(b);
   }
   well.appendChild(document.createElement("hr"));
-  const swatches = document.createElement("button");
-  swatches.type = "button";
+  // Two overlapping wells: the current one chooses a swatch (tool.swatch), the alternate one
+  // swaps them (tool.swap_swatches, X).
+  const swatches = document.createElement("div");
   swatches.className = "swatches";
-  swatches.innerHTML = '<span class="alternate"></span><span class="current"></span>';
-  swatches.addEventListener("click", () => run({ command_id: "tool.swap_swatches" }));
+  swatches.innerHTML = '<button type="button" class="alternate"></button><button type="button" class="current" aria-haspopup="menu"></button>';
+  swatches.querySelector(".alternate").addEventListener("click", () => run({ command_id: "tool.swap_swatches" }));
+  swatches.querySelector(".current").addEventListener("click", (e) => openSwatchMenu(e.currentTarget));
   well.appendChild(swatches);
-  const dot = document.createElement("div");
+  // The width dot steps through 2, 4, 6 (tool.width); the palette reaches every core width.
+  const dot = document.createElement("button");
+  dot.type = "button";
   dot.className = "width-dot";
-  dot.setAttribute("role", "img");
   dot.innerHTML = "<span></span>";
+  dot.addEventListener("click", () => {
+    const i = DOT_WIDTHS.indexOf(host.session.ink.width);
+    run({ command_id: "tool.width", args: { number: DOT_WIDTHS[(i + 1) % DOT_WIDTHS.length] } });
+  });
   well.appendChild(dot);
 }
 
@@ -650,16 +741,19 @@ function renderWell() {
     const on = b.dataset.tool === tool;
     if (b.getAttribute("aria-pressed") !== String(on)) b.setAttribute("aria-pressed", String(on));
   }
-  const [current, alternate] = host.swatches;
+  const { swatch, alternate_swatch: alternate, width: w } = host.session.ink;
+  const label = (hex) => swatchName(hex) || hex;
   const sw = well.querySelector(".swatches");
-  sw.querySelector(".current").style.background = TOKENS.swatches[current][0];
-  sw.querySelector(".alternate").style.background = TOKENS.swatches[alternate][0];
-  sw.title = `Swatch ${current}, alternate ${alternate} (${shortcutGlyphs(shortcutOf("tool.swap_swatches"))} swaps)`;
-  sw.setAttribute("aria-label", `Swatches: current ${current}, alternate ${alternate}. Swap`);
-  const w = PEN_WIDTHS[host.penWidth];
+  const cur = sw.querySelector(".current"), alt = sw.querySelector(".alternate");
+  cur.style.background = swatch;
+  alt.style.background = alternate;
+  cur.title = `Swatch: ${label(swatch)} (choose)`;
+  cur.setAttribute("aria-label", `Current swatch ${label(swatch)}. Choose a swatch`);
+  alt.title = `Alternate: ${label(alternate)} (${shortcutGlyphs(shortcutOf("tool.swap_swatches"))} swaps)`;
+  alt.setAttribute("aria-label", `Alternate swatch ${label(alternate)}. Swap swatches`);
   const dot = well.querySelector(".width-dot");
-  dot.setAttribute("aria-label", `Pen width ${w} pt`);
-  dot.title = `Pen width ${w} pt`;
+  dot.setAttribute("aria-label", `Brush width ${w}. Change`);
+  dot.title = `Brush width ${w}`;
   dot.firstChild.style.width = dot.firstChild.style.height = `${w + 3}px`;
   placeWell();
 }
@@ -750,20 +844,29 @@ function openTextMenu() {
   openMenu(button, (menu) => {
     const size = document.createElement("div");
     size.className = "group";
-    size.innerHTML = `<div class="group-label">Text size</div><div class="segmented"><button type="button" data-c="view.text_size_down" aria-label="Smaller text">A−</button><span class="size-label">${TOKENS.sizes[host.size]} pt</span><button type="button" data-c="view.text_size_reset" aria-label="Default text size">A</button><button type="button" data-c="view.text_size_up" aria-label="Larger text">A+</button></div>`;
+    size.innerHTML = `<div class="group-label">Text size</div><div class="segmented"><button type="button" data-c="view.text_size_down" aria-label="Smaller text">A−</button><span class="size-label">${reading().size} pt</span><button type="button" data-c="view.text_size_reset" aria-label="Default text size">A</button><button type="button" data-c="view.text_size_up" aria-label="Larger text">A+</button></div>`;
     const spacing = document.createElement("div");
     spacing.className = "group";
-    spacing.innerHTML = `<div class="group-label">Line spacing</div><div class="segmented" role="radiogroup" aria-label="Line spacing">${TOKENS.spacings.map((v, i) => `<button type="button" role="radio" aria-checked="${i === host.spacing}" data-spacing="${i}">${["Tight", "Normal", "Loose"][i]}</button>`).join("")}</div>`;
+    spacing.innerHTML = `<div class="group-label">Line spacing</div><div class="segmented" role="radiogroup" aria-label="Line spacing">${TOKENS.spacings.map((v, i) => `<button type="button" role="radio" aria-checked="${v === host.session.reading.line_spacing}" data-spacing="${v}">${["Tight", "Normal", "Loose"][i]}</button>`).join("")}</div>`;
     const theme = document.createElement("div");
     theme.className = "group";
-    theme.innerHTML = `<div class="group-label">Theme</div><div class="segmented" role="radiogroup" aria-label="Theme">${TOKENS.themes.map((t) => `<button type="button" role="radio" aria-checked="${t === host.theme}" data-theme="${t}">${t[0].toUpperCase()}${t.slice(1)}</button>`).join("")}</div>`;
+    theme.innerHTML = `<div class="group-label">Theme</div><div class="segmented" role="radiogroup" aria-label="Theme">${TOKENS.themes.map((t) => `<button type="button" role="radio" aria-checked="${t === reading().theme}" data-theme="${t}">${t[0].toUpperCase()}${t.slice(1)}</button>`).join("")}</div>`;
     menu.append(size, spacing, theme);
     const refresh = () => { closeMenu(false); openTextMenu(); };
     size.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => { run({ command_id: b.dataset.c }); refresh(); }));
-    // Line spacing has no registered command yet: host view state (named in the evidence).
-    spacing.querySelectorAll("[data-spacing]").forEach((b) => b.addEventListener("click", () => { host.spacing = Number(b.dataset.spacing); render(); refresh(); }));
+    spacing.querySelectorAll("[data-spacing]").forEach((b) => b.addEventListener("click", () => { run({ command_id: "view.line_spacing", args: { number: Number(b.dataset.spacing) } }); refresh(); }));
     theme.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => { run({ command_id: "view.theme", args: { text: b.dataset.theme } }); refresh(); }));
   }, "dialog");
+}
+
+function openSwatchMenu(button) {
+  openMenu(button, (menu) => {
+    const states = commandStates();
+    for (const name of SWATCH_ORDER) {
+      const hex = TOKENS.swatches[name][0];
+      commandItem(menu, `${name[0].toUpperCase()}${name.slice(1)}`, { command_id: "tool.swatch", args: { text: hex } }, states, { checked: host.session.ink.swatch.toUpperCase() === hex, disabled: null, noKey: true });
+    }
+  });
 }
 
 function openPaneMenu(button) {
@@ -864,14 +967,19 @@ function renderPalette(result) {
   select(firstEnabled >= 0 ? firstEnabled : rows.length ? 0 : -1);
 }
 
-/** A tab row in the chrome's own words: the tab label the strip shows (the core titles a tab
- *  by its raw resource id) and "workspace › column N". Other rows are the core's. */
+/** A tab row in the chrome's own words: resource short name and passage (`BSB · John 3:16`;
+ *  the core titles a tab by its raw resource id) and "workspace › column N". */
 function rowText(item) {
   const args = item.invocation.args || {};
   if (item.invocation.command_id === "tab.focus" && args.tab_id) {
     const ws = host.session.workspaces.find((w) => w.id === args.workspace_id);
     const n = ws ? ws.columns.findIndex((c) => c.tabs.some((t) => t.id === args.tab_id)) : -1;
-    if (n >= 0) return [tabLabel(ws.columns[n].tabs.find((t) => t.id === args.tab_id)), `${ws.title} › column ${n + 1}`];
+    if (n >= 0) {
+      const tab = ws.columns[n].tabs.find((t) => t.id === args.tab_id);
+      const r = host.text.resource(tab.content_id);
+      const title = r.kind === "notes" || !tab.reference ? r.short : `${r.short} · ${humanPassage(core, tab.reference)}`;
+      return [title, `${ws.title} › column ${n + 1}`];
+    }
   }
   return [item.title, item.subtitle || ""];
 }
@@ -1066,8 +1174,9 @@ export async function bench({ samples = 200 } = {}) {
 export function snapshot() {
   const ws = activeWorkspace();
   return {
-    workspace: ws.title, workspaces: host.session.workspaces.map((w) => w.title), tool: host.session.tool, theme: host.theme,
-    size: TOKENS.sizes[host.size], spacing: TOKENS.spacings[host.spacing], swatches: [...host.swatches], wellCollapsed: host.well.collapsed, focusMode: host.focusMode,
+    workspace: ws.title, workspaces: host.session.workspaces.map((w) => w.title), tool: host.session.tool, theme: reading().theme,
+    size: reading().size, spacing: host.session.reading.line_spacing, swatches: [swatchName(host.session.ink.swatch) || host.session.ink.swatch, swatchName(host.session.ink.alternate_swatch) || host.session.ink.alternate_swatch], width: host.session.ink.width,
+    widths: activeWorkspace().columns.map((c) => +c.width_fraction.toFixed(4)), anchors: activeWorkspace().columns.map((c) => shownTab(c).scroll_anchor || null), wellCollapsed: host.well.collapsed, focusMode: host.focusMode,
     active: ws.columns.findIndex((c) => c.id === ws.active_column_id) + 1,
     columns: ws.columns.map((c, i) => ({ number: i + 1, tabs: c.tabs.map(tabLabel), shown: tabLabel(shownTab(c)), reference: shownTab(c).reference, link: linkWord(shownTab(c)) })),
     dom: [...document.querySelectorAll("#columns > .column")].map((s) => ({
@@ -1075,7 +1184,7 @@ export function snapshot() {
       tabs: [...s.querySelectorAll(".tab")].map((t) => t.firstChild.textContent), shown: s.querySelector('.tab[aria-selected="true"]')?.firstChild.textContent,
       identity: s.querySelector(".identity").textContent, text: !!s.querySelector(".measure .text"), placeholder: !!s.querySelector(".placeholder"),
     })),
-    highlights: host.highlights.map((h) => ({ swatch: h.swatch, anchors: h.anchors.map((a) => ({ segment_id: a.segment_id, exact: a.quote ? a.quote.exact : "" })) })),
+    highlights: host.highlights.map((h) => ({ swatch: swatchName(h.swatch) || h.swatch, anchors: h.anchors.map((a) => ({ segment_id: a.segment_id, exact: a.quote ? a.quote.exact : "" })) })),
     ink: [...host.ink.entries()].map(([k, v]) => ({ tab: k, strokes: v.strokes.length, erased: v.deleted.size })),
     toast: host.lastToast || null, focus: document.activeElement ? (document.activeElement.id || document.activeElement.className) : null,
     paletteOpen: !results.hidden, log: host.log.slice(-20),
@@ -1088,11 +1197,15 @@ async function main() {
   host.registry = core.shellRegistry();
   host.specs = new Map(host.registry.map((s) => [s.id, s]));
   host.bindings = bindingsFrom(host.registry);
-  host.handle = new core.ShellHandle(params.get("session") === "bench" ? benchSession() : seedSession());
+  host.layout = core.layoutConstants();
+  // `?theme=` seeds the session's reading theme (for captures); otherwise it follows the system.
+  const theme = params.get("theme");
+  const session = params.get("session") === "bench" ? benchSession() : seedSession();
+  if (TOKENS.themes.includes(theme)) session.reading.theme = theme;
+  host.handle = new core.ShellHandle(session);
   host.handle.useFixtureText();
   host.session = host.handle.session();
-  const theme = params.get("theme");
-  host.theme = TOKENS.themes.includes(theme) ? theme : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();
   render();
   window.openlogosShell = { core, host, run, render, snapshot, bench, keyReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab };

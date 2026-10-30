@@ -156,7 +156,7 @@ const CASES = {
   async "seed-session"(p) {
     const s = await snap();
     expect(p, eq(s.workspaces, ["Study", "Hebrew"]), `workspaces ${JSON.stringify(s.workspaces)}`);
-    expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3", "WLC Gen 1"], ["SBLGNT Jn 3"], ["Notes"]]), `tabs ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3", "WLC Gen 1"], ["SBLGNT Jn 3"], ["Note"]]), `tabs ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
     expect(p, eq(s.dom.map((c) => c.badge), ["1", "2", "3"]), "badges 1 2 3");
     expect(p, s.dom[0].active && !s.dom[1].active, "column 1 active");
     expect(p, s.dom.every((c) => c.text), "every shown tab has text");
@@ -183,7 +183,7 @@ const CASES = {
     }
     const page = await js(`const s = getComputedStyle(document.documentElement); const T = window.openlogosShell.tokens;
       const sheet = [...document.styleSheets].flatMap((x) => [...x.cssRules]).map((r) => r.cssText).join('\\n');
-      return { sizes: T.sizes, spacings: T.spacings, measure: T.measure, swatches: T.swatches,
+      return { sizes: T.sizes, spacings: T.spacings, layout: window.openlogosShell.core.layoutConstants(), swatches: T.swatches,
         hl: ['yellow','green','blue','pink'].map((k) => [s.getPropertyValue('--hl-' + k).trim().toUpperCase(), Number(s.getPropertyValue('--hl-' + k + '-opacity'))]),
         radius: [s.getPropertyValue('--radius-control').trim(), s.getPropertyValue('--radius-tool-well').trim()],
         spacing: [1,2,3,4,5].map((i) => parseInt(s.getPropertyValue('--space-' + i))),
@@ -194,7 +194,7 @@ const CASES = {
         highlightRules: Object.fromEntries(['yellow','green','blue','pink'].map((k) => [k, (sheet.split('\\n').find((r) => r.startsWith('::highlight(ol-' + k + ')')) || '')])) };`);
     const r = tokens.reading;
     expect(p, eq(page.sizes, r.sizes) && page.spacings[1] === r.default_line_spacing && eq(page.spacings, r.line_spacings), "reading sizes and spacings");
-    expect(p, page.measure.standard === r.measure_cap.standard && page.measure.accessibility === r.measure_cap.accessibility, "measure caps");
+    expect(p, page.layout.measure_cap_standard_pt === r.measure_cap.standard && page.layout.measure_cap_accessibility_pt === r.measure_cap.accessibility, `the tokens' measure caps are the core's layoutConstants() ${JSON.stringify(page.layout)}`);
     const hl = Object.entries(tokens.highlights).map(([, v]) => [v.color.toUpperCase(), v.opacity]);
     expect(p, eq(page.hl, hl), `highlight vars ${JSON.stringify(page.hl)}`);
     for (const [k, v] of Object.entries(tokens.highlights)) {
@@ -215,7 +215,7 @@ const CASES = {
     const r = await js(`const h = window.openlogosShell.host; const n = h.registry.reduce((a, s) => a + s.shortcuts.web.length, 0);
       return { bindings: h.bindings.length, shortcuts: n, commands: h.registry.length, wellKeys: [...document.querySelectorAll('.tool')].map((b) => b.getAttribute('aria-keyshortcuts')) };`);
     expect(p, r.bindings === r.shortcuts, `${r.bindings} bindings for ${r.shortcuts} registry shortcuts`);
-    expect(p, r.commands === 49, `${r.commands} commands`);
+    expect(p, r.commands === 59, `${r.commands} commands`);
     expect(p, eq(r.wellKeys, ["V", "H", "P", "M", "E", "C"]), `tool keys from the registry ${r.wellKeys}`);
   },
 
@@ -231,7 +231,9 @@ const CASES = {
     expect(p, s.columns[0].reference === "John.3.16" && s.columns[1].reference === "John.3.16", `group 1 follows: ${s.columns.map((c) => c.reference)}`);
     expect(p, s.columns[2].reference === null, "the pinned note stays");
     expect(p, !s.paletteOpen && s.focus !== "palette-field", "palette closed, focus back in the text");
-    expect(p, eq(s.dom[0].tabs, ["BSB Jn 3:16", "WLC Gen 1"]), `tab label ${s.dom[0].tabs}`);
+    expect(p, eq(s.dom[0].tabs, ["BSB Jn 3", "WLC Gen 1"]), `tab label stays the chapter ${s.dom[0].tabs}`);
+    const identity = await js("return document.querySelector('#columns > .column .identity .passage').textContent");
+    expect(p, identity === "John 3:16", `identity passage ${identity}`);
   },
 
   async "palette-sections-and-expand"(p) {
@@ -256,7 +258,7 @@ const CASES = {
     await type("@");
     const sections = await js("return [...document.querySelectorAll('.results h3')].map((h) => h.textContent)");
     expect(p, eq(sections, ["Tabs and workspaces"]), `@ → ${sections}`);
-    const tabRow = await js("const r = [...document.querySelectorAll('.results .row')].find((x) => x.querySelector('.title').textContent === 'BSB Jn 3'); return r && r.querySelector('.sub').textContent");
+    const tabRow = await js("const r = [...document.querySelectorAll('.results .row')].find((x) => x.querySelector('.title').textContent === 'BSB · John 3:16'); return r && r.querySelector('.sub').textContent");
     expect(p, tabRow === "Study › column 1", `tab row subtitle ${tabRow}`);
     await chord("Meta", "a");
     await type("#loved");
@@ -300,7 +302,7 @@ const CASES = {
     expect(p, eq(s.dom[0].tabs, ["BSB Jn 3", "BSB Jn 3", "WLC Gen 1"]) && s.dom[0].shown === "BSB Jn 3", `⌥T new tab: ${s.dom[0].tabs}`);
     await chord("Alt", "Shift", "3");
     s = await snap();
-    expect(p, eq(s.dom[2].tabs, ["Notes", "BSB Jn 3"]) && s.active === 3, `⌥⇧3 moves the tab to column 3: ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    expect(p, eq(s.dom[2].tabs, ["Note", "BSB Jn 3"]) && s.active === 3, `⌥⇧3 moves the tab to column 3: ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
     await chord("Meta", "z");
     s = await snap();
     expect(p, eq(s.dom[0].tabs, ["BSB Jn 3", "BSB Jn 3", "WLC Gen 1"]), `⌘Z takes the move back: ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
@@ -422,7 +424,7 @@ const CASES = {
     expect(p, text === "Berean Standard Bible · Rom 8", `placeholder "${text}"`);
     await chord("Meta", "[");
     const back = await snap();
-    expect(p, back.columns[0].reference === "John.3", `⌘[ goes back (${back.columns[0].reference})`);
+    expect(p, back.columns[0].reference === "John.3.16", `⌘[ goes back (${back.columns[0].reference})`);
   },
 
   async "menus"(p) {
@@ -435,9 +437,12 @@ const CASES = {
     await click(...(await centre("#text-menu")));
     await click(...(await centre(".menu [data-c='view.text_size_up']")));
     await click(...(await centre(".menu [data-theme='sepia']")));
-    await click(...(await centre(".menu [data-spacing='2']")));
+    await click(...(await centre(".menu [data-spacing='1.7']")));
     s = await snap();
     expect(p, s.size === 21 && s.theme === "sepia" && s.spacing === 1.7, `text menu → ${s.size} ${s.theme} ${s.spacing}`);
+    expect(p, ["view.text_size_up", "view.theme", "view.line_spacing"].every((id) => s.log.some((l) => l.command_id === id && l.handled === true)), "size, theme and spacing are core commands");
+    const label = await js("return document.getElementById('text-menu').textContent.replace(/\\s+/g, ' ').trim()");
+    expect(p, label === "Aa 21", `text menu label "${label}"`);
     const fs = await js("return getComputedStyle(document.querySelector('.measure .text')).fontSize");
     expect(p, fs === "21px", `text size applied (${fs})`);
     await chord("Escape");
@@ -461,6 +466,66 @@ const CASES = {
     await drag(rule, [rule[0] + 100, rule[1]], 6);
     const after = await js("return document.querySelector('#columns > .column').getBoundingClientRect().width");
     expect(p, Math.abs(after - before - 100) < 6, `column 1 ${before} → ${after}`);
+    let s = await snap();
+    expect(p, s.log.some((l) => l.command_id === "column.resize" && l.handled), "the drag ends in column.resize");
+    expect(p, Math.abs(s.widths.reduce((a, b) => a + b, 0) - 1) < 1e-6 && s.widths[0] > 0.45, `session widths ${s.widths}`);
+    await chord("Meta", "z");
+    s = await snap();
+    expect(p, eq(s.widths, [0.4, 0.35, 0.25]), `⌘Z restores the widths ${s.widths}`);
+    await click(...(await centre(".rule")), 2);
+    s = await snap();
+    expect(p, s.widths.every((w) => Math.abs(w - 1 / 3) < 1e-3), `double-click equalizes ${s.widths}`);
+  },
+
+  async "scroll-anchor-recorded"(p) {
+    // Large text so the passage scrolls; scroll column 1, let it settle, check the core has it.
+    await setWindow(1024, 420);
+    for (let i = 0; i < 4; i++) await js("window.openlogosShell.run({ command_id: 'view.text_size_up' })");
+    const room = await js("const s = document.querySelector('#columns > .column .scroller'); s.scrollTop = 200; return [s.scrollHeight, s.clientHeight, s.scrollTop];");
+    expect(p, room[2] > 100, `column 1 scrolls (${room})`);
+    await sleep(400);
+    let s = await snap();
+    const a = s.anchors[0];
+    expect(p, a && /^John\.3\.1[67]$/.test(a.segment_id) && a.scalar >= 0, `scroll anchor ${JSON.stringify(a)}`);
+    expect(p, s.log.some((l) => l.command_id === "tab.record_scroll" && l.handled), "tab.record_scroll dispatched");
+    // Away and back: the column is rebuilt from the session and lands on the same anchor.
+    const top = await js("return document.querySelector('#columns > .column .scroller').scrollTop");
+    await chord("Alt", "]");
+    await chord("Alt", "[");
+    await sleep(300);
+    const again = await js("return document.querySelector('#columns > .column .scroller').scrollTop");
+    expect(p, Math.abs(again - top) < 40, `scroll restored from the anchor (${top} → ${again})`);
+    await setWindow(width, height);
+  },
+
+  async "swatches-and-width"(p) {
+    await click(...(await centre(".swatches .current")));
+    await js("[...document.querySelectorAll('.menu [role^=menuitem]')].find((b) => b.textContent.includes('Blue')).click()");
+    let s = await snap();
+    expect(p, s.swatches[0] === "blue", `tool.swatch → ${s.swatches}`);
+    await click(...(await centre(".swatches .alternate")));
+    s = await snap();
+    expect(p, eq(s.swatches, ["green", "blue"]), `swap via the alternate well ${s.swatches}`);
+    await click(...(await centre(".width-dot")));
+    s = await snap();
+    expect(p, s.width === 6, `width dot 4 → ${s.width}`);
+    await click(...(await centre(".width-dot")));
+    s = await snap();
+    expect(p, s.width === 2, `width dot wraps → ${s.width}`);
+    expect(p, ["tool.swatch", "tool.swap_swatches", "tool.width"].every((id) => s.log.some((l) => l.command_id === id && l.handled)), "core commands");
+  },
+
+  async "well-clears-column-one"(p) {
+    // At 1440 and 1024 the expanded well never covers column 1's text; collapsing gives the inset back.
+    for (const w of [1440, 1024]) {
+      await setWindow(w, w === 1440 ? 900 : 768);
+      const r = await js(`const well = document.getElementById('well').getBoundingClientRect(); const t = document.querySelector('#columns > .column .measure .text').getBoundingClientRect(); return [well.right, t.left];`);
+      expect(p, r[0] <= r[1] - 4, `${w}: well right ${r[0]} vs text left ${r[1]}`);
+    }
+    await click(...(await centre(".grip")), 2);
+    const r = await js(`return document.querySelector('#columns > .column .measure').getBoundingClientRect().left + parseFloat(getComputedStyle(document.querySelector('#columns > .column .measure')).paddingLeft)`);
+    expect(p, r < 40, `collapsed: the inset is given back (${r})`);
+    await setWindow(width, height);
   },
 
   async "only-registered-commands"(p) {
@@ -489,13 +554,11 @@ async function setWindow(w, h) {
 
 async function screenshots() {
   await mkdir(shotsDir, { recursive: true });
+  // The theme and width shots carry one highlight and no ink; ink has its own shot.
   const prepare = async () => {
     await type("h");
     const pts = await phrasePoints(1, "eternal life");
     if (pts) await drag(pts[0], pts[1]);
-    await type("p");
-    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .measure').getBoundingClientRect(); return [r.left, r.top];");
-    await drag([box[0] + 90, box[1] + 330], [box[0] + 300, box[1] + 318], 12);
     await type("v");
     await chord("Escape");
   };
@@ -523,6 +586,14 @@ async function screenshots() {
   await type(">");
   await chord("Tab");
   await shoot("web-palette-commands-expanded-dark");
+  await load("?theme=light");
+  await type("p");
+  const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .measure .text').getBoundingClientRect(); return [r.left, r.top, r.width, r.height];");
+  await drag([box[0] + 10, box[1] + box[3] + 14], [box[0] + box[2] * 0.6, box[1] + box[3] + 8], 14);
+  await type("m");
+  const words = await phrasePoints(1, "For God did not send");
+  if (words) await drag(words[0], words[1], 10);
+  await shoot("web-ink");
   await load("?theme=light");
   await type("m");
   await shoot("web-tool-palette");

@@ -10,9 +10,10 @@
   "reading": {
     "sizes": [15, 17, 19, 21, 24, 28, 32],
     "default_size": 19,
+    "$size_steps": "The core stores reading.text_size_step; step 0 is default_size and each step moves one entry along sizes, clamped to the list",
     "line_spacings": [1.35, 1.5, 1.7],
     "default_line_spacing": 1.5,
-    "measure_cap": { "$comment": "crates/workspaces MEASURE_CAP_STANDARD_PT and MEASURE_CAP_ACCESSIBILITY_PT", "standard": 640, "accessibility": 900 }
+    "measure_cap": { "$comment": "Derived from the core, recorded here for reference only: hosts read layoutConstants() (measure_cap_standard_pt, measure_cap_accessibility_pt); the web test fails if these differ", "standard": 640, "accessibility": 900 }
   },
   "themes": {
     "light": { "page": "#FBFAF7", "text": "#1C1B19", "chrome": "#5F5B55", "rule": "#E4E1DA", "accent": "#2F5BD3" },
@@ -20,6 +21,7 @@
     "dark": { "page": "#161616", "text": "#E9E6E1", "chrome": "#A39E96", "rule": "#2C2B29", "accent": "#7EA2FF" }
   },
   "default_theme": "light",
+  "$highlights": "The four swatches the tool palette offers (tool.swatch takes the colour as #RRGGBB); the seed session starts on yellow with green as the alternate.",
   "highlights": {
     "yellow": { "color": "#F5D90A", "opacity": 0.35 },
     "green": { "color": "#4CC38A", "opacity": 0.30 },

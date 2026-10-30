@@ -67,6 +67,8 @@ const REASONS = {
   no_such_workspace: (r) => `There is no workspace ${r.workspace_id}`,
   no_such_tab: (r) => `There is no tab ${r.tab_id}`,
   needs_argument: (r) => `Needs ${r.argument}`,
+  at_limit: (r) => `The ${r.setting} is already at its limit`,
+  invalid_value: (r) => r.detail,
 };
 
 export function reasonText(disabled) {

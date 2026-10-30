@@ -18,7 +18,7 @@ const RESOURCES = {
   bsb: { short: "BSB", name: "Berean Standard Bible", dir: "ltr", lang: "en", fixture: "cross-verse-selection-john-3" },
   sblgnt: { short: "SBLGNT", name: "SBL Greek New Testament", dir: "ltr", lang: "grc", fixture: "greek-diacritics-john-3-sblgnt" },
   wlc: { short: "WLC", name: "Westminster Leningrad Codex", dir: "rtl", lang: "he", fixture: "hebrew-cantillation-genesis-1" },
-  notes: { short: "Notes", name: "Study note", dir: "ltr", lang: "en", fixture: "bidi-isolation-note", kind: "notes" },
+  "fixture:note:1": { short: "Note", name: "Study note", dir: "ltr", lang: "en", fixture: "bidi-isolation-note", kind: "notes" },
 };
 
 /** `Book.C[.V[-…]]` → [book, chapter] (OSIS, as the core stores tab references). */
