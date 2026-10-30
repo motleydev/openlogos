@@ -33,7 +33,9 @@
         "pen",
         "highlighter_pen",
         "eraser",
-        "collect"
+        "collect",
+        "word_study",
+        "type"
       ]
     },
     "next_serial": {

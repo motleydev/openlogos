@@ -345,7 +345,7 @@ def check_report(report):
 
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands','tool_well'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -741,6 +741,13 @@ def main():
         validate('workspace-2',case['expected']); check_workspace2(case['expected'])
         assert [p['id'] for p in case['input']['panes']]==[t['id'] for c in case['expected']['columns'] for t in c['tabs']], 'Migration lost or reordered a pane'
     assert [c['input'] for c in shell['migrations']]==[old_wp,wp] and shell['migrations'][1]['expected']==wp2, 'Shell fixture migrates both archived examples to the 2.0 example'
+    well=load('crates/conformance/fixtures/tool-well.json')
+    assert well['kind']=='tool_well'
+    record={'schema_version':well['session']['schema_version'],'fixture_only':well['session']['fixture_only'],'workspace_ids':[w['id'] for w in well['session']['workspaces']],'active_workspace_id':well['session']['active_workspace_id'],'tool':well['session']['tool'],'next_serial':well['session']['next_serial']}
+    validate('session',record)
+    for w in well['session']['workspaces']: validate('workspace-2',w); check_workspace2(w)
+    check_session(record,well['session']['workspaces'])
+    assert {t['kind'] for w in well['session']['workspaces'] for c in w['columns'] for t in c['tabs']}=={'reading','notes','lexicon','research'}, 'Tool well fixture has a tab of every kind'
     authority=load('crates/conformance/fixtures/note-authority-transitions.json')
     assert authority['kind']=='note_authority'
     for scenario in authority['scenarios']:

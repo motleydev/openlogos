@@ -15,9 +15,8 @@
 //! query 600; holds the query's characters in order 300 minus the gaps (at most 200). A
 //! command scores its best field: the title as is, an alias 30 lower, a keyword 100 lower and
 //! only from 600 up. A command whose title or alias is followed by an argument
-//! (`rename workspace Greek`, `move tab to column 3`, `set line spacing 1.7`) scores 950 and carries
-//! the argument; a
-//! trailing number fills a column-number argument. A command typed without the column, tab or
+//! (`rename workspace Greek`, `move tab to column 3`, `set line spacing 1.7`, `link passage
+//! Jn 3:16`) scores 950 and carries the argument, a passage as OSIS; a trailing number fills a column-number argument. A command typed without the column, tab or
 //! workspace it needs expands into one concrete row per choice at the same score ("Move tab
 //! to column 2", "Move tab to new column", "Go to BSB · Rom 8:28"), omitting the current
 //! one; an empty `>` lists the commands themselves. Within a section, results sort by score,
@@ -28,7 +27,9 @@
 //! matches its resource id and name, its passage as written, in display form (`John 3:16`),
 //! short form (`Jn 3:16`) and with the book's full name (`Genesis 1:1`); it also scores 800 when the
 //! query is a passage in the same book and chapter as its reference, 600 in the same book.
-//! The Text section keeps the provider's order. Each section shows
+//! The Text section keeps the provider's order. When the notes dock or a Notes tab has
+//! focus ([`PaletteContext::focus`]) and no column target is given, the Passage section adds
+//! "Link John 3:16" (`note.link_passage`) after the navigation row (B076). Each section shows
 //! [`DEFAULT_SECTION_LIMIT`] results (one passage) unless it is the expanded one.
 //!
 //! **Incremental.** Everything that depends only on the session (folded tab and workspace
@@ -46,7 +47,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
 use crate::commands::{
-    ArgumentShape, CommandArgs, CommandContext, DisabledReason, Invocation, Platform, Shell,
+    ArgumentShape, CommandArgs, CommandContext, DisabledReason, Focus, Invocation, Platform, Shell,
     registry,
 };
 use crate::shell::Session;
@@ -164,6 +165,9 @@ pub struct PaletteContext {
     pub platform: Platform,
     /// The section showing [`EXPANDED_SECTION_LIMIT`] results.
     pub expanded: Option<PaletteSection>,
+    /// Where focus is (B076): tool and note commands are disabled outside their context,
+    /// and in notes a passage also offers Link passage.
+    pub focus: Focus,
 }
 
 impl Default for PaletteContext {
@@ -172,6 +176,7 @@ impl Default for PaletteContext {
             has_selection: false,
             platform: Platform::Web,
             expanded: None,
+            focus: Focus::Tab,
         }
     }
 }
@@ -491,6 +496,12 @@ fn argument_from(shape: ArgumentShape, rest: &str) -> Option<CommandArgs> {
         ArgumentShape::Number => {
             args.number = Some(rest.parse().ok().filter(|n: &f64| n.is_finite())?)
         }
+        ArgumentShape::Reference => {
+            let set = parse(rest, english())
+                .ok()
+                .filter(|s| !s.ranges.is_empty())?;
+            args.reference = Some(set.to_osis());
+        }
         _ => return None,
     }
     Some(args)
@@ -512,6 +523,7 @@ fn command_items(
     };
     let command_context = CommandContext {
         has_selection: context.has_selection,
+        focus: context.focus,
     };
     let undo_title = shell.undo_stack.last().map(|r| r.title.clone());
     let redo_title = shell.redo_stack.last().map(|r| r.title.clone());
@@ -889,6 +901,7 @@ pub fn palette_query_indexed(
     let mut notice = None;
     let command_context = CommandContext {
         has_selection: context.has_selection,
+        focus: context.focus,
     };
 
     let parsed: Option<ReferenceSet> = if blank {
@@ -911,23 +924,47 @@ pub fn palette_query_indexed(
     {
         let invocation = Invocation::with("nav.navigate", target_args(query.target, set.to_osis()));
         let disabled = shell.enabled(&invocation, &command_context).err();
-        groups.extend(group(
-            PaletteSection::Passage,
-            vec![(
+        let mut items = vec![(
+            PaletteItem {
+                section: PaletteSection::Passage,
+                title: set.to_human(english()),
+                subtitle: Some(target_subtitle(query.target)),
+                score: 1000,
+                invocation,
+                disabled_text: disabled.as_ref().map(ToString::to_string),
+                disabled,
+                shortcut: None,
+            },
+            0,
+        )];
+        // B076: in notes a passage can also be linked into the note.
+        if query.target.is_none()
+            && crate::well::tool_context(&shell.session, &command_context)
+                == crate::well::ToolContext::Notes
+        {
+            let invocation = Invocation::with(
+                "note.link_passage",
+                CommandArgs {
+                    reference: Some(set.to_osis()),
+                    ..CommandArgs::default()
+                },
+            );
+            let disabled = shell.enabled(&invocation, &command_context).err();
+            items.push((
                 PaletteItem {
                     section: PaletteSection::Passage,
-                    title: set.to_human(english()),
-                    subtitle: Some(target_subtitle(query.target)),
+                    title: format!("Link {}", set.to_human(english())),
+                    subtitle: Some("Insert a link to it in the note".to_owned()),
                     score: 1000,
                     invocation,
                     disabled_text: disabled.as_ref().map(ToString::to_string),
                     disabled,
                     shortcut: None,
                 },
-                0,
-            )],
-            context,
-        ));
+                1,
+            ));
+        }
+        groups.extend(group(PaletteSection::Passage, items, context));
     }
 
     if mode == PaletteMode::Commands || (mode == PaletteMode::All && !blank) {
