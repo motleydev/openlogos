@@ -23,7 +23,7 @@ import { BRUSHES, HIGHLIGHTER_WIDTH_FACTOR, TouchArbiter, compositeAt, strokeOut
 import { fixtureTextSource } from "./text-source.js";
 import { seedSession, benchSession } from "./seed.js";
 import { bindingsFrom, match } from "./keys.js";
-import { shortPassage, humanPassage, shortcutGlyphs, reasonText, linkWord } from "./format.js";
+import { humanPassage, shortcutGlyphs, linkWord } from "./format.js";
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -85,8 +85,7 @@ export function run(invocation) {
   try {
     outcome = host.handle.apply(invocation, { has_selection: hasSelection() });
   } catch (error) {
-    const reason = error.details && error.details.reason;
-    toast(reason ? reasonText(reason) : error.message);
+    toast(error.reason_text || error.message);
     host.log.push({ command_id: invocation.command_id, error: error.kind || String(error) });
     return null;
   }
@@ -146,12 +145,16 @@ const activeTab = () => { const c = activeColumn(); return c.tabs.find((t) => t.
 const shownTab = (c) => c.tabs.find((t) => t.id === c.shown_tab_id);
 const tabKey = (ws, tab) => `${ws.id}/${tab.id}`;
 
+/** The core's short form of a reference (`Jn 3:16`, `Gen 1:1–2`), or the text as given. */
+function short(reference) {
+  try { return core.formatShort(reference); } catch { return reference; }
+}
+
 /** The strip label: resource short name and chapter (`BSB Jn 3`), whatever verse is shown. */
 function tabLabel(tab) {
   const r = host.text.resource(tab.content_id);
-  if (r.kind === "notes" || tab.kind === "notes") return r.short;
-  const chapter = tab.reference ? tab.reference.split("-")[0].split(".").slice(0, 2).join(".") : null;
-  return `${r.short} ${shortPassage(chapter)}`.trim();
+  if (r.kind === "notes" || tab.kind === "notes" || !tab.reference) return r.short;
+  return `${r.short} ${short(tab.reference.split("-")[0].split(".").slice(0, 2).join("."))}`;
 }
 
 /** The reading settings in effect: size in px, line spacing, resolved theme, measure cap. */
@@ -533,7 +536,7 @@ function collectSelection() {
   if (!found) return toast("Select some text first");
   const ids = found.trip.anchors.map((a) => a.segment_id);
   const first = ids[0], last = ids[ids.length - 1];
-  const where = /^[A-Za-z0-9]+\.\d+\.\d+$/.test(first) ? shortPassage(first === last ? first : `${first}-${last}`) : found.view.resource.name;
+  const where = /^[A-Za-z0-9]+\.\d+\.\d+$/.test(first) ? short(first === last ? first : `${first}-${last}`) : found.view.resource.name;
   host.collected = (host.collected || 0) + 1;
   document.getSelection().removeAllRanges();
   toast(`Collected: ${where}`);
@@ -796,16 +799,17 @@ function openMenu(button, build, role = "menu") {
   if (first) first.focus();
 }
 
-/** A menu item that runs a command, disabled with the core's reason when it cannot. */
+/** A menu item that runs a command, disabled with the core's reason (`disabled_text`) when it
+ *  cannot; `extra.disabled` overrides it (null: always enabled). */
 function commandItem(menu, label, invocation, states, extra = {}) {
   const b = document.createElement("button");
   b.type = "button";
   b.setAttribute("role", extra.checked == null ? "menuitem" : "menuitemradio");
   if (extra.checked != null) b.setAttribute("aria-checked", String(extra.checked));
   const state = states.get(invocation.command_id);
-  const disabled = extra.disabled !== undefined ? extra.disabled : state && state.disabled;
+  const disabled = extra.disabled !== undefined ? extra.disabled : state && state.disabled_text;
   const key = shortcutGlyphs(shortcutOf(invocation.command_id));
-  b.innerHTML = `<span>${extra.checked != null ? `<span class="check">${extra.checked ? "✓" : ""}</span>` : ""}${escapeHtml(label)}</span>${disabled ? `<span class="why">${escapeHtml(reasonText(disabled))}</span>` : key && !extra.noKey ? `<span class="key">${escapeHtml(key)}</span>` : ""}`;
+  b.innerHTML = `<span>${extra.checked != null ? `<span class="check">${extra.checked ? "✓" : ""}</span>` : ""}${escapeHtml(label)}</span>${disabled ? `<span class="why">${escapeHtml(disabled)}</span>` : key && !extra.noKey ? `<span class="key">${escapeHtml(key)}</span>` : ""}`;
   if (disabled) b.setAttribute("aria-disabled", "true");
   b.addEventListener("click", () => {
     if (disabled) return;
@@ -882,7 +886,7 @@ function openPaneMenu(button) {
     const here = ws.columns.findIndex((c) => c.id === ws.active_column_id) + 1;
     for (let n = 1; n <= ws.columns.length; n++) {
       if (n === here) continue;
-      commandItem(menu, `Move tab to column ${n}`, { command_id: "tab.move_to_column", args: { column: n } }, states, { noKey: true, disabled: shownTab(activeColumn()) && activeColumn().tabs.length === 1 && ws.columns.length === 1 ? { kind: "last_tab" } : null });
+      commandItem(menu, `Move tab to column ${n}`, { command_id: "tab.move_to_column", args: { column: n } }, states, { noKey: true, disabled: null });
     }
     menu.appendChild(document.createElement("hr"));
     commandItem(menu, "New column", { command_id: "column.new" }, states);
@@ -942,8 +946,8 @@ function renderPalette(result) {
     for (const item of group.items) {
       const i = rows.length;
       rows.push({ kind: "item", item, section: group.section });
-      const [title, subtitle] = rowText(item);
-      const sub = item.disabled ? reasonText(item.disabled) : subtitle;
+      const title = item.title;
+      const sub = item.disabled ? item.disabled_text : item.subtitle || "";
       parts.push(`<div class="row${item.disabled ? " disabled" : ""}" role="option" id="pr-${i}" data-i="${i}" aria-selected="false"${item.disabled ? ' aria-disabled="true"' : ""}><span class="title">${escapeHtml(title)}</span>${item.shortcut ? `<span class="key">${escapeHtml(shortcutGlyphs(item.shortcut))}</span>` : ""}${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ""}</div>`);
     }
     if (group.total > group.items.length) {
@@ -964,23 +968,6 @@ function renderPalette(result) {
   field.setAttribute("aria-expanded", "true");
   const firstEnabled = rows.findIndex((r) => r.kind === "item" && !r.item.disabled);
   select(firstEnabled >= 0 ? firstEnabled : rows.length ? 0 : -1);
-}
-
-/** A tab row in the chrome's own words: resource short name and passage (`BSB · John 3:16`;
- *  the core titles a tab by its raw resource id) and "workspace › column N". */
-function rowText(item) {
-  const args = item.invocation.args || {};
-  if (item.invocation.command_id === "tab.focus" && args.tab_id) {
-    const ws = host.session.workspaces.find((w) => w.id === args.workspace_id);
-    const n = ws ? ws.columns.findIndex((c) => c.tabs.some((t) => t.id === args.tab_id)) : -1;
-    if (n >= 0) {
-      const tab = ws.columns[n].tabs.find((t) => t.id === args.tab_id);
-      const r = host.text.resource(tab.content_id);
-      const title = r.kind === "notes" || !tab.reference ? r.short : `${r.short} · ${humanPassage(core, tab.reference)}`;
-      return [title, `${ws.title} › column ${n + 1}`];
-    }
-  }
-  return [item.title, item.subtitle || ""];
 }
 
 function select(i) {
@@ -1007,7 +994,7 @@ function activate(i, { expandSection = false } = {}) {
   if (item.disabled) {
     // A command that needs its argument: put its title in the field to type it after.
     if (item.disabled.kind === "needs_argument" && item.section === "commands") { field.value = `${item.title} `; host.palette.expanded = null; queryPalette(); return; }
-    toast(reasonText(item.disabled));
+    toast(item.disabled_text);
     return;
   }
   // Selection commands need the selection the field's focus does not take away.
@@ -1203,6 +1190,7 @@ async function main() {
   if (TOKENS.themes.includes(theme)) session.reading.theme = theme;
   host.handle = new core.ShellHandle(session);
   host.handle.useFixtureText();
+  host.handle.setResourceTitles(host.text.titles());
   host.session = host.handle.session();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();

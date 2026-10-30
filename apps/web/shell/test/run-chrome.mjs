@@ -261,8 +261,12 @@ const CASES = {
     await type("@");
     const sections = await js("return [...document.querySelectorAll('.results h3')].map((h) => h.textContent)");
     expect(p, eq(sections, ["Tabs and workspaces"]), `@ → ${sections}`);
-    const tabRow = await js("const r = [...document.querySelectorAll('.results .row')].find((x) => x.querySelector('.title').textContent === 'BSB · John 3:16'); return r && r.querySelector('.sub').textContent");
-    expect(p, tabRow === "Study › column 1", `tab row subtitle ${tabRow}`);
+    const tabRow = await js("const r = [...document.querySelectorAll('.results .row')].find((x) => x.querySelector('.title').textContent === 'BSB · Jn 3:16'); return r && r.querySelector('.sub').textContent");
+    expect(p, tabRow === "Study · column 1", `tab row (the core's label) subtitle ${tabRow}`);
+    await chord("Meta", "a");
+    await type("move tab to column");
+    const expansion = await js("return [...document.querySelectorAll('.results .row')].map((r) => r.querySelector('.title').textContent)");
+    expect(p, eq(expansion.slice(0, 3), ["Move tab to column 2", "Move tab to column 3", "Move tab to new column"]), `argument expansion rows ${JSON.stringify(expansion)}`);
     await chord("Meta", "a");
     await type("#loved");
     const text = await js("return [...document.querySelectorAll('.results h3')].map((h) => h.textContent)");
@@ -270,6 +274,12 @@ const CASES = {
     await chord("Escape");
     const s = await snap();
     expect(p, !s.paletteOpen && s.focus === "scroller", `Esc returns focus to the active column's text (${s.focus})`);
+  },
+
+  async "reason-text-from-core"(p) {
+    await chord("Meta", "z");
+    const s = await snap();
+    expect(p, s.toast === "Nothing to undo", `⌘Z with nothing to undo: toast "${s.toast}" (reason_text)`);
   },
 
   async "slash-focuses-palette"(p) {

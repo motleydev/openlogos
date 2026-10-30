@@ -6,6 +6,7 @@
 //
 //   resource(contentId)          → { id, short, name, dir, lang, kind } (always; an unknown id
 //                                  gets its id as its name)
+//   titles()                     → { contentId: short name } for the core's palette rows
 //   passage(contentId, reference) → { paragraph, attribution } or null when the resource has no
 //                                  text for that passage (the shell shows specs/21's
 //                                  placeholder, not an error)
@@ -50,6 +51,9 @@ export function fixtureTextSource(core) {
     });
   }
   return {
+    titles() {
+      return Object.fromEntries(Object.entries(RESOURCES).map(([id, r]) => [id, r.short]));
+    },
     resource(contentId) {
       const r = RESOURCES[contentId];
       return r ? { id: contentId, kind: r.kind || "reading", short: r.short, name: r.name, dir: r.dir, lang: r.lang }
