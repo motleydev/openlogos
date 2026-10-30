@@ -9,9 +9,13 @@
 // and scroll anchors from the workspace. Keys come from the registry (keys.js); nothing is
 // bound that it does not list.
 //
-// Host view state, outside the session (docs/evidence/B072-web.md): the tool well's position
+// The tool well is the core's (B076, specs/22 §4.1): `toolWell(context)` for what has focus (a
+// column's tab or the notes dock) and whether text is selected, redrawn on every change of
+// either; the host maps its icon names to SVG and performs the note and selection actions.
+//
+// Host view state, outside the session (docs/evidence/B072-web.md, B076-web.md): the tool well's position
 // and collapse, a column-rule drag until it ends in `column.resize`, and highlights and ink
-// strokes (in memory until the annotation store, B074).
+// strokes (in memory until the annotation store, B074), and the notes as edited (B074 too).
 //
 // Rendering is per column: a column's DOM is rebuilt only when its tabs, shown tab or passage
 // change; focus, tool and theme changes touch classes and attributes only, so they cost a
@@ -1116,18 +1120,16 @@ function renderWell() {
 }
 
 /** Centred over the columns when first drawn and after a window resize; a change of context
- *  or a selection group never moves the top (the well grows and shrinks downward). */
+ *  or a selection group never moves the top (the well grows and shrinks downward), unless the
+ *  window is too short for it: then it moves up just enough to stay on screen. */
 function placeWell() {
   const well = $("well");
-  if (host.well.top == null) {
-    if (host.well.autoTop == null) {
-      const columns = $("columns").getBoundingClientRect();
-      host.well.autoTop = Math.round(columns.top + (columns.height - well.offsetHeight) / 2);
-    }
-    well.style.top = `${host.well.autoTop}px`;
-  } else {
-    well.style.top = `${host.well.top}px`;
+  const columns = $("columns").getBoundingClientRect();
+  if (host.well.top == null && host.well.autoTop == null) {
+    host.well.autoTop = Math.round(columns.top + (columns.height - well.offsetHeight) / 2);
   }
+  const top = host.well.top == null ? host.well.autoTop : host.well.top;
+  well.style.top = `${Math.max(columns.top + 8, Math.min(top, columns.bottom - 8 - well.offsetHeight))}px`;
 }
 
 // MARK: - Menus: workspace switcher, text menu, column menu

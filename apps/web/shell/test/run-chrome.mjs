@@ -23,6 +23,7 @@ const only = args.flatMap((a, i) => (a === "--case" ? [args[i + 1]] : []));
 const chromedriver = option("--chromedriver", process.env.CHROMEDRIVER);
 const shotsDir = option("--shots", null);
 const extraDir = option("--extra-shots", null); // shots beyond the ten kept in the evidence
+const wellShotsDir = option("--well-shots", null); // B076: the contextual well's states
 const headed = args.includes("--headed");
 const benchOn = args.includes("--bench");
 const samples = Number(option("--samples", "200"));
@@ -688,6 +689,18 @@ const CASES = {
     expect(p, s.columns[0].reference === "John.3.17" && s.active === 1, `the link navigates column 1 (${s.columns[0].reference}, active ${s.active})`);
   },
 
+  async "well-fits-short-window"(p) {
+    // The tallest well (Greek: seven tools, ink, the selection group) in a short window.
+    await setWindow(1024, 600);
+    await chord("Alt", "2");
+    const pts = await phrasePoints(2, "ὁ θεὸς");
+    await drag(pts[0], pts[1]);
+    await sleep(60);
+    const r = await js("const w = document.getElementById('well').getBoundingClientRect(); return [w.top, w.bottom, innerHeight, document.querySelectorAll('#well .group').length];");
+    expect(p, r[3] === 3 && r[1] <= r[2] && r[0] >= 44, `well ${r[0]}–${r[1]} in ${r[2]} (${r[3]} groups)`);
+    await setWindow(width, height);
+  },
+
   async "word-study-lexicon"(p) {
     const word = async (column, w) => { const pts = await phrasePoints(column, w); return [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2]; };
     const page = () => js("const l = document.querySelector('#columns .lexicon'); return l && [...l.children].map((e) => e.textContent)");
@@ -807,6 +820,50 @@ async function screenshots() {
   await shoot("web-placeholder");
 }
 
+/** B076: the states the owner reviews, the same on the Mac (docs/evidence/B076). */
+async function wellScreenshots() {
+  await mkdir(wellShotsDir, { recursive: true });
+  const shot = async (name) => {
+    const file = join(wellShotsDir, `${name}.png`);
+    await writeFile(file, Buffer.from(await wd("GET", `${S}/screenshot`), "base64"));
+    console.log(`screenshot ${file}`);
+  };
+  const word = async (column, w) => { const pts = await phrasePoints(column, w); return [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2]; };
+  await setWindow(1440, 900);
+  await load("?theme=light&autotest=1");
+  await click(...(await centre('#columns > .column[data-number="1"] .identity')));
+  await shot("web-well-translation");
+  await chord("Alt", "2");
+  await type("w");
+  await click(...(await word(2, "ἠγάπησεν")));
+  await chord("Alt", "2");
+  await shot("web-well-original-lexicon");
+  await load("?theme=light&autotest=1");
+  await click(...(await centre('#columns > .column[data-number="3"] .note-editor')));
+  await js("const e = document.querySelector('#columns > .column[data-number=\"3\"] .note-editor'); const r = document.createRange(); r.selectNodeContents(e); r.collapse(false); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r);");
+  await chord("Enter");
+  await type("Love that gives: ");
+  await chord("Meta", "b");
+  await type("grace");
+  await chord("Meta", "b");
+  await type(", see ");
+  await click(...(await centre('#well button[data-command="note.link_passage"]')));
+  await type("jn 3:16");
+  await chord("Enter");
+  await shot("web-well-notes-editing");
+  for (const theme of ["light", "dark"]) {
+    await load(`?theme=${theme}&autotest=1`);
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(80);
+    await shot(`web-well-selection${theme === "dark" ? "-dark" : ""}`);
+  }
+  await load("?theme=light&autotest=1");
+  await type("p");
+  await chord("Alt", "3");
+  await shot("web-well-fallback-pen-in-notes");
+}
+
 // MARK: run
 
 let failures = 0;
@@ -867,6 +924,7 @@ try {
     summary.push(`bench: ${headed ? "headed" : "headless"} Chrome, ${samples} samples per interaction`);
   }
   if (shotsDir) await screenshots();
+  if (wellShotsDir) await wellScreenshots();
 } catch (error) {
   console.error(String(error));
   failures = failures || 1;
