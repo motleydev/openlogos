@@ -1313,13 +1313,9 @@
         },
         {
           "command": "view.text_size_down",
-          "expect": {}
-        },
-        {
-          "command": "view.text_size_down",
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.5,
               "theme": "system"
             }
@@ -1338,7 +1334,7 @@
           },
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.7,
               "theme": "system"
             }
@@ -1354,7 +1350,7 @@
           "command": "view.line_spacing_down",
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.5,
               "theme": "system"
             }
@@ -1364,7 +1360,7 @@
           "command": "view.line_spacing_down",
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.35,
               "theme": "system"
             }
@@ -1392,7 +1388,7 @@
           },
           "expect": {
             "reading": {
-              "text_size_step": -3,
+              "text_size_step": -2,
               "line_spacing": 1.35,
               "theme": "sepia"
             }
@@ -1413,6 +1409,140 @@
             "error": "nothing_to_undo",
             "can_undo": false
           }
+        },
+        {
+          "command": "view.text_size_reset",
+          "expect": {
+            "reading": {
+              "text_size_step": 0,
+              "line_spacing": 1.35,
+              "theme": "sepia"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {}
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {
+            "reading": {
+              "text_size_step": 4,
+              "line_spacing": 1.35,
+              "theme": "sepia"
+            }
+          }
+        },
+        {
+          "command": "view.text_size_up",
+          "expect": {
+            "error": "at_limit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tabs into new columns",
+      "steps": [
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "error": "one_tab"
+          }
+        },
+        {
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "new_column": true
+          },
+          "expect": {
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t11"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t11"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t2"
+              ],
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            }
+          }
         }
       ]
     },
@@ -1426,8 +1556,8 @@
             "recorded": false,
             "ink": {
               "width": 6,
-              "swatch": "#FFE066",
-              "alternate_swatch": "#7FD1FF"
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1439,8 +1569,8 @@
           "expect": {
             "ink": {
               "width": 16,
-              "swatch": "#FFE066",
-              "alternate_swatch": "#7FD1FF"
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1455,8 +1585,8 @@
           "expect": {
             "ink": {
               "width": 12,
-              "swatch": "#FFE066",
-              "alternate_swatch": "#7FD1FF"
+              "swatch": "#F5D90A",
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1478,7 +1608,7 @@
             "ink": {
               "width": 12,
               "swatch": "#A1B2C3",
-              "alternate_swatch": "#7FD1FF"
+              "alternate_swatch": "#4CC38A"
             }
           }
         },
@@ -1488,7 +1618,7 @@
             "handled": true,
             "ink": {
               "width": 12,
-              "swatch": "#7FD1FF",
+              "swatch": "#4CC38A",
               "alternate_swatch": "#A1B2C3"
             }
           }
@@ -1508,7 +1638,7 @@
             "tool": "pen",
             "ink": {
               "width": 12,
-              "swatch": "#7FD1FF",
+              "swatch": "#4CC38A",
               "alternate_swatch": "#A1B2C3"
             },
             "can_undo": false
@@ -1870,6 +2000,157 @@
           "command": "tab.new",
           "disabled": null,
           "disabled_text": null
+        }
+      ]
+    },
+    {
+      "name": "move tab expands into columns",
+      "query": ">move tab to column",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Move tab to column 2",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Move tab to column 3",
+          "command": "tab.move_to_column",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Move tab to new column",
+          "command": "tab.move_to_column",
+          "args": {
+            "new_column": true
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "duplicate tab expands into columns",
+      "query": ">duplicate tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column 2",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Duplicate tab into column 3",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Duplicate tab into new column",
+          "command": "tab.duplicate_to_column",
+          "args": {
+            "new_column": true
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "focus column omits the current one",
+      "query": ">focus column",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Focus column 2",
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Focus column 3",
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "go to tab lists the other tabs",
+      "query": ">go to tab",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Go to BSB · Rom 8:28",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t2"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to SBLGNT · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t3"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to fixture:lexicon-1 · Jn 3:16",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w1",
+            "tab_id": "t4"
+          },
+          "disabled": null
+        },
+        {
+          "section": "commands",
+          "title": "Go to WLC · Gen 1:1",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w2",
+            "tab_id": "t1"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "switch workspace lists the others",
+      "query": ">switch to workspace",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Switch to Genesis",
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w2"
+          },
+          "disabled": null
         }
       ]
     },

@@ -56,7 +56,8 @@ pub enum Scope {
 pub enum ArgumentShape {
     /// None.
     None,
-    /// A column number, `column` in [`CommandArgs`].
+    /// A column number, `column` in [`CommandArgs`]; moving and duplicating a tab also take
+    /// `new_column` instead.
     ColumnNumber,
     /// Free text, `text` (a title, a theme name); optional where the command has a default.
     Text,
@@ -1155,6 +1156,11 @@ pub fn enabled(
                 number: ws.columns.len() as u32,
             })
         }
+        "tab.duplicate_to_column" if args.new_column => Ok(()),
+        "tab.move_to_column" if args.new_column && column.tabs.len() < 2 => {
+            Err(DisabledReason::OneTab)
+        }
+        "tab.move_to_column" if args.new_column => Ok(()),
         "column.focus" | "tab.duplicate_to_column" => column_number(ws, args).map(|_| ()),
         "tab.move_to_column" => {
             let number = column_number(ws, args)?;
@@ -1711,6 +1717,21 @@ fn apply_in_place(
                 (position + n - 1) % n
             };
             column.shown_tab_id = column.tabs[next].id.clone();
+        }
+        "tab.move_to_column" if args.new_column => {
+            // Its column keeps at least one tab (enabled), so it survives.
+            let ws = s.active_mut();
+            let index = ws.active_index();
+            let tab_id = ws.active_tab().id.clone();
+            let (tab, _) = take_tab(ws, index, &tab_id);
+            insert_column(ws, index + 1, tab);
+        }
+        "tab.duplicate_to_column" if args.new_column => {
+            let ws = s.active_mut();
+            let source = ws.active_tab().clone();
+            let tab_id = ws.mint_id("t");
+            let index = ws.active_index() + 1;
+            insert_column(ws, index, copy_tab(&source, tab_id));
         }
         "tab.move_to_column" => {
             let ws = s.active_mut();

@@ -17,7 +17,10 @@
 //! only from 600 up. A command whose title or alias is followed by an argument
 //! (`rename workspace Greek`, `move tab to column 3`, `set line spacing 1.7`) scores 950 and carries
 //! the argument; a
-//! trailing number fills a column-number argument. Within a section, results sort by score,
+//! trailing number fills a column-number argument. A command typed without the column, tab or
+//! workspace it needs expands into one concrete row per choice at the same score ("Move tab
+//! to column 2", "Move tab to new column", "Go to BSB · Rom 8:28"), omitting the current
+//! one; an empty `>` lists the commands themselves. Within a section, results sort by score,
 //! then enabled before disabled, then registry order (commands) or session order
 //! (workspaces, then tabs by workspace, column and position). A tab row reads
 //! `resource · passage` with the resource's registered short name ([`Shell::set_resource_titles`],
@@ -488,6 +491,7 @@ fn argument_from(shape: ArgumentShape, rest: &str) -> Option<CommandArgs> {
 
 fn command_items(
     shell: &Shell,
+    index: &PaletteIndex,
     query: &ParsedQuery,
     context: &PaletteContext,
 ) -> Vec<(PaletteItem, usize)> {
@@ -554,6 +558,34 @@ fn command_items(
         let Some((score, args)) = best else {
             continue;
         };
+        let shortcut = spec
+            .shortcuts
+            .for_platform(context.platform)
+            .first()
+            .cloned();
+        if !folded_query.is_empty() && args == CommandArgs::default() {
+            let rows = expansions(shell, index, &spec.id);
+            if !rows.is_empty() {
+                for (i, (title, subtitle, args)) in rows.into_iter().enumerate() {
+                    let invocation = Invocation::with(&spec.id, args);
+                    let disabled = shell.enabled(&invocation, &command_context).err();
+                    items.push((
+                        PaletteItem {
+                            section: PaletteSection::Commands,
+                            title,
+                            subtitle,
+                            score,
+                            invocation,
+                            disabled_text: disabled.as_ref().map(ToString::to_string),
+                            disabled,
+                            shortcut: shortcut.clone(),
+                        },
+                        folded.index * 1000 + i,
+                    ));
+                }
+                continue;
+            }
+        }
         let invocation = Invocation::with(&spec.id, args);
         let disabled = shell.enabled(&invocation, &command_context).err();
         let subtitle = match spec.id.as_str() {
@@ -570,16 +602,95 @@ fn command_items(
                 invocation,
                 disabled_text: disabled.as_ref().map(ToString::to_string),
                 disabled,
-                shortcut: spec
-                    .shortcuts
-                    .for_platform(context.platform)
-                    .first()
-                    .cloned(),
+                shortcut,
             },
-            folded.index,
+            folded.index * 1000,
         ));
     }
     items
+}
+
+/// Concrete rows for a command typed without the argument it needs, so the palette offers
+/// "Move tab to column 2" instead of a disabled "Move tab to column": one row per other
+/// column (and a new column where the command can make one) for the column commands, one
+/// per other tab for Go to tab, one per other workspace for Switch to workspace. Empty for
+/// every other command, or when there is nothing to offer.
+fn expansions(
+    shell: &Shell,
+    index: &PaletteIndex,
+    command_id: &str,
+) -> Vec<(String, Option<String>, CommandArgs)> {
+    let session = &shell.session;
+    let ws = session.active();
+    let active = ws.active_index() + 1;
+    let column = |number: usize| CommandArgs {
+        column: Some(number as u32),
+        ..CommandArgs::default()
+    };
+    let new_column = CommandArgs {
+        new_column: true,
+        ..CommandArgs::default()
+    };
+    let other_columns = (1..=ws.columns.len()).filter(|n| *n != active);
+    match command_id {
+        "column.focus" => other_columns
+            .map(|n| (format!("Focus column {n}"), None, column(n)))
+            .collect(),
+        "tab.move_to_column" => {
+            let mut rows: Vec<_> = other_columns
+                .map(|n| (format!("Move tab to column {n}"), None, column(n)))
+                .collect();
+            if ws.active_column().tabs.len() > 1 {
+                rows.push(("Move tab to new column".to_owned(), None, new_column));
+            }
+            rows
+        }
+        "tab.duplicate_to_column" => {
+            let mut rows: Vec<_> = other_columns
+                .map(|n| (format!("Duplicate tab into column {n}"), None, column(n)))
+                .collect();
+            rows.push(("Duplicate tab into new column".to_owned(), None, new_column));
+            rows
+        }
+        "tab.focus" => {
+            let current = &ws.active_tab().id;
+            index
+                .tabs
+                .iter()
+                .filter(|t| !(t.workspace_id == ws.id && &t.tab_id == current))
+                .map(|t| {
+                    (
+                        format!("Go to {}", t.title),
+                        Some(format!(
+                            "{} · column {}",
+                            t.workspace_title, t.column_number
+                        )),
+                        CommandArgs {
+                            workspace_id: Some(t.workspace_id.clone()),
+                            tab_id: Some(t.tab_id.clone()),
+                            ..CommandArgs::default()
+                        },
+                    )
+                })
+                .collect()
+        }
+        "workspace.switch" => index
+            .workspaces
+            .iter()
+            .filter(|w| w.id != ws.id)
+            .map(|w| {
+                (
+                    format!("Switch to {}", w.title),
+                    None,
+                    CommandArgs {
+                        workspace_id: Some(w.id.clone()),
+                        ..CommandArgs::default()
+                    },
+                )
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// The original-case text after `name` when the folded query starts with `name` and a
@@ -800,7 +911,7 @@ pub fn palette_query_indexed(
     if mode == PaletteMode::Commands || (mode == PaletteMode::All && !blank) {
         groups.extend(group(
             PaletteSection::Commands,
-            command_items(shell, &query, context),
+            command_items(shell, index, &query, context),
             context,
         ));
     }
