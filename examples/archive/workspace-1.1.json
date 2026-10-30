@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.1",
+  "fixture_only": true,
+  "id": "fixture:workspace:2",
+  "title": "Five panes in two link groups, made on a Mac, with the iPad arrangement saved",
+  "panes": [
+    {
+      "id": "p1",
+      "kind": "reading",
+      "content_id": "fixture:edition-1",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": "1",
+      "pinned": false,
+      "width_fraction": 0.2,
+      "scroll_anchor": {
+        "segment_id": "fixture:segment:1",
+        "scalar": 0
+      }
+    },
+    {
+      "id": "p2",
+      "kind": "reading",
+      "content_id": "fixture:edition-2",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": "1",
+      "pinned": false,
+      "width_fraction": 0.2,
+      "scroll_anchor": {
+        "segment_id": "fixture:segment:1",
+        "scalar": 12
+      }
+    },
+    {
+      "id": "p3",
+      "kind": "reading",
+      "content_id": "fixture:edition-3",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": "1",
+      "pinned": false,
+      "width_fraction": 0.2,
+      "scroll_anchor": {
+        "segment_id": "fixture:segment:1",
+        "scalar": 7
+      }
+    },
+    {
+      "id": "p4",
+      "kind": "reading",
+      "content_id": "fixture:edition-greek",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": "2",
+      "pinned": false,
+      "width_fraction": 0.2,
+      "scroll_anchor": {
+        "segment_id": "fixture:segment:1-greek",
+        "scalar": 3
+      }
+    },
+    {
+      "id": "p5",
+      "kind": "lexicon",
+      "content_id": "fixture:lexicon-1",
+      "content_revision": "0",
+      "reference": "fixture:passage:1",
+      "link_group": "2",
+      "pinned": false,
+      "width_fraction": 0.2
+    }
+  ],
+  "notes_dock_id": "fixture:note:1",
+  "active_pane_id": "p1",
+  "layout_profiles": {
+    "wide": {
+      "visible_pane_ids": [
+        "p1",
+        "p2",
+        "p3",
+        "p4",
+        "p5"
+      ],
+      "tab_order": [],
+      "widths": {
+        "p1": 0.22,
+        "p2": 0.22,
+        "p3": 0.22,
+        "p4": 0.2,
+        "p5": 0.14
+      },
+      "notes_dock_open": false
+    },
+    "regular": {
+      "visible_pane_ids": [
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "tab_order": [
+        "p4",
+        "p5"
+      ],
+      "notes_dock_open": false
+    }
+  }
+}

@@ -2,8 +2,9 @@
 //! groups that keep panes scrolling together, and the layout profiles that adapt to iPad, Mac,
 //! phone, web and ultra-wide displays are all represented here so a workspace restores
 //! identically on every platform (specs/12-workspace-ux.md,
-//! specs/18-platform-capabilities.md). The reference fixture is examples/workspace.json
-//! (schema 1.1), validated by tools/validate.py.
+//! specs/18-platform-capabilities.md). The reference fixture is
+//! examples/archive/workspace-1.1.json (schema 1.1), validated by tools/validate.py; the
+//! current example, examples/workspace.json, is schema 2.0 ([`shell`]).
 //!
 //! The one rule everything here serves: a [`Workspace`] owns its panes, and a pane owns its
 //! link state and scroll anchor. A [`LayoutProfile`] only says where each pane is shown on
@@ -17,18 +18,29 @@
 //! B040 adds [`navigation`] (pane identity rules, link groups, per-pane history and
 //! transaction-scoped propagation) and [`migration`] (the ADR 0003 schema migrations,
 //! starting with 1.0 → 1.1).
+//!
+//! B070 adds the workspace shell of specs/22: [`shell`] (sessions of parallel workspaces,
+//! numbered columns of tabs, workspace schema 2.0 and its migration from 1.x),
+//! [`commands`] (the one command registry, `apply` with undo, the [`commands::Shell`] that
+//! holds the stacks) and [`palette`] (the sectioned, ranked palette query).
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+pub mod commands;
 pub mod migration;
 pub mod navigation;
+pub mod palette;
+pub mod shell;
 
-pub use migration::{MigrationError, STEPS, Step, migrate_workspace, migrate_workspace_to_current};
+pub use migration::{
+    MigrationError, STEPS, Step, migrate_workspace, migrate_workspace_to_2,
+    migrate_workspace_to_current,
+};
 pub use navigation::{
     NavigationError, NavigationEvent, NavigationKind, PANE_ID_MAX_LEN, PaneHistory,
     PaneIdentityError, Propagation, ReferenceHistoryEntry, Visit, WorkspaceNavigation,
-    check_pane_identity, followers, is_pane_id, link_groups,
+    check_pane_identity, followers, followers_among, is_pane_id, link_groups,
 };
 
 /// The crate's package name, as Cargo records it.
@@ -1423,7 +1435,7 @@ mod tests {
     #[test]
     fn the_schema_examples_parse_and_derive() {
         let (Some(current), Some(archived)) = (
-            example("workspace.json"),
+            example("archive/workspace-1.1.json"),
             example("archive/workspace-1.0.json"),
         ) else {
             return;

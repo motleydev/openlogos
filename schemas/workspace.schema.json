@@ -243,5 +243,5 @@
       ]
     }
   },
-  "description": "A saved reading workspace: panes with their resource, passage, link state and scroll anchor, plus per-device-class layout profiles. Schema 1.1 (B062) adds scroll_anchor on a pane and layout_profiles; a 1.0 file has neither and every class is derived (specs/18-platform-capabilities.md, Workspace layout profiles)."
+  "description": "A saved reading workspace: panes with their resource, passage, link state and scroll anchor, plus per-device-class layout profiles. Schema 1.1 (B062) adds scroll_anchor on a pane and layout_profiles; a 1.0 file has neither and every class is derived (specs/18-platform-capabilities.md, Workspace layout profiles). B070 starts the 2.0 line (schemas/workspace-2.schema.json, numbered columns of tabs); this file stays to read and migrate 1.x documents (docs/adr/0003)."
 }

@@ -106,13 +106,36 @@ def check_workspace(wp):
         if widths and not set(widths)<=set(profile['visible_pane_ids']): raise ValueError('Profile '+cls+' sizes a pane it does not show')
         if widths and abs(sum(widths.values())-1)>1e-8: raise ValueError('Profile '+cls+' widths do not sum to one')
         if not set(profile.get('collapsed_link_groups',[]))<=groups: raise ValueError('Profile '+cls+' collapses a link group no pane belongs to')
+def check_workspace2(ws):
+    # B070: workspace 2.0 (specs/22 §2). Columns hold at least one tab and show one of them; ids
+    # are unique within the workspace; widths sum to one; profiles name only columns.
+    columns=[c['id'] for c in ws['columns']]
+    tabs=[t['id'] for c in ws['columns'] for t in c['tabs']]
+    if len(set(columns))!=len(columns): raise ValueError('Duplicate column IDs')
+    if len(set(tabs))!=len(tabs) or set(tabs)&set(columns): raise ValueError('Duplicate tab IDs')
+    for c in ws['columns']:
+        if c['shown_tab_id'] not in [t['id'] for t in c['tabs']]: raise ValueError('Shown tab is not in its column: '+c['id'])
+        for t in c['tabs']:
+            if t['pinned'] and t['link_group'] is not None: raise ValueError('Pinned tab inside a link group: '+t['id'])
+    if ws['active_column_id'] not in columns: raise ValueError('Active column is not a column')
+    if abs(sum(c['width_fraction'] for c in ws['columns'])-1)>1e-6: raise ValueError('Column widths do not sum to one')
+    for cls,profile in ws.get('layout_profiles',{}).items():
+        if not set(profile['visible_column_ids'])<=set(columns): raise ValueError('Profile '+cls+' names an unknown column')
+        widths=profile.get('widths',{})
+        if not set(widths)<=set(profile['visible_column_ids']): raise ValueError('Profile '+cls+' sizes a column it does not show')
+def check_session(record, workspaces):
+    # B070: a session record orders workspace records and names the active one.
+    ids=[w['id'] for w in workspaces]
+    if record['workspace_ids']!=ids: raise ValueError('Session does not list exactly its workspaces, in order')
+    if record['active_workspace_id'] not in ids: raise ValueError('Active workspace is not open')
+    for w in workspaces: check_workspace2(w)
 # B040: no credential fields in portable state (specs/12, specs/03). Mirrors
 # openlogos_notes::credentials; a key is credential-shaped by its words, a string value by
 # its shape. The schemas of the four portable record kinds define no such property either.
 CREDENTIAL_WORDS={'password','passwd','passphrase','secret','secrets','apikey','credential','credentials','bearer','cookie','cookies','oauth','jwt','privatekey','clientsecret','accesskey'}
 CREDENTIAL_PAIRS={('api','key'),('private','key'),('client','secret'),('access','key'),('secret','key'),('signing','key'),('session','key')}
 TOKEN_ALLOW={'token_ids','tokens','token_count','token'}
-PORTABLE_SCHEMAS=['workspace','note-binding','reading-snapshot','research-thread']
+PORTABLE_SCHEMAS=['workspace','workspace-2','session','note-binding','reading-snapshot','research-thread']
 def key_words(key):
     return [w.lower() for w in re.findall(r'[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+|[A-Z]+', key)]
 def is_credential_key(key):
@@ -322,7 +345,7 @@ def check_report(report):
 
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -393,7 +416,9 @@ def main():
         ('rights-record','examples/rights-record.json'),
         ('rights-record','examples/archive/rights-record-1.0.json'),
         ('research-provider-policy','specs/research-provider-policy.json'),
-        ('workspace','examples/workspace.json'),
+        ('workspace-2','examples/workspace.json'),
+        ('session','examples/session.json'),
+        ('workspace','examples/archive/workspace-1.1.json'),
         ('workspace','examples/archive/workspace-1.0.json'),
         ('reading-snapshot','examples/reading-snapshot.json'),
         ('ink-document','examples/ink-document.json'),
@@ -472,7 +497,7 @@ def main():
     unsigned=copy.deepcopy(manifest)
     unsigned['fixture_only']=False
     expect_rejected(lambda:validate('package-manifest',unsigned),'unsigned production manifest')
-    wp=load('examples/workspace.json')
+    wp=load('examples/archive/workspace-1.1.json')
     check_workspace(wp)
     assert wp['schema_version']=='1.1' and len(wp['panes'])==5, 'Workspace example is the five-pane two-group workspace of specs/18'
     assert len({p['link_group'] for p in wp['panes']})==2 and {'wide','regular'}<=set(wp['layout_profiles'])
@@ -495,6 +520,33 @@ def main():
     expect_rejected(lambda:validate('workspace',old_with_profiles),'1.0 workspace with 1.1 profiles')
     new_without_profiles=copy.deepcopy(wp); del new_without_profiles['layout_profiles']
     expect_rejected(lambda:validate('workspace',new_without_profiles),'1.1 workspace without profiles')
+    # B070: workspace 2.0 and the session record (specs/22 §2), the 1.x line kept under archive/.
+    wp2=load('examples/workspace.json'); check_workspace2(wp2)
+    session=load('examples/session.json'); check_session(session,[wp2])
+    assert wp2['schema_version']=='2.0' and [[t['id'] for t in c['tabs']] for c in wp2['columns']]==[[p['id']] for p in wp['panes']], 'Workspace 2.0 example is the archived 1.1 example migrated: one column per visible pane'
+    assert {'wide','regular'}==set(wp2['layout_profiles']) and wp2['layout_profiles']['regular']['visible_column_ids']==['col-p1','col-p2','col-p3']
+    expect_rejected(lambda:validate('workspace-2',wp),'1.1 workspace read as 2.0')
+    expect_rejected(lambda:validate('workspace',wp2),'2.0 workspace read as 1.x')
+    numbered=copy.deepcopy(wp2); numbered['columns'][0]['number']=1
+    expect_rejected(lambda:validate('workspace-2',numbered),'stored column number')
+    no_tabs=copy.deepcopy(wp2); no_tabs['columns'][0]['tabs']=[]
+    expect_rejected(lambda:validate('workspace-2',no_tabs),'column without tabs')
+    stray=copy.deepcopy(wp2); stray['columns'][0]['shown_tab_id']='p2'
+    expect_rejected(lambda:check_workspace2(stray),'shown tab from another column')
+    dup=copy.deepcopy(wp2); dup['columns'][1]['tabs'][0]['id']='p1'; dup['columns'][1]['shown_tab_id']='p1'
+    expect_rejected(lambda:check_workspace2(dup),'tab id used twice')
+    lost=copy.deepcopy(wp2); lost['active_column_id']='col-gone'
+    expect_rejected(lambda:check_workspace2(lost),'active column that does not exist')
+    wide=copy.deepcopy(wp2); wide['columns'][0]['width_fraction']=0.5
+    expect_rejected(lambda:check_workspace2(wide),'column widths that do not sum to one')
+    ghost=copy.deepcopy(wp2); ghost['layout_profiles']['regular']['visible_column_ids'].append('col-gone')
+    expect_rejected(lambda:check_workspace2(ghost),'profile naming an unknown column')
+    pinned=copy.deepcopy(wp2); pinned['columns'][0]['tabs'][0]['pinned']=True
+    expect_rejected(lambda:check_workspace2(pinned),'pinned tab in a link group')
+    elsewhere=copy.deepcopy(session); elsewhere['active_workspace_id']='fixture:workspace:9'
+    expect_rejected(lambda:check_session(elsewhere,[wp2]),'session whose active workspace is not open')
+    bad_tool=copy.deepcopy(session); bad_tool['tool']='lasso'
+    expect_rejected(lambda:validate('session',bad_tool),'unknown tool')
     sn=load('examples/reading-snapshot.json')
     ink=load('examples/ink-document.json')
     check_ink(sn,ink)
@@ -671,6 +723,17 @@ def main():
         assert mirrored==case['expected'], 'Migration fixture expectation is not the 1.0 -> 1.1 step'
         assert [p['id'] for p in case['expected']['panes']]==[p['id'] for p in case['input']['panes']], 'Migration renumbered panes'
     assert migration['cases'][0]['input']==old_wp, 'Migration fixture migrates the archived 1.0 example'
+    shell=load('crates/conformance/fixtures/shell-commands.json')
+    assert shell['kind']=='shell_commands'
+    record={'schema_version':shell['session']['schema_version'],'fixture_only':shell['session']['fixture_only'],'workspace_ids':[w['id'] for w in shell['session']['workspaces']],'active_workspace_id':shell['session']['active_workspace_id'],'tool':shell['session']['tool'],'next_serial':shell['session']['next_serial']}
+    validate('session',record)
+    for w in shell['session']['workspaces']: validate('workspace-2',w)
+    check_session(record,shell['session']['workspaces'])
+    for case in shell['migrations']:
+        validate('workspace',case['input']); check_workspace(case['input'])
+        validate('workspace-2',case['expected']); check_workspace2(case['expected'])
+        assert [p['id'] for p in case['input']['panes']]==[t['id'] for c in case['expected']['columns'] for t in c['tabs']], 'Migration lost or reordered a pane'
+    assert [c['input'] for c in shell['migrations']]==[old_wp,wp] and shell['migrations'][1]['expected']==wp2, 'Shell fixture migrates both archived examples to the 2.0 example'
     authority=load('crates/conformance/fixtures/note-authority-transitions.json')
     assert authority['kind']=='note_authority'
     for scenario in authority['scenarios']:
@@ -684,7 +747,7 @@ def main():
     assert binding['authority']=='vault' and binding['state']['state']=='vault_owned'
     assert conflict['authority']=='app' and conflict['state']['state']=='conflict' and conflict['state']['app_sha256']!=conflict['state']['vault_sha256']
     for name in PORTABLE_SCHEMAS: check_schema_has_no_credential_properties(name)
-    for label,doc in [('workspace',wp),('workspace 1.0',old_wp),('note-binding',binding),('note-binding conflict',conflict),('reading-snapshot',sn),('research-thread',thread)]:
+    for label,doc in [('workspace',wp2),('session',session),('workspace 1.1',wp),('workspace 1.0',old_wp),('note-binding',binding),('note-binding conflict',conflict),('reading-snapshot',sn),('research-thread',thread)]:
         check_no_credentials(doc,label)
     leaked_wp=copy.deepcopy(wp); leaked_wp['provider_token']='fixture-forbidden'
     expect_rejected(lambda:validate('workspace',leaked_wp),'token in a workspace (schema)')
@@ -692,6 +755,9 @@ def main():
     leaked_pane=copy.deepcopy(wp); leaked_pane['panes'][0]['api_key']='fixture-forbidden'
     expect_rejected(lambda:validate('workspace',leaked_pane),'api key on a pane (schema)')
     expect_rejected(lambda:check_no_credentials(leaked_pane,'workspace'),'api key on a pane (check)')
+    leaked_tab=copy.deepcopy(wp2); leaked_tab['columns'][0]['tabs'][0]['access_key']='fixture-forbidden'
+    expect_rejected(lambda:validate('workspace-2',leaked_tab),'access key on a tab (schema)')
+    expect_rejected(lambda:check_no_credentials(leaked_tab,'workspace'),'access key on a tab (check)')
     leaked_value=copy.deepcopy(wp); leaked_value['title']='-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----'
     expect_rejected(lambda:check_no_credentials(leaked_value,'workspace'),'private key block in an innocent field')
     leaked_binding=copy.deepcopy(binding); leaked_binding['vault_password']='fixture-forbidden'
@@ -757,5 +823,5 @@ def main():
     bad_flag=copy.deepcopy(load('rights/S58.json')); bad_flag['permissions']['redistribute']='allow'
     expect_rejected(lambda:check_rights_record(bad_flag,'restricted redistributable'),'restricted module marked redistributable')
     print('Scope: blueprint structure only. No app, Nix build, cryptography, source clearance or Paperclip deployment has been tested.')
-    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; {len(rights_files)} rights records bound to their manifests and source pins; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums, note-binding authority, workspace layout profiles, key material in sync records, malformed operations, unsigned or tampered rights records and excluded translations in fixtures.')
+    print(f'PASS: {len(pairs)} schema/example validations; {len(agents)} agent records; {len(tasks)} acyclic tasks; {fixtures} conformance fixtures; {len(rights_files)} rights records bound to their manifests and source pins; source references, budgets and fixture hashes; {NEGATIVE} negative tests, including secret leakage, credential-shaped fields in portable state, ink coordinates, research evidence scope, lineage and alignment shapes, quotation rights, receipt identity, citation resolution minimums, note-binding authority, workspace layout profiles, workspace 2.0 columns and sessions, key material in sync records, malformed operations, unsigned or tampered rights records and excluded translations in fixtures.')
 if __name__=='__main__': main()

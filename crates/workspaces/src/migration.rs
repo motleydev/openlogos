@@ -143,6 +143,36 @@ pub fn migrate_workspace_to_current(value: Value) -> Result<Value, MigrationErro
     migrate_workspace(value, &from, CURRENT_SCHEMA_VERSION)
 }
 
+/// The MAJOR step 1.x → 2.0 (B070, specs/22 §2): the document is first brought to 1.1 by
+/// the MINOR steps, then rebuilt as numbered columns of tabs by
+/// [`crate::shell::Workspace::from_v1`], which keeps every pane (as a tab under the same
+/// id), link group, pinned state, scroll anchor, the active pane, the notes dock and each
+/// class's visible set. A 2.0 document is returned unchanged, so the step is idempotent.
+/// Not in [`STEPS`]: that registry holds MINOR steps only.
+pub fn migrate_workspace_to_2(value: Value) -> Result<Value, MigrationError> {
+    let declared = object(&value)?
+        .get("schema_version")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    if declared == crate::shell::WORKSPACE_SCHEMA_VERSION {
+        return Ok(value);
+    }
+    let v1 = migrate_workspace_to_current(value)?;
+    let workspace: crate::Workspace =
+        serde_json::from_value(v1).map_err(|e| MigrationError::NotAWorkspace {
+            reason: e.to_string(),
+        })?;
+    let migrated = crate::shell::Workspace::from_v1(&workspace).map_err(|e| {
+        MigrationError::NotAWorkspace {
+            reason: e.to_string(),
+        }
+    })?;
+    serde_json::to_value(&migrated).map_err(|e| MigrationError::NotAWorkspace {
+        reason: e.to_string(),
+    })
+}
+
 /// 1.0 → 1.1 (B062): `layout_profiles` becomes required and is set to the empty object, so
 /// every device class is derived from the pane order exactly as the 1.0 reader did; no
 /// pane gains a `scroll_anchor` (absent means the top of the passage, as before). Nothing
@@ -288,6 +318,22 @@ mod tests {
         ));
         assert!(matches!(
             migrate_workspace(json!({"schema_version": "1.0"}), "1.0", "1.1").unwrap_err(),
+            MigrationError::NotAWorkspace { .. }
+        ));
+    }
+
+    #[test]
+    fn the_major_step_reaches_two_point_zero_from_either_minor_and_is_idempotent() {
+        let from_one = migrate_workspace_to_2(one_point_zero()).unwrap();
+        assert_eq!(from_one["schema_version"], "2.0");
+        assert_eq!(from_one["columns"].as_array().unwrap().len(), 3);
+        let from_one_one =
+            migrate_workspace_to_2(migrate_workspace(one_point_zero(), "1.0", "1.1").unwrap())
+                .unwrap();
+        assert_eq!(from_one, from_one_one);
+        assert_eq!(migrate_workspace_to_2(from_one.clone()).unwrap(), from_one);
+        assert!(matches!(
+            migrate_workspace_to_2(json!({"schema_version": "1.0"})).unwrap_err(),
             MigrationError::NotAWorkspace { .. }
         ));
     }

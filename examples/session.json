@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "fixture_only": true,
+  "workspace_ids": [
+    "fixture:workspace:2"
+  ],
+  "active_workspace_id": "fixture:workspace:2",
+  "tool": "select",
+  "next_serial": 1
+}

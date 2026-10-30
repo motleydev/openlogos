@@ -1,6 +1,6 @@
 [package]
 name = "openlogos-workspaces"
-description = "Pane trees, link groups and layout profiles"
+description = "Pane trees, link groups, layout profiles and the workspace shell"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,6 +8,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+openlogos-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

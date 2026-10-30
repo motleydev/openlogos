@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:session",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "The session record of specs/22 §2 (B070): which workspaces are open, in order, which is active and which tool the floating tool palette has selected. Each workspace is its own record (schemas/workspace-2.schema.json), so one can be shared or exported alone.",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "fixture_only": {
+      "type": "boolean"
+    },
+    "workspace_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"
+      }
+    },
+    "active_workspace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool": {
+      "type": "string",
+      "enum": [
+        "select",
+        "highlight",
+        "pen",
+        "highlighter_pen",
+        "eraser",
+        "collect"
+      ]
+    },
+    "next_serial": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "fixture_only",
+    "workspace_ids",
+    "active_workspace_id",
+    "tool",
+    "next_serial"
+  ]
+}

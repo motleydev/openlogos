@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:workspace-2",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "A saved reading workspace at schema 2.0 (B070, specs/22-workspace-shell.md §2): numbered columns, each a stack of tabs with one shown, an active column, the notes dock and optional per-class column profiles. A tab is specs/21's pane. Column numbers are positions and are not stored. Migrated losslessly from 1.x (schemas/workspace.schema.json) by crates/workspaces (shell::Workspace::from_v1); every workspace is its own record, and a session (schemas/session.schema.json) orders them.",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "fixture_only": {
+      "type": "boolean"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/column"
+      }
+    },
+    "active_column_id": {
+      "$ref": "#/$defs/id"
+    },
+    "notes_dock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "note_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "open": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "note_id",
+        "open"
+      ]
+    },
+    "layout_profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "compact": {
+          "$ref": "#/$defs/column_profile"
+        },
+        "regular": {
+          "$ref": "#/$defs/column_profile"
+        },
+        "wide": {
+          "$ref": "#/$defs/column_profile"
+        },
+        "ultra-wide": {
+          "$ref": "#/$defs/column_profile"
+        }
+      }
+    },
+    "next_serial": {
+      "description": "The next serial the core tries when it mints a column or tab id, so no id is minted twice.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "fixture_only",
+    "id",
+    "title",
+    "columns",
+    "active_column_id",
+    "notes_dock",
+    "next_serial"
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"
+    },
+    "scroll_anchor": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scalar": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "segment_id",
+        "scalar"
+      ]
+    },
+    "visit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scroll_anchor": {
+          "$ref": "#/$defs/scroll_anchor"
+        },
+        "transaction_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "driven": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reference",
+        "scroll_anchor",
+        "transaction_id",
+        "driven"
+      ]
+    },
+    "tab": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "reading",
+            "notes",
+            "research",
+            "lexicon"
+          ]
+        },
+        "content_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scroll_anchor": {
+          "$ref": "#/$defs/scroll_anchor"
+        },
+        "link_group": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "history": {
+          "description": "The tab's own back and forward stacks (specs/22 §2); absent until the tab first navigates.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "back": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/visit"
+              }
+            },
+            "current": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/visit"
+                }
+              ]
+            },
+            "forward": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/visit"
+              }
+            }
+          },
+          "required": [
+            "back",
+            "current",
+            "forward"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "content_id",
+        "content_revision",
+        "reference",
+        "link_group",
+        "pinned"
+      ]
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tabs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/tab"
+          }
+        },
+        "shown_tab_id": {
+          "$ref": "#/$defs/id"
+        },
+        "width_fraction": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "id",
+        "tabs",
+        "shown_tab_id",
+        "width_fraction"
+      ]
+    },
+    "column_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visible_column_ids": {
+          "description": "Columns shown on this class, in visual order. Columns not named stay reachable by number; nothing is closed by a narrower window.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "widths": {
+          "description": "Optional width fractions for the shown columns; absent means the columns' own widths.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1
+          }
+        },
+        "notes_dock_open": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "visible_column_ids",
+        "notes_dock_open"
+      ]
+    }
+  }
+}
