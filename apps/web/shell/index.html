@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenLogos workspace shell (B072)</title>
+<!--
+  The workspace shell of specs/22 on the web (B072): the palette field, numbered columns of tabs
+  and the floating tool palette over the Rust core's ShellHandle (wasm-bindgen, B070). Plain ES
+  modules, no framework and no build step, served next to the wasm-pack output of
+  `just wasm-build` (../core-host/pkg) like the reader and ink spikes it reuses
+  (../reader/surface.js, ../ink/layer.js). Only the core's fixture texts appear.
+  `?theme=light|sepia|dark`, `?session=bench` (ten workspaces of 3 × 4 for the speed runs).
+-->
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="field-wrap">
+    <input id="palette-field" type="text" role="combobox" aria-expanded="false" aria-controls="palette-results" aria-autocomplete="list"
+      aria-label="Palette: passage, word, command, tab or workspace" placeholder="Passage, word, command, tab…  ⌘K" autocomplete="off" spellcheck="false">
+    <div id="palette-results" class="results" role="listbox" aria-label="Palette results" hidden></div>
+  </div>
+  <button id="workspace-switcher" class="chip" type="button" aria-haspopup="menu" aria-expanded="false"></button>
+  <button id="text-menu" class="chip text-menu" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Text size, line spacing and theme" title="Text size, line spacing and theme"><span class="small" aria-hidden="true">A</span><span class="large" aria-hidden="true">A</span></button>
+</header>
+<main id="columns" aria-label="Columns"></main>
+<div id="well" class="well" role="toolbar" aria-label="Tools" aria-orientation="vertical"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script type="module" src="shell.js"></script>
+</body>
+</html>
