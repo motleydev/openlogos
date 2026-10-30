@@ -2,7 +2,8 @@
 
 Recorded 30 October 2026 on the Mac mini (Apple M1, Chrome 156) in the worktree
 `openlogos-b076web`, branch `b076-web-well`. The branch was cut from `b076-core-well` (a8f7433)
-and merged `b076-core-well` again at 8c01647 to get `tab.open_lexicon`. The work was done by a
+and merged `b076-core-well` again at 8c01647 to get `tab.open_lexicon`, then at 3702fc5, where focus
+stays on the clicked column. The work was done by a
 Claude Code subagent. Nothing was pushed or merged, no simulator was touched, and this branch
 does not change `crates/`. Only fixture text appears on screen. The Mac half of B076 is
 `b076-mac-well` and has its own evidence.
@@ -18,7 +19,8 @@ core decides the well (specs/22 §4.1, docs/evidence/B076-core.md), and the web 
 | Groups are rebuilt only when their command ids change. A context change swaps buttons within one frame, with no transition. The well's top stays fixed across contexts and selections, and the selection group grows downward. In a window too short for the tallest well, the well moves up just enough to stay on screen | `renderWell`, `placeWell`, `shell.css` (`.well .group`) |
 | Tooltip `Label (key)` (`Bold (⌘B)`, `Heading`), `Label — reason` when disabled. Disabled items are dimmed (`aria-disabled`); a click shows the reason as a toast. The active tool is a filled accent button with `aria-pressed` and `aria-label` "Tools, current: …" | `renderWell`, `pressWellItem` |
 | Effective tool: `effective_tool` is marked active and drives the text (`data-tool`: ink canvas, highlight and collect drags, the Word study cursor). The stored tool stays stored: Pen → notes shows Type → back on Bible text shows Pen again. A bare key outside its context shows the core's words as a toast ("Eraser works on Bible text"), not a dialog | `render`, `run` |
-| **Word study** (W, Greek and Hebrew): a click on a word sends the word as clicked (the `Intl.Segmenter` word under the caret) and its verse to `tab.open_lexicon`. That reuses the Lexicon tab in column N+1 or adds one there, or opens column N+1 when there is none. The tab shows the word, "Greek · John 3:16" (or "Hebrew · Gen 1:1") and "Lexicon entries arrive with the lexicon import." No glosses | `studyWordAt`, `lexiconPage`; `text-source.js` resource `lexicon` |
+| **Word study** (W, Greek and Hebrew): a click on a word sends the word as clicked (the `Intl.Segmenter` word under the caret) and its verse to `tab.open_lexicon`. That reuses the Lexicon tab in column N+1 or adds one there, or opens column N+1 when there is none. Focus stays on the clicked column, so the next word
+can be clicked straight away. The tab shows the word, "Greek · John 3:16" (or "Hebrew · Gen 1:1") and "Lexicon entries arrive with the lexicon import." No glosses | `studyWordAt`, `lexiconPage`; `text-source.js` resource `lexicon` |
 | **Notes**: the notes tab and the dock are editable rich text, a `contenteditable` over HTML kept in memory per note id (until B074). The tab and the dock showing the same note stay in step. Bold and italic (⌘B / ⌘I, only while the editor has focus), heading (toggles an `h3`), bullet list, and Link passage. Link passage opens the palette prefilled with "Link passage "; the core's row inserts a passage link at the caret the palette was opened from. Clicking the link runs `nav.navigate` in the last-focused reading column | `noteEditor`, `noteFormat`, `linkPassage`, `passageLink` |
 | **Selection actions**: Highlight now and Collect behave as in B072. Note on it appends `“quote” — John 3:16` as a quote paragraph to the open note (the shown notes tab, else the dock, which it opens if closed); the reference is a passage link. Search this (⌘E) puts the selected words in the palette field and opens it. Copy reference copies `formatHuman` of the selection's verses and shows the toast "Copied John 3:16". Study keeps its B072 toast | `noteSelection`, `searchSelection`, `copyReference` |
 | Tests: 7 new `just test-shell-web` cases (28 in all) | `apps/web/shell/test/run-chrome.mjs` |
@@ -26,8 +28,9 @@ core decides the well (specs/22 §4.1, docs/evidence/B076-core.md), and the web 
 
 ### Icons (the core's names → web SVG; the same meaning as the Mac's SF Symbols)
 
-Agreed with the Mac agent by message. The SF Symbol column is the proposal sent to b076mac, so
-check B076-mac.md for what it actually ships.
+Agreed with the Mac agent by message. Both sides proposed the same symbols, except for
+`heading` and `study`; for those two, web asked the Mac to use the ones in this table. Check
+B076-mac.md for what it ships.
 
 | Core icon | Web inline SVG (20 × 20, stroked) | SF Symbol (Mac) |
 |---|---|---|
@@ -62,7 +65,10 @@ check B076-mac.md for what it actually ships.
 | `bf75de2` | speed rows for the well |
 | `81364ee` | the well stays on screen in short windows (1 case), screenshot states, links don't wrap |
 | `fc5be3a` | screenshots |
-| this commit | this file |
+| `623e2d2` | this file, first version |
+| `55b1faf` | merge of `b076-core-well` at 3702fc5 (focus stays on the clicked column) |
+| `82a21fe` | `word-study-lexicon` follows it; the screenshots are unchanged |
+| this commit | this file, updated |
 
 ## Cases (`just test-shell-web`, WebDriver Actions: trusted keys and pointer)
 
@@ -73,7 +79,7 @@ The 21 B072 cases still pass; `registry-bindings` now expects 70 commands. New c
 - `selection-group`: dragging "eternal life" adds the six actions in core order without moving the ink items above; Copy reference → "Copied John 3:16"; the group goes when the selection does.
 - `selection-note-and-search`: Note on it appends `“eternal life” — John 3:16` (a passage link) to the notes tab; with that tab closed, the dock opens and gets the next quote; ⌘E puts "For God so loved" in the open palette.
 - `notes-bold-heading-link`: ⌘B/⌘I in the note (`note.bold` dispatched, `handled: false`), Heading → `<h3>`, List → `<ul><li>`, Link passage → palette "Link passage " → `jn 3:17` → a link "John 3:17"; clicking it moves column 1 to John 3:17.
-- `word-study-lexicon`: W on SBLGNT, a click on ἠγάπησεν → column 3 gets "Lexicon Jn 3" showing `ἠγάπησεν / Greek · John 3:16 / Lexicon entries arrive with the lexicon import.` and the `reference` well; κόσμον reuses that tab; in the Hebrew workspace אֱלֹהִ֑ים opens a new column 2 ("Hebrew · Gen 1:1"); a click on BSB with Word study stored does nothing.
+- `word-study-lexicon`: W on SBLGNT, a click on ἠγάπησεν → column 3 gets "Lexicon Jn 3" showing `ἠγάπησεν / Greek · John 3:16 / Lexicon entries arrive with the lexicon import.`, with focus and Word study still on column 2; κόσμον reuses that tab; in the Hebrew workspace אֱלֹהִ֑ים opens a new column 2, with focus staying on column 1 ("Hebrew · Gen 1:1"); a click on BSB with Word study stored does nothing.
 - `well-fits-short-window`: at 1024 × 600 the tallest well (Greek + selection) stays inside the window.
 
 ## Screenshots (docs/evidence/B076, 6 files, 660 KB)
@@ -128,12 +134,12 @@ There is no regression past noise. Seed column focus (1.4 → 2.7 ms headless) a
 The core's `tool_well` call takes 8 µs (B076-core), so the rest is the DOM. Every row is far
 inside its budget. The raw JSON is in the scratchpad, not the repo.
 
-## Lanes (committed tree fc5be3a; this file is documentation only)
+## Lanes (committed tree 82a21fe; this file is documentation only)
 
 | Command | Result |
 |---|---|
-| `nix develop .#core -c just ci` | exit 0. `Summary [   8.928s] 306 tests run: 306 passed, 0 skipped` |
-| `nix develop .#web -c just test-web` | exit 0. `tests 8, pass 8, fail 0`; `conformance cases: 1370 passed, 0 failed (api 0.1.2)` |
+| `nix develop .#core -c just ci` | exit 0. `Summary [   6.695s] 306 tests run: 306 passed, 0 skipped` |
+| `nix develop .#web -c just test-web` | exit 0. `tests 8, pass 8, fail 0`; `conformance cases: 1371 passed, 0 failed (api 0.1.2)` |
 | `nix develop .#web -c just test-wasm` | exit 0. `test result: ok. 7 passed; 0 failed` |
 | `nix develop .#web -c just test-dom-reader` | exit 0. `DOM reader: 13/13 cases passed` |
 | `nix develop .#web -c just test-shell-web` | exit 0. `Summary: Web shell: 28/28 cases passed` |
