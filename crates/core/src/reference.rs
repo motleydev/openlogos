@@ -514,6 +514,14 @@ impl ReferenceSet {
         }
         out
     }
+
+    /// Short form for tab labels and palette rows: [`ReferenceSet::to_human`] with the
+    /// short English names of [`AliasTable::english_short`] (`Jn 3:16`, `Gen 1:1–2`).
+    #[must_use]
+    pub fn to_short(&self) -> String {
+        static SHORT: std::sync::OnceLock<AliasTable> = std::sync::OnceLock::new();
+        self.to_human(SHORT.get_or_init(AliasTable::english_short))
+    }
 }
 
 /// Errors from parsing or building references.
@@ -702,7 +710,34 @@ const ENGLISH: [(BookId, &str, &[&str]); 66] = [
     ),
 ];
 
+/// Where the short English names differ from the display names: the Gospels and John's
+/// letters in the two-letter forms readers use in tight space. Every short name is also an
+/// alias, so a short label parses back to its book.
+const ENGLISH_SHORT: [(BookId, &str); 7] = [
+    (BookId::Matt, "Mt"),
+    (BookId::Mark, "Mk"),
+    (BookId::Luke, "Lk"),
+    (BookId::John, "Jn"),
+    (BookId::John1, "1 Jn"),
+    (BookId::John2, "2 Jn"),
+    (BookId::John3, "3 Jn"),
+];
+
 impl AliasTable {
+    /// The English table with short display names: the SBL abbreviations of
+    /// [`AliasTable::english`], except the Gospels and John's letters (`Mt`, `Mk`, `Lk`,
+    /// `Jn`, `1 Jn`). Parsing is the same as with [`AliasTable::english`].
+    #[must_use]
+    pub fn english_short() -> AliasTable {
+        let mut table = AliasTable::english();
+        for entry in &mut table.books {
+            if let Some((_, short)) = ENGLISH_SHORT.iter().find(|(book, _)| *book == entry.book) {
+                entry.display_name = (*short).to_owned();
+            }
+        }
+        table
+    }
+
     /// English names and abbreviations.
     #[must_use]
     pub fn english() -> AliasTable {
@@ -1148,6 +1183,29 @@ fn rest_of_item(scanner: &Scanner, item_start: usize) -> String {
         .collect::<String>()
         .trim()
         .to_owned()
+}
+
+#[cfg(test)]
+mod short_tests {
+    use super::*;
+
+    #[test]
+    fn short_forms_read_well_and_parse_back() {
+        let english = AliasTable::english();
+        for (input, short) in [
+            ("John 3", "Jn 3"),
+            ("John 3:16", "Jn 3:16"),
+            ("Gen 1:1-2", "Gen 1:1–2"),
+            ("1 John 4:8", "1 Jn 4:8"),
+            ("Matt 5:3-7:29", "Mt 5:3–7:29"),
+            ("Rom 8:28, 31; 12:1", "Rom 8:28, 31; 12:1"),
+            ("Jude 3", "Jude 3"),
+        ] {
+            let set = parse(input, &english).unwrap();
+            assert_eq!(set.to_short(), short, "{input}");
+            assert_eq!(parse(short, &english).unwrap(), set, "{short} parses back");
+        }
+    }
 }
 
 #[cfg(test)]

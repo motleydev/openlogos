@@ -19,9 +19,11 @@
 //! the argument; a
 //! trailing number fills a column-number argument. Within a section, results sort by score,
 //! then enabled before disabled, then registry order (commands) or session order
-//! (workspaces, then tabs by workspace, column and position). A tab matches its resource id,
-//! its passage as written, in short form (`Gen 1:1`) and with the book's full name
-//! (`Genesis 1:1`); it also scores 800 when the
+//! (workspaces, then tabs by workspace, column and position). A tab row reads
+//! `resource · passage` with the resource's registered short name ([`Shell::set_resource_titles`],
+//! else its id) and the short reference (`BSB · Jn 3:16`, `ReferenceSet::to_short`). A tab
+//! matches its resource id and name, its passage as written, in display form (`John 3:16`),
+//! short form (`Jn 3:16`) and with the book's full name (`Genesis 1:1`); it also scores 800 when the
 //! query is a passage in the same book and chapter as its reference, 600 in the same book.
 //! The Text section keeps the provider's order. Each section shows
 //! [`DEFAULT_SECTION_LIMIT`] results (one passage) unless it is the expanded one.
@@ -365,12 +367,19 @@ impl PaletteIndex {
                         .and_then(|r| osis_verse(r).or_else(|| parse(r, table).ok()))
                         .filter(|set| !set.ranges.is_empty());
                     let human = parsed.as_ref().map(|set| set.to_human(table));
-                    let title = match &human {
-                        Some(h) => format!("{} · {h}", tab.content_id),
-                        None => tab.content_id.clone(),
+                    let short = parsed.as_ref().map(ReferenceSet::to_short);
+                    let resource = session.resource_title(&tab.content_id);
+                    let title = match &short {
+                        Some(s) => format!("{resource} · {s}"),
+                        None => resource.to_owned(),
                     };
-                    let mut folded = vec![fold(&tab.content_id)];
+                    // The row title too, so words can span resource and passage (`sblgnt jn`).
+                    let mut folded = vec![fold(&tab.content_id), fold(&title)];
+                    if resource != tab.content_id {
+                        folded.push(fold(resource));
+                    }
                     folded.extend(human.as_deref().map(fold));
+                    folded.extend(short.as_deref().map(fold));
                     // The book's full name too, so `@genesis` finds a tab at `Gen 1:1`.
                     if let (Some(set), Some(h)) = (&parsed, &human) {
                         let book = set.ranges[0].start.book;
@@ -804,9 +813,9 @@ pub fn palette_query_indexed(
             .into_iter()
             .enumerate()
             .map(|(i, hit)| {
-                let human = parse(&hit.reference, english())
-                    .map(|set| set.to_human(english()))
-                    .unwrap_or_else(|_| hit.reference.clone());
+                let short = osis_verse(&hit.reference)
+                    .or_else(|| parse(&hit.reference, english()).ok())
+                    .map_or_else(|| hit.reference.clone(), |set| set.to_short());
                 let invocation = Invocation::with(
                     "nav.navigate",
                     target_args(query.target, hit.reference.clone()),
@@ -815,7 +824,10 @@ pub fn palette_query_indexed(
                 (
                     PaletteItem {
                         section: PaletteSection::Text,
-                        title: format!("{} · {human}", hit.edition_id),
+                        title: format!(
+                            "{} · {short}",
+                            shell.session.resource_title(&hit.edition_id)
+                        ),
                         subtitle: Some(hit.snippet),
                         score: 0,
                         invocation,

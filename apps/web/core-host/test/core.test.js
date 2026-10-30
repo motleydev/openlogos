@@ -140,4 +140,12 @@ test("B070: the workspace shell runs commands, undo and the palette", () => {
   shell.apply({ command_id: "tab.record_scroll", args: { tab_id: "t3", segment_id: "John.3.16", scalar: 4 } });
   assert.equal(shell.revision(), revision);
   assert.equal(core.layoutConstants().measure_cap_standard_pt, 640);
+  // Short labels and registered resource names.
+  assert.equal(core.formatShort("John 3:16"), "Jn 3:16");
+  shell.setResourceTitles({ bsb: "BSB" });
+  assert.equal(shell.paletteQuery("@bsb jn").groups[0].items[0].title, "BSB · Jn 3:16");
+  assert.throws(
+    () => shell.apply({ command_id: "tab.focus" }),
+    (error) => error.message.endsWith("Choose a tab"),
+  );
 });

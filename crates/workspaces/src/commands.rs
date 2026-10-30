@@ -217,7 +217,9 @@ pub struct CommandContext {
     pub has_selection: bool,
 }
 
-/// Why a command cannot run now.
+/// Why a command cannot run now. The `Display` text is what a palette row or menu shows:
+/// plain words, never an argument's field name (the `shell-commands` fixture asserts no
+/// reason contains `_`); the serde tag (`kind`) is for code.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DisabledReason {
@@ -276,13 +278,13 @@ pub enum DisabledReason {
         mode: String,
     },
     /// The workspace id does not exist.
-    #[error("There is no workspace {workspace_id}")]
+    #[error("That workspace is not open")]
     NoSuchWorkspace {
         /// The id.
         workspace_id: String,
     },
     /// The tab id does not exist.
-    #[error("There is no tab {tab_id}")]
+    #[error("That tab is not open")]
     NoSuchTab {
         /// The id.
         tab_id: String,
@@ -300,11 +302,27 @@ pub enum DisabledReason {
         detail: String,
     },
     /// A required argument is missing or empty.
-    #[error("Needs {argument}")]
+    #[error("{}", argument_words(argument))]
     NeedsArgument {
         /// The [`CommandArgs`] field.
         argument: String,
     },
+}
+
+/// What a missing argument asks the reader for, in words: the reason a palette row shows,
+/// never a field name.
+fn argument_words(argument: &str) -> &'static str {
+    match argument {
+        "column" => "Needs a column number",
+        "reference" => "Needs a passage",
+        "text" => "Needs a name or value",
+        "workspace_id" => "Choose a workspace",
+        "tab_id" => "Choose a tab",
+        "group" => "Needs a link group",
+        "number" => "Needs a value",
+        "segment_id" | "scalar" => "Needs a scroll position",
+        _ => "Needs more information",
+    }
 }
 
 /// Why an invocation failed.
@@ -1956,6 +1974,13 @@ impl Shell {
             effects,
             revision: self.revision,
         })
+    }
+
+    /// Registers the short names resources are shown under (`bsb` → `BSB`), replacing any
+    /// registered before. Bumps the revision, since palette rows carry the names.
+    pub fn set_resource_titles(&mut self, titles: std::collections::BTreeMap<String, String>) {
+        self.session.resource_titles = titles;
+        self.revision += 1;
     }
 
     /// Swaps the session with a record's snapshot and returns the record that swaps back.

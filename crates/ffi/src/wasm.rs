@@ -280,6 +280,14 @@ pub fn format_human(
     Ok(set.to_human(&AliasTable::english()))
 }
 
+/// B070: the short form of a citation for tab labels and palette rows, from text (a tab's
+/// OSIS reference or anything `parseReference` reads): `Jn 3`, `Jn 3:16`, `Gen 1:1–2`.
+#[wasm_bindgen(js_name = formatShort)]
+pub fn format_short(reference: &str) -> Result<String, JsValue> {
+    let set = parse(reference, &AliasTable::english()).map_err(throw)?;
+    Ok(set.to_short())
+}
+
 /// The Psalm 9/10 fixture table, built once. Only this table exists until the package
 /// crate loads real maps from packs, so a reference outside it maps as `unmapped`.
 fn psalm_table() -> Result<&'static VerseMap, JsValue> {
@@ -499,6 +507,18 @@ impl ShellHandle {
     #[wasm_bindgen(js_name = useFixtureText)]
     pub fn use_fixture_text(&mut self) {
         self.text = Some(openlogos_conformance::FixtureTextProvider::new());
+    }
+
+    /// Registers the short names resources are shown under (`{ bsb: "BSB" }`); palette
+    /// rows read `BSB · Jn 3:16`. A resource without one shows its id.
+    #[wasm_bindgen(js_name = setResourceTitles)]
+    pub fn set_resource_titles(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Record<string, string>")] titles: JsValue,
+    ) -> Result<(), JsValue> {
+        let titles: std::collections::BTreeMap<String, String> = from_js("titles", titles)?;
+        self.shell.set_resource_titles(titles);
+        Ok(())
     }
 
     /// The session.

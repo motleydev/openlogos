@@ -397,6 +397,21 @@ pub struct Session {
     /// Brush width and swatches.
     #[serde(default)]
     pub ink: InkSettings,
+    /// Short display names of resources by content id (`bsb` → `BSB`), registered by the
+    /// host, which knows its installed editions; a resource without one shows its id.
+    /// Runtime state, not persisted.
+    #[serde(skip)]
+    pub resource_titles: BTreeMap<String, String>,
+}
+
+impl Session {
+    /// The name a resource is shown under: its registered title, else its id.
+    #[must_use]
+    pub fn resource_title<'a>(&'a self, content_id: &'a str) -> &'a str {
+        self.resource_titles
+            .get(content_id)
+            .map_or(content_id, String::as_str)
+    }
 }
 
 /// Why a shell document is rejected.
@@ -924,6 +939,7 @@ impl Session {
             next_serial: 1,
             reading: ReadingSettings::default(),
             ink: InkSettings::default(),
+            resource_titles: BTreeMap::new(),
         }
     }
 
@@ -1042,6 +1058,7 @@ impl Session {
             next_serial: record.next_serial,
             reading: record.reading,
             ink: record.ink,
+            resource_titles: BTreeMap::new(),
         };
         session.check()?;
         Ok(session)

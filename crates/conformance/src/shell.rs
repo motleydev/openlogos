@@ -266,6 +266,29 @@ pub struct ShellFixture {
     pub migrations: Vec<ShellMigrationCase>,
     /// The pane minimums and measure caps every host reads from the core.
     pub layout_constants: LayoutConstants,
+    /// Resource names the palette queries run with, as a host registers them.
+    #[serde(default)]
+    pub resource_titles: BTreeMap<String, String>,
+    /// Citations and their short form (`formatShort`).
+    #[serde(default)]
+    pub short_references: Vec<ShortReferenceCase>,
+    /// What a menu shows for a disabled command on the fixture session, by command id.
+    #[serde(default)]
+    pub reason_texts: BTreeMap<String, String>,
+}
+
+/// One citation and its short form.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShortReferenceCase {
+    /// The citation as typed.
+    pub input: String,
+    /// `ReferenceSet::to_short` of its parse.
+    pub expected: String,
+}
+
+/// A reason text a reader would see that names a field instead of saying something.
+fn not_words(text: &str) -> bool {
+    text.contains('_')
 }
 
 fn error_kind(error: &CommandError) -> String {
@@ -490,6 +513,9 @@ pub(crate) fn run_shell(fixture: &ShellFixture, r: &mut Recorder) {
         }
     }
 
+    // Every reason a reader could see: the registry on the fixture session with and
+    // without a selection, every disabled step and every disabled palette row.
+    let mut shown: Vec<String> = Vec::new();
     for scenario in &fixture.scenarios {
         let mut shell = match Shell::new(fixture.session.clone()) {
             Ok(shell) => shell,
@@ -508,18 +534,51 @@ pub(crate) fn run_shell(fixture: &ShellFixture, r: &mut Recorder) {
                 &Invocation::with(&step.command, step.args.clone()),
                 &step.context,
             );
+            if let Err(CommandError::Disabled { reason, .. }) = &result {
+                shown.push(reason.to_string());
+            }
             check_step(r, &name, &shell, &result, &step.expect);
         }
     }
 
+    for case in &fixture.short_references {
+        let actual = openlogos_core::reference::parse(
+            &case.input,
+            &openlogos_core::reference::AliasTable::english(),
+        )
+        .map_or_else(|e| e.to_string(), |set| set.to_short());
+        r.check(&format!("short {}", case.input), &case.expected, &actual);
+    }
+
     let provider = FixtureTextProvider::new();
-    let Ok(shell) = Shell::new(fixture.session.clone()) else {
+    let Ok(mut shell) = Shell::new(fixture.session.clone()) else {
         r.fail("palette session", "valid", "invalid");
         return;
     };
+    let mut listed: Vec<String> = Vec::new();
+    for has_selection in [false, true] {
+        for state in shell.commands(&CommandContext { has_selection }) {
+            if let Some(reason) = state.disabled {
+                let text = reason.to_string();
+                if !has_selection && let Some(expected) = fixture.reason_texts.get(&state.spec.id) {
+                    r.check(&format!("reason {}", state.spec.id), expected, &text);
+                }
+                if not_words(&text) {
+                    listed.push(format!("{}: {text}", state.spec.id));
+                }
+            }
+        }
+    }
+    r.check("registry reasons are words", &Vec::<String>::new(), &listed);
+    shell.set_resource_titles(fixture.resource_titles.clone());
     for case in &fixture.palette {
         let result = palette_query(&shell, &case.query, &case.context, Some(&provider));
         let items: Vec<_> = result.items().collect();
+        shown.extend(
+            items
+                .iter()
+                .filter_map(|i| i.disabled.as_ref().map(ToString::to_string)),
+        );
         let actual: Vec<ExpectedItem> = items
             .iter()
             .zip(&case.expect)
@@ -549,6 +608,12 @@ pub(crate) fn run_shell(fixture: &ShellFixture, r: &mut Recorder) {
             );
         }
     }
+    let offenders: Vec<&String> = shown.iter().filter(|t| not_words(t)).collect();
+    r.check(
+        "step and palette reasons are words",
+        &Vec::<&String>::new(),
+        &offenders,
+    );
 }
 
 fn kind_of_section(section: PaletteSection) -> String {

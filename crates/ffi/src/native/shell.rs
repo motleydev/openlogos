@@ -99,6 +99,10 @@ pub struct ShellTab {
     pub content_revision: String,
     /// The passage.
     pub reference: Option<String>,
+    /// The resource's registered short name, else its id (`setResourceTitles`).
+    pub resource_title: String,
+    /// The passage in short form for the tab label (`Jn 3:16`), if it parses.
+    pub reference_label: Option<String>,
     /// Scroll anchor segment, if scrolled.
     pub scroll_segment_id: Option<String>,
     /// Scroll anchor offset in scalar values.
@@ -509,6 +513,7 @@ pub struct ShellPaletteResult {
 }
 
 fn view(shell: &Shell) -> ShellSession {
+    let english = openlogos_core::reference::AliasTable::english();
     let tab_view = |t: &openlogos_workspaces::shell::Tab| {
         let (link_mode, link_group) = match t.link_mode() {
             LinkMode::Pinned => ("pinned", None),
@@ -521,6 +526,12 @@ fn view(shell: &Shell) -> ShellSession {
             content_id: t.content_id.clone(),
             content_revision: t.content_revision.clone(),
             reference: t.reference.clone(),
+            resource_title: shell.session.resource_title(&t.content_id).to_owned(),
+            reference_label: t
+                .reference
+                .as_deref()
+                .and_then(|r| openlogos_core::reference::parse(r, &english).ok())
+                .map(|set| set.to_short()),
             scroll_segment_id: t.scroll_anchor.as_ref().map(|a| a.segment_id.clone()),
             scroll_scalar: t.scroll_anchor.as_ref().map(|a| a.scalar),
             link_mode: link_mode.to_owned(),
@@ -646,6 +657,14 @@ impl ShellHandle {
     /// Answers the Text section from the conformance fixture texts (until B071's search).
     pub fn use_fixture_text(&self) {
         self.lock().text = Some(FixtureTextProvider::new());
+    }
+
+    /// Registers the short names resources are shown under (`bsb` → `BSB`); palette rows
+    /// and tab views read them. A resource without one shows its id.
+    pub fn set_resource_titles(&self, titles: std::collections::HashMap<String, String>) {
+        self.lock()
+            .shell
+            .set_resource_titles(titles.into_iter().collect());
     }
 
     /// The session as a host renders it.
@@ -859,6 +878,16 @@ mod tests {
             .unwrap();
         assert_eq!(shell.session().revision, revision);
         assert_eq!(layout_constants().measure_cap_standard_pt, 640.0);
+        shell.set_resource_titles([("bsb".to_owned(), "BSB".to_owned())].into());
+        let tab = &shell.session().workspaces[0].columns[0].tabs[0];
+        assert_eq!(tab.resource_title, "BSB");
+        assert_eq!(tab.reference_label.as_deref(), Some("Jn 3:16"));
+        let rows = shell.palette_query("@bsb jn".into(), context);
+        assert_eq!(rows.groups[0].items[0].title, "BSB · Jn 3:16");
+        assert_eq!(
+            crate::native::format_short("John 3".into()).unwrap(),
+            "Jn 3"
+        );
         assert!(
             shell
                 .commands(false)
