@@ -140,6 +140,15 @@ final class ShellModel: ObservableObject {
     /// The Mac default shortcut of a command, for tooltips and menus.
     func shortcut(_ id: String) -> String? { command(id)?.shortcuts.mac.first.map(Self.symbols) }
 
+    /// A row's shortcut as glyphs; a `{n}` family shows the row's column (`⌥⇧2`) and nothing
+    /// for a row with no column number (`… new column`).
+    static func rowShortcut(_ item: ShellPaletteItem) -> String? {
+        guard let shortcut = item.shortcut else { return nil }
+        guard shortcut.contains("{n}") else { return symbols(shortcut) }
+        guard let n = item.args.column, (1...9).contains(n), !item.args.newColumn else { return nil }
+        return symbols(shortcut.replacingOccurrences(of: "{n}", with: "\(n)"))
+    }
+
     static func symbols(_ shortcut: String) -> String {
         shortcut.replacingOccurrences(of: "Cmd+", with: "⌘").replacingOccurrences(of: "Alt+", with: "⌥")
             .replacingOccurrences(of: "Shift+", with: "⇧").replacingOccurrences(of: "Ctrl+", with: "⌃")

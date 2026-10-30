@@ -241,6 +241,9 @@ final class ShellTests: XCTestCase {
         let moves = model.paletteRows.filter { $0.commandId == "tab.move_to_column" && $0.disabledReason == nil }
         XCTAssertFalse(moves.isEmpty, "a command typed without its column expands into one row per column")
         XCTAssertFalse(moves.contains { $0.args.column == 1 }, "not the current column")
+        let two = try! XCTUnwrap(moves.first { $0.args.column == 2 })
+        XCTAssertEqual(ShellModel.rowShortcut(two), "⌥⇧2", "the {n} family shows the row's column")
+        XCTAssertNil(moves.first { $0.args.newColumn }.flatMap(ShellModel.rowShortcut), "no key for a new column")
         model.paletteText = "Jn 3:16 @2"
         model.paletteTextChanged()
         let first = try! XCTUnwrap(model.paletteRows.first)
