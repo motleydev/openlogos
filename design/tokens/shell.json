@@ -1,0 +1,57 @@
+{
+  "$comment": "B072 workspace shell tokens (specs/22, the B072 design brief). One source for both hosts: the web shell reads them as CSS custom properties (apps/web/shell/shell.css, checked against this file by `just test-shell-web`), the Mac app as a Swift enum. Lengths are points on Apple platforms and CSS pixels on the web. Colours are sRGB hex; a highlight swatch is a colour with the opacity it is painted at. Tool keys are not here: they come from the core registry (bare_key shortcuts).",
+  "version": "1.0",
+  "fonts": {
+    "reading": { "mac": "New York", "web": "ui-serif, \"New York\", Georgia, serif" },
+    "chrome": { "mac": "system", "web": "system-ui, -apple-system, \"Segoe UI\", sans-serif", "size": 13 },
+    "tab_label": { "size": 12 },
+    "badge": { "size": 11, "weight": "semibold", "digits": "monospaced" }
+  },
+  "reading": {
+    "sizes": [15, 17, 19, 21, 24, 28, 32],
+    "default_size": 19,
+    "$size_steps": "The core stores reading.text_size_step; step 0 is default_size and each step moves one entry along sizes, clamped to the list",
+    "line_spacings": [1.35, 1.5, 1.7],
+    "default_line_spacing": 1.5,
+    "measure_cap": { "$comment": "Derived from the core, recorded here for reference only: hosts read layoutConstants() (measure_cap_standard_pt, measure_cap_accessibility_pt); the web test fails if these differ", "standard": 640, "accessibility": 900 }
+  },
+  "themes": {
+    "light": { "page": "#FBFAF7", "text": "#1C1B19", "chrome": "#5F5B55", "rule": "#E4E1DA", "accent": "#2F5BD3" },
+    "sepia": { "page": "#F4ECDD", "text": "#2B2620", "chrome": "#6B6152", "rule": "#E0D5C1", "accent": "#8A4B16" },
+    "dark": { "page": "#161616", "text": "#E9E6E1", "chrome": "#A39E96", "rule": "#2C2B29", "accent": "#7EA2FF" }
+  },
+  "default_theme": "light",
+  "$highlights": "The four swatches the tool palette offers (tool.swatch takes the colour as #RRGGBB); the seed session starts on yellow with green as the alternate.",
+  "highlights": {
+    "yellow": { "color": "#F5D90A", "opacity": 0.35 },
+    "green": { "color": "#4CC38A", "opacity": 0.30 },
+    "blue": { "color": "#5B9BFF", "opacity": 0.30 },
+    "pink": { "color": "#F25C9A", "opacity": 0.28 }
+  },
+  "spacing": [4, 8, 12, 16, 24],
+  "radius": { "control": 6, "tool_well": 10 },
+  "metrics": {
+    "palette_field_height": 44,
+    "palette_results_max_fraction": 0.5,
+    "palette_dropdown_max_width": 770,
+    "$palette_dropdown_width": "The results drop down under the field at the field's width, at most palette_dropdown_max_width (below that the field is the window less the switcher and text menu, about window − 360)",
+    "tab_strip_height": 28,
+    "identity_row_height": 32,
+    "column_badge": 20,
+    "column_rule": 1,
+    "shown_tab_underline": 2,
+    "tool_well_width": 40,
+    "tool_well_collapsed": 22,
+    "$tool_well_collapsed": "Collapsed to the grip, the well is a 22 × 22 square; column 1's text inset is tool_well_inset + the well's width + 8, expanded or collapsed",
+    "tool_well_inset": 12,
+    "tool_button": 32
+  },
+  "tools": [
+    { "id": "select", "command": "tool.select", "title": "Select", "mac_symbol": "cursorarrow" },
+    { "id": "highlight", "command": "tool.highlight", "title": "Highlight", "mac_symbol": "highlighter" },
+    { "id": "pen", "command": "tool.pen", "title": "Pen", "mac_symbol": "pencil.tip" },
+    { "id": "highlighter_pen", "command": "tool.highlighter_pen", "title": "Highlighter pen", "mac_symbol": "paintbrush.pointed" },
+    { "id": "eraser", "command": "tool.eraser", "title": "Eraser", "mac_symbol": "eraser" },
+    { "id": "collect", "command": "tool.collect", "title": "Collect", "mac_symbol": "tray.and.arrow.down" }
+  ]
+}

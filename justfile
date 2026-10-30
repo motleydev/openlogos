@@ -152,6 +152,11 @@ test-dom-reader *args:
 test-ink-web *args:
     @scripts/ink-web-test.sh {{ args }}
 
+# B072: the web workspace shell (apps/web/shell) runs its cases in headless Chrome through WebDriver; extra arguments go to the runner, e.g. `just test-shell-web --bench --samples 200` or `--shots docs/evidence/B072 --headed`
+[group('6 · web')]
+test-shell-web *args:
+    @scripts/shell-web-test.sh {{ args }}
+
 # B039: bundle the Excalidraw comparison page (apps/web/ink/excalidraw, pinned npm package, esbuild from nixpkgs) into its gitignored dist/; then `just test-ink-web --page excalidraw`
 [group('6 · web')]
 ink-excalidraw-build:
