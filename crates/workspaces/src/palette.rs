@@ -367,11 +367,7 @@ impl PaletteIndex {
             });
             for (c, column) in ws.columns.iter().enumerate() {
                 for tab in &column.tabs {
-                    let parsed = tab
-                        .reference
-                        .as_deref()
-                        .and_then(|r| osis_verse(r).or_else(|| parse(r, table).ok()))
-                        .filter(|set| !set.ranges.is_empty());
+                    let parsed = tab.reference.as_deref().and_then(parse_tab_reference);
                     let human = parsed.as_ref().map(|set| set.to_human(table));
                     let short = parsed.as_ref().map(ReferenceSet::to_short);
                     let resource = session.resource_title(&tab.content_id);
@@ -413,6 +409,17 @@ impl PaletteIndex {
         }
         PaletteIndex { workspaces, tabs }
     }
+}
+
+/// A tab's stored reference parsed for display: the OSIS fast path ([`osis_verse`]) for the
+/// `Book.C.V` form tabs store, else the full parser over the English table built once per
+/// process. `None` when it does not parse or names no range. Shared by the palette index
+/// and [`crate::view`], both of which run on every render or keystroke.
+#[must_use]
+pub fn parse_tab_reference(text: &str) -> Option<ReferenceSet> {
+    osis_verse(text)
+        .or_else(|| parse(text, english()).ok())
+        .filter(|set| !set.ranges.is_empty())
 }
 
 /// A single `Book.C` or `Book.C.V` OSIS reference without the alias table, which is what
@@ -567,6 +574,7 @@ fn command_items(
             let rows = expansions(shell, index, &spec.id);
             if !rows.is_empty() {
                 for (i, (title, subtitle, args)) in rows.into_iter().enumerate() {
+                    let args_shown = args.clone();
                     let invocation = Invocation::with(&spec.id, args);
                     let disabled = shell.enabled(&invocation, &command_context).err();
                     items.push((
@@ -578,7 +586,7 @@ fn command_items(
                             invocation,
                             disabled_text: disabled.as_ref().map(ToString::to_string),
                             disabled,
-                            shortcut: shortcut.clone(),
+                            shortcut: concrete_shortcut(shortcut.as_deref(), &args_shown),
                         },
                         folded.index * 1000 + i,
                     ));
@@ -586,6 +594,7 @@ fn command_items(
                 continue;
             }
         }
+        let shortcut = concrete_shortcut(shortcut.as_deref(), &args);
         let invocation = Invocation::with(&spec.id, args);
         let disabled = shell.enabled(&invocation, &command_context).err();
         let subtitle = match spec.id.as_str() {
@@ -608,6 +617,19 @@ fn command_items(
         ));
     }
     items
+}
+
+/// The shortcut a row shows: a `{n}` template filled with the row's column (1–9), else
+/// none (a new column, a column past 9, or no column given); any other shortcut as is.
+fn concrete_shortcut(template: Option<&str>, args: &CommandArgs) -> Option<String> {
+    let template = template?;
+    if !template.contains("{n}") {
+        return Some(template.to_owned());
+    }
+    match args.column {
+        Some(n @ 1..=9) if !args.new_column => Some(template.replace("{n}", &n.to_string())),
+        _ => None,
+    }
 }
 
 /// Concrete rows for a command typed without the argument it needs, so the palette offers

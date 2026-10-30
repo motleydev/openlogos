@@ -12,7 +12,8 @@
 //! against an index kept across keystrokes (the handles key it on the shell revision); the
 //! index build after a command is timed on its own. The text section uses the conformance
 //! fixture provider, so its row measures the palette's overhead around a provider, not the
-//! B071 search. Command timings run `Shell::apply` (undo record included) and exclude any
+//! B071 search. The view row is `Shell::view`, what both bindings return from `session()` /
+//! `view()` on every render, with every tab's reference and chapter labels. Command timings run `Shell::apply` (undo record included) and exclude any
 //! host rendering: they are the core's share of the frame.
 
 use std::time::{Duration, Instant};
@@ -182,9 +183,15 @@ fn main() {
     let mut navigate = Vec::new();
     let mut move_tab = Vec::new();
     let mut undo = Vec::new();
+    let mut view = Vec::new();
 
     for round in 0..rounds {
         let mut index = PaletteIndex::new(&shell.session);
+        for _ in 0..2 {
+            time(&mut view, || {
+                std::hint::black_box(shell.view());
+            });
+        }
         for _ in 0..2 {
             time(&mut index_build, || {
                 index = PaletteIndex::new(&shell.session)
@@ -312,6 +319,11 @@ fn main() {
             &mut move_tab,
         ),
         row("undo", 16.0, &mut undo),
+        row(
+            "session view with tab labels (Shell::view, 120 tabs)",
+            1.0,
+            &mut view,
+        ),
     ];
 
     println!(
