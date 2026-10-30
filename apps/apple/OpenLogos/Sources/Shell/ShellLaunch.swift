@@ -111,7 +111,8 @@ enum ShellLaunch {
     #if os(macOS)
     /// Draws the window's content view, layers included, into a PNG at the backing scale.
     static func snapshot(to path: String) {
-        guard let window = NSApp.windows.first(where: { $0.isVisible }), let view = window.contentView else { return }
+        // The frame view, so the toolbar row with the palette field is in the picture too.
+        guard let window = NSApp.windows.first(where: { $0.isVisible }), let view = window.contentView?.superview ?? window.contentView else { return }
         let scale = window.backingScaleFactor
         let size = view.bounds.size
         guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale),

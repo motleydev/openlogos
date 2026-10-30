@@ -1,7 +1,8 @@
-// B072: the shell's host state around the core's `ShellHandle` (specs/22). The session, the
+// B072: the shell's host state around the core's `ShellHandle` (specs/22). The session (with
+// its reading settings, ink width and swatches, column widths and scroll anchors), the
 // registry, apply/undo and the palette query live in the core; this model keeps what only the
-// host knows (text size, theme, the palette's field and list, the tool well's place, swatches,
-// highlights, ink, toasts) and performs the commands the core returns `handled == false` for.
+// host knows (the palette's field and list, the tool well's place, highlights, ink strokes,
+// toasts) and performs the commands the core returns `handled == false` for.
 // Every button, menu item and shortcut goes through `run(_:args:)`, which dispatches a
 // registered command; the view re-renders from `session` after each.
 import Combine
@@ -39,32 +40,24 @@ final class ShellModel: ObservableObject {
     /// Set once the window has settled; focus before that is the system's default focus.
     var launched = false
 
-    // MARK: Appearance
-
-    @Published var sizeIndex = ShellTokens.defaultReadingSizeIndex
-    @Published var spacingIndex = ShellTokens.defaultLineSpacingIndex
-    @Published var theme = ShellTokens.light
-
     // MARK: Tools
 
     @Published var toolWellCollapsed = false
     /// The well's centre as a fraction of the columns' height.
     @Published var toolWellPosition: CGFloat = 0.5
-    @Published private(set) var swatchIndex = 0
-    @Published private(set) var alternateSwatchIndex = 1
-    @Published var inkWidthIndex = 1
 
     // MARK: Per tab
 
     @Published private(set) var marks: [String: [ReaderMark]] = [:]
     @Published private(set) var toast: String?
     @Published private(set) var selection: ReaderSelection?
-    /// Host-side column widths after a drag of the rule (the core has no resize command yet).
+    /// Column widths while a rule is dragged; the drag's end commits `column.resize`.
     @Published var widthOverrides: [String: CGFloat] = [:]
+    /// The core's layout constants (measure caps, pane minimums).
+    let layout = layoutConstants()
 
     private var inkSheets: [String: InkSheet] = [:]
     private var surfaces: [String: WeakSurface] = [:]
-    private var scrollAnchors: [String: String] = [:]
     private var toastTask: Task<Void, Never>?
     private var markCounter = 0
     #if canImport(AppKit)
@@ -105,17 +98,35 @@ final class ShellModel: ObservableObject {
 
     var tool: String { session.tool }
 
+    // MARK: Reading and ink settings (session.reading, session.ink)
+
+    /// The size step's index into the tokens' sizes; the core's steps beyond the seven
+    /// sizes clamp to the ends.
+    var sizeIndex: Int {
+        max(0, min(ShellTokens.readingSizes.count - 1, ShellTokens.defaultReadingSizeIndex + Int(session.reading.textSizeStep)))
+    }
     var readingSize: CGFloat { ShellTokens.readingSizes[sizeIndex] }
-    var lineSpacing: CGFloat { ShellTokens.lineSpacings[spacingIndex] }
-    var swatch: ShellTokens.Swatch { ShellTokens.swatches[swatchIndex] }
-    var alternateSwatch: ShellTokens.Swatch { ShellTokens.swatches[alternateSwatchIndex] }
-    var inkWidth: Double { ShellTokens.inkWidths[inkWidthIndex] }
+    var lineSpacing: CGFloat { CGFloat(session.reading.lineSpacing) }
+    /// `system` follows the app's appearance.
+    var theme: ShellTokens.Theme {
+        if let named = ShellTokens.theme(named: session.reading.theme) { return named }
+        #if canImport(AppKit)
+        let dark = NSApp?.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return dark ? ShellTokens.dark : ShellTokens.light
+        #else
+        return ShellTokens.light
+        #endif
+    }
+    var swatch: ShellTokens.Swatch { ShellTokens.swatch(hex: session.ink.swatch) }
+    var alternateSwatch: ShellTokens.Swatch { ShellTokens.swatch(hex: session.ink.alternateSwatch) }
+    var inkWidth: Double { session.ink.width }
+    var measureCap: CGFloat { CGFloat(layout.measureCapStandardPt) }
 
     var typography: ReaderTypography {
         ReaderTypography.fixed(
             size: readingSize, lineHeight: lineSpacing,
             text: PlatformColor(hex: theme.text), secondary: PlatformColor(hex: theme.chrome),
-            key: "\(theme.id)-\(sizeIndex)-\(spacingIndex)"
+            key: "\(theme.id)-\(sizeIndex)-\(lineSpacing)"
         )
     }
 
@@ -177,17 +188,6 @@ final class ShellModel: ObservableObject {
     private func performHost(_ id: String, args: ShellCommandArgs) {
         switch id {
         case "palette.focus": focusPalette()
-        case "view.text_size_up": sizeIndex = min(ShellTokens.readingSizes.count - 1, sizeIndex + 1)
-        case "view.text_size_down": sizeIndex = max(0, sizeIndex - 1)
-        case "view.text_size_reset": sizeIndex = ShellTokens.defaultReadingSizeIndex
-        case "view.theme":
-            if let name = args.text, let named = ShellTokens.theme(named: name) {
-                theme = named
-            } else {
-                let index = ShellTokens.themes.firstIndex(of: theme) ?? 0
-                theme = ShellTokens.themes[(index + 1) % ShellTokens.themes.count]
-            }
-        case "tool.swap_swatches": swap(&swatchIndex, &alternateSwatchIndex); syncInk()
         case "view.tool_palette": toolWellCollapsed.toggle()
         case "selection.highlight":
             if let selection { highlight(selection) }
@@ -274,6 +274,14 @@ final class ShellModel: ObservableObject {
         if let first = paletteRows.firstIndex(where: { $0.section == section }) { paletteSelection = first }
     }
 
+    /// Tab and text rows name the resource by id (`bsb · John 3:16`); show its short name
+    /// (`BSB · John 3:16`) as the tab strip does.
+    func displayTitle(_ item: ShellPaletteItem) -> String {
+        guard item.section == .tabs || item.section == .text, let range = item.title.range(of: " · ") else { return item.title }
+        let id = String(item.title[..<range.lowerBound])
+        return textSource.resource(id).shortName + item.title[range.lowerBound...]
+    }
+
     func runSelectedRow() {
         guard let row = paletteRows[safe: paletteSelection] else { return }
         runRow(row)
@@ -313,18 +321,39 @@ final class ShellModel: ObservableObject {
     func register(_ surface: ReaderSurface, for tabID: String) {
         guard surfaces[tabID]?.surface !== surface else { return }
         surfaces[tabID] = WeakSurface(surface: surface)
-        // A tab revealed again opens where it was left.
-        if let segment = scrollAnchors[tabID] ?? session.workspaces.lazy.flatMap(\.columns).flatMap(\.tabs).first(where: { $0.id == tabID })?.scrollSegmentId {
+        // A tab revealed again opens where it was left (the core's scroll anchor).
+        if let segment = session.workspaces.lazy.flatMap(\.columns).flatMap(\.tabs).first(where: { $0.id == tabID })?.scrollSegmentId {
             DispatchQueue.main.async { surface.scroll(toSegment: segment) }
         }
     }
 
     func surface(for tabID: String) -> ReaderSurface? { surfaces[tabID]?.surface }
 
-    /// The scroll anchor of every shown tab, kept on the host until the core records it.
+    /// Records every shown tab's scroll anchor in the core (`tab.record_scroll`, quiet: no
+    /// revision bump, no undo) before a command can hide or rebuild it.
     private func rememberScroll() {
-        for column in activeWorkspace.columns {
-            if let segment = surfaces[column.shownTabId]?.surface?.topSegmentID { scrollAnchors[column.shownTabId] = segment }
+        let ws = activeWorkspace
+        for column in ws.columns {
+            guard let segment = surfaces[column.shownTabId]?.surface?.topSegmentID,
+                  column.tabs.first(where: { $0.id == column.shownTabId })?.scrollSegmentId != segment else { continue }
+            _ = try? handle.apply(commandId: "tab.record_scroll",
+                                  args: ShellCommandArgs(workspaceId: ws.id, tabId: column.shownTabId, segmentId: segment, scalar: 0),
+                                  hasSelection: false)
+        }
+    }
+
+    /// The end of a rule drag: the left column's share goes to the core (`column.resize`).
+    func commitResize(column number: UInt32, share: CGFloat) {
+        widthOverrides = [:]
+        run("column.resize", args: ShellCommandArgs(column: number, number: Double(share)))
+    }
+
+    /// The width dot: the next brush width, back to the narrowest after the widest.
+    func cycleInkWidth() {
+        if disabledReason("tool.width_up") == nil {
+            run("tool.width_up")
+        } else {
+            run("tool.width", args: ShellCommandArgs(number: 1))
         }
     }
 
@@ -394,11 +423,6 @@ final class ShellModel: ObservableObject {
         sheet.width = inkWidth
         // A pointer draws on the Mac; B039's palm rules still apply on iPad.
         sheet.mode = .finger
-    }
-
-    func cycleInkWidth() {
-        inkWidthIndex = (inkWidthIndex + 1) % ShellTokens.inkWidths.count
-        syncInk()
     }
 
     // MARK: Toasts

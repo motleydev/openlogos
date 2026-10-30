@@ -29,6 +29,9 @@ enum ShellSeed {
         let object: [String: Any] = [
             "schema_version": "1.0", "fixture_only": true, "workspaces": workspaces,
             "active_workspace_id": (workspaces.first?["id"] as? String) ?? "w1", "tool": "select", "next_serial": 50,
+            // The tokens' default theme and the first two highlight swatches (design/tokens/shell.json).
+            "reading": ["text_size_step": 0, "line_spacing": 1.5, "theme": "light"] as [String: Any],
+            "ink": ["width": 4, "swatch": "#F5D90A", "alternate_swatch": "#4CC38A"] as [String: Any],
         ]
         let data = try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
         return String(decoding: data, as: UTF8.self)

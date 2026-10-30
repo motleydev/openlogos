@@ -114,26 +114,103 @@ final class ShellTests: XCTestCase {
         XCTAssertNotNil(model.toast, "the disabled reason is shown")
     }
 
-    func testTheHostPerformsWhatTheCoreHandsBack() {
+    func testReadingAndInkSettingsLiveInTheSession() {
         let model = ShellModel()
+        XCTAssertEqual(model.session.reading.theme, "light")
         model.run("view.text_size_up")
+        XCTAssertEqual(model.session.reading.textSizeStep, 1)
         XCTAssertEqual(model.readingSize, 21)
         model.run("view.text_size_down"); model.run("view.text_size_down")
         XCTAssertEqual(model.readingSize, 17)
         model.run("view.text_size_reset")
         XCTAssertEqual(model.readingSize, 19)
+        model.run("view.line_spacing", args: ShellCommandArgs(number: 1.7))
+        XCTAssertEqual(model.lineSpacing, 1.7)
         model.run("view.theme", args: ShellCommandArgs(text: "sepia"))
         XCTAssertEqual(model.theme, ShellTokens.sepia)
-        model.run("view.theme")
-        XCTAssertEqual(model.theme, ShellTokens.dark, "no argument cycles")
+        model.run("view.theme", args: ShellCommandArgs(text: "dark"))
+        XCTAssertEqual(model.theme, ShellTokens.dark)
         XCTAssertEqual(model.swatch.id, "yellow")
         XCTAssertTrue(model.handle(chord: KeyChord(key: "X"), inTextField: false))
+        XCTAssertEqual(model.session.ink.swatch, "#4CC38A", "X swaps in the core")
         XCTAssertEqual(model.swatch.id, "green")
         XCTAssertEqual(model.alternateSwatch.id, "yellow")
+        model.run("tool.swatch", args: ShellCommandArgs(text: ShellTokens.hex(0x5B9BFF)))
+        XCTAssertEqual(model.swatch.id, "blue")
+        XCTAssertEqual(model.inkWidth, 4)
+        model.cycleInkWidth()
+        XCTAssertEqual(model.inkWidth, 6)
         model.run("view.tool_palette")
-        XCTAssertTrue(model.toolWellCollapsed)
-        XCTAssertEqual(model.typography.key, "dark-2-1")
+        XCTAssertTrue(model.toolWellCollapsed, "the well's visibility is the host's (handled: false)")
+        XCTAssertEqual(model.typography.key, "dark-2-1.7")
         XCTAssertEqual(model.typography.body.pointSize, 19)
+        XCTAssertEqual(model.measureCap, 640, "from the core's layoutConstants()")
+    }
+
+    func testColumnWidthsAndScrollAnchorsLiveInTheSession() {
+        let model = ShellModel()
+        model.commitResize(column: 1, share: 0.5)
+        let widths = model.activeWorkspace.columns.map(\.widthFraction)
+        XCTAssertEqual(widths[0], 0.5, accuracy: 0.0001)
+        XCTAssertEqual(widths.reduce(0, +), 1, accuracy: 0.0001)
+        XCTAssertTrue(model.widthOverrides.isEmpty)
+        model.run("column.equalize")
+        XCTAssertEqual(model.activeWorkspace.columns[0].widthFraction, 1.0 / 3, accuracy: 0.0001)
+        let revision = model.session.revision
+        _ = try? model.handle.apply(commandId: "tab.record_scroll", args: ShellCommandArgs(workspaceId: "w1", tabId: "t1", segmentId: "John.3.17", scalar: 0), hasSelection: false)
+        model.refresh()
+        XCTAssertEqual(model.session.revision, revision, "recording a scroll anchor is quiet")
+        XCTAssertEqual(model.activeTab?.scrollSegmentId, "John.3.17")
+    }
+
+    /// The Swift tokens against design/tokens/shell.json, once the web branch's file is in this
+    /// tree (it lands with the web shell).
+    func testTokensMatchTheSharedTokenFile() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../../design/tokens/shell.json").standardized
+        guard let data = try? Data(contentsOf: url) else { throw XCTSkip("design/tokens/shell.json is not in this tree yet") }
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let reading = try XCTUnwrap(json["reading"] as? [String: Any])
+        XCTAssertEqual((reading["sizes"] as? [Double])?.map { CGFloat($0) }, ShellTokens.readingSizes)
+        XCTAssertEqual(reading["default_size"] as? Double, Double(ShellTokens.readingSizes[ShellTokens.defaultReadingSizeIndex]))
+        XCTAssertEqual((reading["line_spacings"] as? [Double])?.map { CGFloat($0) }, ShellTokens.lineSpacings)
+        let caps = try XCTUnwrap(reading["measure_cap"] as? [String: Any])
+        let constants = layoutConstants()
+        XCTAssertEqual(caps["standard"] as? Double, constants.measureCapStandardPt)
+        XCTAssertEqual(caps["accessibility"] as? Double, constants.measureCapAccessibilityPt)
+        let themes = try XCTUnwrap(json["themes"] as? [String: [String: String]])
+        for theme in ShellTokens.themes {
+            let entry = try XCTUnwrap(themes[theme.id], theme.id)
+            XCTAssertEqual(entry["page"], ShellTokens.hex(theme.page), theme.id)
+            XCTAssertEqual(entry["text"], ShellTokens.hex(theme.text), theme.id)
+            XCTAssertEqual(entry["chrome"], ShellTokens.hex(theme.chrome), theme.id)
+            XCTAssertEqual(entry["rule"], ShellTokens.hex(theme.rules), theme.id)
+            XCTAssertEqual(entry["accent"], ShellTokens.hex(theme.accent), theme.id)
+        }
+        let highlights = try XCTUnwrap(json["highlights"] as? [String: [String: Any]])
+        for swatch in ShellTokens.swatches {
+            XCTAssertEqual(highlights[swatch.id]?["color"] as? String, ShellTokens.hex(swatch.rgb), swatch.id)
+            XCTAssertEqual(highlights[swatch.id]?["opacity"] as? Double, swatch.alpha, swatch.id)
+        }
+        XCTAssertEqual((json["spacing"] as? [Double])?.map { CGFloat($0) }, [ShellTokens.Spacing.xs, ShellTokens.Spacing.s, ShellTokens.Spacing.m, ShellTokens.Spacing.l, ShellTokens.Spacing.xl])
+        let radius = try XCTUnwrap(json["radius"] as? [String: Double])
+        XCTAssertEqual(radius["control"], Double(ShellTokens.Radius.control))
+        XCTAssertEqual(radius["tool_well"], Double(ShellTokens.Radius.toolWell))
+        let m = try XCTUnwrap(json["metrics"] as? [String: Double])
+        XCTAssertEqual(m["palette_field_height"], Double(ShellTokens.paletteHeight))
+        XCTAssertEqual(m["palette_results_max_fraction"], Double(ShellTokens.paletteResultsMaxFraction))
+        XCTAssertEqual(m["tab_strip_height"], Double(ShellTokens.tabStripHeight))
+        XCTAssertEqual(m["identity_row_height"], Double(ShellTokens.identityRowHeight))
+        XCTAssertEqual(m["column_badge"], Double(ShellTokens.badgeSide))
+        XCTAssertEqual(m["column_rule"], Double(ShellTokens.rule))
+        XCTAssertEqual(m["shown_tab_underline"], Double(ShellTokens.accentUnderline))
+        XCTAssertEqual(m["tool_well_width"], Double(ShellTokens.toolWellWidth))
+        XCTAssertEqual(m["tool_well_inset"], Double(ShellTokens.toolWellInset))
+        XCTAssertEqual(m["tool_button"], Double(ShellTokens.toolButtonSide))
+        let tools = try XCTUnwrap(json["tools"] as? [[String: String]])
+        XCTAssertEqual(tools.map { $0["command"] ?? "" }, ToolWell.tools.map(\.command))
+        XCTAssertEqual(tools.map { $0["mac_symbol"] ?? "" }, ToolWell.tools.map(\.symbol))
+        XCTAssertEqual(tools.map { $0["title"] ?? "" }, ToolWell.tools.map(\.name))
     }
 
     // MARK: Palette
@@ -200,6 +277,11 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(row.commandId, "workspace.switch")
         model.runRow(row)
         XCTAssertEqual(model.activeWorkspace.title, "Hebrew")
+        model.focusPalette()
+        model.paletteText = "@jn"
+        model.paletteTextChanged()
+        XCTAssertEqual(model.paletteRows.filter { $0.section == .tabs }.map(model.displayTitle).prefix(2), ["BSB · John 3:16", "SBLGNT · John 3:16"],
+                       "tab rows name the resource as the tab strip does")
     }
 
     // MARK: Text
@@ -302,7 +384,7 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(sheet.tool, .highlighter)
         XCTAssertEqual(sheet.hex(sheet.color), "#F5D90A", "the highlighter pen uses the current swatch")
         model.cycleInkWidth()
-        XCTAssertEqual(sheet.width, 6)
+        XCTAssertEqual(sheet.width, 6, "tool.width_up in the core, applied to the sheet")
         model.run("tool.eraser")
         XCTAssertEqual(sheet.tool, .eraser)
         model.run("tool.select")

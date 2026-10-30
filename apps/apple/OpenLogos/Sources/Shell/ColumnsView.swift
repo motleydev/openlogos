@@ -18,7 +18,7 @@ struct ColumnsView: View {
                     if index > 0 {
                         ColumnRule(model: model, left: ws.columns[index - 1], right: column, widths: widths, index: index)
                     }
-                    ColumnView(model: model, column: column, isActive: column.number == ws.activeColumnNumber, leading: index == 0)
+                    ColumnView(model: model, column: column, isActive: column.number == ws.activeColumnNumber, leading: index == 0 && !model.toolWellCollapsed)
                         .frame(width: max(0, widths[index]))
                 }
             }
@@ -72,7 +72,10 @@ struct ColumnRule: View {
                                 overrides[right.id] = (r - dx) / total
                                 model.widthOverrides = overrides
                             }
-                            .onEnded { _ in start = nil }
+                            .onEnded { _ in
+                                start = nil
+                                if let share = model.widthOverrides[left.id] { model.commitResize(column: left.number, share: share) }
+                            }
                     )
             )
             .accessibilityElement()
@@ -324,7 +327,7 @@ struct TabBody: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let width = min(geometry.size.width - leadingInset, ShellTokens.measureCap)
+            let width = min(geometry.size.width - leadingInset, model.measureCap)
             let padding = width < 420 ? ShellTokens.Spacing.l : ShellTokens.Spacing.xl
             ZStack {
                 if let text = model.text(for: tab) {
@@ -359,8 +362,9 @@ struct TabBody: View {
                         .accessibilityLabel("Ink layer")
                 }
             }
-            .frame(width: width, height: geometry.size.height)
-            .frame(maxWidth: .infinity)
+            .frame(width: max(0, width), height: geometry.size.height)
+            // Centred in what the well leaves free, never wider than the column.
+            .frame(width: max(0, geometry.size.width - leadingInset))
             .padding(.leading, leadingInset)
         }
     }

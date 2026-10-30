@@ -1,6 +1,6 @@
-// B072: the shell's design tokens, the same values the web shell reads from
-// design/tokens/shell.json (written by the web host; this enum mirrors it by hand, and
-// ShellTests checks the values). Reading text in the system serif (New York), chrome in the
+// B072: the shell's design tokens, the values of design/tokens/shell.json (the web shell
+// reads the file as CSS custom properties; this enum carries the same values and ShellTests
+// checks them against the file). The measure caps come from the core (`layoutConstants()`). Reading text in the system serif (New York), chrome in the
 // system UI font, three themes, four highlight swatches, spacing and radii.
 import SwiftUI
 
@@ -21,14 +21,12 @@ enum ShellTokens {
     static var tabFont: Font { .system(size: tabLabelSize) }
     static var badgeFont: Font { .system(size: badgeSize, weight: .semibold).monospacedDigit() }
 
-    /// Column width above which the text is centred at the measure: the core's
-    /// `MEASURE_CAP_STANDARD_PT` (crates/workspaces/src/lib.rs), which the bindings do not
-    /// expose yet.
-    static let measureCap: CGFloat = 640
-
     // MARK: Geometry
 
     static let paletteHeight: CGFloat = 44
+    /// The result list: anchored under the field, at most this share of the window tall.
+    static let paletteResultsMaxFraction: CGFloat = 0.5
+    static let paletteResultsWidth: CGFloat = 770
     static let tabStripHeight: CGFloat = 28
     static let identityRowHeight: CGFloat = 32
     static let badgeSide: CGFloat = 20
@@ -97,8 +95,14 @@ enum ShellTokens {
         Swatch(id: "pink", title: "Pink", rgb: 0xF25C9A, alpha: 0.28),
     ]
 
-    /// Ink widths the width dot cycles through, in points.
-    static let inkWidths: [Double] = [2, 4, 6]
+    /// The swatch for a `#RRGGBB` the session names; a colour outside the four is painted at 30 %.
+    static func swatch(hex: String) -> Swatch {
+        let rgb = UInt32(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0xF5D90A
+        return swatches.first { $0.rgb == rgb } ?? Swatch(id: hex, title: hex.uppercased(), rgb: rgb, alpha: 0.30)
+    }
+
+    /// `#F5D90A`.
+    static func hex(_ rgb: UInt32) -> String { String(format: "#%06X", rgb) }
 }
 
 extension Color {

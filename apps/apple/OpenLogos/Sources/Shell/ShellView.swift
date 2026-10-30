@@ -1,11 +1,14 @@
 // B072: the workspace shell (specs/22, the B072 brief). Top to bottom: the palette field (the
-// only top bar) with the workspace switcher and the text-size menu to its right; the numbered
-// columns separated by 1 pt rules; the floating tool well over the columns' leading edge.
-// The palette's results drop over the columns, at most half the window tall.
+// only top bar; on the Mac it is the window's unified toolbar row, beside the traffic lights)
+// with the workspace switcher and the text-size menu to its right; the numbered columns
+// separated by 1 pt rules; the floating tool well over the columns' leading edge. The
+// palette's results drop under the field, 770 pt wide, at most half the window tall.
 import SwiftUI
 
 struct ShellView: View {
     @StateObject private var model: ShellModel
+    /// The window's width, for the field's width in the toolbar row.
+    @State private var width: CGFloat = 1440
 
     init(model: @autoclosure @escaping () -> ShellModel) {
         _model = StateObject(wrappedValue: model())
@@ -14,7 +17,9 @@ struct ShellView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
+                #if !os(macOS)
                 PaletteBar(model: model, palette: model.palette)
+                #endif
                 Rectangle().fill(model.theme.rulesColor).frame(height: ShellTokens.rule)
                 ZStack(alignment: .topLeading) {
                     ColumnsView(model: model)
@@ -22,7 +27,7 @@ struct ShellView: View {
                         ShellNotesDock(model: model)
                     }
                     ToolWell(model: model)
-                    PaletteOverlay(model: model, palette: model.palette, maxHeight: geometry.size.height * 0.5)
+                    PaletteOverlay(model: model, palette: model.palette, maxHeight: geometry.size.height * ShellTokens.paletteResultsMaxFraction, width: Self.fieldWidth(geometry.size.width))
                     if let toast = model.toast {
                         ToastView(text: toast, theme: model.theme)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -37,6 +42,21 @@ struct ShellView: View {
         .tint(model.theme.accentColor)
         .preferredColorScheme(model.theme.isDark ? .dark : .light)
         #if os(macOS)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                PaletteField(model: model, palette: model.palette)
+                    .frame(width: Self.fieldWidth(width))
+            }
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: ShellTokens.Spacing.m) {
+                    WorkspaceSwitcher(model: model)
+                    TextSizeMenu(model: model)
+                }
+            }
+        }
+        .toolbar(removing: .title)
+        .toolbarBackground(model.theme.pageColor, for: .windowToolbar)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .onAppear {
             model.installKeyMonitor()
             // The reading surface, not the palette field, has focus at launch.
@@ -48,18 +68,41 @@ struct ShellView: View {
         .onDisappear { model.removeKeyMonitor() }
         #endif
         .task { await ShellLaunch.apply(to: model) }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+    }
+
+    /// 770 pt, less what the traffic lights and the trailing menus need in a narrow window.
+    static func fieldWidth(_ window: CGFloat) -> CGFloat {
+        max(240, min(ShellTokens.paletteResultsWidth, window - 360))
     }
 }
 
 // MARK: - Palette field
 
+/// The field with the switcher and the text menu beside it (iPad; the Mac puts the same
+/// pieces in the window's toolbar row).
 struct PaletteBar: View {
+    @ObservedObject var model: ShellModel
+    @ObservedObject var palette: PaletteState
+
+    var body: some View {
+        HStack(spacing: ShellTokens.Spacing.s) {
+            PaletteField(model: model, palette: palette)
+            WorkspaceSwitcher(model: model)
+            TextSizeMenu(model: model)
+        }
+        .padding(.trailing, ShellTokens.Spacing.s)
+        .frame(height: ShellTokens.paletteHeight)
+        .background(model.theme.pageColor)
+    }
+}
+
+struct PaletteField: View {
     @ObservedObject var model: ShellModel
     @ObservedObject var palette: PaletteState
     @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(spacing: ShellTokens.Spacing.s) {
             HStack(spacing: ShellTokens.Spacing.s) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(model.theme.chromeColor)
@@ -89,13 +132,13 @@ struct PaletteBar: View {
                     }
             }
             .padding(.horizontal, ShellTokens.Spacing.m)
+            #if os(macOS)
+            .frame(height: 30)
+            .background(RoundedRectangle(cornerRadius: ShellTokens.Radius.control).fill(model.theme.wellColor))
+            .overlay(RoundedRectangle(cornerRadius: ShellTokens.Radius.control).strokeBorder(model.theme.rulesColor, lineWidth: 1))
+            #else
             .frame(maxHeight: .infinity)
-            WorkspaceSwitcher(model: model)
-            TextSizeMenu(model: model)
-        }
-        .padding(.trailing, ShellTokens.Spacing.s)
-        .frame(height: ShellTokens.paletteHeight)
-        .background(model.theme.pageColor)
+            #endif
     }
 }
 
@@ -141,18 +184,24 @@ struct TextSizeMenu: View {
             CommandButton(model: model, id: "view.text_size_reset", title: "A  Default size")
             CommandButton(model: model, id: "view.text_size_up", title: "A+  Larger")
             Divider()
-            // Line spacing has no registered command yet: a host setting (see the B072 report).
-            Picker("Line spacing", selection: $model.spacingIndex) {
-                ForEach(ShellTokens.lineSpacings.indices, id: \.self) { index in
-                    Text(String(format: "%.2g", ShellTokens.lineSpacings[index])).tag(index)
+            Menu("Line spacing") {
+                ForEach(ShellTokens.lineSpacings, id: \.self) { spacing in
+                    let current = abs(model.lineSpacing - spacing) < 0.001
+                    Button {
+                        model.run("view.line_spacing", args: ShellCommandArgs(number: Double(spacing)))
+                    } label: {
+                        let title = String(format: "%.2g", spacing)
+                        if current { Label(title, systemImage: "checkmark") } else { Text(title) }
+                    }
                 }
             }
             Divider()
-            ForEach(ShellTokens.themes) { theme in
+            ForEach(["system"] + ShellTokens.themes.map(\.id), id: \.self) { id in
                 Button {
-                    model.run("view.theme", args: ShellCommandArgs(text: theme.id))
+                    model.run("view.theme", args: ShellCommandArgs(text: id))
                 } label: {
-                    if model.theme == theme { Label(theme.title, systemImage: "checkmark") } else { Text(theme.title) }
+                    let title = ShellTokens.theme(named: id)?.title ?? "System"
+                    if model.session.reading.theme == id { Label(title, systemImage: "checkmark") } else { Text(title) }
                 }
             }
         } label: {
@@ -195,10 +244,11 @@ struct PaletteOverlay: View {
     let model: ShellModel
     @ObservedObject var palette: PaletteState
     let maxHeight: CGFloat
+    let width: CGFloat
 
     var body: some View {
         if palette.open, let result = palette.result {
-            PaletteResults(model: model, palette: palette, result: result, maxHeight: maxHeight)
+            PaletteResults(model: model, palette: palette, result: result, maxHeight: maxHeight, width: width)
         }
     }
 }
@@ -208,6 +258,7 @@ struct PaletteResults: View {
     @ObservedObject var palette: PaletteState
     let result: ShellPaletteResult
     let maxHeight: CGFloat
+    var width: CGFloat = ShellTokens.paletteResultsWidth
 
     var body: some View {
         let rows = model.paletteRows
@@ -259,8 +310,13 @@ struct PaletteResults: View {
         .frame(maxHeight: maxHeight)
         .fixedSize(horizontal: false, vertical: true)
         .background(model.theme.wellColor)
-        .overlay(alignment: .bottom) { Rectangle().fill(model.theme.rulesColor).frame(height: 1) }
-        .shadow(color: .black.opacity(model.theme.isDark ? 0.5 : 0.12), radius: 12, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: ShellTokens.Radius.toolWell))
+        .overlay(RoundedRectangle(cornerRadius: ShellTokens.Radius.toolWell).strokeBorder(model.theme.rulesColor, lineWidth: 1))
+        .shadow(color: .black.opacity(model.theme.isDark ? 0.5 : 0.14), radius: 14, y: 6)
+        // Anchored under the field, which is centred in the toolbar row.
+        .frame(width: width)
+        .padding(.top, ShellTokens.Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .top)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Palette results")
         .accessibilityIdentifier("shell-palette-results")
@@ -284,7 +340,7 @@ struct PaletteRow: View {
     var body: some View {
         let disabled = item.disabledReason != nil
         HStack(alignment: .firstTextBaseline, spacing: ShellTokens.Spacing.s) {
-            Text(item.title)
+            Text(model.displayTitle(item))
                 .font(ShellTokens.chromeFont)
                 .lineLimit(1)
             if let subtitle = subtitleText {
