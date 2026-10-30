@@ -63,9 +63,13 @@ final class NoteStore {
         }
     }
 
+    /// The editor of a pane (a notes tab's id, or `dock`).
+    func editor(pane: String) -> NoteTextView? { editors[pane]?.editor }
+
+    /// An editor on screen showing the note (a released workspace's editor may linger).
     private func editor(for noteID: String) -> NoteTextView? {
-        if let active, active.noteID == noteID { return active }
-        return editors.values.compactMap(\.editor).first { $0.noteID == noteID }
+        if let active, active.noteID == noteID, active.window != nil { return active }
+        return editors.values.compactMap(\.editor).first { $0.noteID == noteID && $0.window != nil }
     }
 
     // MARK: Actions

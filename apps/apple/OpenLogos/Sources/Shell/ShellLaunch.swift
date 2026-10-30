@@ -7,6 +7,10 @@
 //   -OPENLOGOS_RUN "a,b:arg"            runs registered commands in order; `:arg` is a column
 //                                       number, else a reference (nav.navigate) or text
 //   -OPENLOGOS_SHELL_DEMO 1             a highlight, ink strokes and a collect toast on screen
+//   -OPENLOGOS_SELECT "2:the world"     selects the phrase in column 2's text (the selection group)
+//   -OPENLOGOS_WORD "2:ἠγάπησεν"        a Word study click on the word in column 2
+//   -OPENLOGOS_NOTE_DEMO 1              types into the shown note: a bold word and a passage link
+//   -OPENLOGOS_FOCUS dock               focus in the notes dock's editor
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
 //                                       (no screen-recording permission needed)
@@ -50,6 +54,24 @@ enum ShellLaunch {
         if defaults.bool(forKey: "OPENLOGOS_SHELL_DEMO") {
             demo(model)
         }
+        if let target = defaults.string(forKey: "OPENLOGOS_WORD"), let (surface, range) = phrase(target, in: model) {
+            surface.dragMode = .word
+            surface.select(display: range)
+            surface.dragEnded()
+            surface.dragMode = model.dragMode
+            try? await Task.sleep(nanoseconds: 400_000_000)
+        }
+        #if os(macOS)
+        if defaults.bool(forKey: "OPENLOGOS_NOTE_DEMO") {
+            noteDemo(model)
+        }
+        if defaults.string(forKey: "OPENLOGOS_FOCUS") == "dock", let editor = model.notes.editor(pane: "dock") {
+            editor.window?.makeFirstResponder(editor)
+        }
+        #endif
+        if let target = defaults.string(forKey: "OPENLOGOS_SELECT"), let (surface, range) = phrase(target, in: model) {
+            surface.select(display: range)
+        }
         if let text = defaults.string(forKey: "OPENLOGOS_PALETTE") {
             model.focusPalette()
             model.paletteText = text
@@ -83,6 +105,39 @@ enum ShellLaunch {
         default: return nil
         }
     }
+
+    /// `2:the world`: column 2's surface and the phrase's display range in it.
+    private static func phrase(_ target: String, in model: ShellModel) -> (ReaderSurface, NSRange)? {
+        let parts = target.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let number = UInt32(parts[0]),
+              let column = model.activeWorkspace.columns.first(where: { $0.number == number }),
+              let surface = model.surface(for: column.shownTabId), let layout = surface.layout,
+              let range = layout.coreRange(ofPhrase: parts[1]) else { return nil }
+        return (surface, layout.runMap.displayRange(fromCore: range))
+    }
+
+    #if os(macOS)
+    /// The shown note being edited: a heading, a bold word and a passage link, focus in it.
+    private static func noteDemo(_ model: ShellModel) {
+        guard let column = model.activeWorkspace.columns.first(where: { c in c.tabs.first { $0.id == c.shownTabId }?.kind == "notes" }),
+              let editor = model.notes.editor(pane: column.shownTabId), let storage = editor.textStorage else { return }
+        editor.window?.makeFirstResponder(editor)
+        model.focusColumn(column.number)
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        editor.insertText("Love that gives\n", replacementRange: editor.selectedRange())
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        model.run("note.heading")
+        editor.setSelectedRange(NSRange(location: storage.length, length: 0))
+        editor.insertText("\nGod ", replacementRange: editor.selectedRange())
+        let start = storage.length
+        editor.insertText("so loved", replacementRange: editor.selectedRange())
+        editor.setSelectedRange(NSRange(location: start, length: 8))
+        model.run("note.bold")
+        editor.setSelectedRange(NSRange(location: storage.length, length: 0))
+        editor.insertText(" the world: see ", replacementRange: editor.selectedRange())
+        model.run("note.link_passage", args: ShellCommandArgs(reference: "John.3.16"))
+    }
+    #endif
 
     /// A highlight in column 1, ink in column 2 and a collect toast: what the tools do.
     private static func demo(_ model: ShellModel) {

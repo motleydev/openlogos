@@ -392,6 +392,10 @@ final class ShellModel: ObservableObject {
 
     func register(_ surface: ReaderSurface, for tabID: String) {
         guard surfaces[tabID]?.surface !== surface else { return }
+        // Tab ids repeat across workspaces (`t1`): a released workspace's surface, updated
+        // once more on its way out, must not take the shown tab's place.
+        if let tab = activeWorkspace.columns.lazy.flatMap(\.tabs).first(where: { $0.id == tabID }),
+           let content = surface.layout?.content.id, !content.hasPrefix("\(tab.contentId)|") { return }
         surfaces[tabID] = WeakSurface(surface: surface)
         // A tab revealed again opens where it was left (the core's scroll anchor).
         if let segment = session.workspaces.lazy.flatMap(\.columns).flatMap(\.tabs).first(where: { $0.id == tabID })?.scrollSegmentId {
