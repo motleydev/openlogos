@@ -4,7 +4,7 @@
   "source_id": "S52",
   "artifact_sha256": "64a713006631971fa5fef67ea302e68424a6d9cc1d3060ecd08028974193412f",
   "edition_id": "bsb:berean-standard-bible:usfm-2026-03-08",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "LicenseRef-BSB-Public-Domain-Dedication-2023-04-30",
   "evidence_url": "https://berean.bible/terms.htm",
   "license_artifact_sha256": "e9a15ae12bc992c8db6d6ea3efc1467a1ac97e7632cb02ce7267de33f4afd251",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-10-30",
   "acquisition": {
     "upstream_url": "https://bereanbible.com/bsb_usfm.zip",
     "commit": null,
