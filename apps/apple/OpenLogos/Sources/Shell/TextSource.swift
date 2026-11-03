@@ -58,7 +58,11 @@ struct FixtureTextSource: TextSource {
     ]
 
     var resourceTitles: [String: String] { Self.resources.mapValues(\.shortName) }
-    var resourceLanguages: [String: String] { Self.resources.mapValues(\.language) }
+    /// The editions only (B077: the core's Compare offers the resources with a language, so
+    /// the note and the lexicon have none).
+    var resourceLanguages: [String: String] {
+        Self.resources.filter { Self.entries[$0.key]?.chapter != nil }.mapValues(\.language)
+    }
 
     func resource(_ id: String) -> ResourceInfo {
         Self.resources[id] ?? ResourceInfo(id: id, shortName: id, name: id, isRightToLeft: false)

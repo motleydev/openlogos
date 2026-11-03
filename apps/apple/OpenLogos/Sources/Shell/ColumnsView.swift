@@ -3,7 +3,8 @@
 // number badge, filled in the accent when active, the resource, its passage, the link state
 // and a pane menu), then the TextKit 2 reading surface for the shown tab, capped at the
 // measure and centred, with an ink layer over it. Columns are separated by 1 pt rules that
-// resize them when dragged.
+// resize them when dragged. B077: a right-click on a tab, the identity row, the strip or the
+// column's empty area opens the OpenLogos menu for it (ContextMenu.swift).
 import SwiftUI
 
 struct ColumnsView: View {
@@ -119,11 +120,16 @@ struct TabStrip: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(column.tabs, id: \.id) { tab in
-                        TabLabel(model: model, column: column, tab: tab, shown: tab.id == column.shownTabId)
+            GeometryReader { geometry in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(column.tabs, id: \.id) { tab in
+                            TabLabel(model: model, column: column, tab: tab, shown: tab.id == column.shownTabId)
+                        }
                     }
+                    // B077: the strip's empty area is inside the scroll view, so its catcher is too.
+                    .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .leading)
+                    .background(BackgroundMenu(model: model, key: "strip-\(column.number)", column: column.number))
                 }
             }
             Button {
@@ -140,6 +146,21 @@ struct TabStrip: View {
         }
         .padding(.leading, ShellTokens.Spacing.xs)
         .frame(height: ShellTokens.tabStripHeight)
+    }
+}
+
+/// B077: the column's empty area answers a right-click with the background menu.
+struct BackgroundMenu: View {
+    let model: ShellModel
+    let key: String
+    let column: UInt32
+
+    var body: some View {
+        #if os(macOS)
+        MenuCatcher(model: model, key: key) { model.nsMenu(for: .background(column: column)) }
+        #else
+        Color.clear
+        #endif
     }
 }
 
@@ -184,6 +205,7 @@ struct TabLabel: View {
             model.focusColumn(column.number)
             if !shown { model.showTab(tab.id) }
         }
+        .shellContextMenu("tab-\(tab.id)", { .tab(tabId: tab.id) }, model: model)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(label)
         .accessibilityAddTraits(shown ? [.isButton, .isSelected] : .isButton)
@@ -244,6 +266,7 @@ struct IdentityRow: View {
         }
         .padding(.horizontal, ShellTokens.Spacing.s)
         .frame(height: ShellTokens.identityRowHeight)
+        .shellContextMenu("column-\(column.number)", { .column(column: column.number) }, model: model)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Column \(column.number), \(resource?.name ?? ""), \(ShellReference.human(tab?.reference)), \(tab.map(TabTitle.linkState) ?? "")\(isActive ? ", active" : "")")
         .accessibilityIdentifier("shell-identity-\(column.number)")
@@ -358,11 +381,12 @@ struct TabBody: View {
                             }
                         },
                         typography: model.typography,
-                        marks: model.marks[tab.id] ?? [],
+                        marks: model.readerMarks(tab.id),
                         dragMode: model.dragMode,
                         onDragEnd: { mode, selection in model.dragEnded(mode, selection) },
                         onSurface: { model.register($0, for: tab.id) },
-                        onActivate: { model.focusColumn(column.number) }
+                        onActivate: { model.focusColumn(column.number) },
+                        onContextMenu: { hit in model.nsMenu(for: hit, tab: tab, column: column) }
                     )
                     .accessibilityLabel("\(text.resource.name), \(ShellReference.human(tab.reference))")
                 } else {
@@ -379,6 +403,7 @@ struct TabBody: View {
             .frame(width: max(0, geometry.size.width - leadingInset))
             .padding(.leading, leadingInset)
         }
+        .background(BackgroundMenu(model: model, key: "background-\(column.number)", column: column.number))
     }
 }
 

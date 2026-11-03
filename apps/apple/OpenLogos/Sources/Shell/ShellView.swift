@@ -121,6 +121,9 @@ struct PaletteField: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(model.theme.chromeColor)
                     .accessibilityHidden(true)
+                if let scope = palette.scope {
+                    ScopeChip(model: model, scope: scope)
+                }
                 TextField("", text: $palette.text, prompt: Text("Passage, word, command, tab…  ⌘K").foregroundStyle(model.theme.chromeColor))
                     .textFieldStyle(.plain)
                     .font(ShellTokens.chromeFont)
@@ -153,6 +156,36 @@ struct PaletteField: View {
             #else
             .frame(maxHeight: .infinity)
             #endif
+    }
+}
+
+/// B077: the scope a menu's Search put on the Text section (`This edition · BSB`); × drops it
+/// (plain text search again).
+struct ScopeChip: View {
+    let model: ShellModel
+    let scope: SearchScope
+
+    var body: some View {
+        HStack(spacing: ShellTokens.Spacing.xs) {
+            Text(scope.label)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+                .fixedSize()
+            Button {
+                model.clearSearchScope()
+            } label: {
+                Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove the scope")
+        }
+        .padding(.horizontal, ShellTokens.Spacing.s)
+        .frame(height: 20)
+        .background(Capsule().fill(model.theme.accentColor.opacity(0.16)))
+        .foregroundStyle(model.theme.accentColor)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Scope: \(scope.label)")
+        .accessibilityIdentifier("shell-search-scope")
     }
 }
 
