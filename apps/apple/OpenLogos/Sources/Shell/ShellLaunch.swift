@@ -231,6 +231,8 @@ enum ShellLaunch {
             return
         }
         guard let menu, let view else { return }
+        // Keep the menu inside the window, where the picture can show it.
+        point.x = min(point.x, view.bounds.width - 250)
         if let label = defaults.string(forKey: "OPENLOGOS_MENU_CHOOSE") {
             if let item = menu.items.lazy.flatMap({ [$0] + ($0.submenu?.items ?? []) }).first(where: { $0.title == label }) {
                 (item.target as? MenuDispatcher)?.choose(item)
@@ -296,12 +298,29 @@ enum ShellLaunch {
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: canvas)
         rep.draw(in: NSRect(origin: .zero, size: size))
         for overlay in overlays {
-            guard let content = overlay.contentView?.superview ?? overlay.contentView, let image = bitmap(of: content, scale: scale) else { continue }
+            guard let content = overlay.contentView?.superview ?? overlay.contentView else { continue }
+            // A menu's backdrop is Liquid Glass (backdrop and SDF layers), which `cacheDisplay`
+            // draws as plain white: the picture leaves it out and fills the menu's shape with
+            // the appearance's window background instead.
+            hideGlass(content.layer)
+            guard let image = bitmap(of: content, scale: scale) else { continue }
             let origin = NSPoint(x: overlay.frame.minX - window.frame.minX, y: overlay.frame.minY - window.frame.minY)
+            overlay.effectiveAppearance.performAsCurrentDrawingAppearance {
+                NSColor.windowBackgroundColor.setFill()
+                NSBezierPath(roundedRect: NSRect(origin: origin, size: overlay.frame.size).insetBy(dx: 1, dy: 1), xRadius: 10, yRadius: 10).fill()
+            }
+
             image.draw(in: NSRect(origin: origin, size: overlay.frame.size), from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
         }
         NSGraphicsContext.restoreGraphicsState()
         try? canvas.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+    }
+
+    private static func hideGlass(_ layer: CALayer?) {
+        guard let layer else { return }
+        let name = String(describing: type(of: layer))
+        if ["Backdrop", "SDF", "Portal"].contains(where: name.contains) { layer.isHidden = true }
+        layer.sublayers?.forEach(hideGlass)
     }
 
     private static func bitmap(of view: NSView, scale: CGFloat) -> NSBitmapImageRep? {
