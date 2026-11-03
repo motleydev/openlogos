@@ -345,7 +345,7 @@ fn link_name(mode: LinkMode) -> String {
     }
 }
 
-fn check_step(
+pub(crate) fn check_step(
     r: &mut Recorder,
     name: &str,
     shell: &Shell,

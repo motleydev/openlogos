@@ -345,7 +345,7 @@ def check_report(report):
 
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands','tool_well'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands','tool_well','context_menu'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -748,6 +748,13 @@ def main():
     for w in well['session']['workspaces']: validate('workspace-2',w); check_workspace2(w)
     check_session(record,well['session']['workspaces'])
     assert {t['kind'] for w in well['session']['workspaces'] for c in w['columns'] for t in c['tabs']}=={'reading','notes','lexicon','research'}, 'Tool well fixture has a tab of every kind'
+    menu=load('crates/conformance/fixtures/context-menu.json')
+    assert menu['kind']=='context_menu'
+    record={'schema_version':menu['session']['schema_version'],'fixture_only':menu['session']['fixture_only'],'workspace_ids':[w['id'] for w in menu['session']['workspaces']],'active_workspace_id':menu['session']['active_workspace_id'],'tool':menu['session']['tool'],'next_serial':menu['session']['next_serial']}
+    validate('session',record)
+    for w in menu['session']['workspaces']: validate('workspace-2',w); check_workspace2(w)
+    check_session(record,menu['session']['workspaces'])
+    assert {c['target']['kind'] for c in menu['cases']}=={'word','selection','note_text','note_link','tab','column','background'}, 'Context menu fixture has a case for every target kind'
     authority=load('crates/conformance/fixtures/note-authority-transitions.json')
     assert authority['kind']=='note_authority'
     for scenario in authority['scenarios']:

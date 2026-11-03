@@ -424,8 +424,8 @@ impl Builder<'_> {
         children
     }
 
-    /// "Open John 3:16 in ▸": every column but the one the passage is read in, and a new
-    /// column.
+    /// "Open John 3:16 in ▸": every column but the one the passage is read in and those
+    /// showing a note, and a new column.
     fn open_in(&self, reference: &str, own: Option<usize>) -> ContextMenuItem {
         let base = CommandArgs {
             reference: Some(reference.to_owned()),
@@ -434,7 +434,14 @@ impl Builder<'_> {
         let children = self
             .column_children("nav.navigate", &base)
             .into_iter()
-            .filter(|c| own.is_none_or(|n| c.args.column != Some(n as u32)))
+            .filter(|c| {
+                let shows_note = c.args.column.is_some_and(|n| {
+                    self.ws().columns[n as usize - 1]
+                        .shown()
+                        .is_some_and(|t| t.kind == PaneKind::Notes)
+                });
+                !shows_note && own.is_none_or(|n| c.args.column != Some(n as u32))
+            })
             .collect();
         let words = human_reference(reference).unwrap_or_else(|| reference.to_owned());
         submenu(&format!("Open {words} in"), "open", children)

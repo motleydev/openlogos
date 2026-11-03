@@ -1,0 +1,4067 @@
+{
+  "id": "context-menu",
+  "kind": "context_menu",
+  "description": "The OpenLogos context menu (B077, specs/22 §4.2): for a word in a translation, in Greek and in Hebrew, a selection in one verse and across verses, a spot, a selection and a passage link in a note (dock and Notes tab), a tab (hidden, linked, active, alone), a column (first, last, only) and the background, the header (title, the focus change run first, the dispatch context), every section and row with disabled reasons in words, rows in full where their arguments matter, and choosing rows; then the menu's new commands (tab.open_edition, tab.close_others and the host hand-offs) with refusals and undo. Every host runs it.",
+  "license": "Synthetic data, CC0-1.0",
+  "source": "specs/22-workspace-shell.md §4.1, §4.2, §6; design/tokens/shell.json highlights",
+  "session": {
+    "schema_version": "1.0",
+    "fixture_only": true,
+    "workspaces": [
+      {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "w1",
+        "title": "John study",
+        "columns": [
+          {
+            "id": "c1",
+            "tabs": [
+              {
+                "id": "t1",
+                "kind": "reading",
+                "content_id": "bsb",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": "1",
+                "pinned": false
+              },
+              {
+                "id": "t2",
+                "kind": "reading",
+                "content_id": "bsb",
+                "content_revision": "0",
+                "reference": "Rom.8.28",
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t1",
+            "width_fraction": 0.35
+          },
+          {
+            "id": "c2",
+            "tabs": [
+              {
+                "id": "t3",
+                "kind": "reading",
+                "content_id": "sblgnt",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t3",
+            "width_fraction": 0.3
+          },
+          {
+            "id": "c3",
+            "tabs": [
+              {
+                "id": "t4",
+                "kind": "lexicon",
+                "content_id": "fixture:lexicon-1",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": null,
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t4",
+            "width_fraction": 0.15
+          },
+          {
+            "id": "c4",
+            "tabs": [
+              {
+                "id": "t5",
+                "kind": "notes",
+                "content_id": "fixture:note:1",
+                "content_revision": "0",
+                "reference": null,
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t5",
+            "width_fraction": 0.2
+          }
+        ],
+        "active_column_id": "c1",
+        "notes_dock": {
+          "note_id": "fixture:note:1",
+          "open": true
+        },
+        "next_serial": 10
+      },
+      {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "w2",
+        "title": "Genesis",
+        "columns": [
+          {
+            "id": "c1",
+            "tabs": [
+              {
+                "id": "t1",
+                "kind": "reading",
+                "content_id": "wlc",
+                "content_revision": "0",
+                "reference": "Gen.1.1",
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t1",
+            "width_fraction": 1.0
+          }
+        ],
+        "active_column_id": "c1",
+        "notes_dock": {
+          "note_id": null,
+          "open": false
+        },
+        "next_serial": 10
+      }
+    ],
+    "active_workspace_id": "w1",
+    "tool": "select",
+    "next_serial": 3
+  },
+  "resource_titles": {
+    "bsb": "BSB",
+    "sblgnt": "SBLGNT",
+    "wlc": "WLC",
+    "fixture:lexicon-1": "Lexicon",
+    "fixture:note:1": "Note"
+  },
+  "resource_languages": {
+    "bsb": "en",
+    "sblgnt": "grc",
+    "wlc": "hbo"
+  },
+  "cases": [
+    {
+      "name": "word in a translation",
+      "steps": [],
+      "target": {
+        "kind": "word",
+        "text": "loved",
+        "reference": "John.3.16",
+        "segment_id": "John.3.16",
+        "scalar_start": 11,
+        "scalar_end": 16,
+        "resource_id": "bsb",
+        "tab_id": "t1"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "word",
+          "title": "loved"
+        },
+        "menu": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "sections": [
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {
+                    "resource_id": "bsb",
+                    "scope": "edition",
+                    "text": "loved"
+                  },
+                  "command_id": "search.text",
+                  "disabled_text": null,
+                  "icon": "search",
+                  "key": null,
+                  "label": "Search “loved” in this edition",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {
+                    "scope": "all",
+                    "text": "loved"
+                  },
+                  "command_id": "search.text",
+                  "disabled_text": null,
+                  "icon": "search-all",
+                  "key": null,
+                  "label": "Search “loved” in all editions",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {
+                    "text": "loved"
+                  },
+                  "command_id": "search.lemma",
+                  "disabled_text": "Needs the lexicon import",
+                  "icon": "lemma",
+                  "key": null,
+                  "label": "Search lemma",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {
+                    "reference": "John.3.16",
+                    "text": "loved"
+                  },
+                  "command_id": "tab.open_lexicon",
+                  "disabled_text": "Word study works on Greek and Hebrew text",
+                  "icon": "word-study",
+                  "key": null,
+                  "label": "Word study",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {
+                    "reference": "John.3",
+                    "resource_id": "bsb",
+                    "scope": "chapter",
+                    "text": "loved"
+                  },
+                  "command_id": "search.text",
+                  "disabled_text": null,
+                  "icon": "find",
+                  "key": null,
+                  "label": "Find in this chapter",
+                  "value": null
+                }
+              ],
+              "label": "Search"
+            },
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {
+                    "reference": "John.3.16",
+                    "resource_id": "sblgnt"
+                  },
+                  "command_id": "tab.open_edition",
+                  "disabled_text": null,
+                  "icon": "compare",
+                  "key": null,
+                  "label": "Compare in SBLGNT",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {
+                    "column": 2,
+                    "reference": "John.3.16"
+                  },
+                  "command_id": "nav.navigate",
+                  "disabled_text": null,
+                  "icon": "open",
+                  "key": null,
+                  "label": "Open John 3:16 in",
+                  "submenu": [
+                    {
+                      "active": false,
+                      "args": {
+                        "column": 2,
+                        "reference": "John.3.16"
+                      },
+                      "command_id": "nav.navigate",
+                      "disabled_text": null,
+                      "icon": "column",
+                      "key": null,
+                      "label": "Column 2 · SBLGNT",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "column": 3,
+                        "reference": "John.3.16"
+                      },
+                      "command_id": "nav.navigate",
+                      "disabled_text": null,
+                      "icon": "column",
+                      "key": null,
+                      "label": "Column 3 · Lexicon",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "new_column": true,
+                        "reference": "John.3.16"
+                      },
+                      "command_id": "nav.navigate",
+                      "disabled_text": null,
+                      "icon": "new-column",
+                      "key": null,
+                      "label": "New column",
+                      "value": null
+                    }
+                  ],
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {
+                    "reference": "John.3.16"
+                  },
+                  "command_id": "nav.cross_references",
+                  "disabled_text": "Needs cross-reference data",
+                  "icon": "cross-references",
+                  "key": null,
+                  "label": "Cross references",
+                  "value": null
+                }
+              ],
+              "label": "Open"
+            },
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {
+                    "text": "#F5D90A"
+                  },
+                  "command_id": "selection.highlight_in",
+                  "disabled_text": null,
+                  "icon": "highlight",
+                  "key": null,
+                  "label": "Highlight",
+                  "submenu": [
+                    {
+                      "active": true,
+                      "args": {
+                        "text": "#F5D90A"
+                      },
+                      "command_id": "selection.highlight_in",
+                      "disabled_text": null,
+                      "icon": "swatch",
+                      "key": null,
+                      "label": "Yellow",
+                      "value": "#F5D90A"
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "text": "#4CC38A"
+                      },
+                      "command_id": "selection.highlight_in",
+                      "disabled_text": null,
+                      "icon": "swatch",
+                      "key": null,
+                      "label": "Green",
+                      "value": "#4CC38A"
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "text": "#5B9BFF"
+                      },
+                      "command_id": "selection.highlight_in",
+                      "disabled_text": null,
+                      "icon": "swatch",
+                      "key": null,
+                      "label": "Blue",
+                      "value": "#5B9BFF"
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "text": "#F25C9A"
+                      },
+                      "command_id": "selection.highlight_in",
+                      "disabled_text": null,
+                      "icon": "swatch",
+                      "key": null,
+                      "label": "Pink",
+                      "value": "#F25C9A"
+                    }
+                  ],
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "selection.collect",
+                  "disabled_text": null,
+                  "icon": "collect",
+                  "key": "Cmd+Shift+C",
+                  "label": "Collect",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "selection.note",
+                  "disabled_text": null,
+                  "icon": "note",
+                  "key": null,
+                  "label": "Note on it",
+                  "value": null
+                }
+              ],
+              "label": "Mark"
+            },
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {
+                    "text": "loved"
+                  },
+                  "command_id": "copy.text",
+                  "disabled_text": null,
+                  "icon": "copy",
+                  "key": null,
+                  "label": "Copy",
+                  "submenu": [
+                    {
+                      "active": false,
+                      "args": {
+                        "text": "loved"
+                      },
+                      "command_id": "copy.text",
+                      "disabled_text": null,
+                      "icon": "copy",
+                      "key": null,
+                      "label": "Copy word",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "reference": "John.3.16"
+                      },
+                      "command_id": "copy.reference",
+                      "disabled_text": null,
+                      "icon": "copy-reference",
+                      "key": null,
+                      "label": "Copy reference",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "reference": "John.3.16",
+                        "resource_id": "bsb"
+                      },
+                      "command_id": "copy.passage",
+                      "disabled_text": null,
+                      "icon": "copy-passage",
+                      "key": null,
+                      "label": "Copy verse with reference",
+                      "value": null
+                    }
+                  ],
+                  "value": null
+                }
+              ],
+              "label": "Copy"
+            }
+          ],
+          "target_kind": "word",
+          "title": "loved"
+        },
+        "choose": [
+          {
+            "path": "Search “loved” in this edition",
+            "expect": {
+              "handled": false,
+              "recorded": false
+            }
+          },
+          {
+            "path": "Open John 3:16 in/New column",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 2,
+                "tab": "t10"
+              },
+              "columns": [
+                [
+                  "*t1",
+                  "t2"
+                ],
+                [
+                  "*t10"
+                ],
+                [
+                  "*t3"
+                ],
+                [
+                  "*t4"
+                ],
+                [
+                  "*t5"
+                ]
+              ],
+              "links": {
+                "t10": "pinned"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "word in a translation without a selection in the host",
+      "steps": [],
+      "target": {
+        "kind": "word",
+        "text": "world",
+        "reference": "John.3.16"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "word",
+          "title": "world"
+        },
+        "items": {
+          "Collect": {
+            "active": false,
+            "args": {},
+            "command_id": "selection.collect",
+            "disabled_text": null,
+            "icon": "collect",
+            "key": "Cmd+Shift+C",
+            "value": null
+          },
+          "Copy/Copy verse with reference": {
+            "active": false,
+            "args": {
+              "reference": "John.3.16",
+              "resource_id": "bsb"
+            },
+            "command_id": "copy.passage",
+            "disabled_text": null,
+            "icon": "copy-passage",
+            "key": null,
+            "value": null
+          },
+          "Search “world” in this edition": {
+            "active": false,
+            "args": {
+              "resource_id": "bsb",
+              "scope": "edition",
+              "text": "world"
+            },
+            "command_id": "search.text",
+            "disabled_text": null,
+            "icon": "search",
+            "key": null,
+            "value": null
+          }
+        }
+      }
+    },
+    {
+      "name": "word in Greek in another column",
+      "steps": [],
+      "target": {
+        "kind": "word",
+        "text": "ἠγάπησεν",
+        "reference": "John.3.16",
+        "tab_id": "t3"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": {
+            "args": {
+              "tab_id": "t3"
+            },
+            "command_id": "tab.focus"
+          },
+          "target_kind": "word",
+          "title": "ἠγάπησεν"
+        },
+        "outline": [
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search “ἠγάπησεν” in this edition"
+              },
+              {
+                "command": "search.text",
+                "label": "Search “ἠγάπησεν” in all editions"
+              },
+              {
+                "command": "search.lemma",
+                "disabled": "Needs the lexicon import",
+                "label": "Search lemma"
+              },
+              {
+                "command": "tab.open_lexicon",
+                "label": "Word study"
+              },
+              {
+                "command": "search.text",
+                "label": "Find in this chapter"
+              }
+            ]
+          },
+          {
+            "label": "Open",
+            "rows": [
+              {
+                "command": "tab.open_edition",
+                "label": "Compare in BSB"
+              },
+              {
+                "command": "nav.navigate",
+                "label": "Open John 3:16 in",
+                "submenu": [
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "nav.cross_references",
+                "disabled": "Needs cross-reference data",
+                "label": "Cross references"
+              }
+            ]
+          },
+          {
+            "label": "Mark",
+            "rows": [
+              {
+                "command": "selection.highlight_in",
+                "label": "Highlight",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "selection.highlight_in",
+                    "label": "Yellow"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Green"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Blue"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Pink"
+                  }
+                ]
+              },
+              {
+                "command": "selection.collect",
+                "label": "Collect"
+              },
+              {
+                "command": "selection.note",
+                "label": "Note on it"
+              }
+            ]
+          },
+          {
+            "label": "Copy",
+            "rows": [
+              {
+                "command": "copy.text",
+                "label": "Copy",
+                "submenu": [
+                  {
+                    "command": "copy.text",
+                    "label": "Copy word"
+                  },
+                  {
+                    "command": "copy.reference",
+                    "label": "Copy reference"
+                  },
+                  {
+                    "command": "copy.passage",
+                    "label": "Copy verse with reference"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "items": {
+          "Word study": {
+            "active": false,
+            "args": {
+              "reference": "John.3.16",
+              "text": "ἠγάπησεν"
+            },
+            "command_id": "tab.open_lexicon",
+            "disabled_text": null,
+            "icon": "word-study",
+            "key": null,
+            "value": null
+          },
+          "Compare in BSB": {
+            "active": false,
+            "args": {
+              "reference": "John.3.16",
+              "resource_id": "bsb"
+            },
+            "command_id": "tab.open_edition",
+            "disabled_text": null,
+            "icon": "compare",
+            "key": null,
+            "value": null
+          },
+          "Open John 3:16 in/Column 1 · BSB": {
+            "active": false,
+            "args": {
+              "column": 1,
+              "reference": "John.3.16"
+            },
+            "command_id": "nav.navigate",
+            "disabled_text": null,
+            "icon": "column",
+            "key": null,
+            "value": null
+          },
+          "Find in this chapter": {
+            "active": false,
+            "args": {
+              "reference": "John.3",
+              "resource_id": "sblgnt",
+              "scope": "chapter",
+              "text": "ἠγάπησεν"
+            },
+            "command_id": "search.text",
+            "disabled_text": null,
+            "icon": "find",
+            "key": null,
+            "value": null
+          }
+        },
+        "choose": [
+          {
+            "path": "Compare in BSB",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 2,
+                "tab": "t3"
+              },
+              "columns": [
+                [
+                  "*t1",
+                  "t2"
+                ],
+                [
+                  "*t3"
+                ],
+                [
+                  "t4",
+                  "*t10"
+                ],
+                [
+                  "*t5"
+                ]
+              ],
+              "references": {
+                "t10": "John.3.16"
+              },
+              "links": {
+                "t10": "group 1"
+              }
+            },
+            "then": [
+              {
+                "command": "edit.undo",
+                "expect": {
+                  "columns": [
+                    [
+                      "*t1",
+                      "t2"
+                    ],
+                    [
+                      "*t3"
+                    ],
+                    [
+                      "*t4"
+                    ],
+                    [
+                      "*t5"
+                    ]
+                  ],
+                  "active": {
+                    "workspace": "w1",
+                    "column": 2,
+                    "tab": "t3"
+                  },
+                  "can_redo": true
+                }
+              }
+            ]
+          },
+          {
+            "path": "Word study",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 2,
+                "tab": "t3"
+              },
+              "lexicon_words": {
+                "t4": "ἠγάπησεν"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "word in Hebrew",
+      "steps": [
+        {
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w2"
+          }
+        }
+      ],
+      "target": {
+        "kind": "word",
+        "text": "בָּרָא",
+        "reference": "Gen.1.1",
+        "tab_id": "t1"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "word",
+          "title": "בָּרָא"
+        },
+        "outline": [
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search “בָּרָא” in this edition"
+              },
+              {
+                "command": "search.text",
+                "label": "Search “בָּרָא” in all editions"
+              },
+              {
+                "command": "search.lemma",
+                "disabled": "Needs the lexicon import",
+                "label": "Search lemma"
+              },
+              {
+                "command": "tab.open_lexicon",
+                "label": "Word study"
+              },
+              {
+                "command": "search.text",
+                "label": "Find in this chapter"
+              }
+            ]
+          },
+          {
+            "label": "Open",
+            "rows": [
+              {
+                "command": "tab.open_edition",
+                "label": "Compare in BSB"
+              },
+              {
+                "command": "nav.navigate",
+                "label": "Open Gen 1:1 in",
+                "submenu": [
+                  {
+                    "command": "nav.navigate",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "nav.cross_references",
+                "disabled": "Needs cross-reference data",
+                "label": "Cross references"
+              }
+            ]
+          },
+          {
+            "label": "Mark",
+            "rows": [
+              {
+                "command": "selection.highlight_in",
+                "label": "Highlight",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "selection.highlight_in",
+                    "label": "Yellow"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Green"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Blue"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Pink"
+                  }
+                ]
+              },
+              {
+                "command": "selection.collect",
+                "label": "Collect"
+              },
+              {
+                "command": "selection.note",
+                "label": "Note on it"
+              }
+            ]
+          },
+          {
+            "label": "Copy",
+            "rows": [
+              {
+                "command": "copy.text",
+                "label": "Copy",
+                "submenu": [
+                  {
+                    "command": "copy.text",
+                    "label": "Copy word"
+                  },
+                  {
+                    "command": "copy.reference",
+                    "label": "Copy reference"
+                  },
+                  {
+                    "command": "copy.passage",
+                    "label": "Copy verse with reference"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "items": {
+          "Compare in BSB": {
+            "active": false,
+            "args": {
+              "reference": "Gen.1.1",
+              "resource_id": "bsb"
+            },
+            "command_id": "tab.open_edition",
+            "disabled_text": null,
+            "icon": "compare",
+            "key": null,
+            "value": null
+          },
+          "Word study": {
+            "active": false,
+            "args": {
+              "reference": "Gen.1.1",
+              "text": "בָּרָא"
+            },
+            "command_id": "tab.open_lexicon",
+            "disabled_text": null,
+            "icon": "word-study",
+            "key": null,
+            "value": null
+          }
+        },
+        "choose": [
+          {
+            "path": "Compare in BSB",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w2",
+                "column": 1,
+                "tab": "t1"
+              },
+              "columns": [
+                [
+                  "*t1"
+                ],
+                [
+                  "*t10"
+                ]
+              ],
+              "references": {
+                "t10": "Gen.1.1"
+              },
+              "links": {
+                "t10": "pinned"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "word without a passage",
+      "steps": [],
+      "target": {
+        "kind": "word",
+        "text": "Selah"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "word",
+          "title": "Selah"
+        },
+        "outline": [
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search “Selah” in this edition"
+              },
+              {
+                "command": "search.text",
+                "label": "Search “Selah” in all editions"
+              },
+              {
+                "command": "search.lemma",
+                "disabled": "Needs the lexicon import",
+                "label": "Search lemma"
+              },
+              {
+                "command": "tab.open_lexicon",
+                "disabled": "Word study works on Greek and Hebrew text",
+                "label": "Word study"
+              },
+              {
+                "command": "search.text",
+                "disabled": "Needs a passage",
+                "label": "Find in this chapter"
+              }
+            ]
+          },
+          {
+            "label": "Mark",
+            "rows": [
+              {
+                "command": "selection.highlight_in",
+                "label": "Highlight",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "selection.highlight_in",
+                    "label": "Yellow"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Green"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Blue"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Pink"
+                  }
+                ]
+              },
+              {
+                "command": "selection.collect",
+                "label": "Collect"
+              },
+              {
+                "command": "selection.note",
+                "label": "Note on it"
+              }
+            ]
+          },
+          {
+            "label": "Copy",
+            "rows": [
+              {
+                "command": "copy.text",
+                "label": "Copy word"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "word in a tab that is not open",
+      "steps": [],
+      "target": {
+        "kind": "word",
+        "text": "loved",
+        "tab_id": "t9"
+      },
+      "context": {},
+      "expect": {
+        "error": "no_such_tab"
+      }
+    },
+    {
+      "name": "word with a custom swatch",
+      "steps": [
+        {
+          "command": "tool.swatch",
+          "args": {
+            "text": "#123456"
+          }
+        }
+      ],
+      "target": {
+        "kind": "word",
+        "text": "loved",
+        "reference": "John.3.16"
+      },
+      "context": {},
+      "expect": {
+        "items": {
+          "Highlight": {
+            "active": false,
+            "args": {
+              "text": "#123456"
+            },
+            "command_id": "selection.highlight_in",
+            "disabled_text": null,
+            "icon": "highlight",
+            "key": null,
+            "value": null
+          },
+          "Highlight/Current swatch": {
+            "active": true,
+            "args": {
+              "text": "#123456"
+            },
+            "command_id": "selection.highlight_in",
+            "disabled_text": null,
+            "icon": "swatch",
+            "key": null,
+            "value": "#123456"
+          },
+          "Highlight/Yellow": {
+            "active": false,
+            "args": {
+              "text": "#F5D90A"
+            },
+            "command_id": "selection.highlight_in",
+            "disabled_text": null,
+            "icon": "swatch",
+            "key": null,
+            "value": "#F5D90A"
+          }
+        }
+      }
+    },
+    {
+      "name": "word with the alternate swatch current",
+      "steps": [
+        {
+          "command": "tool.swap_swatches"
+        }
+      ],
+      "target": {
+        "kind": "word",
+        "text": "loved",
+        "reference": "John.3.16"
+      },
+      "context": {},
+      "expect": {
+        "items": {
+          "Highlight/Yellow": {
+            "active": false,
+            "args": {
+              "text": "#F5D90A"
+            },
+            "command_id": "selection.highlight_in",
+            "disabled_text": null,
+            "icon": "swatch",
+            "key": null,
+            "value": "#F5D90A"
+          },
+          "Highlight/Green": {
+            "active": true,
+            "args": {
+              "text": "#4CC38A"
+            },
+            "command_id": "selection.highlight_in",
+            "disabled_text": null,
+            "icon": "swatch",
+            "key": null,
+            "value": "#4CC38A"
+          }
+        }
+      }
+    },
+    {
+      "name": "selection in one verse",
+      "steps": [],
+      "target": {
+        "kind": "selection",
+        "text": "For God so loved the world",
+        "reference": "John.3.16"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "selection",
+          "title": "“For God so loved the wo…”"
+        },
+        "outline": [
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search selection in this edition"
+              },
+              {
+                "command": "search.text",
+                "label": "Search selection in all editions"
+              }
+            ]
+          },
+          {
+            "label": "Open",
+            "rows": [
+              {
+                "command": "tab.open_edition",
+                "label": "Compare in SBLGNT"
+              },
+              {
+                "command": "nav.navigate",
+                "label": "Open John 3:16 in",
+                "submenu": [
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "New column"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Mark",
+            "rows": [
+              {
+                "command": "selection.highlight_in",
+                "label": "Highlight",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "selection.highlight_in",
+                    "label": "Yellow"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Green"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Blue"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Pink"
+                  }
+                ]
+              },
+              {
+                "command": "selection.collect",
+                "label": "Collect"
+              },
+              {
+                "command": "selection.note",
+                "label": "Note on it"
+              },
+              {
+                "command": "selection.study",
+                "label": "Study"
+              }
+            ]
+          },
+          {
+            "label": "Copy",
+            "rows": [
+              {
+                "command": "host.copy",
+                "label": "Copy"
+              },
+              {
+                "command": "copy.passage",
+                "label": "Copy with reference"
+              }
+            ]
+          }
+        ],
+        "items": {
+          "Copy with reference": {
+            "active": false,
+            "args": {
+              "reference": "John.3.16",
+              "resource_id": "bsb",
+              "text": "For God so loved the world"
+            },
+            "command_id": "copy.passage",
+            "disabled_text": null,
+            "icon": "copy-passage",
+            "key": null,
+            "value": null
+          },
+          "Copy": {
+            "active": false,
+            "args": {},
+            "command_id": "host.copy",
+            "disabled_text": null,
+            "icon": "copy",
+            "key": "Cmd+C",
+            "value": null
+          },
+          "Search selection in this edition": {
+            "active": false,
+            "args": {
+              "resource_id": "bsb",
+              "scope": "edition",
+              "text": "For God so loved the world"
+            },
+            "command_id": "search.text",
+            "disabled_text": null,
+            "icon": "search",
+            "key": null,
+            "value": null
+          },
+          "Study": {
+            "active": false,
+            "args": {},
+            "command_id": "selection.study",
+            "disabled_text": null,
+            "icon": "study",
+            "key": "Cmd+Shift+S",
+            "value": null
+          }
+        }
+      }
+    },
+    {
+      "name": "selection across verses",
+      "steps": [],
+      "target": {
+        "kind": "selection",
+        "text": "For God so loved the world, that he gave his one and only Son",
+        "reference": "John.3.16",
+        "end_reference": "John.3.18"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "selection",
+          "title": "“For God so loved the wo…”"
+        },
+        "items": {
+          "Copy with reference": {
+            "active": false,
+            "args": {
+              "reference": "John.3.16-John.3.18",
+              "resource_id": "bsb",
+              "text": "For God so loved the world, that he gave his one and only Son"
+            },
+            "command_id": "copy.passage",
+            "disabled_text": null,
+            "icon": "copy-passage",
+            "key": null,
+            "value": null
+          },
+          "Open John 3:16 in": {
+            "active": false,
+            "args": {
+              "column": 2,
+              "reference": "John.3.16"
+            },
+            "command_id": "nav.navigate",
+            "disabled_text": null,
+            "icon": "open",
+            "key": null,
+            "value": null
+          }
+        }
+      }
+    },
+    {
+      "name": "selection in Greek in another column",
+      "steps": [],
+      "target": {
+        "kind": "selection",
+        "text": "Οὕτως γὰρ ἠγάπησεν",
+        "reference": "John.3.16",
+        "tab_id": "t3"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": {
+            "args": {
+              "tab_id": "t3"
+            },
+            "command_id": "tab.focus"
+          },
+          "target_kind": "selection",
+          "title": "“Οὕτως γὰρ ἠγάπησεν”"
+        },
+        "outline": [
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search selection in this edition"
+              },
+              {
+                "command": "search.text",
+                "label": "Search selection in all editions"
+              }
+            ]
+          },
+          {
+            "label": "Open",
+            "rows": [
+              {
+                "command": "tab.open_edition",
+                "label": "Compare in BSB"
+              },
+              {
+                "command": "nav.navigate",
+                "label": "Open John 3:16 in",
+                "submenu": [
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "New column"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Mark",
+            "rows": [
+              {
+                "command": "selection.highlight_in",
+                "label": "Highlight",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "selection.highlight_in",
+                    "label": "Yellow"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Green"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Blue"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Pink"
+                  }
+                ]
+              },
+              {
+                "command": "selection.collect",
+                "label": "Collect"
+              },
+              {
+                "command": "selection.note",
+                "label": "Note on it"
+              },
+              {
+                "command": "selection.study",
+                "label": "Study"
+              }
+            ]
+          },
+          {
+            "label": "Copy",
+            "rows": [
+              {
+                "command": "host.copy",
+                "label": "Copy"
+              },
+              {
+                "command": "copy.passage",
+                "label": "Copy with reference"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "selection without a passage",
+      "steps": [],
+      "target": {
+        "kind": "selection",
+        "text": "Selah"
+      },
+      "context": {},
+      "expect": {
+        "outline": [
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search selection in this edition"
+              },
+              {
+                "command": "search.text",
+                "label": "Search selection in all editions"
+              }
+            ]
+          },
+          {
+            "label": "Mark",
+            "rows": [
+              {
+                "command": "selection.highlight_in",
+                "label": "Highlight",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "selection.highlight_in",
+                    "label": "Yellow"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Green"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Blue"
+                  },
+                  {
+                    "command": "selection.highlight_in",
+                    "label": "Pink"
+                  }
+                ]
+              },
+              {
+                "command": "selection.collect",
+                "label": "Collect"
+              },
+              {
+                "command": "selection.note",
+                "label": "Note on it"
+              },
+              {
+                "command": "selection.study",
+                "label": "Study"
+              }
+            ]
+          },
+          {
+            "label": "Copy",
+            "rows": [
+              {
+                "command": "host.copy",
+                "label": "Copy"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "note spot in the dock",
+      "steps": [],
+      "target": {
+        "kind": "note_text"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "notes_dock",
+            "has_selection": false
+          },
+          "focus": null,
+          "target_kind": "note_text",
+          "title": null
+        },
+        "menu": {
+          "context": {
+            "focus": "notes_dock",
+            "has_selection": false
+          },
+          "focus": null,
+          "sections": [
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "host.cut",
+                  "disabled_text": "Select some text first",
+                  "icon": "cut",
+                  "key": "Cmd+X",
+                  "label": "Cut",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "host.copy",
+                  "disabled_text": "Select some text first",
+                  "icon": "copy",
+                  "key": "Cmd+C",
+                  "label": "Copy",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "host.paste",
+                  "disabled_text": null,
+                  "icon": "paste",
+                  "key": "Cmd+V",
+                  "label": "Paste",
+                  "value": null
+                }
+              ],
+              "label": "Edit"
+            },
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "note.bold",
+                  "disabled_text": null,
+                  "icon": "bold",
+                  "key": "Cmd+B",
+                  "label": "Bold",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "note.italic",
+                  "disabled_text": null,
+                  "icon": "italic",
+                  "key": "Cmd+I",
+                  "label": "Italic",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "note.link_passage",
+                  "disabled_text": null,
+                  "icon": "link-passage",
+                  "key": null,
+                  "label": "Link passage",
+                  "value": null
+                }
+              ],
+              "label": "Format"
+            },
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {
+                    "scope": "all"
+                  },
+                  "command_id": "search.text",
+                  "disabled_text": "Select some text first",
+                  "icon": "search-all",
+                  "key": null,
+                  "label": "Search selection in all editions",
+                  "value": null
+                }
+              ],
+              "label": "Search"
+            }
+          ],
+          "target_kind": "note_text",
+          "title": null
+        }
+      }
+    },
+    {
+      "name": "note selection in the dock",
+      "steps": [],
+      "target": {
+        "kind": "note_text",
+        "text": "grace upon grace"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "notes_dock",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "note_text",
+          "title": "“grace upon grace”"
+        },
+        "outline": [
+          {
+            "label": "Edit",
+            "rows": [
+              {
+                "command": "host.cut",
+                "label": "Cut"
+              },
+              {
+                "command": "host.copy",
+                "label": "Copy"
+              },
+              {
+                "command": "host.paste",
+                "label": "Paste"
+              }
+            ]
+          },
+          {
+            "label": "Format",
+            "rows": [
+              {
+                "command": "note.bold",
+                "label": "Bold"
+              },
+              {
+                "command": "note.italic",
+                "label": "Italic"
+              },
+              {
+                "command": "note.link_passage",
+                "label": "Link passage"
+              }
+            ]
+          },
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search selection in all editions"
+              }
+            ]
+          }
+        ],
+        "items": {
+          "Search selection in all editions": {
+            "active": false,
+            "args": {
+              "scope": "all",
+              "text": "grace upon grace"
+            },
+            "command_id": "search.text",
+            "disabled_text": null,
+            "icon": "search-all",
+            "key": null,
+            "value": null
+          }
+        },
+        "choose": [
+          {
+            "path": "Bold",
+            "expect": {
+              "handled": false
+            }
+          },
+          {
+            "path": "Search selection in all editions",
+            "expect": {
+              "handled": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "note selection in a notes tab",
+      "steps": [],
+      "target": {
+        "kind": "note_text",
+        "text": "grace",
+        "tab_id": "t5"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": {
+            "args": {
+              "tab_id": "t5"
+            },
+            "command_id": "tab.focus"
+          },
+          "target_kind": "note_text",
+          "title": "“grace”"
+        },
+        "outline": [
+          {
+            "label": "Edit",
+            "rows": [
+              {
+                "command": "host.cut",
+                "label": "Cut"
+              },
+              {
+                "command": "host.copy",
+                "label": "Copy"
+              },
+              {
+                "command": "host.paste",
+                "label": "Paste"
+              }
+            ]
+          },
+          {
+            "label": "Format",
+            "rows": [
+              {
+                "command": "note.bold",
+                "label": "Bold"
+              },
+              {
+                "command": "note.italic",
+                "label": "Italic"
+              },
+              {
+                "command": "note.link_passage",
+                "label": "Link passage"
+              }
+            ]
+          },
+          {
+            "label": "Search",
+            "rows": [
+              {
+                "command": "search.text",
+                "label": "Search selection in all editions"
+              }
+            ]
+          }
+        ],
+        "choose": [
+          {
+            "path": "Italic",
+            "expect": {
+              "handled": false,
+              "active": {
+                "workspace": "w1",
+                "column": 4,
+                "tab": "t5"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "passage link in a note",
+      "steps": [],
+      "target": {
+        "kind": "note_link",
+        "reference": "Rom.8.28"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "notes_dock",
+            "has_selection": false
+          },
+          "focus": null,
+          "target_kind": "note_link",
+          "title": "Rom 8:28"
+        },
+        "outline": [
+          {
+            "label": "Open",
+            "rows": [
+              {
+                "command": "nav.navigate",
+                "label": "Open Rom 8:28 in",
+                "submenu": [
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "tab.open_edition",
+                "label": "Compare in",
+                "submenu": [
+                  {
+                    "command": "tab.open_edition",
+                    "label": "BSB"
+                  },
+                  {
+                    "command": "tab.open_edition",
+                    "label": "SBLGNT"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Link",
+            "rows": [
+              {
+                "command": "copy.reference",
+                "label": "Copy reference"
+              },
+              {
+                "command": "note.remove_link",
+                "label": "Remove link"
+              }
+            ]
+          }
+        ],
+        "items": {
+          "Open Rom 8:28 in/New column": {
+            "active": false,
+            "args": {
+              "new_column": true,
+              "reference": "Rom.8.28"
+            },
+            "command_id": "nav.navigate",
+            "disabled_text": null,
+            "icon": "new-column",
+            "key": null,
+            "value": null
+          },
+          "Compare in/SBLGNT": {
+            "active": false,
+            "args": {
+              "reference": "Rom.8.28",
+              "resource_id": "sblgnt"
+            },
+            "command_id": "tab.open_edition",
+            "disabled_text": null,
+            "icon": "compare",
+            "key": null,
+            "value": null
+          },
+          "Remove link": {
+            "active": false,
+            "args": {
+              "reference": "Rom.8.28"
+            },
+            "command_id": "note.remove_link",
+            "disabled_text": null,
+            "icon": "remove-link",
+            "key": null,
+            "value": null
+          }
+        },
+        "choose": [
+          {
+            "path": "Open Rom 8:28 in/New column",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 2,
+                "tab": "t10"
+              },
+              "columns": [
+                [
+                  "*t1",
+                  "t2"
+                ],
+                [
+                  "*t10"
+                ],
+                [
+                  "*t3"
+                ],
+                [
+                  "*t4"
+                ],
+                [
+                  "*t5"
+                ]
+              ],
+              "references": {
+                "t10": "Rom.8.28"
+              }
+            }
+          },
+          {
+            "path": "Remove link",
+            "expect": {
+              "handled": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Old Testament passage link in a notes tab",
+      "steps": [],
+      "target": {
+        "kind": "note_link",
+        "reference": "Gen.1.1",
+        "tab_id": "t5"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": {
+            "args": {
+              "tab_id": "t5"
+            },
+            "command_id": "tab.focus"
+          },
+          "target_kind": "note_link",
+          "title": "Gen 1:1"
+        },
+        "outline": [
+          {
+            "label": "Open",
+            "rows": [
+              {
+                "command": "nav.navigate",
+                "label": "Open Gen 1:1 in",
+                "submenu": [
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "nav.navigate",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "tab.open_edition",
+                "label": "Compare in",
+                "submenu": [
+                  {
+                    "command": "tab.open_edition",
+                    "label": "BSB"
+                  },
+                  {
+                    "command": "tab.open_edition",
+                    "label": "WLC"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Link",
+            "rows": [
+              {
+                "command": "copy.reference",
+                "label": "Copy reference"
+              },
+              {
+                "command": "note.remove_link",
+                "label": "Remove link"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "passage link outside notes is refused",
+      "steps": [],
+      "target": {
+        "kind": "note_link",
+        "reference": "Rom.8.28",
+        "tab_id": "t1"
+      },
+      "context": {},
+      "expect": {
+        "items": {
+          "Remove link": {
+            "active": false,
+            "args": {
+              "reference": "Rom.8.28"
+            },
+            "command_id": "note.remove_link",
+            "disabled_text": "Remove passage link works in notes",
+            "icon": "remove-link",
+            "key": null,
+            "value": null
+          }
+        },
+        "choose": [
+          {
+            "path": "Remove link",
+            "expect": {
+              "error": "wrong_context"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "hidden pinned tab",
+      "steps": [],
+      "target": {
+        "kind": "tab",
+        "tab_id": "t2"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": {
+            "args": {
+              "tab_id": "t2"
+            },
+            "command_id": "tab.focus"
+          },
+          "target_kind": "tab",
+          "title": "BSB · Rom 8:28"
+        },
+        "outline": [
+          {
+            "label": "Tab",
+            "rows": [
+              {
+                "command": "tab.close",
+                "label": "Close tab"
+              },
+              {
+                "command": "tab.close_others",
+                "label": "Close other tabs"
+              }
+            ]
+          },
+          {
+            "label": "Move",
+            "rows": [
+              {
+                "command": "tab.duplicate_to_column",
+                "label": "Duplicate to",
+                "submenu": [
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "tab.move_to_column",
+                "label": "Move to",
+                "submenu": [
+                  {
+                    "command": "tab.move_to_column",
+                    "disabled": "The tab is already in column 1",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "New column"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Link",
+            "rows": [
+              {
+                "active": true,
+                "command": "tab.pin",
+                "disabled": "The tab is already pinned",
+                "label": "Pin"
+              },
+              {
+                "command": "tab.follow",
+                "label": "Follow active passage"
+              },
+              {
+                "command": "tab.link",
+                "label": "Link group",
+                "submenu": [
+                  {
+                    "command": "tab.link",
+                    "label": "Group 1"
+                  },
+                  {
+                    "command": "tab.link",
+                    "label": "Group 2"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "items": {
+          "Move to/Column 2 · SBLGNT": {
+            "active": false,
+            "args": {
+              "column": 2
+            },
+            "command_id": "tab.move_to_column",
+            "disabled_text": null,
+            "icon": "column",
+            "key": "Alt+Shift+2",
+            "value": null
+          },
+          "Duplicate to/New column": {
+            "active": false,
+            "args": {
+              "new_column": true
+            },
+            "command_id": "tab.duplicate_to_column",
+            "disabled_text": null,
+            "icon": "new-column",
+            "key": null,
+            "value": null
+          }
+        },
+        "choose": [
+          {
+            "path": "Close other tabs",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 1,
+                "tab": "t2"
+              },
+              "columns": [
+                [
+                  "*t2"
+                ],
+                [
+                  "*t3"
+                ],
+                [
+                  "*t4"
+                ],
+                [
+                  "*t5"
+                ]
+              ]
+            },
+            "then": [
+              {
+                "command": "edit.undo",
+                "expect": {
+                  "columns": [
+                    [
+                      "t1",
+                      "*t2"
+                    ],
+                    [
+                      "*t3"
+                    ],
+                    [
+                      "*t4"
+                    ],
+                    [
+                      "*t5"
+                    ]
+                  ],
+                  "active": {
+                    "workspace": "w1",
+                    "column": 1,
+                    "tab": "t2"
+                  }
+                }
+              },
+              {
+                "command": "tab.reopen_closed",
+                "expect": {
+                  "error": "no_closed_tab"
+                }
+              }
+            ]
+          },
+          {
+            "path": "Move to/Column 2 · SBLGNT",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 2,
+                "tab": "t2"
+              },
+              "columns": [
+                [
+                  "*t1"
+                ],
+                [
+                  "t3",
+                  "*t2"
+                ],
+                [
+                  "*t4"
+                ],
+                [
+                  "*t5"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "linked tab in another column",
+      "steps": [],
+      "target": {
+        "kind": "tab",
+        "tab_id": "t3"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": {
+            "args": {
+              "tab_id": "t3"
+            },
+            "command_id": "tab.focus"
+          },
+          "target_kind": "tab",
+          "title": "SBLGNT · Jn 3:16"
+        },
+        "outline": [
+          {
+            "label": "Tab",
+            "rows": [
+              {
+                "command": "tab.close",
+                "label": "Close tab"
+              },
+              {
+                "command": "tab.close_others",
+                "disabled": "This column has one tab",
+                "label": "Close other tabs"
+              }
+            ]
+          },
+          {
+            "label": "Move",
+            "rows": [
+              {
+                "command": "tab.duplicate_to_column",
+                "label": "Duplicate to",
+                "submenu": [
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "tab.move_to_column",
+                "label": "Move to",
+                "submenu": [
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "disabled": "The tab is already in column 2",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "disabled": "This column has one tab",
+                    "label": "New column"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Link",
+            "rows": [
+              {
+                "command": "tab.pin",
+                "label": "Pin"
+              },
+              {
+                "command": "tab.follow",
+                "label": "Follow active passage"
+              },
+              {
+                "command": "tab.link",
+                "label": "Link group",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "tab.link",
+                    "disabled": "The tab is already in group 1",
+                    "label": "Group 1"
+                  },
+                  {
+                    "command": "tab.link",
+                    "label": "Group 2"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "active tab",
+      "steps": [],
+      "target": {
+        "kind": "tab",
+        "tab_id": "t1"
+      },
+      "context": {
+        "has_selection": true
+      },
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": true
+          },
+          "focus": null,
+          "target_kind": "tab",
+          "title": "BSB · Jn 3:16"
+        },
+        "outline": [
+          {
+            "label": "Tab",
+            "rows": [
+              {
+                "command": "tab.close",
+                "label": "Close tab"
+              },
+              {
+                "command": "tab.close_others",
+                "label": "Close other tabs"
+              }
+            ]
+          },
+          {
+            "label": "Move",
+            "rows": [
+              {
+                "command": "tab.duplicate_to_column",
+                "label": "Duplicate to",
+                "submenu": [
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "tab.move_to_column",
+                "label": "Move to",
+                "submenu": [
+                  {
+                    "command": "tab.move_to_column",
+                    "disabled": "The tab is already in column 1",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "New column"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Link",
+            "rows": [
+              {
+                "command": "tab.pin",
+                "label": "Pin"
+              },
+              {
+                "command": "tab.follow",
+                "label": "Follow active passage"
+              },
+              {
+                "command": "tab.link",
+                "label": "Link group",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "tab.link",
+                    "disabled": "The tab is already in group 1",
+                    "label": "Group 1"
+                  },
+                  {
+                    "command": "tab.link",
+                    "label": "Group 2"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "tab alone in its column",
+      "steps": [],
+      "target": {
+        "kind": "tab",
+        "tab_id": "t4"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": {
+            "args": {
+              "tab_id": "t4"
+            },
+            "command_id": "tab.focus"
+          },
+          "target_kind": "tab",
+          "title": "Lexicon · Jn 3:16"
+        },
+        "outline": [
+          {
+            "label": "Tab",
+            "rows": [
+              {
+                "command": "tab.close",
+                "label": "Close tab"
+              },
+              {
+                "command": "tab.close_others",
+                "disabled": "This column has one tab",
+                "label": "Close other tabs"
+              }
+            ]
+          },
+          {
+            "label": "Move",
+            "rows": [
+              {
+                "command": "tab.duplicate_to_column",
+                "label": "Duplicate to",
+                "submenu": [
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.duplicate_to_column",
+                    "label": "New column"
+                  }
+                ]
+              },
+              {
+                "command": "tab.move_to_column",
+                "label": "Move to",
+                "submenu": [
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 1 · BSB"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 2 · SBLGNT"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "disabled": "The tab is already in column 3",
+                    "label": "Column 3 · Lexicon"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "label": "Column 4 · Note"
+                  },
+                  {
+                    "command": "tab.move_to_column",
+                    "disabled": "This column has one tab",
+                    "label": "New column"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Link",
+            "rows": [
+              {
+                "command": "tab.pin",
+                "label": "Pin"
+              },
+              {
+                "active": true,
+                "command": "tab.follow",
+                "disabled": "The tab is already following",
+                "label": "Follow active passage"
+              },
+              {
+                "command": "tab.link",
+                "label": "Link group",
+                "submenu": [
+                  {
+                    "command": "tab.link",
+                    "label": "Group 1"
+                  },
+                  {
+                    "command": "tab.link",
+                    "label": "Group 2"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "choose": [
+          {
+            "path": "Move to/New column",
+            "expect": {
+              "error": "one_tab"
+            }
+          },
+          {
+            "path": "Duplicate to/New column",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 4,
+                "tab": "t10"
+              },
+              "columns": [
+                [
+                  "*t1",
+                  "t2"
+                ],
+                [
+                  "*t3"
+                ],
+                [
+                  "*t4"
+                ],
+                [
+                  "*t10"
+                ],
+                [
+                  "*t5"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "tab that is not open",
+      "steps": [],
+      "target": {
+        "kind": "tab",
+        "tab_id": "t9"
+      },
+      "context": {},
+      "expect": {
+        "error": "no_such_tab"
+      }
+    },
+    {
+      "name": "first column",
+      "steps": [],
+      "target": {
+        "kind": "column",
+        "column": 1
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": null,
+          "target_kind": "column",
+          "title": "Column 1"
+        },
+        "outline": [
+          {
+            "label": "Column",
+            "rows": [
+              {
+                "command": "column.focus",
+                "label": "Focus column 1"
+              },
+              {
+                "command": "tab.new",
+                "label": "New tab"
+              }
+            ]
+          },
+          {
+            "label": "Move",
+            "rows": [
+              {
+                "command": "column.move_left",
+                "disabled": "Column 1 is already at the edge",
+                "label": "Move left"
+              },
+              {
+                "command": "column.move_right",
+                "label": "Move right"
+              }
+            ]
+          },
+          {
+            "label": "Layout",
+            "rows": [
+              {
+                "command": "column.equalize",
+                "label": "Equalize widths"
+              },
+              {
+                "command": "column.close",
+                "label": "Close column"
+              }
+            ]
+          }
+        ],
+        "items": {
+          "Focus column 1": {
+            "active": false,
+            "args": {
+              "column": 1
+            },
+            "command_id": "column.focus",
+            "disabled_text": null,
+            "icon": "focus",
+            "key": "Alt+1",
+            "value": null
+          }
+        },
+        "choose": [
+          {
+            "path": "Move right",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 2,
+                "tab": "t1"
+              },
+              "columns": [
+                [
+                  "*t3"
+                ],
+                [
+                  "*t1",
+                  "t2"
+                ],
+                [
+                  "*t4"
+                ],
+                [
+                  "*t5"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "last column",
+      "steps": [],
+      "target": {
+        "kind": "column",
+        "column": 4
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": {
+            "args": {
+              "column": 4
+            },
+            "command_id": "column.focus"
+          },
+          "target_kind": "column",
+          "title": "Column 4"
+        },
+        "outline": [
+          {
+            "label": "Column",
+            "rows": [
+              {
+                "command": "column.focus",
+                "label": "Focus column 4"
+              },
+              {
+                "command": "tab.new",
+                "label": "New tab"
+              }
+            ]
+          },
+          {
+            "label": "Move",
+            "rows": [
+              {
+                "command": "column.move_left",
+                "label": "Move left"
+              },
+              {
+                "command": "column.move_right",
+                "disabled": "Column 4 is already at the edge",
+                "label": "Move right"
+              }
+            ]
+          },
+          {
+            "label": "Layout",
+            "rows": [
+              {
+                "command": "column.equalize",
+                "label": "Equalize widths"
+              },
+              {
+                "command": "column.close",
+                "label": "Close column"
+              }
+            ]
+          }
+        ],
+        "choose": [
+          {
+            "path": "Close column",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 3,
+                "tab": "t4"
+              },
+              "columns": [
+                [
+                  "*t1",
+                  "t2"
+                ],
+                [
+                  "*t3"
+                ],
+                [
+                  "*t4"
+                ]
+              ]
+            },
+            "then": [
+              {
+                "command": "tab.reopen_closed",
+                "expect": {
+                  "active": {
+                    "workspace": "w1",
+                    "column": 4,
+                    "tab": "t5"
+                  },
+                  "columns": [
+                    [
+                      "*t1",
+                      "t2"
+                    ],
+                    [
+                      "*t3"
+                    ],
+                    [
+                      "*t4"
+                    ],
+                    [
+                      "*t5"
+                    ]
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "only column",
+      "steps": [
+        {
+          "command": "workspace.switch",
+          "args": {
+            "workspace_id": "w2"
+          }
+        }
+      ],
+      "target": {
+        "kind": "column",
+        "column": 1
+      },
+      "context": {},
+      "expect": {
+        "outline": [
+          {
+            "label": "Column",
+            "rows": [
+              {
+                "command": "column.focus",
+                "label": "Focus column 1"
+              },
+              {
+                "command": "tab.new",
+                "label": "New tab"
+              }
+            ]
+          },
+          {
+            "label": "Move",
+            "rows": [
+              {
+                "command": "column.move_left",
+                "disabled": "Column 1 is already at the edge",
+                "label": "Move left"
+              },
+              {
+                "command": "column.move_right",
+                "disabled": "Column 1 is already at the edge",
+                "label": "Move right"
+              }
+            ]
+          },
+          {
+            "label": "Layout",
+            "rows": [
+              {
+                "command": "column.equalize",
+                "disabled": "This is the only column",
+                "label": "Equalize widths"
+              },
+              {
+                "command": "column.close",
+                "disabled": "This is the only column",
+                "label": "Close column"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "column that does not exist",
+      "steps": [],
+      "target": {
+        "kind": "column",
+        "column": 9
+      },
+      "context": {},
+      "expect": {
+        "error": "no_such_column"
+      }
+    },
+    {
+      "name": "background of the active column",
+      "steps": [],
+      "target": {
+        "kind": "background"
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": null,
+          "target_kind": "background",
+          "title": null
+        },
+        "menu": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": null,
+          "sections": [
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "tab.new",
+                  "disabled_text": null,
+                  "icon": "new-tab",
+                  "key": "Alt+T",
+                  "label": "New tab",
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "nav.paste_passage",
+                  "disabled_text": null,
+                  "icon": "paste-passage",
+                  "key": null,
+                  "label": "Paste passage",
+                  "value": null
+                }
+              ],
+              "label": "Tab"
+            },
+            {
+              "items": [
+                {
+                  "active": false,
+                  "args": {},
+                  "command_id": "view.text_size_up",
+                  "disabled_text": null,
+                  "icon": "text-size",
+                  "key": null,
+                  "label": "Text size",
+                  "submenu": [
+                    {
+                      "active": false,
+                      "args": {},
+                      "command_id": "view.text_size_up",
+                      "disabled_text": null,
+                      "icon": "text-larger",
+                      "key": null,
+                      "label": "Larger",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {},
+                      "command_id": "view.text_size_down",
+                      "disabled_text": null,
+                      "icon": "text-smaller",
+                      "key": null,
+                      "label": "Smaller",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {},
+                      "command_id": "view.text_size_reset",
+                      "disabled_text": null,
+                      "icon": "text-reset",
+                      "key": null,
+                      "label": "Actual size",
+                      "value": null
+                    }
+                  ],
+                  "value": null
+                },
+                {
+                  "active": false,
+                  "args": {
+                    "text": "system"
+                  },
+                  "command_id": "view.theme",
+                  "disabled_text": null,
+                  "icon": "theme",
+                  "key": null,
+                  "label": "Theme",
+                  "submenu": [
+                    {
+                      "active": true,
+                      "args": {
+                        "text": "system"
+                      },
+                      "command_id": "view.theme",
+                      "disabled_text": null,
+                      "icon": "theme",
+                      "key": null,
+                      "label": "System",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "text": "light"
+                      },
+                      "command_id": "view.theme",
+                      "disabled_text": null,
+                      "icon": "theme",
+                      "key": null,
+                      "label": "Light",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "text": "dark"
+                      },
+                      "command_id": "view.theme",
+                      "disabled_text": null,
+                      "icon": "theme",
+                      "key": null,
+                      "label": "Dark",
+                      "value": null
+                    },
+                    {
+                      "active": false,
+                      "args": {
+                        "text": "sepia"
+                      },
+                      "command_id": "view.theme",
+                      "disabled_text": null,
+                      "icon": "theme",
+                      "key": null,
+                      "label": "Sepia",
+                      "value": null
+                    }
+                  ],
+                  "value": null
+                }
+              ],
+              "label": "View"
+            }
+          ],
+          "target_kind": "background",
+          "title": null
+        },
+        "choose": [
+          {
+            "path": "Theme/Dark",
+            "expect": {
+              "handled": true,
+              "recorded": false,
+              "reading": {
+                "text_size_step": 0,
+                "line_spacing": 1.5,
+                "theme": "dark"
+              }
+            }
+          },
+          {
+            "path": "Paste passage",
+            "expect": {
+              "handled": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "background of the lexicon column",
+      "steps": [],
+      "target": {
+        "kind": "background",
+        "column": 3
+      },
+      "context": {},
+      "expect": {
+        "header": {
+          "context": {
+            "focus": "tab",
+            "has_selection": false
+          },
+          "focus": {
+            "args": {
+              "column": 3
+            },
+            "command_id": "column.focus"
+          },
+          "target_kind": "background",
+          "title": null
+        },
+        "outline": [
+          {
+            "label": "Tab",
+            "rows": [
+              {
+                "command": "tab.new",
+                "label": "New tab"
+              },
+              {
+                "command": "nav.paste_passage",
+                "disabled": "Paste a passage into a reading tab",
+                "label": "Paste passage"
+              }
+            ]
+          },
+          {
+            "label": "View",
+            "rows": [
+              {
+                "command": "view.text_size_up",
+                "label": "Text size",
+                "submenu": [
+                  {
+                    "command": "view.text_size_up",
+                    "label": "Larger"
+                  },
+                  {
+                    "command": "view.text_size_down",
+                    "label": "Smaller"
+                  },
+                  {
+                    "command": "view.text_size_reset",
+                    "label": "Actual size"
+                  }
+                ]
+              },
+              {
+                "command": "view.theme",
+                "label": "Theme",
+                "submenu": [
+                  {
+                    "active": true,
+                    "command": "view.theme",
+                    "label": "System"
+                  },
+                  {
+                    "command": "view.theme",
+                    "label": "Light"
+                  },
+                  {
+                    "command": "view.theme",
+                    "label": "Dark"
+                  },
+                  {
+                    "command": "view.theme",
+                    "label": "Sepia"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "choose": [
+          {
+            "path": "New tab",
+            "expect": {
+              "handled": true,
+              "recorded": true,
+              "active": {
+                "workspace": "w1",
+                "column": 3,
+                "tab": "t10"
+              },
+              "columns": [
+                [
+                  "*t1",
+                  "t2"
+                ],
+                [
+                  "*t3"
+                ],
+                [
+                  "t4",
+                  "*t10"
+                ],
+                [
+                  "*t5"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "background at the largest text size in dark",
+      "steps": [
+        {
+          "command": "view.theme",
+          "args": {
+            "text": "dark"
+          }
+        },
+        {
+          "command": "view.text_size_up"
+        },
+        {
+          "command": "view.text_size_up"
+        },
+        {
+          "command": "view.text_size_up"
+        },
+        {
+          "command": "view.text_size_up"
+        }
+      ],
+      "target": {
+        "kind": "background"
+      },
+      "context": {},
+      "expect": {
+        "outline": [
+          {
+            "label": "Tab",
+            "rows": [
+              {
+                "command": "tab.new",
+                "label": "New tab"
+              },
+              {
+                "command": "nav.paste_passage",
+                "label": "Paste passage"
+              }
+            ]
+          },
+          {
+            "label": "View",
+            "rows": [
+              {
+                "command": "view.text_size_down",
+                "label": "Text size",
+                "submenu": [
+                  {
+                    "command": "view.text_size_up",
+                    "disabled": "The text size is already at its limit",
+                    "label": "Larger"
+                  },
+                  {
+                    "command": "view.text_size_down",
+                    "label": "Smaller"
+                  },
+                  {
+                    "command": "view.text_size_reset",
+                    "label": "Actual size"
+                  }
+                ]
+              },
+              {
+                "command": "view.theme",
+                "label": "Theme",
+                "submenu": [
+                  {
+                    "command": "view.theme",
+                    "label": "System"
+                  },
+                  {
+                    "command": "view.theme",
+                    "label": "Light"
+                  },
+                  {
+                    "active": true,
+                    "command": "view.theme",
+                    "label": "Dark"
+                  },
+                  {
+                    "command": "view.theme",
+                    "label": "Sepia"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "open in edition",
+      "steps": [
+        {
+          "command": "tab.open_edition",
+          "args": {
+            "resource_id": "sblgnt"
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t5"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t1"
+            },
+            "references": {
+              "t3": "John.3.16"
+            }
+          }
+        },
+        {
+          "command": "tab.open_edition",
+          "args": {
+            "resource_id": "wlc",
+            "reference": "Gen.1.1",
+            "column": 4
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "t5",
+                "*t11"
+              ]
+            ],
+            "references": {
+              "t11": "Gen.1.1"
+            },
+            "links": {
+              "t11": "group 1"
+            },
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "tab.open_edition",
+          "args": {
+            "resource_id": "sblgnt",
+            "new_column": true
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t12"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "t5",
+                "*t11"
+              ]
+            ],
+            "references": {
+              "t12": "John.3.16"
+            },
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t1"
+            }
+          }
+        },
+        {
+          "command": "tab.open_edition",
+          "args": {},
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "tab.open_edition",
+          "args": {
+            "resource_id": "bsb",
+            "column": 9
+          },
+          "expect": {
+            "error": "no_such_column"
+          }
+        },
+        {
+          "command": "edit.undo",
+          "args": {},
+          "expect": {}
+        },
+        {
+          "command": "edit.undo",
+          "args": {},
+          "expect": {}
+        },
+        {
+          "command": "edit.undo",
+          "args": {},
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t5"
+              ]
+            ],
+            "can_undo": false,
+            "can_redo": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "close other tabs",
+      "steps": [
+        {
+          "command": "tab.close_others",
+          "args": {},
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t5"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "tab.close_others",
+          "args": {},
+          "expect": {
+            "error": "one_tab"
+          }
+        },
+        {
+          "command": "tab.reopen_closed",
+          "args": {},
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t5"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t2"
+            }
+          }
+        },
+        {
+          "command": "edit.undo",
+          "args": {},
+          "expect": {
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t5"
+              ]
+            ]
+          }
+        },
+        {
+          "command": "edit.undo",
+          "args": {},
+          "expect": {
+            "columns": [
+              [
+                "*t1",
+                "t2"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t4"
+              ],
+              [
+                "*t5"
+              ]
+            ],
+            "can_undo": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "host hand-offs",
+      "steps": [
+        {
+          "command": "search.text",
+          "args": {
+            "text": "loved",
+            "scope": "edition",
+            "resource_id": "bsb"
+          },
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "search.text",
+          "args": {
+            "text": "loved"
+          },
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "search.text",
+          "args": {
+            "text": "loved",
+            "scope": "verse"
+          },
+          "expect": {
+            "error": "invalid_value"
+          }
+        },
+        {
+          "command": "search.text",
+          "args": {
+            "scope": "all"
+          },
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "search.lemma",
+          "args": {
+            "text": "agape"
+          },
+          "expect": {
+            "error": "unavailable"
+          }
+        },
+        {
+          "command": "nav.cross_references",
+          "args": {
+            "reference": "John.3.16"
+          },
+          "expect": {
+            "error": "unavailable"
+          }
+        },
+        {
+          "command": "copy.text",
+          "args": {
+            "text": "loved"
+          },
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "copy.text",
+          "args": {},
+          "expect": {
+            "error": "needs_argument"
+          }
+        },
+        {
+          "command": "copy.reference",
+          "args": {
+            "reference": "John.3.16"
+          },
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "copy.passage",
+          "args": {
+            "reference": "John.3.16",
+            "resource_id": "bsb"
+          },
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "copy.passage",
+          "args": {
+            "text": "For God so loved",
+            "reference": "John.3.16-John.3.18"
+          },
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "host.cut",
+          "args": {},
+          "expect": {
+            "error": "needs_selection"
+          }
+        },
+        {
+          "command": "host.cut",
+          "args": {},
+          "expect": {
+            "handled": false
+          },
+          "context": {
+            "has_selection": true
+          }
+        },
+        {
+          "command": "host.copy",
+          "args": {},
+          "expect": {
+            "handled": false
+          },
+          "context": {
+            "has_selection": true
+          }
+        },
+        {
+          "command": "host.paste",
+          "args": {},
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "nav.paste_passage",
+          "args": {},
+          "expect": {
+            "handled": false
+          }
+        },
+        {
+          "command": "selection.highlight_in",
+          "args": {
+            "text": "#5B9BFF"
+          },
+          "expect": {
+            "handled": false
+          },
+          "context": {
+            "has_selection": true
+          }
+        },
+        {
+          "command": "selection.highlight_in",
+          "args": {
+            "text": "blue"
+          },
+          "expect": {
+            "error": "invalid_value"
+          },
+          "context": {
+            "has_selection": true
+          }
+        },
+        {
+          "command": "selection.highlight_in",
+          "args": {
+            "text": "#5B9BFF"
+          },
+          "expect": {
+            "error": "needs_selection"
+          }
+        },
+        {
+          "command": "note.remove_link",
+          "args": {
+            "reference": "Rom.8.28"
+          },
+          "expect": {
+            "error": "wrong_context"
+          }
+        },
+        {
+          "command": "note.remove_link",
+          "args": {
+            "reference": "Rom.8.28"
+          },
+          "expect": {
+            "handled": false
+          },
+          "context": {
+            "focus": "notes_dock"
+          }
+        },
+        {
+          "command": "note.remove_link",
+          "args": {},
+          "expect": {
+            "error": "needs_argument",
+            "can_undo": false,
+            "revision": 2
+          },
+          "context": {
+            "focus": "notes_dock"
+          }
+        }
+      ]
+    }
+  ]
+}
