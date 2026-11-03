@@ -957,7 +957,7 @@ const CASES = {
     await chooseRow("Remove link");
     s = await snap();
     const note = s.notes["fixture:note:1"];
-    expect(p, !note.includes("passage-link") && note.includes("“eternal life” — John 3:16</blockquote>"), `link removed: ${note.slice(-120)}`);
+    expect(p, !note.includes("passage-link") && note.includes("“eternal life” — John 3:16</blockquote>") && s.toast === "Removed link to John 3:16", `link removed: ${note.slice(-120)} toast "${s.toast}"`);
     // Note text: Edit, Format, Search.
     await rightClick(...(await centre('#columns > .column[data-number="3"] .note-editor p')));
     s = await snap();
@@ -995,7 +995,7 @@ const CASES = {
     await chooseRow("Paste passage");
     await sleep(100);
     const s = await snap();
-    expect(p, s.columns[0].reference === "John.3.17", `paste passage navigates WLC to ${s.columns[0].reference}`);
+    expect(p, s.columns[0].reference === "John.3.17" && s.toast === "Opened John 3:17", `paste passage navigates WLC to ${s.columns[0].reference}, toast "${s.toast}"`);
   },
 
   async "menu-escape-hatch"(p) {

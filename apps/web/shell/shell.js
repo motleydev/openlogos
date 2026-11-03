@@ -1549,6 +1549,7 @@ function clipboardAction(kind) {
     if (kind === "cut" && editor) document.execCommand("delete");
   }
   if (editor) noteChanged(editor);
+  toast(kind === "cut" ? "Cut" : "Copied");
 }
 
 /** A passage in pasted text: all of it, else the reference copy.passage writes after the
@@ -1567,8 +1568,8 @@ function passageIn(text) {
 function pastePassage() {
   readClipboard().then((text) => {
     const reference = passageIn(text);
-    if (!reference) return toast("The clipboard has no passage");
-    run({ command_id: "nav.navigate", args: { reference } });
+    if (!reference) return toast("No passage on the clipboard");
+    if (run({ command_id: "nav.navigate", args: { reference } })) toast(`Opened ${humanPassage(core, reference)}`);
   });
 }
 
@@ -1580,9 +1581,10 @@ function removeLink(reference) {
   const editor = link.closest(".note-editor");
   link.replaceWith(document.createTextNode(link.textContent));
   noteChanged(editor);
+  toast(`Removed link to ${humanPassage(core, reference)}`);
 }
 
-const SCOPE_LABELS = { all: "All editions", workspace: "This workspace" };
+const SCOPE_LABELS = { all: "All editions", workspace: "Workspace" };
 
 /** search.text: the palette's Text section with the words and a scope chip; the chapter scope
  *  finds in the column instead. */
@@ -1634,7 +1636,7 @@ function findInChapter(text, resource, reference) {
       ranges.push(r);
     }
   }
-  if (!ranges.length) return toast(`No matches for “${text}” in ${where}`);
+  if (!ranges.length) return toast(`No matches in ${where}`);
   host.find = { view, ranges, index: 0, text, where };
   showFind();
   toast(ranges.length === 1 ? `1 match in ${where}` : `${ranges.length} matches in ${where}`);
