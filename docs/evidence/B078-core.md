@@ -30,7 +30,23 @@ specs/23-continuous-reading.md.
 | Speed | `openlogos-shell-bench` rows for locate, chapter content (placeholder and file pack), neighbours and scroll-follow |
 | API | `API_VERSION` 0.1.2 → 0.1.3 (additive text and conformance API); the examples and host tests name it |
 
-COMMITS_PLACEHOLDER
+### Commits
+
+| Commit | Subject |
+|---|---|
+| `9d0cd56` | B078: canon and versification table in core (eng and org, from S51) |
+| `21e1040` | B078: reading stream, placeholder pack and text pack format in crates/text |
+| `17c6108` | B078: shell follows the reading position (record_scroll, linked tabs, highlight) |
+| `e5b6a3a` | B078: continuous-reading conformance fixture and the three fixture packs |
+| `2875f3b` | B078: text-pack schema, highlight_range in workspace 2.0, validate.py checks packs |
+| `ac678cf` | B078: UniFFI surface for continuous reading |
+| `1a4475b` | B078: wasm surface and host tests for continuous reading; API 0.1.3 |
+| `8791532` | B078: bench rows for locate, chapter content (placeholder and file pack), neighbours, scroll-follow |
+| `1f4d81f` | B078: specs/23 continuous reading, backlog B078, B071 writes the pack format |
+| `5f11a13` | B078: the reading fixture's segment cases are segment_references |
+| `2418735` | B078: evidence (core part), lanes to follow |
+
+plus the evidence commit that records the lanes below.
 
 ## Canon data source
 
@@ -355,11 +371,11 @@ at B077).
 
 | interaction | budget | samples | p50 µs | p95 µs | max µs |
 |---|---:|---:|---:|---:|---:|
-| locate a typed passage (ranges, chapters, books) | 5 ms | 800 | 38.8 | 76.2 | 80.2 |
-| chapter content, placeholder pack (Ps 119 among them) | 5 ms | 700 | 10.8 | 62.9 | 64.3 |
-| chapter content, file pack on disk (read, SHA-256, parse) | 5 ms | 220 | 386.3 | 646.8 | 1601.1 |
-| chapter neighbours | 5 ms | 700 | 0.4 | 0.5 | 0.5 |
-| scroll into the next verse: tab, group and follower move (tab.record_scroll) | 16 ms | 2000 | 8.3 | 8.5 | 16.6 |
+| locate a typed passage (ranges, chapters, books) | 5 ms | 800 | 38.8 | 76 | 84.4 |
+| chapter content, placeholder pack (Ps 119 among them) | 5 ms | 700 | 10.8 | 62.6 | 68 |
+| chapter content, file pack on disk (read, SHA-256, parse) | 5 ms | 220 | 393.8 | 665 | 1659.7 |
+| chapter neighbours | 5 ms | 700 | 0.4 | 0.4 | 0.5 |
+| scroll into the next verse: tab, group and follower move (tab.record_scroll) | 16 ms | 2000 | 8.3 | 8.7 | 18.2 |
 
 The file-pack row writes John 1–21 and Psalm 119 in the pack format under
 `target/bench-shell/b078-pack` with verses padded to real length and 25 tokens each (Psalm 119
@@ -367,11 +383,47 @@ is about 100 KB), so each sample is a file read, a SHA-256 over the chunk and a 
 Every row is far below the 100 ms open-chapter budget (specs/22 §7); the core's share of
 opening a chapter is under 0.7 ms p95 from disk and under 0.1 ms generated.
 
-BENCH_FULL_PLACEHOLDER
+The whole run at `2418735` (all rows; B070–B077 rows for comparison):
+
+| interaction | specs/22 §7 budget | samples | p50 µs | p95 µs | max µs |
+|---|---:|---:|---:|---:|---:|
+| palette keystroke: passage, commands, tabs (index kept) | 16 ms | 11800 | 137.4 | 307.6 | 1134.1 |
+| palette keystroke with the text section (fixture provider) | 50 ms | 3200 | 41.3 | 359.5 | 558.3 |
+| palette index build after a command (120 tabs) | 16 ms | 200 | 250.7 | 259.8 | 897.4 |
+| tab switch within a column (tab.next) | 16 ms | 1200 | 0.6 | 0.9 | 11.3 |
+| column focus (column.focus N) | 16 ms | 300 | 0.6 | 0.7 | 1.3 |
+| tool well for the focused tab or dock (Shell::tool_well) | 16 ms | 600 | 8.2 | 8.7 | 13.3 |
+| context menu for every target kind (Shell::context_menu) | 16 ms | 2100 | 11.9 | 82.5 | 104.9 |
+| workspace switch (workspace.next, 10 × 3 × 4) | 100 ms | 1000 | 0.5 | 0.7 | 1 |
+| tool change (tool.*) | 16 ms | 300 | 0.9 | 1.2 | 2.2 |
+| go to passage, group and follow tabs move (nav.navigate) | 100 ms | 200 | 70.3 | 80.3 | 125.1 |
+| move tab to column 2, with undo record | 16 ms | 200 | 34.8 | 57 | 61.2 |
+| undo | 16 ms | 200 | 102.4 | 114.5 | 161.5 |
+| session view with tab labels (Shell::view, 120 tabs) | 1 ms | 200 | 99.5 | 106.6 | 353.5 |
+| locate a typed passage (ranges, chapters, books) | 5 ms | 800 | 38.8 | 76 | 84.4 |
+| chapter content, placeholder pack (Ps 119 among them) | 5 ms | 700 | 10.8 | 62.6 | 68 |
+| chapter content, file pack on disk (read, SHA-256, parse) | 5 ms | 220 | 393.8 | 665 | 1659.7 |
+| chapter neighbours | 5 ms | 700 | 0.4 | 0.4 | 0.5 |
+| scroll into the next verse: tab, group and follower move (tab.record_scroll) | 16 ms | 2000 | 8.3 | 8.7 | 18.2 |
 
 ## Lanes
 
-LANES_PLACEHOLDER
+Run in order on the committed tree at `2418735` (`git status` clean after the run; the
+evidence commit only adds this file's results).
+
+| Lane | Exit | Summary lines |
+|---|---|---|
+| `nix develop .#core -c just ci` | 0 | `Summary [ 6.623s] 330 tests run: 330 passed, 0 skipped`; doc tests pass; `PASS: 36 schema/example validations; 14 agent records; 78 acyclic tasks; 21 conformance fixtures; …; 127 negative tests …`; clippy `-D warnings`, rustfmt, nixfmt, shellcheck, actionlint clean; `check-wasm` finished |
+| `nix develop .#apple -c just test-swift` | 0 | `Executed 10 tests, with 0 failures (0 unexpected)`; `conformance cases: 1717 passed, 0 failed` |
+| `nix develop .#android -c just test-kotlin` (test-results cleared first) | 0 | 10 `CoreHostTest > … PASSED` (the new `continuousReadingStreamsChaptersAndTheShellFollows()` among them); `BUILD SUCCESSFUL` |
+| `nix develop .#web -c just test-web` | 0 | `openlogos_ffi_bg.wasm: 3135460 bytes before wasm-opt -Oz (691325 gzipped), 2903945 after (772483 gzipped)`; `tests 10`, `pass 10`, `fail 0`; `conformance cases: 1717 passed, 0 failed (api 0.1.3)` |
+| `nix develop .#web -c just test-wasm` | 0 | headless Chrome, dedicated worker: `test result: ok. 9 passed; 0 failed` |
+| `just bench-shell` (in `.#core`) | 0 | the table above; every row within its budget |
+
+An earlier `test-swift` run caught a real host issue: the Swift test
+decodes every fixture with one shape and read the reading fixture's top-level `segments`
+(segment-reference cases) as text segments. The key is now `segment_references` (`5f11a13`); host agents decoding fixtures generically should
+note that the `reading` fixture has keys of its own.
 
 ## Decisions for the owner
 
