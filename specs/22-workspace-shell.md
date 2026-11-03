@@ -30,6 +30,10 @@ link groups and pane identity (specs/21 §1–2), selection actions (specs/16), 
 This replaces specs/16's "no permanent navigation rail" for the tool palette only: it is a
 small floating tool well, not a navigation rail, and it can be collapsed or hidden.
 
+B078 (2026-11-03): a reading tab is a continuous scroll through its edition, and its passage
+follows the reading position; specs/23-continuous-reading.md describes the stream, the
+reading API, the text pack format and the host behaviour.
+
 ## 2. Model
 
 ```
