@@ -1477,10 +1477,19 @@ document.addEventListener("contextmenu", (e) => {
     requestAnimationFrame(() => { sample.frame = performance.now() - e.timeStamp; });
   }
 });
-const menuLatency = [];
+// The baseline for the same trusted right-click: its pointerdown (no work) to the next frame,
+// so the menu's own cost can be told from where the browser delivers the event in the frame.
+document.addEventListener("pointerdown", (e) => {
+  if (!host.recordMenu || e.button !== 2) return;
+  const sample = {};
+  menuBaseline.push(sample);
+  requestAnimationFrame(() => { sample.frame = performance.now() - e.timeStamp; });
+}, true);
+const menuLatency = [], menuBaseline = [];
 export function menuReport(reset) {
-  const out = menuLatency.length ? { n: menuLatency.length, handler_done_ms: stats(menuLatency.map((k) => k.done)), next_frame_ms: stats(menuLatency.filter((k) => k.frame != null).map((k) => k.frame)) } : { n: 0 };
-  if (reset) menuLatency.length = 0;
+  const frames = (list) => stats(list.filter((k) => k.frame != null).map((k) => k.frame));
+  const out = menuLatency.length ? { n: menuLatency.length, handler_done_ms: stats(menuLatency.map((k) => k.done)), next_frame_ms: frames(menuLatency), baseline_pointerdown_next_frame_ms: menuBaseline.length ? frames(menuBaseline) : null } : { n: 0 };
+  if (reset) { menuLatency.length = 0; menuBaseline.length = 0; }
   return out;
 }
 

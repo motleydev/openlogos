@@ -1240,6 +1240,21 @@ try {
       result[label].trusted_keystrokes = keys;
       console.log(JSON.stringify({ bench: label, name: "trusted keystroke → palette rendered", ...keys }));
       if (keys.n < samples) failures += 1;
+      // B077: trusted right-clicks on a word → the menu drawn (the selection cleared between, so
+      // each is a word menu: the core's menu, the word selected, the element laid out).
+      await load(query);
+      await js("window.openlogosShell.host.recordMenu = true; window.openlogosShell.menuReport(true); document.activeElement.blur()");
+      const at = await wordPoint(1, "loved");
+      for (let i = 0; i < samples; i++) {
+        await js("document.getSelection().removeAllRanges()");
+        await rightClick(...at);
+        await chord("Escape");
+      }
+      await sleep(100);
+      const menu = await js("window.openlogosShell.host.recordMenu = false; return window.openlogosShell.menuReport(true)");
+      result[label].trusted_right_click = menu;
+      console.log(JSON.stringify({ bench: label, name: "B077 trusted right-click → context menu drawn", ...menu }));
+      if (menu.n < samples) failures += 1;
     }
     if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, ...result }, null, 2)); console.log(`bench json ${benchJson}`); }
     summary.push(`bench: ${headed ? "headed" : "headless"} Chrome, ${samples} samples per interaction`);
