@@ -153,3 +153,31 @@ test("B070: the workspace shell runs commands, undo and the palette", () => {
   const missing = shell.paletteQuery(":Jn 3:16 @5").groups[0].items[0];
   assert.equal(missing.disabled_text, "There is no column 5");
 });
+
+test("B076: the tool well follows focus, keeps the stored tool and refuses tools out of context", () => {
+  const shell = core.ShellHandle.fixture();
+  const well = shell.toolWell();
+  assert.equal(well.context, "translation");
+  assert.deepEqual(well.groups.map((g) => g.kind), ["tools", "ink"]);
+  assert.deepEqual(well.groups[0].items.map((i) => i.key), ["V", "H", "P", "M", "E", "C"]);
+  shell.apply({ command_id: "tool.pen" });
+  const dock = { focus: "notes_dock", has_selection: true };
+  const notes = shell.toolWell(dock);
+  assert.deepEqual([notes.context, notes.tool, notes.effective_tool], ["notes", "pen", "type"]);
+  assert.deepEqual(notes.groups.map((g) => g.kind), ["tools", "selection"]);
+  assert.throws(
+    () => shell.apply({ command_id: "tool.eraser" }, dock),
+    (error) => error.reason_text === "Eraser works on Bible text" && error.details.reason.kind === "wrong_context",
+  );
+  shell.apply({ command_id: "column.focus", args: { column: 2 } });
+  const view = shell.view();
+  assert.deepEqual([view.tool_context, view.tool, view.effective_tool], ["original", "pen", "pen"]);
+  shell.setResourceLanguages({});
+  assert.equal(shell.toolWell().context, "translation");
+  // Word study results open in the lexicon tab of the column to the right, reused.
+  shell.apply({ command_id: "tab.open_lexicon", args: { text: "ἀγάπη" } });
+  const lexicon = shell.view().workspaces[0].columns[2];
+  assert.equal(lexicon.tabs[0].lexicon_word, "ἀγάπη");
+  assert.equal(shell.view().workspaces[0].active_column_number, 2, "focus stays where the word was clicked");
+  assert.equal(shell.view().workspaces[0].columns[0].tabs[0].lexicon_word, null);
+});

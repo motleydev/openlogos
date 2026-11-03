@@ -1,0 +1,1870 @@
+{
+  "id": "tool-well",
+  "kind": "tool_well",
+  "description": "The contextual tool well of specs/22 §4.1 (B076): one column per context (a BSB translation, SBLGNT Greek, WLC Hebrew, a note, a lexicon, a research tab) plus the notes dock and an empty column through the host's focus, each with and without a selection; the groups and items the core returns, the stored tool kept while the effective tool falls back to the context's default and comes back, the plain reasons a tool or note action outside its context is disabled with, the host hand-off of the note and selection actions, and the palette rows that depend on focus. Edition ids name the conformance text fixtures; no text is quoted.",
+  "license": "Synthetic data, CC0-1.0",
+  "source": "specs/22-workspace-shell.md §4, §4.1, §6; owner feedback on the B072 shell, 2026-10-30",
+  "session": {
+    "schema_version": "1.0",
+    "fixture_only": true,
+    "workspaces": [
+      {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "w1",
+        "title": "Contexts",
+        "columns": [
+          {
+            "id": "c1",
+            "tabs": [
+              {
+                "id": "t1",
+                "kind": "reading",
+                "content_id": "bsb",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t1",
+            "width_fraction": 0.2
+          },
+          {
+            "id": "c2",
+            "tabs": [
+              {
+                "id": "t2",
+                "kind": "reading",
+                "content_id": "sblgnt",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t2",
+            "width_fraction": 0.2
+          },
+          {
+            "id": "c3",
+            "tabs": [
+              {
+                "id": "t3",
+                "kind": "reading",
+                "content_id": "wlc",
+                "content_revision": "0",
+                "reference": "Gen.1.1",
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t3",
+            "width_fraction": 0.15
+          },
+          {
+            "id": "c4",
+            "tabs": [
+              {
+                "id": "t4",
+                "kind": "notes",
+                "content_id": "fixture:note:1",
+                "content_revision": "0",
+                "reference": null,
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t4",
+            "width_fraction": 0.15
+          },
+          {
+            "id": "c5",
+            "tabs": [
+              {
+                "id": "t5",
+                "kind": "lexicon",
+                "content_id": "fixture:lexicon-1",
+                "content_revision": "0",
+                "reference": "John.3.16",
+                "link_group": null,
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t5",
+            "width_fraction": 0.15
+          },
+          {
+            "id": "c6",
+            "tabs": [
+              {
+                "id": "t6",
+                "kind": "research",
+                "content_id": "fixture:research-1",
+                "content_revision": "0",
+                "reference": null,
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t6",
+            "width_fraction": 0.15
+          }
+        ],
+        "active_column_id": "c1",
+        "notes_dock": {
+          "note_id": "fixture:note:1",
+          "open": true
+        },
+        "next_serial": 7
+      }
+    ],
+    "active_workspace_id": "w1",
+    "tool": "select",
+    "next_serial": 2
+  },
+  "resource_languages": {
+    "bsb": "en",
+    "sblgnt": "grc",
+    "wlc": "hbo"
+  },
+  "cases": [
+    {
+      "name": "translation",
+      "steps": [],
+      "context": {},
+      "expect": {
+        "context": "translation",
+        "effective_tool": "select",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.highlight",
+              "tool.pen",
+              "tool.highlighter_pen",
+              "tool.eraser",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "ink",
+            "items": [
+              "tool.swatch",
+              "tool.swap_swatches",
+              "tool.width"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "translation with selection",
+      "steps": [],
+      "context": {
+        "has_selection": true
+      },
+      "expect": {
+        "context": "translation",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.highlight",
+              "tool.pen",
+              "tool.highlighter_pen",
+              "tool.eraser",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "ink",
+            "items": [
+              "tool.swatch",
+              "tool.swap_swatches",
+              "tool.width"
+            ]
+          },
+          {
+            "kind": "selection",
+            "items": [
+              "selection.highlight",
+              "selection.collect",
+              "selection.note",
+              "selection.search",
+              "selection.copy_reference",
+              "selection.study"
+            ]
+          }
+        ],
+        "well": {
+          "context": "translation",
+          "tool": "select",
+          "effective_tool": "select",
+          "groups": [
+            {
+              "kind": "tools",
+              "items": [
+                {
+                  "command_id": "tool.select",
+                  "tool": "select",
+                  "label": "Select",
+                  "key": "V",
+                  "icon": "select",
+                  "active": true,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.highlight",
+                  "tool": "highlight",
+                  "label": "Highlight",
+                  "key": "H",
+                  "icon": "highlight",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.pen",
+                  "tool": "pen",
+                  "label": "Pen",
+                  "key": "P",
+                  "icon": "pen",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.highlighter_pen",
+                  "tool": "highlighter_pen",
+                  "label": "Highlighter pen",
+                  "key": "M",
+                  "icon": "highlighter-pen",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.eraser",
+                  "tool": "eraser",
+                  "label": "Eraser",
+                  "key": "E",
+                  "icon": "eraser",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.collect",
+                  "tool": "collect",
+                  "label": "Collect",
+                  "key": "C",
+                  "icon": "collect",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                }
+              ]
+            },
+            {
+              "kind": "ink",
+              "items": [
+                {
+                  "command_id": "tool.swatch",
+                  "tool": null,
+                  "label": "Swatch",
+                  "key": null,
+                  "icon": "swatch",
+                  "active": false,
+                  "value": "#F5D90A",
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.swap_swatches",
+                  "tool": null,
+                  "label": "Alternate swatch",
+                  "key": "X",
+                  "icon": "swatch-alternate",
+                  "active": false,
+                  "value": "#4CC38A",
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.width",
+                  "tool": null,
+                  "label": "Brush width",
+                  "key": null,
+                  "icon": "brush-width",
+                  "active": false,
+                  "value": "4",
+                  "disabled_text": null
+                }
+              ]
+            },
+            {
+              "kind": "selection",
+              "items": [
+                {
+                  "command_id": "selection.highlight",
+                  "tool": null,
+                  "label": "Highlight now",
+                  "key": "Cmd+Shift+H",
+                  "icon": "highlight-now",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.collect",
+                  "tool": null,
+                  "label": "Collect",
+                  "key": "Cmd+Shift+C",
+                  "icon": "collect",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.note",
+                  "tool": null,
+                  "label": "Note on it",
+                  "key": null,
+                  "icon": "note",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.search",
+                  "tool": null,
+                  "label": "Search this",
+                  "key": "Cmd+E",
+                  "icon": "search",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.copy_reference",
+                  "tool": null,
+                  "label": "Copy reference",
+                  "key": null,
+                  "icon": "copy-reference",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.study",
+                  "tool": null,
+                  "label": "Study",
+                  "key": "Cmd+Shift+S",
+                  "icon": "study",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "original greek",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "context": "original",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.word_study",
+              "tool.highlight",
+              "tool.pen",
+              "tool.highlighter_pen",
+              "tool.eraser",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "ink",
+            "items": [
+              "tool.swatch",
+              "tool.swap_swatches",
+              "tool.width"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "original greek with selection",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          }
+        }
+      ],
+      "context": {
+        "has_selection": true
+      },
+      "expect": {
+        "context": "original",
+        "well": {
+          "context": "original",
+          "tool": "select",
+          "effective_tool": "select",
+          "groups": [
+            {
+              "kind": "tools",
+              "items": [
+                {
+                  "command_id": "tool.select",
+                  "tool": "select",
+                  "label": "Select",
+                  "key": "V",
+                  "icon": "select",
+                  "active": true,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.word_study",
+                  "tool": "word_study",
+                  "label": "Word study",
+                  "key": "W",
+                  "icon": "word-study",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.highlight",
+                  "tool": "highlight",
+                  "label": "Highlight",
+                  "key": "H",
+                  "icon": "highlight",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.pen",
+                  "tool": "pen",
+                  "label": "Pen",
+                  "key": "P",
+                  "icon": "pen",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.highlighter_pen",
+                  "tool": "highlighter_pen",
+                  "label": "Highlighter pen",
+                  "key": "M",
+                  "icon": "highlighter-pen",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.eraser",
+                  "tool": "eraser",
+                  "label": "Eraser",
+                  "key": "E",
+                  "icon": "eraser",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.collect",
+                  "tool": "collect",
+                  "label": "Collect",
+                  "key": "C",
+                  "icon": "collect",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                }
+              ]
+            },
+            {
+              "kind": "ink",
+              "items": [
+                {
+                  "command_id": "tool.swatch",
+                  "tool": null,
+                  "label": "Swatch",
+                  "key": null,
+                  "icon": "swatch",
+                  "active": false,
+                  "value": "#F5D90A",
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.swap_swatches",
+                  "tool": null,
+                  "label": "Alternate swatch",
+                  "key": "X",
+                  "icon": "swatch-alternate",
+                  "active": false,
+                  "value": "#4CC38A",
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.width",
+                  "tool": null,
+                  "label": "Brush width",
+                  "key": null,
+                  "icon": "brush-width",
+                  "active": false,
+                  "value": "4",
+                  "disabled_text": null
+                }
+              ]
+            },
+            {
+              "kind": "selection",
+              "items": [
+                {
+                  "command_id": "selection.highlight",
+                  "tool": null,
+                  "label": "Highlight now",
+                  "key": "Cmd+Shift+H",
+                  "icon": "highlight-now",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.collect",
+                  "tool": null,
+                  "label": "Collect",
+                  "key": "Cmd+Shift+C",
+                  "icon": "collect",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.note",
+                  "tool": null,
+                  "label": "Note on it",
+                  "key": null,
+                  "icon": "note",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.search",
+                  "tool": null,
+                  "label": "Search this",
+                  "key": "Cmd+E",
+                  "icon": "search",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.copy_reference",
+                  "tool": null,
+                  "label": "Copy reference",
+                  "key": null,
+                  "icon": "copy-reference",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "selection.study",
+                  "tool": null,
+                  "label": "Study",
+                  "key": "Cmd+Shift+S",
+                  "icon": "study",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "original hebrew",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "context": "original",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.word_study",
+              "tool.highlight",
+              "tool.pen",
+              "tool.highlighter_pen",
+              "tool.eraser",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "ink",
+            "items": [
+              "tool.swatch",
+              "tool.swap_swatches",
+              "tool.width"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "original hebrew with selection",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          }
+        }
+      ],
+      "context": {
+        "has_selection": true
+      },
+      "expect": {
+        "context": "original",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.word_study",
+              "tool.highlight",
+              "tool.pen",
+              "tool.highlighter_pen",
+              "tool.eraser",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "ink",
+            "items": [
+              "tool.swatch",
+              "tool.swap_swatches",
+              "tool.width"
+            ]
+          },
+          {
+            "kind": "selection",
+            "items": [
+              "selection.highlight",
+              "selection.collect",
+              "selection.note",
+              "selection.search",
+              "selection.copy_reference",
+              "selection.study"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "notes tab",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "context": "notes",
+        "tool": "select",
+        "effective_tool": "type",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.type",
+              "note.bold",
+              "note.italic",
+              "note.heading",
+              "note.list",
+              "note.link_passage",
+              "tool.collect"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "notes tab with selection",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          }
+        }
+      ],
+      "context": {
+        "has_selection": true
+      },
+      "expect": {
+        "context": "notes",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.type",
+              "note.bold",
+              "note.italic",
+              "note.heading",
+              "note.list",
+              "note.link_passage",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "selection",
+            "items": [
+              "selection.highlight",
+              "selection.collect",
+              "selection.note",
+              "selection.search",
+              "selection.copy_reference",
+              "selection.study"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "notes dock",
+      "steps": [],
+      "context": {
+        "focus": "notes_dock"
+      },
+      "expect": {
+        "context": "notes",
+        "effective_tool": "type",
+        "view_effective_tool": "select",
+        "well": {
+          "context": "notes",
+          "tool": "select",
+          "effective_tool": "type",
+          "groups": [
+            {
+              "kind": "tools",
+              "items": [
+                {
+                  "command_id": "tool.type",
+                  "tool": "type",
+                  "label": "Type",
+                  "key": "T",
+                  "icon": "type",
+                  "active": true,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "note.bold",
+                  "tool": null,
+                  "label": "Bold",
+                  "key": "Cmd+B",
+                  "icon": "bold",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "note.italic",
+                  "tool": null,
+                  "label": "Italic",
+                  "key": "Cmd+I",
+                  "icon": "italic",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "note.heading",
+                  "tool": null,
+                  "label": "Heading",
+                  "key": null,
+                  "icon": "heading",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "note.list",
+                  "tool": null,
+                  "label": "List",
+                  "key": null,
+                  "icon": "list",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "note.link_passage",
+                  "tool": null,
+                  "label": "Link passage",
+                  "key": null,
+                  "icon": "link-passage",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                },
+                {
+                  "command_id": "tool.collect",
+                  "tool": "collect",
+                  "label": "Collect",
+                  "key": "C",
+                  "icon": "collect",
+                  "active": false,
+                  "value": null,
+                  "disabled_text": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "notes dock with selection",
+      "steps": [],
+      "context": {
+        "focus": "notes_dock",
+        "has_selection": true
+      },
+      "expect": {
+        "context": "notes",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.type",
+              "note.bold",
+              "note.italic",
+              "note.heading",
+              "note.list",
+              "note.link_passage",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "selection",
+            "items": [
+              "selection.highlight",
+              "selection.collect",
+              "selection.note",
+              "selection.search",
+              "selection.copy_reference",
+              "selection.study"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "lexicon",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 5
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "context": "reference",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.highlight",
+              "tool.collect"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "lexicon with selection",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 5
+          }
+        }
+      ],
+      "context": {
+        "has_selection": true
+      },
+      "expect": {
+        "context": "reference",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.highlight",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "selection",
+            "items": [
+              "selection.highlight",
+              "selection.collect",
+              "selection.note",
+              "selection.search",
+              "selection.copy_reference",
+              "selection.study"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "research",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 6
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "context": "reference",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.highlight",
+              "tool.collect"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "research with selection",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 6
+          }
+        }
+      ],
+      "context": {
+        "has_selection": true
+      },
+      "expect": {
+        "context": "reference",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.highlight",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "selection",
+            "items": [
+              "selection.highlight",
+              "selection.collect",
+              "selection.note",
+              "selection.search",
+              "selection.copy_reference",
+              "selection.study"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "none",
+      "steps": [],
+      "context": {
+        "focus": "empty"
+      },
+      "expect": {
+        "context": "none",
+        "well": {
+          "context": "none",
+          "tool": "select",
+          "effective_tool": "select",
+          "groups": [
+            {
+              "kind": "tools",
+              "items": [
+                {
+                  "command_id": "tool.select",
+                  "tool": "select",
+                  "label": "Select",
+                  "key": "V",
+                  "icon": "select",
+                  "active": true,
+                  "value": null,
+                  "disabled_text": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "none with selection",
+      "steps": [],
+      "context": {
+        "focus": "empty",
+        "has_selection": true
+      },
+      "expect": {
+        "context": "none",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "pen falls back to type in notes",
+      "steps": [
+        {
+          "command": "tool.pen",
+          "handled": true
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "pen",
+        "effective_tool": "type",
+        "view_effective_tool": "type",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.type",
+              "note.bold",
+              "note.italic",
+              "note.heading",
+              "note.list",
+              "note.link_passage",
+              "tool.collect"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "pen falls back to select in reference",
+      "steps": [
+        {
+          "command": "tool.pen"
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 5
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "pen",
+        "effective_tool": "select",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "*tool.select",
+              "tool.highlight",
+              "tool.collect"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "pen comes back on bible text",
+      "steps": [
+        {
+          "command": "tool.pen"
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 5
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "pen",
+        "effective_tool": "pen",
+        "view_effective_tool": "pen",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "tool.select",
+              "tool.word_study",
+              "tool.highlight",
+              "*tool.pen",
+              "tool.highlighter_pen",
+              "tool.eraser",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "ink",
+            "items": [
+              "tool.swatch",
+              "tool.swap_swatches",
+              "tool.width"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "word study falls back on a translation",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          }
+        },
+        {
+          "command": "tool.word_study",
+          "handled": true
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 1
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "word_study",
+        "effective_tool": "select"
+      }
+    },
+    {
+      "name": "word study comes back on hebrew",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          }
+        },
+        {
+          "command": "tool.word_study"
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 1
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 3
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "word_study",
+        "effective_tool": "word_study",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "tool.select",
+              "*tool.word_study",
+              "tool.highlight",
+              "tool.pen",
+              "tool.highlighter_pen",
+              "tool.eraser",
+              "tool.collect"
+            ]
+          },
+          {
+            "kind": "ink",
+            "items": [
+              "tool.swatch",
+              "tool.swap_swatches",
+              "tool.width"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "type falls back outside notes",
+      "steps": [
+        {
+          "command": "tool.type",
+          "context": {
+            "focus": "notes_dock"
+          },
+          "handled": true
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "type",
+        "effective_tool": "select",
+        "view_effective_tool": "select"
+      }
+    },
+    {
+      "name": "type comes back in the dock",
+      "steps": [
+        {
+          "command": "tool.type",
+          "context": {
+            "focus": "notes_dock"
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 5
+          }
+        }
+      ],
+      "context": {
+        "focus": "notes_dock"
+      },
+      "expect": {
+        "tool": "type",
+        "effective_tool": "type"
+      }
+    },
+    {
+      "name": "collect carries through every context but none",
+      "steps": [
+        {
+          "command": "tool.collect"
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "collect",
+        "effective_tool": "collect",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "tool.type",
+              "note.bold",
+              "note.italic",
+              "note.heading",
+              "note.list",
+              "note.link_passage",
+              "*tool.collect"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "collect in reference",
+      "steps": [
+        {
+          "command": "tool.collect"
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 6
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "effective_tool": "collect",
+        "groups": [
+          {
+            "kind": "tools",
+            "items": [
+              "tool.select",
+              "tool.highlight",
+              "*tool.collect"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "collect falls back with nothing focused",
+      "steps": [
+        {
+          "command": "tool.collect"
+        }
+      ],
+      "context": {
+        "focus": "empty"
+      },
+      "expect": {
+        "tool": "collect",
+        "effective_tool": "select"
+      }
+    },
+    {
+      "name": "highlight survives the dock and the empty column",
+      "steps": [
+        {
+          "command": "tool.highlight"
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          },
+          "context": {
+            "focus": "notes_dock"
+          }
+        },
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 1
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "highlight",
+        "effective_tool": "highlight"
+      }
+    },
+    {
+      "name": "tools refused in notes",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          }
+        },
+        {
+          "command": "tool.pen",
+          "error": "wrong_context"
+        },
+        {
+          "command": "tool.select",
+          "error": "wrong_context"
+        },
+        {
+          "command": "tool.word_study",
+          "error": "wrong_context"
+        },
+        {
+          "command": "tool.eraser",
+          "context": {
+            "focus": "notes_dock"
+          },
+          "error": "wrong_context"
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "select",
+        "effective_tool": "type"
+      }
+    },
+    {
+      "name": "note actions refused on bible text",
+      "steps": [
+        {
+          "command": "tool.type",
+          "error": "wrong_context"
+        },
+        {
+          "command": "note.bold",
+          "error": "wrong_context"
+        },
+        {
+          "command": "note.link_passage",
+          "args": {
+            "reference": "John.3.16"
+          },
+          "error": "wrong_context"
+        },
+        {
+          "command": "tool.word_study",
+          "error": "wrong_context"
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "select"
+      }
+    },
+    {
+      "name": "reasons on a translation",
+      "steps": [],
+      "context": {},
+      "expect": {
+        "reasons": {
+          "tool.word_study": "Word study works on Greek and Hebrew text",
+          "tool.type": "Type works in notes",
+          "note.bold": "Bold works in notes",
+          "note.italic": "Italic works in notes",
+          "note.heading": "Heading works in notes",
+          "note.list": "List works in notes",
+          "note.link_passage": "Link passage works in notes",
+          "tool.pen": null,
+          "tool.collect": null,
+          "selection.note": "Select some text first",
+          "selection.search": "Select some text first",
+          "selection.copy_reference": "Select some text first"
+        }
+      }
+    },
+    {
+      "name": "reasons in notes",
+      "steps": [],
+      "context": {
+        "focus": "notes_dock"
+      },
+      "expect": {
+        "reasons": {
+          "tool.select": "Select works outside notes",
+          "tool.highlight": "Highlight works outside notes",
+          "tool.pen": "Pen works on Bible text",
+          "tool.highlighter_pen": "Highlighter pen works on Bible text",
+          "tool.eraser": "Eraser works on Bible text",
+          "tool.word_study": "Word study works on Greek and Hebrew text",
+          "tool.type": null,
+          "tool.collect": null,
+          "note.bold": null,
+          "note.link_passage": "Needs a passage"
+        }
+      }
+    },
+    {
+      "name": "reasons in reference",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 5
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "reasons": {
+          "tool.pen": "Pen works on Bible text",
+          "tool.word_study": "Word study works on Greek and Hebrew text",
+          "tool.highlight": null,
+          "tool.collect": null,
+          "note.list": "List works in notes"
+        }
+      }
+    },
+    {
+      "name": "reasons with nothing focused",
+      "steps": [],
+      "context": {
+        "focus": "empty"
+      },
+      "expect": {
+        "reasons": {
+          "tool.select": null,
+          "tool.highlight": "Highlight works with a tab open",
+          "tool.collect": "Collect works with a tab open",
+          "tool.pen": "Pen works on Bible text",
+          "tool.type": "Type works in notes"
+        }
+      }
+    },
+    {
+      "name": "reasons on greek",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 2
+          }
+        }
+      ],
+      "context": {},
+      "expect": {
+        "reasons": {
+          "tool.word_study": null,
+          "tool.eraser": null,
+          "tool.type": "Type works in notes"
+        }
+      }
+    },
+    {
+      "name": "note actions are the host's",
+      "steps": [
+        {
+          "command": "column.focus",
+          "args": {
+            "column": 4
+          }
+        },
+        {
+          "command": "note.bold",
+          "handled": false
+        },
+        {
+          "command": "note.italic",
+          "handled": false
+        },
+        {
+          "command": "note.heading",
+          "handled": false
+        },
+        {
+          "command": "note.list",
+          "handled": false
+        },
+        {
+          "command": "note.link_passage",
+          "args": {
+            "reference": "Rom.8.28"
+          },
+          "handled": false
+        },
+        {
+          "command": "note.link_passage",
+          "error": "needs_argument"
+        }
+      ],
+      "context": {},
+      "expect": {
+        "tool": "select"
+      }
+    },
+    {
+      "name": "selection actions are the host's",
+      "steps": [
+        {
+          "command": "selection.note",
+          "context": {
+            "has_selection": true
+          },
+          "handled": false
+        },
+        {
+          "command": "selection.search",
+          "context": {
+            "has_selection": true
+          },
+          "handled": false
+        },
+        {
+          "command": "selection.copy_reference",
+          "context": {
+            "has_selection": true
+          },
+          "handled": false
+        },
+        {
+          "command": "selection.highlight",
+          "context": {
+            "has_selection": true
+          },
+          "handled": false
+        },
+        {
+          "command": "selection.note",
+          "error": "needs_selection"
+        },
+        {
+          "command": "selection.search",
+          "error": "needs_selection"
+        },
+        {
+          "command": "selection.copy_reference",
+          "error": "needs_selection"
+        }
+      ],
+      "context": {},
+      "expect": {}
+    }
+  ],
+  "palette": [
+    {
+      "name": "a passage in notes also links",
+      "query": ":Jn 3:16",
+      "context": {
+        "focus": "notes_dock"
+      },
+      "count": 2,
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate"
+        },
+        {
+          "section": "passage",
+          "title": "Link John 3:16",
+          "command": "note.link_passage",
+          "args": {
+            "reference": "John.3.16"
+          },
+          "disabled": null,
+          "subtitle": "Insert a link to it in the note"
+        }
+      ]
+    },
+    {
+      "name": "a passage on a tab only navigates",
+      "query": ":Jn 3:16",
+      "count": 1,
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate"
+        }
+      ]
+    },
+    {
+      "name": "a column target never links",
+      "query": ":Jn 3:16 @2",
+      "context": {
+        "focus": "notes_dock"
+      },
+      "count": 1,
+      "expect": [
+        {
+          "section": "passage",
+          "title": "John 3:16",
+          "command": "nav.navigate"
+        }
+      ]
+    },
+    {
+      "name": "link passage takes its passage inline",
+      "query": ">link passage Rom 8:28",
+      "context": {
+        "focus": "notes_dock"
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Link passage",
+          "command": "note.link_passage",
+          "args": {
+            "reference": "Rom.8.28"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "pen in notes is disabled with words",
+      "query": ">pen tool",
+      "context": {
+        "focus": "notes_dock"
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Pen tool",
+          "command": "tool.pen",
+          "disabled": "wrong_context",
+          "disabled_text": "Pen works on Bible text",
+          "shortcut": "P"
+        }
+      ]
+    },
+    {
+      "name": "bold on a tab is listed disabled",
+      "query": ">bold",
+      "context": {
+        "platform": "mac"
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Bold",
+          "command": "note.bold",
+          "disabled": "wrong_context",
+          "disabled_text": "Bold works in notes",
+          "shortcut": "Cmd+B"
+        }
+      ]
+    },
+    {
+      "name": "bold in notes",
+      "query": ">bold",
+      "context": {
+        "focus": "notes_dock"
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Bold",
+          "command": "note.bold",
+          "disabled": null,
+          "shortcut": "Cmd+B"
+        }
+      ]
+    },
+    {
+      "name": "type tool",
+      "query": ">type tool",
+      "context": {
+        "focus": "notes_dock"
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Type tool",
+          "command": "tool.type",
+          "disabled": null,
+          "shortcut": "T"
+        }
+      ]
+    },
+    {
+      "name": "word study on a translation",
+      "query": ">word study tool",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Word study tool",
+          "command": "tool.word_study",
+          "disabled": "wrong_context",
+          "disabled_text": "Word study works on Greek and Hebrew text",
+          "shortcut": "W"
+        }
+      ]
+    },
+    {
+      "name": "search this",
+      "query": ">search this",
+      "context": {
+        "has_selection": true
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Search selection",
+          "command": "selection.search",
+          "disabled": null,
+          "shortcut": "Cmd+E"
+        }
+      ]
+    },
+    {
+      "name": "note on it",
+      "query": ">note on it",
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Note on selection",
+          "command": "selection.note",
+          "disabled": "needs_selection",
+          "disabled_text": "Select some text first"
+        }
+      ]
+    },
+    {
+      "name": "copy reference",
+      "query": ">copy reference",
+      "context": {
+        "has_selection": true
+      },
+      "expect": [
+        {
+          "section": "commands",
+          "title": "Copy reference",
+          "command": "selection.copy_reference",
+          "disabled": null,
+          "shortcut": null
+        }
+      ]
+    }
+  ]
+}

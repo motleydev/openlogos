@@ -180,6 +180,33 @@ fn shell_handle_runs_commands_and_the_palette() {
     console_log!("palette: {}", result["groups"][0]["items"][0]["title"]);
 }
 
+/// B076: the tool well follows focus; the fixture handle registers the edition languages.
+#[wasm_bindgen_test]
+fn shell_handle_returns_the_tool_well() {
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    let well: serde_json::Value =
+        serde_wasm_bindgen::from_value(shell.tool_well(JsValue::UNDEFINED).unwrap()).unwrap();
+    assert_eq!(well["context"], "translation");
+    assert_eq!(well["groups"][1]["kind"], "ink");
+    let dock = js_sys::JSON::parse(r#"{"focus": "notes_dock", "has_selection": true}"#).unwrap();
+    let notes: serde_json::Value =
+        serde_wasm_bindgen::from_value(shell.tool_well(dock.clone()).unwrap()).unwrap();
+    assert_eq!(notes["effective_tool"], "type");
+    assert_eq!(notes["groups"][0]["items"][1]["key"], "Cmd+B");
+    assert_eq!(notes["groups"][1]["kind"], "selection");
+    let pen = js_sys::JSON::parse(r#"{"command_id": "tool.pen"}"#).unwrap();
+    let error = shell.apply(pen, dock).unwrap_err();
+    assert_eq!(
+        property(&error, "reason_text").as_string().as_deref(),
+        Some("Pen works on Bible text")
+    );
+    let focus =
+        js_sys::JSON::parse(r#"{"command_id": "column.focus", "args": {"column": 2}}"#).unwrap();
+    shell.apply(focus, JsValue::UNDEFINED).unwrap();
+    let view: serde_json::Value = serde_wasm_bindgen::from_value(shell.view().unwrap()).unwrap();
+    assert_eq!(view["tool_context"], "original");
+}
+
 /// B064: with `--features retrieval`, SQLite with FTS5 and the `openlogos` tokenizer run
 /// inside the worker's module and answer an unaccented query against accented text.
 #[cfg(feature = "retrieval")]

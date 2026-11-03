@@ -55,6 +55,10 @@ pub struct Tab {
     /// The tab's own back and forward stacks.
     #[serde(default, skip_serializing_if = "PaneHistory::is_empty")]
     pub history: PaneHistory,
+    /// The word a Lexicon tab looks up, as the reader clicked it (B076, `tab.open_lexicon`);
+    /// `None` for every other tab.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lexicon_word: Option<String>,
 }
 
 impl Tab {
@@ -258,17 +262,23 @@ pub enum Tool {
     Eraser,
     /// A drag collects into the open collection.
     Collect,
+    /// A click on a Greek or Hebrew word opens its study (B076; original-language text only).
+    WordStudy,
+    /// Typing edits the note (B076; notes only).
+    Type,
 }
 
 impl Tool {
-    /// Every tool, in palette order.
-    pub const ALL: [Tool; 6] = [
+    /// Every tool, in registry order.
+    pub const ALL: [Tool; 8] = [
         Tool::Select,
         Tool::Highlight,
         Tool::Pen,
         Tool::HighlighterPen,
         Tool::Eraser,
         Tool::Collect,
+        Tool::WordStudy,
+        Tool::Type,
     ];
 
     /// The tool's name as serialized.
@@ -281,6 +291,8 @@ impl Tool {
             Tool::HighlighterPen => "highlighter_pen",
             Tool::Eraser => "eraser",
             Tool::Collect => "collect",
+            Tool::WordStudy => "word_study",
+            Tool::Type => "type",
         }
     }
 }
@@ -415,6 +427,12 @@ pub struct Session {
     /// Runtime state, not persisted.
     #[serde(skip)]
     pub resource_titles: BTreeMap<String, String>,
+    /// Languages of resources by content id as BCP 47 tags (`sblgnt` → `grc`), registered by
+    /// the host; the tool well tells original-language text from a translation by them
+    /// ([`is_original_language`]). A resource without one reads as a translation. Runtime
+    /// state, not persisted.
+    #[serde(skip)]
+    pub resource_languages: BTreeMap<String, String>,
 }
 
 impl Session {
@@ -425,6 +443,27 @@ impl Session {
             .get(content_id)
             .map_or(content_id, String::as_str)
     }
+
+    /// The registered language of a resource, if any.
+    #[must_use]
+    pub fn resource_language(&self, content_id: &str) -> Option<&str> {
+        self.resource_languages.get(content_id).map(String::as_str)
+    }
+}
+
+/// The primary language subtags of the original-language Bible texts (B076): ancient Greek,
+/// ancient Hebrew, Aramaic, and the `he`/`heb` tags editions such as the WLC are often
+/// published under.
+pub const ORIGINAL_LANGUAGES: [&str; 5] = ["grc", "hbo", "arc", "he", "heb"];
+
+/// Whether a BCP 47 tag names an original Bible language: its primary subtag, case
+/// insensitively, is one of [`ORIGINAL_LANGUAGES`] (`grc`, `hbo-Hebr`, `HE`).
+#[must_use]
+pub fn is_original_language(tag: &str) -> bool {
+    let primary = tag.split(['-', '_']).next().unwrap_or_default();
+    ORIGINAL_LANGUAGES
+        .iter()
+        .any(|l| l.eq_ignore_ascii_case(primary))
 }
 
 /// Why a shell document is rejected.
@@ -695,6 +734,7 @@ impl Workspace {
             link_group: p.link_group.clone(),
             pinned: p.pinned,
             history: PaneHistory::default(),
+            lexicon_word: None,
         };
         let structure = [
             DeviceClass::UltraWide,
@@ -953,6 +993,7 @@ impl Session {
             reading: ReadingSettings::default(),
             ink: InkSettings::default(),
             resource_titles: BTreeMap::new(),
+            resource_languages: BTreeMap::new(),
         }
     }
 
@@ -1072,6 +1113,7 @@ impl Session {
             reading: record.reading,
             ink: record.ink,
             resource_titles: BTreeMap::new(),
+            resource_languages: BTreeMap::new(),
         };
         session.check()?;
         Ok(session)

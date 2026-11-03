@@ -179,6 +179,11 @@
         "pinned": {
           "type": "boolean"
         },
+        "lexicon_word": {
+          "description": "The word a lexicon tab looks up, as the reader clicked it (B076, tab.open_lexicon); absent on other tabs.",
+          "type": "string",
+          "minLength": 1
+        },
         "history": {
           "description": "The tab's own back and forward stacks (specs/22 §2); absent until the tab first navigates.",
           "type": "object",

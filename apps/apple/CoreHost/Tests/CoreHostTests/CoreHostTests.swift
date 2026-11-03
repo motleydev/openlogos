@@ -182,6 +182,35 @@ final class CoreHostTests: XCTestCase {
         }
     }
 
+    // B076: the contextual tool well through the UniFFI handle.
+    func testToolWellFollowsFocus() throws {
+        let shell = ShellHandle.fixture()
+        let tab = ShellCommandContext(hasSelection: false, focus: .tab)
+        let well = shell.toolWell(context: tab)
+        XCTAssertEqual(well.context, "translation")
+        XCTAssertEqual(well.groups.map(\.kind), ["tools", "ink"])
+        XCTAssertEqual(well.groups[0].items.map(\.icon), ["select", "highlight", "pen", "highlighter-pen", "eraser", "collect"])
+        _ = try shell.applyIn(commandId: "tool.pen", args: ShellCommandArgs(), context: tab)
+        let dock = ShellCommandContext(hasSelection: true, focus: .notesDock)
+        let notes = shell.toolWell(context: dock)
+        XCTAssertEqual([notes.context, notes.tool, notes.effectiveTool], ["notes", "pen", "type"])
+        XCTAssertEqual(notes.groups.last?.kind, "selection")
+        XCTAssertThrowsError(try shell.applyIn(commandId: "tool.eraser", args: ShellCommandArgs(), context: dock)) { error in
+            guard case ShellCommandError.Disabled(_, let kind, let reason) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(kind, "wrong_context")
+            XCTAssertEqual(reason, "Eraser works on Bible text")
+        }
+        _ = try shell.apply(commandId: "column.focus", args: ShellCommandArgs(column: 2), hasSelection: false)
+        XCTAssertEqual(shell.session().toolContext, "original")
+        XCTAssertEqual(shell.session().effectiveTool, "pen")
+        let rows = shell.paletteQuery(text: ":Jn 3:16", context: ShellPaletteContext(hasSelection: false, platform: .mac, focus: .notesDock))
+        XCTAssertEqual(rows.groups.first?.items.map(\.commandId), ["nav.navigate", "note.link_passage"])
+        let opened = try shell.apply(commandId: "tab.open_lexicon", args: ShellCommandArgs(text: "ἀγάπη"), hasSelection: false)
+        XCTAssertTrue(opened.recorded)
+        XCTAssertEqual(shell.session().workspaces[0].columns[2].tabs[0].lexiconWord, "ἀγάπη")
+        XCTAssertEqual(shell.session().workspaces[0].activeColumnNumber, 2, "focus stays where the word was clicked")
+    }
+
     // MARK: - Fixture decoding
 
     struct Span: Decodable { let start: UInt32; let end: UInt32 }

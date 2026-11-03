@@ -114,6 +114,83 @@ palette command. The current tool is shown by a filled button and a label in the
 accessibility value, never by colour alone. On touch, a Pencil uses the current tool and a
 finger always scrolls and selects (B039's palm rules).
 
+### 4.1 Context (B076)
+
+Owner direction, 2026-10-30: the well is contextually useful for what it is looking at. The
+tool set follows the focused column's shown tab, and a text selection adds an actions group
+below the tools. The core decides the well (`ShellHandle.tool_well` / `toolWell`), so web
+and Mac stay in lockstep (§8).
+
+**Contexts.** Focus is the active column's shown tab unless the host says the notes dock or
+an empty column has it (`focus`: `tab`, `notes_dock`, `empty`).
+
+| Context | When | Default tool |
+|---|---|---|
+| `translation` | A Reading tab whose resource is not in an original language (BSB) | Select |
+| `original` | A Reading tab whose registered language is `grc`, `hbo`, `arc`, `he` or `heb` (SBLGNT, WLC) | Select |
+| `notes` | A Notes tab, or the notes dock with focus | Type |
+| `reference` | A Lexicon or Research tab | Select |
+| `none` | An empty column has focus | Select |
+
+Resource languages are registered by the host as BCP 47 tags (`setResourceLanguages`), as
+resource titles are; a resource without one reads as a translation.
+
+**Groups**, top to bottom:
+
+| Group | Shown | Items (key) |
+|---|---|---|
+| Tools, translation | always | Select V, Highlight H, Pen P, Highlighter pen M, Eraser E, Collect C |
+| Tools, original | always | Select V, Word study W, Highlight H, Pen P, Highlighter pen M, Eraser E, Collect C |
+| Tools, notes | always | Type T, Bold ⌘B, Italic ⌘I, Heading, List, Link passage, Collect C |
+| Tools, reference | always | Select V, Highlight H, Collect C |
+| Tools, none | always | Select V |
+| Ink | translation and original | Swatch, Alternate swatch (X swaps), Brush width |
+| Selection | text selected, context not `none` | Highlight now ⌘⇧H, Collect ⌘⇧C, Note on it, Search this ⌘E, Copy reference, Study ⌘⇧S |
+
+Word study and Type are tools (modes). Bold, Italic, Heading, List and Link passage are
+actions on the note editor: their commands (`note.*`) come back unhandled for the host, and
+⌘B and ⌘I work only while the note editor has focus. Link passage takes a passage: the
+palette fills it inline (`link passage Jn 3:16`), and in notes a typed passage also offers
+"Link John 3:16" under the navigation row. The selection actions are host-performed like
+the existing ones: Note on it appends the quoted text and its reference to the open note,
+Search this puts the selected text into the palette field, Copy reference copies the
+selection's reference in `formatHuman` form.
+
+**Word study results** open through `tab.open_lexicon` (`text`: the word as clicked,
+`reference`, and `column` or `new_column`). The target is the column given, else the column
+to the right of the active one, else a new column. A Lexicon tab already in the target column
+is reused (its word and passage change, it is pinned and shown); otherwise a new pinned
+Lexicon tab opens there and is shown. Focus stays on the column where the word was clicked, so
+the reader keeps reading. The command is undoable like `tab.new`;
+the tab carries the word as `lexicon_word` (workspace schema 2.0, optional). In the palette,
+"Open in lexicon" takes the word inline (`open in lexicon agape`) and without one is disabled
+with "Needs a word to look up".
+
+**Effective tool.**
+
+| Rule | Behaviour |
+|---|---|
+| Storing | Choosing a tool stores it in the session; moving focus never changes the stored tool |
+| Fallback | When the context does not offer the stored tool, the context's default is in effect and marked active |
+| Restore | Returning to a context that offers the stored tool puts it back in effect |
+| Out of context | A tool or note command outside its context is disabled with a reason in words and stays in the palette |
+
+| Command outside its context | Reason |
+|---|---|
+| Pen, Highlighter pen, Eraser | "Pen works on Bible text" |
+| Word study | "Word study works on Greek and Hebrew text" |
+| Type, Bold, Italic, Heading, List, Link passage | "Type works in notes" |
+| Select, Highlight in notes | "Select works outside notes" |
+| Highlight, Collect with nothing focused | "Highlight works with a tab open" |
+
+**Icons** are neutral names each host maps (SF Symbols on Mac, inline SVG on web): `select`,
+`word-study`, `highlight`, `pen`, `highlighter-pen`, `eraser`, `collect`, `type`, `bold`,
+`italic`, `heading`, `list`, `link-passage`, `swatch`, `swatch-alternate`, `brush-width`,
+`highlight-now`, `note`, `search`, `copy-reference`, `study`.
+
+The well is rebuilt on every focus change; building it is part of the column-focus budget
+of §7.
+
 ## 5. Text search for the baseline
 
 The palette's Text section searches the three editions approved for the preview on
@@ -138,7 +215,9 @@ and Mac; native hosts may add the platform-conventional aliases.
 | New column | ⌥N | |
 | Next, previous workspace | ⌥⇧], ⌥⇧[ | |
 | New workspace | ⌥⇧N | ⌘⇧N |
-| Tools | V H P M E C, X swaps swatches | |
+| Tools | V H P M E C, W word study, T type (§4.1); X swaps swatches | |
+| Note editor (focus in a note) | ⌘B bold, ⌘I italic | |
+| Search the selection | ⌘E | |
 | Back, forward | ⌘[, ⌘] | |
 
 Every binding is a command, so the palette shows it next to the command and the user can

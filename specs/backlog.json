@@ -1528,12 +1528,35 @@
       "human_gate": false
     },
     {
+      "id": "B076",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Contextual tool well: tools follow the focused tab, selection actions below",
+      "depends_on": [
+        "B072"
+      ],
+      "acceptance": [
+        "The core decides the tool well (specs/22 §4.1) from the focused tab's kind and resource language or the notes dock: translation, original, notes, reference and none contexts, an ink group on Bible text and a selection group when text is selected, exposed through UniFFI and wasm-bindgen with conformance cases run by all hosts",
+        "The stored tool survives focus changes; the effective tool falls back to the context's default and comes back; a tool or note action outside its context is disabled with a plain reason, never hidden from the palette",
+        "Web shell and Mac app draw the well from the core on real chapters of the three editions, with screenshots of every context",
+        "Tool well build measured against the specs/22 §7 column-focus budget"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/16-design-guide.md",
+        "specs/21-reading-interactions.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
       "id": "B073",
       "phase": "P1",
       "owner_role": "reader-design",
       "title": "Usability baseline review of the shell",
       "depends_on": [
-        "B072"
+        "B072",
+        "B076"
       ],
       "acceptance": [
         "Owner feedback from ~/OpenLogosFeedback triaged into accepted changes with screenshots before and after",
