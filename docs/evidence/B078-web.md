@@ -57,10 +57,10 @@ followed here.
 5. **Back and Forward** return to the typed passages (`John 3:16–18` → `Ps 23` → `Jude 3`,
    ⌘[ ⌘[ ⌘]), and the mark is cleared on Back as the core does. `John 3:16-18` marks the
    three verses. `Jude 3` opens at Jude 1:3. `Ps 23` opens at 23:1 (the BSB has no title
-   verse there). A whole book opens at its first verse through `nav.navigate {reference:
-   "Gen"}`, with SBLGNT showing "Genesis is not in SBLGNT." **The palette offers no Passage
-   row for a bare book name** ("Genesis" lists only the WLC tabs); this is a core gap,
-   reported to team-lead. `John 22` shows the not-in-edition state in both columns.
+   verse there). Typing `Genesis` (the core's book row, merged from b078-core-reading
+   2e53c87) opens Gen 1:1 on the reading line, with SBLGNT showing "Genesis is not in
+   SBLGNT."; `Jo` lists Joshua, Job, Joel, Jonah, John. `John 22` shows the not-in-edition
+   state in both columns.
 6. **Fixture verses** (BSB Jn 3:16–17, SBLGNT Jn 3:16, WLC Gen 1:1–2) show real text, and
    all 42 B072–B077 cases pass on the streams: highlight drag, Hebrew highlight, pen and
    eraser, word study, context menus, find in chapter, copy with text, selection and notes.
@@ -73,12 +73,13 @@ followed here.
 8. **Window cap**: never more than 9 blocks. 780 DOM nodes at most in a column through 90
    chapters, and the JS heap grows by 1–2 MB over the run (table below).
 
-## Cases (`just test-shell-web`, 53 in all, 11 new)
+## Cases (`just test-shell-web`, 54 in all, 12 new)
 
 | Case | Checks |
 |---|---|
 | `reading-jump-flash-mark` | the palette "John 3:16" → 3:16 on the reading line ±2 px in BSB and SBLGNT, flash once and mark (BSB and the follower), headers "BSB · Jn 3" / "SBLGNT · Jn 3", window John 1–5, after 1.4 s no flash and the mark stays |
-| `reading-range-and-back` | `John 3:16-18` marks three verses and the identity row reads "John 3:16–18". `Ps 23` → Ps.23.1, unmarked. `Jude 3` → Jude.1.3. ⌘[ ⌘[ ⌘] walk the visits and clear the mark. A whole book (`Gen`) → Gen.1.1, SBLGNT "Genesis is not in SBLGNT" |
+| `reading-range-and-back` | `John 3:16-18` marks three verses and the identity row reads "John 3:16–18". `Ps 23` → Ps.23.1, unmarked. `Jude 3` → Jude.1.3. ⌘[ ⌘[ ⌘] walk the visits and clear the mark. Typing `Genesis` → Gen.1.1, SBLGNT "Genesis is not in SBLGNT" |
+| `reading-palette-books` | "Jo" lists John among the Passage rows; "Genesis" + Enter → `Gen.1`, Gen 1:1 on the reading line, header "BSB · Gen 1", SBLGNT not-in-edition |
 | `reading-invalid-reference` | `John 22` → "Berean Standard Bible · John 22 … John has no chapter 22." in both columns, no text; ⌘[ returns to the text |
 | `reading-scroll-down-across-books` | John 21:20 → Acts 2 at 60 px steps: no jump > 2 px, header "BSB · Acts 1" on the way, tab "BSB Acts 2", identity "Acts 2:n", "Acts" heads Acts 1, SBLGNT on the same verse, ≤ 9 blocks |
 | `reading-scroll-up-across-books` | John 1:3 → Luke 23 upward with no jump, header "BSB · Lk 24", tab "BSB Lk 23"; Genesis 2:3 → Genesis 1 upward with no jump |
@@ -180,15 +181,19 @@ Every row stays inside its budget. What grew, and why:
 
 ## Lanes
 
-On the committed tree 5674857 (the evidence file added after it is documentation only):
+On the committed tree bb34626 (b078-core-reading 2e53c87 merged, wasm rebuilt; the evidence
+update after it is documentation only):
 
 | Lane | Summary line | Exit |
 |---|---|---:|
-| `nix develop .#core -c just ci` | `Summary [8.117s] 330 tests run: 330 passed, 0 skipped`; validate `PASS: 36 schema/example validations; … 21 conformance fixtures; … 127 negative tests …`; fmt, clippy `-D warnings`, doc tests, wasm32 check | 0 |
-| `nix develop .#web -c just test-web` | `conformance cases: 1717 passed, 0 failed (api 0.1.3)`; `tests 10, pass 10, fail 0` | 0 |
-| `nix develop .#web -c just test-wasm` | `test result: ok. 9 passed; 0 failed` (with `reading_handle_streams_chapters_and_the_shell_follows_scrolling`) | 0 |
+| `nix develop .#core -c just ci` | `Summary [7.988s] 330 tests run: 330 passed, 0 skipped`; validate `PASS: 36 schema/example validations; … 21 conformance fixtures; …`; fmt, clippy `-D warnings`, doc tests, wasm32 check | 0 |
+| `nix develop .#web -c just test-web` | `conformance cases: 1733 passed, 0 failed (api 0.1.3)`; `tests 10, pass 10, fail 0` | 0 |
+| `nix develop .#web -c just test-wasm` | `test result: ok. 9 passed; 0 failed` | 0 |
 | `nix develop .#web -c just test-dom-reader` | `DOM reader: 13/13 cases passed` | 0 |
-| `nix develop .#web -c just test-shell-web` | `Summary: Web shell: 53/53 cases passed` | 0 |
+| `nix develop .#web -c just test-shell-web` | `Summary: Web shell: 54/54 cases passed` | 0 |
+
+The speed tables were measured on 9a56a93, before the merge; the merge changes the core's
+palette book rows only.
 
 ## Commits
 
@@ -200,7 +205,10 @@ On the committed tree 5674857 (the evidence file added after it is documentation
 | `9137c0f` | the single-passage reading path removed |
 | `9a56a93` | tool change restyles only what the tool changes |
 | `5674857` | the 8 screenshots |
-| this commit | this file |
+| `ca1fa82` | this file |
+| merge | b078-core-reading 2e53c87 (the core's book rows in the palette) |
+| `bb34626` | `reading-palette-books` ("Jo", "Genesis"), the whole-book check typed; specs/23 §7 live follow and the reading line |
+| this commit | this file updated |
 
 ## Lockstep
 
@@ -231,16 +239,14 @@ agreement:
 
 ## Deviations from the brief
 
-- **Live following** rather than only on settle: specs/23 §7 says to report when scrolling
+- **Live following** rather than only on settle (approved by team-lead; specs/23 §7 now says so): specs/23 §7 says to report when scrolling
   settles. The brief asks for linked columns that "scroll together verse-for-verse", so the
   stream reports each time the verse on the reading line changes (at most once a frame) and
   once more on settle. The cost is in the table (linked follow p95 ≤ 4 ms in the ten-workspace
   session).
-- **The reading line** (24 px under the header) is the position, not the very top edge. That
+- **The reading line** (24 px under the header; approved, in specs/23 §7) is the position, not the very top edge. That
   keeps the typed verse, with its sliver of context above, the reported verse, so the
   identity row does not drift to the verse above.
-- **A whole book from the palette** cannot be tested: the core palette has no row for it
-  (reported). `nav.navigate {reference: "Gen"}` is tested instead.
 - **The SBLGNT column with Genesis/Psalms/Malachi** shows the not-in-edition state, as specs/23
   §7 says (it is linked to the BSB). It does not stay where it was.
 - **Text selection across blocks** joins each block's anchors. A highlight across a chapter
