@@ -373,8 +373,13 @@ function renderColumns() {
   // Re-insert only when the order changed: moving a node resets its scroll position.
   const same = order.length === host.order.length && order.every((n, i) => n === host.order[i]);
   if (!same) {
-    container.replaceChildren(...order);
-    for (const view of host.views.values()) if (view.section.isConnected) restoreScroll(view);
+    // A rebuilt column takes its old one's place, and the others keep their scroll (B078: a
+    // stream holds several chapters); a new order re-inserts every column.
+    const inPlace = order.length === host.order.length && order.every((n, i) => n === host.order[i] || !n.isConnected);
+    const moved = new Set();
+    if (inPlace) order.forEach((n, i) => { if (n !== host.order[i]) { container.replaceChild(n, host.order[i]); moved.add(n); } });
+    else { container.replaceChildren(...order); for (const n of order) moved.add(n); }
+    for (const view of host.views.values()) if (view.section.isConnected && moved.has(view.section)) restoreScroll(view);
     host.order = order;
   }
   for (const view of host.views.values()) if (view.section.isConnected) sizeCanvas(view);
@@ -1216,7 +1221,11 @@ function inkOf(key) {
 function sizeCanvas(view) {
   if (!view.canvas) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = view.page.clientWidth, h = view.scroller.clientHeight * 3;
+  // No bitmap until there is ink to show or an ink tool to draw with (a tab switch then
+  // allocates nothing).
+  const ink = host.ink.get(view.key);
+  const needed = ["pen", "highlighter_pen", "eraser"].includes(host.toolWell && host.toolWell.effective_tool) || (ink && ink.strokes.length > 0);
+  const w = needed ? view.page.clientWidth : 0, h = needed ? view.scroller.clientHeight * 3 : 0;
   if (view.canvas.width === Math.round(w * dpr) && view.canvas.height === Math.round(h * dpr)) return;
   view.canvas.width = Math.round(w * dpr);
   view.canvas.height = Math.round(h * dpr);
@@ -2262,6 +2271,41 @@ export function keyReport(reset) {
   return out;
 }
 
+/** A scripted continuous scroll: `dy` px each frame for `frames` frames, as a steady wheel
+ *  would. Rows: the frame intervals (a frame beyond one interval is a dropped frame), each
+ *  scroll frame's own work (the window, the header, the reading line), and each linked follow
+ *  (`tab.record_scroll` through every follower scrolled and laid out). */
+async function scrollRun(view, frames, dy) {
+  host.frames = [];
+  host.followTimes = [];
+  const intervals = [], chapters = [];
+  let maxBlocks = 0, maxNodes = 0, last = null, i = 0;
+  const heap0 = performance.memory ? performance.memory.usedJSHeapSize : null;
+  await new Promise((ok) => {
+    const step = (t) => {
+      if (last != null) intervals.push(t - last);
+      last = t;
+      const b = view.stream.blockAtTop();
+      if (b && chapters[chapters.length - 1] !== b.key) chapters.push(b.key);
+      maxBlocks = Math.max(maxBlocks, view.stream.blocks.length);
+      maxNodes = Math.max(maxNodes, view.page.getElementsByTagName("*").length);
+      if (i++ >= frames) { ok(); return; }
+      view.scroller.scrollTop += dy;
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+  const heap = performance.memory ? performance.memory.usedJSHeapSize : null;
+  const extra = { chapters: chapters.length, from: chapters[0], to: chapters[chapters.length - 1], max_blocks: maxBlocks, max_dom_nodes: maxNodes, frames_over_25ms: intervals.filter((x) => x > 25).length, js_heap_mb: heap && +(heap / 1048576).toFixed(1), js_heap_delta_mb: heap && +((heap - heap0) / 1048576).toFixed(1), stats: { ...view.stream.stats } };
+  const rows = [
+    { name: `B078 continuous scroll, ${dy} px a frame through ${chapters.length} chapters (frame interval; work = one scroll frame)`, work_ms: stats(host.frames), frame_ms: stats(intervals), ...extra },
+    { name: "B078 linked follow (tab.record_scroll → followers scrolled, during the scroll)", work_ms: stats(host.followTimes), frame_ms: stats(host.followTimes) },
+  ];
+  host.frames = null;
+  host.followTimes = null;
+  return rows;
+}
+
 export async function bench({ samples = 200 } = {}) {
   closePalette(false);
   const out = [];
@@ -2343,6 +2387,15 @@ export async function bench({ samples = 200 } = {}) {
     document.getSelection().removeAllRanges();
   }
   out.push(await measure("open a chapter in a tab, warm (nav.navigate)", samples, (i) => run({ command_id: "nav.navigate", args: { reference: ["John.3", "Gen.1", "John.3.16", "Gen.1.2"][i % 4] } })));
+  // B078 (specs/23 §7): a typed jump anywhere in the canon, the stream rebuilt around it (and
+  // its linked followers); then a scripted continuous scroll through dozens of chapters.
+  const jumps = ["Ps.119.105", "Gen.1.1", "Rev.22.21", "Matt.5.3", "Isa.53.5", "John.3.16-John.3.18", "Acts.1.8", "Ps.23", "Rom.8.28", "Jude.1.3", "Obad.1.1", "Mal.4.5"];
+  run({ command_id: "column.focus", args: { column: 1 } });
+  out.push(await measure("B078 typed jump → stream painted (nav.navigate across the canon, followers too)", samples, (i) => run({ command_id: "nav.navigate", args: { reference: jumps[i % jumps.length] } })));
+  run({ command_id: "nav.navigate", args: { reference: "Ps.1.1" } });
+  await nextFrame();
+  const view = activeView();
+  if (view && view.stream) out.push(...(await scrollRun(view, Math.max(samples * 3, 600), 90)));
   return { user_agent: navigator.userAgent, dpr: window.devicePixelRatio, viewport: [innerWidth, innerHeight], workspaces: host.session.workspaces.length, tabs: host.session.workspaces.reduce((a, w) => a + w.columns.reduce((b, c) => b + c.tabs.length, 0), 0), rows: out };
 }
 

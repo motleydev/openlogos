@@ -179,7 +179,9 @@ export class ReadingStream {
     if (first.prev) { const b = this.load(first.prev); this.blocks.unshift(b); this.text.insertBefore(b.section, first.section); }
     if (first.next) { const b = this.load(first.next); this.blocks.push(b); this.text.appendChild(b.section); }
     this.scrollToSegment(segmentId || first.data.verses[0].segment_id, scalar);
-    this.fill();
+    // The rest of the window comes on the next frame (tick → fill), so opening paints the
+    // passage with one chapter each side first.
+    this.scrolled();
     this.top = this.measureTop();
     this.reported = this.top && { live: this.top.segment_id, settled: this.top };
     this.updateHeader();
@@ -292,9 +294,10 @@ export class ReadingStream {
 
   // MARK: - Position
 
-  /** The segment and scalar on the reading line, as `tab.record_scroll` takes them: the
-   *  first verse with a line below it, and the first character of that verse below it. Pure
-   *  geometry, so a menu or the palette over the text does not change the answer. */
+  /** The segment and scalar on the reading line, as `tab.record_scroll` takes them: the verse
+   *  that begins on the reading line's row, else the one running through it with the first
+   *  character of the row as its scalar. Pure geometry, so a menu or the palette over the text
+   *  does not change the answer. */
   measureTop() {
     if (!this.blocks.length || !this.text.isConnected) return null;
     const y = this.edge() + 2;
@@ -316,6 +319,11 @@ export class ReadingStream {
     const node = verse.querySelector(".t").firstChild;
     const rects = verse.getClientRects();
     if (!node || !rects.length || rects[0].bottom > y) return { segment_id: verse.dataset.segment, scalar: 0 };
+    // A verse that begins on the reading line's row is the position, not the tail of the one
+    // before it (short verses share rows); a follower put there reads back the same verse.
+    const after = verses[lo + 1];
+    const head = after && after.getClientRects()[0];
+    if (head && head.top <= y && head.bottom > y) return { segment_id: after.dataset.segment, scalar: 0 };
     // The verse began above the line: its first character whose line ends below it.
     const r = document.createRange();
     let a = 0, b = node.length;
