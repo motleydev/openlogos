@@ -1143,11 +1143,29 @@ const CASES = {
     await chord("Meta", "]");
     s = await snap();
     expect(p, s.columns[0].reference === "Ps.23", `forward ${s.columns[0].reference}`);
-    // A whole book opens at its first verse (nav.navigate: the palette has no row for a bare book yet).
-    await navigate("Gen");
+    // A whole book opens at its first verse: the palette's Passage row for "Genesis".
+    await palette("Genesis");
     s = await snap();
     expect(p, s.reading[0].top.segment_id === "Gen.1.1" && s.reading[0].header === "BSB · Gen 1", `Genesis ${JSON.stringify(s.reading[0].top)}`);
     expect(p, s.reading[1].error && s.reading[1].error.includes("Genesis is not in SBLGNT"), `SBLGNT has no Genesis: ${JSON.stringify(s.reading[1])}`);
+  },
+
+  async "reading-palette-books"(p) {
+    await chord("Meta", "k");
+    await type("Jo");
+    const rows = await js("return [...document.querySelectorAll('.results h3, .results .row .title')].map((e) => e.textContent)");
+    const passage = rows.slice(rows.indexOf("Passage") + 1, rows.indexOf("Passage") + 6);
+    expect(p, rows[0] === "Passage" && passage.includes("John"), `"Jo" offers John: ${JSON.stringify(rows)}`);
+    await chord("Meta", "a");
+    await type("Genesis");
+    const first = await js("const r = document.querySelector('.row[aria-selected=true]'); return [document.querySelector('.results h3').textContent, r && r.querySelector('.title').textContent]");
+    expect(p, eq(first, ["Passage", "Genesis"]), `first row ${JSON.stringify(first)}`);
+    await chord("Enter");
+    await sleep(60);
+    const s = await snap();
+    const [line, top] = await readingLine(1, "Gen.1.1");
+    expect(p, s.columns[0].reference === "Gen.1" && s.reading[0].top.segment_id === "Gen.1.1" && Math.abs(top - line) <= 2 && s.reading[0].header === "BSB · Gen 1", `Genesis → Gen 1:1: ${s.columns[0].reference} ${JSON.stringify(s.reading[0].top)}`);
+    expect(p, s.reading[1].error && s.reading[1].error.includes("Genesis is not in SBLGNT"), `SBLGNT: ${JSON.stringify(s.reading[1])}`);
   },
 
   async "reading-invalid-reference"(p) {

@@ -158,9 +158,14 @@ Testament, `org`), WLC (Old Testament, `org`). Rules:
   (`short_label`), and book titles head a book's first chapter.
 - **Flash and mark.** On navigation, scroll `segment_id` to the top, flash the
   `highlight_range` verses once and keep a quiet mark on them until the next navigation.
-- **Report position quietly.** When scrolling settles, send `tab.record_scroll` with the
-  segment at the top; update the identity row and tab label from `positions` without
-  rebuilding the reading column.
+- **Report position quietly, live.** Each time the verse at the reading position changes while
+  the reader scrolls, send `tab.record_scroll` with it, at most once per frame, so linked tabs
+  follow verse for verse; send it once more with the final scalar when scrolling settles.
+  The reading position is a reading line a little below the sticky header (24 px on the
+  web), where a typed passage lands; the verse there is the one that begins on that line's
+  row, else the verse running through it (with the row's first character as the scalar).
+  Update the identity row and tab label from `positions` without rebuilding the reading
+  column.
 - **Linked scroll.** For each follower in `positions` with `scrolled: true`, scroll it to its
   `segment_id` (loading that chapter if needed) without animation, and do not report that
   programmatic scroll as the reader's.
