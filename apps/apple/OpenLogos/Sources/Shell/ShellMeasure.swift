@@ -65,6 +65,28 @@ final class ShellMeasure {
         stats.append(await measure("tool change (tool.*)", budget: 16) { i in
             self.model.run(tools[i % tools.count])
         })
+        // B076: the well follows focus. Column 1 shows SBLGNT (original), column 2 BSB
+        // (translation) in the measurement session.
+        stats.append(await measure("column focus, original ↔ translation (the well changes)", budget: 16) { i in
+            self.model.run("column.focus", args: ShellCommandArgs(column: UInt32(i % 2 + 1)))
+        })
+        model.run("column.focus", args: ShellCommandArgs(column: 2))
+        model.run("view.notes_dock")
+        Self.flush()
+        stats.append(await measure("translation → notes dock (the well changes)", budget: 16, prepare: { _ in self.model.setFocus(.tab) }) { _ in
+            self.model.setFocus(.notesDock)
+        })
+        model.setFocus(.tab)
+        model.run("view.notes_dock")
+        model.run("column.focus", args: ShellCommandArgs(column: 1))
+        Self.flush()
+        if let surface = model.surface(for: model.activeColumn.shownTabId), let layout = surface.layout {
+            let range = layout.runMap.displayRange(fromCore: NSRange(location: 0, length: 12))
+            stats.append(await measure("selection appears → selection group drawn", budget: 16, prepare: { _ in surface.clearSelection() }) { _ in
+                surface.select(display: range)
+            })
+            surface.clearSelection()
+        }
         model.run("column.focus", args: ShellCommandArgs(column: 1))
         stats.append(await measure("open a chapter in a tab, warm (nav.navigate, group follows)", budget: 100) { i in
             self.model.run("nav.navigate", args: ShellCommandArgs(reference: i % 2 == 0 ? "John.3.17" : "John.3.16"))
@@ -74,12 +96,13 @@ final class ShellMeasure {
         return Report(host: "mac", window: "\(Int(size.width))x\(Int(size.height))", workspaces: model.session.workspaces.count, tabs: tabs, stats: stats)
     }
 
-    private func measure(_ name: String, budget: Double, count: Int? = nil, action: @escaping (Int) -> Void) async -> Stat {
+    /// `prepare` runs and is drawn before the timer starts (the state an interaction starts from).
+    private func measure(_ name: String, budget: Double, count: Int? = nil, prepare: ((Int) -> Void)? = nil, action: @escaping (Int) -> Void) async -> Stat {
         let n = count ?? samplesPerInteraction
         var work: [Double] = []
         var toFrame: [Double] = []
         // Warm up: the first few frames build caches the steady state keeps.
-        for i in 0..<5 { action(i); Self.flush() }
+        for i in 0..<5 { prepare?(i); Self.flush(); action(i); Self.flush() }
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             var index = 0
             var started: CFTimeInterval?
@@ -87,6 +110,10 @@ final class ShellMeasure {
                 let now = CACurrentMediaTime()
                 if let s = started { toFrame.append((now - s) * 1000) }
                 guard index < n else { return true }
+                if let prepare {
+                    prepare(index)
+                    Self.flush()
+                }
                 let t0 = CACurrentMediaTime()
                 action(index)
                 Self.flush()

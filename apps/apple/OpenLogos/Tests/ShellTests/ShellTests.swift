@@ -218,10 +218,12 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(m["tool_well_collapsed"], Double(ShellTokens.toolGripSide))
         XCTAssertEqual(m["tool_well_inset"], Double(ShellTokens.toolWellInset))
         XCTAssertEqual(m["tool_button"], Double(ShellTokens.toolButtonSide))
+        // B076: the well comes from the core; on a translation it is the token file's six tools.
         let tools = try XCTUnwrap(json["tools"] as? [[String: String]])
-        XCTAssertEqual(tools.map { $0["command"] ?? "" }, ToolWell.tools.map(\.command))
-        XCTAssertEqual(tools.map { $0["mac_symbol"] ?? "" }, ToolWell.tools.map(\.symbol))
-        XCTAssertEqual(tools.map { $0["title"] ?? "" }, ToolWell.tools.map(\.name))
+        let well = ShellModel().well.groups[0].items
+        XCTAssertEqual(tools.map { $0["command"] ?? "" }, well.map(\.commandId))
+        XCTAssertEqual(tools.map { $0["mac_symbol"] ?? "" }, well.map { ToolWell.symbol($0.icon) })
+        XCTAssertEqual(tools.map { $0["title"] ?? "" }, well.map(\.label))
     }
 
     // MARK: Palette
@@ -340,7 +342,8 @@ final class ShellTests: XCTestCase {
         let window = host(model)
         defer { window.close() }
         spin()
-        for column in model.activeWorkspace.columns {
+        // B076: the notes column is an editor, not a reading surface.
+        for column in model.activeWorkspace.columns where column.tabs.first(where: { $0.id == column.shownTabId })?.kind == "reading" {
             let surface = try XCTUnwrap(model.surface(for: column.shownTabId), "column \(column.number)")
             XCTAssertTrue(surface.usesTextKit2)
             if let layout = surface.layout, let marker = layout.markers.first {

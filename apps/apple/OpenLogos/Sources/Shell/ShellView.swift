@@ -398,7 +398,7 @@ struct ShellNotesDock: View {
     @ObservedObject var model: ShellModel
 
     var body: some View {
-        let note = model.activeWorkspace.notesDockNoteId ?? "fixture:note:1"
+        let note = model.activeWorkspace.notesDockNoteId ?? ShellModel.defaultNoteID
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 0) {
@@ -412,11 +412,17 @@ struct ShellNotesDock: View {
                 }
                 .padding(.horizontal, ShellTokens.Spacing.m)
                 .frame(height: ShellTokens.identityRowHeight)
+                #if os(macOS)
+                // B076: the dock's note is edited in place; focus here is the notes context.
+                NoteEditorView(store: model.notes, noteID: note, paneID: "dock", typography: model.noteTypography,
+                               horizontalPadding: ShellTokens.Spacing.l, onFocus: { model.setFocus(.notesDock) })
+                #else
                 if let text = model.textSource.text(resourceID: note, reference: nil) {
                     ReaderTextView(paneID: "dock", content: text.content, horizontalPadding: ShellTokens.Spacing.l, typography: model.typography)
                 } else {
                     PlaceholderView(model: model, resource: model.textSource.resource(note), reference: nil)
                 }
+                #endif
             }
             .frame(height: 200)
             .background(model.theme.pageColor)

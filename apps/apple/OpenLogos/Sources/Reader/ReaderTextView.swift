@@ -43,9 +43,10 @@ enum SelectionAction: String, CaseIterable {
 }
 
 /// What a drag over the text does (B072's tool palette): select natively, or, when the drag
-/// ends, hand the selection to the host to highlight or collect.
+/// ends, hand the selection to the host to highlight or collect. B076: `word` hands the host
+/// the word under a click (Word study).
 enum ReaderDragMode: Equatable {
-    case select, highlight, collect
+    case select, highlight, collect, word
 }
 
 /// A highlight the host keeps on the text: core ranges painted in a colour (B072).
@@ -358,10 +359,28 @@ final class ReaderSurface: NSObject {
     /// B072: a drag ended; in highlight or collect mode the selection goes to the host and
     /// the platform selection collapses.
     func dragEnded() {
+        if dragMode == .word { return wordClicked() }
         guard dragMode != .select, let selection = current, selection.displayRange.length > 0 else { return }
         let mode = dragMode
         clearSelection()
         onDragEnd(mode, selection)
+    }
+
+    /// B076: in word mode a click (or a drag) hands the host the word it landed on, through
+    /// the same round trip as a selection, so the host gets its text and its anchors.
+    private func wordClicked() {
+        #if !canImport(UIKit)
+        guard let textView else { return }
+        let at = selectedRange
+        let range = at.length > 0 ? at : textView.selectionRange(forProposedRange: NSRange(location: at.location, length: 0), granularity: .selectByWord)
+        guard range.length > 0 else { return }
+        select(display: range)
+        guard let selection = current, !selection.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)).isEmpty else {
+            return clearSelection()
+        }
+        clearSelection()
+        onDragEnd(.word, selection)
+        #endif
     }
 
     /// B072: the segment at the top of the visible text, for the tab's scroll anchor.
