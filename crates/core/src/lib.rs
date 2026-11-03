@@ -10,6 +10,7 @@
 //! (docs/adr/0001-rust-core-native-ui.md).
 
 pub mod anchor;
+pub mod canon;
 pub mod identity;
 pub mod locator;
 pub mod reference;
