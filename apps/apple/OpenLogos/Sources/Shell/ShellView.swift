@@ -159,8 +159,8 @@ struct PaletteField: View {
     }
 }
 
-/// B077: the scope a menu's Search put on the Text section (`This edition · BSB`); × searches
-/// every edition again.
+/// B077: the scope a menu's Search put on the Text section (`This edition · BSB`); × drops it
+/// (plain text search again).
 struct ScopeChip: View {
     let model: ShellModel
     let scope: SearchScope
@@ -171,15 +171,13 @@ struct ScopeChip: View {
                 .font(.system(size: 12, weight: .medium))
                 .lineLimit(1)
                 .fixedSize()
-            if scope.scope != "all" {
-                Button {
-                    model.clearSearchScope()
-                } label: {
-                    Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Search all editions")
+            Button {
+                model.clearSearchScope()
+            } label: {
+                Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove the scope")
         }
         .padding(.horizontal, ShellTokens.Spacing.s)
         .frame(height: 20)

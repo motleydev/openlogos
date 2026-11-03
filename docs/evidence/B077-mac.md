@@ -16,10 +16,10 @@ is B077-core.md; the web half is `b077-web-menu` (B077-web.md).
 | Targets: a right-click on a word selects it through the anchor round trip, as macOS does, and passes `word` with the text, reference, segment id, scalar range (from the anchor), resource id and tab id; inside an existing selection it passes `selection` (start and end references); in a note a passage link passes `note_link`, else `note_text` (the selected text, `tab_id` only for a Notes tab); tabs pass `tab`, identity rows `column`, empty areas `background` with the column. A gone target is refused by the core and toasted. | `ReaderSurface.contextHit(at:)`, `ShellModel.target(for:tab:column:)`, `NoteTextView.hit(at:)` |
 | Drawing: a native NSMenu built from the core menu: its `title` as a section header, sections between separators (section labels not drawn), core labels in core order, one-level submenus (Mac submenus just open; the parent's command is not run), `key` as the item's key equivalent (`Cmd+Shift+C` → ⇧⌘C, `Alt+Shift+1` → ⌥⇧1), `active` as a check mark, `value` as a swatch dot, `disabled_text` as the disabled row's subtitle and tooltip, an SF Symbol per core icon. | `ContextMenuBuilder` |
 | Dispatch: on a choice the menu's `focus` is applied first (not on open; dismissing the menu changes nothing), then the row under the menu's `context` (`run(_:args:context:)`). | `ShellModel.choose` |
-| `search.text` edition / all / workspace: the palette opens with `#word` (its Text section) and a scope chip left of the text: `This edition · BSB` (× drops the scope), `All editions`, `This workspace`. Edition scope keeps the rows of that edition; workspace scope those of the editions open in the workspace. Results are the existing fixture TextSource (B071 replaces it). Closing the palette drops the scope. | `ShellModel.openSearch`, `scoped(_:)`, `ScopeChip` in `ShellView.swift` |
+| `search.text` edition / all / workspace: the palette opens with `#word` (its Text section) and a scope chip left of the text: `This edition · BSB`, `All editions`, `This workspace`, each with × (drops the scope). Edition scope keeps the rows of that edition; workspace scope those of the editions open in the workspace. Results are the existing fixture TextSource (B071 replaces it). Closing the palette drops the scope. | `ShellModel.openSearch`, `scoped(_:)`, `ScopeChip` in `ShellView.swift` |
 | Find in this chapter (`search.text` scope `chapter`): no palette; every match in that tab's text is painted (accent at 20 %, the current one at 45 %), the first revealed, toast `4 matches in John 3` (`No matches for “x” in John 3`); ⌘G / ⇧⌘G step and wrap (`2 of 4 in John 3`); Esc clears. | `findInChapter`, `findNext`, `readerMarks`, `handleMenuKey` |
-| Copies: `copy.text` (`Copied “loved”`), `copy.reference` (`formatHuman`, `Copied John 3:16`), `copy.passage` (`<text> — John 3:16 (BSB)`: the selection's text, or the verse's text read from the edition; a range as `John 3:16–17`; toast `Copied John 3:16 with its text`). | `performMenuHost` |
-| `host.cut / copy / paste`: in a note the editor's own cut, copy and paste (undoable); `host.copy` on a reading selection copies its text (`Copied`). `nav.paste_passage`: the clipboard parsed with the core's `parseReference` and opened in the active tab with `nav.navigate`; nothing parsable toasts `No passage on the clipboard`. `selection.highlight_in`: the selection highlighted in the chosen swatch. `note.remove_link`: the link attribute removed from the clicked link's run (undoable), toast `Removed link to …`. `tab.open_edition`, `tab.close_others`: the core's; the host re-renders. | `performMenuHost`, `clipboardEdit`, `pastePassage`, `removeNoteLink` |
+| Copies: `copy.text` (`Copied “loved”`), `copy.reference` (`formatHuman`, `Copied John 3:16`), `copy.passage` (`“<text>” — John 3:16 (BSB)`, one line, no verse numbers: the selection's text, or the verse's text read from the edition; a range as `John 3:16–17`; toast `Copied John 3:16 with its text`). | `performMenuHost` |
+| `host.cut / copy / paste`: in a note the editor's own cut, copy and paste (undoable); `host.copy` on a reading selection copies its text (`Copied`). `nav.paste_passage`: the clipboard parsed with the core's `parseReference` and opened in the active tab with `nav.navigate` (toast `Opened John 3:17`); nothing parsable toasts `No passage on the clipboard`. `selection.highlight_in`: the selection highlighted in the chosen swatch. `note.remove_link`: the link attribute removed from the clicked link's run (undoable), toast `Removed link to …`. `tab.open_edition`, `tab.close_others`: the core's; the host re-renders. | `performMenuHost`, `clipboardEdit`, `pastePassage`, `removeNoteLink` |
 | Editions: languages are registered with the core only for the three editions (`bsb en`, `sblgnt grc`, `wlc hbo`). Before, the note and the lexicon resource had `en` too, so Compare on SBLGNT was `Compare in ▸ BSB / Note / Lexicon`; now it is the plain `Compare in BSB`. The well is unchanged (note and lexicon tabs have their own kinds). | `FixtureTextSource.resourceLanguages` |
 | Launch hooks: `-OPENLOGOS_MENU kind:…` opens a menu on a target where a right-click would; `-OPENLOGOS_MENU_SUBMENU` walks it with ↓ and → to a submenu; `-OPENLOGOS_MENU_CHOOSE` chooses a row; with `-OPENLOGOS_SNAPSHOT` the picture is taken while the menu is open, its windows composited over the app's. | `ShellLaunch.openMenu`, `snapshot(to:)`, `scripts/b077-mac-shots.sh` |
 
@@ -159,8 +159,13 @@ appearance's window background. On screen the menu has the system's glass.
    ours (table above). Meeting 16 ms would mean drawing our own menu in a panel instead of a
    native NSMenu, against the brief's "Mac = native NSMenu". Owner decision below.
 2. **No section labels drawn.** The core's labels (`Search`, `Open`, …) are optional; macOS
-   menus separate groups with separators, and the header row is the word. Same as agreed for
-   web (pending b077web's confirmation; see below).
+   menus separate groups with separators, and the header row is the word. Same on web.
+
+Lockstep with web: agreed with b077web and the lead's rulings (3 November): clipboard
+`“text” — John 3:16 (BSB)`; chips `This edition · BSB` / `All editions` / `This workspace`,
+× on each; no-match toast `No matches for “x” in John 3`; Paste passage toasts
+`Opened John 3:17`; Cut and Paste in notes have no toast; Find in this chapter stays in the
+column; languages only for the three editions.
 3. **Mac submenu parents only open** their submenu (core decision 5 allows it).
 4. **⌥-right-click on SwiftUI chrome shows nothing**, as the tab strip and identity row have
    no platform menu to fall back to.
@@ -172,8 +177,6 @@ appearance's window background. On screen the menu has the system's glass.
 - The NSMenu takes about 50 ms to come up on this machine (AppKit, with the system's glass);
   keep the native menu (looks and behaves like every Mac menu, VoiceOver included), or draw a
   custom menu that could open on the next frame?
-- Should Find in this chapter also list its matches in the palette, or stay in the column as
-  now?
 
 ## Skipped
 

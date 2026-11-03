@@ -135,9 +135,10 @@ extension ShellModel {
         return true
     }
 
-    /// `For God so loved the world — John 3:16 (BSB)`.
+    /// `“For God so loved the world” — John 3:16 (BSB)`: one line, the shape Note on it quotes in.
     static func passageClipboard(text: String, reference: String, edition: String?) -> String {
-        "\(text) — \(reference)\(edition.map { " (\($0))" } ?? "")"
+        let line = text.split(whereSeparator: \.isNewline).joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        return "“\(line)” — \(reference)\(edition.map { " (\($0))" } ?? "")"
     }
 
     /// The verses of a passage (`John.3.16`, `John.3.16-John.3.17`) in an edition, joined.
@@ -264,7 +265,9 @@ extension ShellModel {
         guard let start = (try? parseReference(text: text.trimmingCharacters(in: .whitespacesAndNewlines)))?.ranges.first?.start, let osis = try? formatOsis(reference: start) else {
             return show(toast: "No passage on the clipboard")
         }
-        run("nav.navigate", args: ShellCommandArgs(reference: osis))
+        if run("nav.navigate", args: ShellCommandArgs(reference: osis)) {
+            show(toast: "Opened \(ShellReference.humanOsis(osis))")
+        }
     }
 
     private func removeNoteLink(_ reference: String?) {

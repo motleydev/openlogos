@@ -266,6 +266,8 @@ final class ContextMenuTests: XCTestCase {
         let again = try self.menu(try rightClick("loved", in: "t1", model), in: "t1", model)
         try choose("Search “loved” in all editions", in: again)
         XCTAssertEqual(model.palette.scope?.label, "All editions")
+        model.clearSearchScope()
+        XCTAssertNil(model.palette.scope, "× on All editions too")
         model.closePalette()
         XCTAssertNil(model.palette.scope, "closing the palette drops the scope")
     }
@@ -313,8 +315,9 @@ final class ContextMenuTests: XCTestCase {
         menu = try self.menu(try rightClick("loved", in: "t1", model), in: "t1", model)
         try choose("Copy verse with reference", in: menu)
         let verse = try XCTUnwrap(NSPasteboard.general.string(forType: .string))
-        XCTAssertTrue(verse.hasPrefix("For God so loved the world"), verse)
-        XCTAssertTrue(verse.hasSuffix(" — John 3:16 (BSB)"), verse)
+        XCTAssertTrue(verse.hasPrefix("“For God so loved the world"), verse)
+        XCTAssertTrue(verse.hasSuffix("” — John 3:16 (BSB)"), verse)
+        XCTAssertFalse(verse.contains("16"), "no verse numbers in the text")
         XCTAssertEqual(model.toast, "Copied John 3:16 with its text")
 
         // A selection over two verses: its text and the range.
@@ -325,8 +328,9 @@ final class ContextMenuTests: XCTestCase {
         let selection = try self.menu(surface.contextHit(at: NSPoint(x: box.midX, y: box.midY)), in: "t1", model)
         try choose("Copy with reference", in: selection)
         let copied = try XCTUnwrap(NSPasteboard.general.string(forType: .string))
-        XCTAssertTrue(copied.hasPrefix("eternal life."), copied)
-        XCTAssertTrue(copied.hasSuffix("send — John 3:16–17 (BSB)"), copied)
+        XCTAssertTrue(copied.hasPrefix("“eternal life."), copied)
+        XCTAssertTrue(copied.hasSuffix("send” — John 3:16–17 (BSB)"), copied)
+        XCTAssertFalse(copied.contains("\n"), "one line")
         try choose("Copy", in: try self.menu(surface.contextHit(at: NSPoint(x: box.midX, y: box.midY)), in: "t1", model))
         XCTAssertTrue(NSPasteboard.general.string(forType: .string)?.hasPrefix("eternal life.") ?? false, "host.copy copies the selection")
     }
@@ -353,6 +357,7 @@ final class ContextMenuTests: XCTestCase {
         let menu = try XCTUnwrap(model.nsMenu(for: .background(column: 1)))
         try choose("Paste passage", in: menu)
         XCTAssertEqual(model.activeTab?.reference, "John.3.17")
+        XCTAssertEqual(model.toast, "Opened John 3:17")
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("nothing here", forType: .string)
         try choose("Paste passage", in: try XCTUnwrap(model.nsMenu(for: .background(column: 1))))
