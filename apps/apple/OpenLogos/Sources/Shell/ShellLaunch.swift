@@ -16,7 +16,8 @@
 //                                       column:N, background:N; with -OPENLOGOS_SNAPSHOT the
 //                                       picture is taken while the menu is open
 //   -OPENLOGOS_MENU_SUBMENU Highlight   walks the open menu with ↓ and opens that row's submenu (→)
-//   -OPENLOGOS_MENU_CHOOSE "Find in this chapter"  chooses that row of the menu instead of showing it
+//   -OPENLOGOS_MENU_CHOOSE "in this edition"  chooses the first row whose label contains it, instead of
+//                                       showing the menu
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
 //                                       (no screen-recording permission needed)
@@ -234,7 +235,7 @@ enum ShellLaunch {
         // Keep the menu inside the window, where the picture can show it.
         point.x = min(point.x, view.bounds.width - 250)
         if let label = defaults.string(forKey: "OPENLOGOS_MENU_CHOOSE") {
-            if let item = menu.items.lazy.flatMap({ [$0] + ($0.submenu?.items ?? []) }).first(where: { $0.title == label }) {
+            if let item = menu.items.lazy.flatMap({ [$0] + ($0.submenu?.items ?? []) }).first(where: { $0.title.contains(label) && $0.target is MenuDispatcher }) {
                 (item.target as? MenuDispatcher)?.choose(item)
             }
             return

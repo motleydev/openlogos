@@ -45,7 +45,7 @@ case "${1:-shots}" in
     shot mac-menu-tab-move -OPENLOGOS_MENU "tab:1:1" -OPENLOGOS_MENU_SUBMENU "Move to"
     shot mac-menu-note-link -OPENLOGOS_NOTE_DEMO 1 -OPENLOGOS_MENU "note_link:t4"
     shot mac-menu-find-in-chapter -OPENLOGOS_MENU "word:1:world" -OPENLOGOS_MENU_CHOOSE "Find in this chapter"
-    shot mac-menu-search-scope -OPENLOGOS_MENU "word:2:ἠγάπησεν" -OPENLOGOS_MENU_CHOOSE "Search “ἠγάπησεν” in this edition"
+    shot mac-menu-search-scope -OPENLOGOS_MENU "word:2:ἠγάπησεν" -OPENLOGOS_MENU_CHOOSE "in this edition"
     shot mac-menu-dark -OPENLOGOS_THEME dark -OPENLOGOS_MENU "word:2:κόσμον" -OPENLOGOS_MENU_SUBMENU "Copy"
     ;;
   measure)
