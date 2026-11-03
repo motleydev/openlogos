@@ -247,11 +247,19 @@ pub(crate) fn context_reason(
         return None;
     }
     let well = tool_context(session, context);
-    if well.commands().contains(&command_id) {
+    // Every note action works in notes, including those the well does not show.
+    if well.commands().contains(&command_id)
+        || (well == ToolContext::Notes && command_id.starts_with("note."))
+    {
         return None;
     }
+    // A note action the well does not show (`note.remove_link`) goes by its title.
+    let what = match label_and_icon(command_id).0 {
+        "" => command(command_id).map_or("", |c| c.title.as_str()),
+        label => label,
+    };
     Some(DisabledReason::WrongContext {
-        what: label_and_icon(command_id).0.to_owned(),
+        what: what.to_owned(),
         place: place(command_id, well).to_owned(),
     })
 }
