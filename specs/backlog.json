@@ -1550,13 +1550,36 @@
       "human_gate": false
     },
     {
+      "id": "B077",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "OpenLogos context menu: right-click power features decided by the core",
+      "depends_on": [
+        "B076"
+      ],
+      "acceptance": [
+        "The core decides the context menu (specs/22 §4.2) for a word, a selection, a note spot, selection or passage link, a tab, a column and the background: sections of registered commands with arguments filled from the target, the focus change to apply first, disabled rows with plain reasons, exposed through UniFFI and wasm-bindgen with conformance cases run by all hosts",
+        "New commands appended to the registry and findable in the palette: text search with a scope, compare in another edition (undoable), close other tabs (undoable), copy hand-offs, host clipboard actions, highlight in a swatch, remove passage link; lemma search and cross references listed disabled with the data they need",
+        "Web shell and Mac app replace the platform menu in reading text, notes, tab strips and identity rows, keep it one modifier away (⇧-right-click on web, ⌥-right-click on Mac) and open the same menu from the keyboard, with screenshots of every target",
+        "Context menu build measured against the specs/22 §7 next-frame budget"
+      ],
+      "spec_paths": [
+        "specs/22-workspace-shell.md",
+        "specs/16-design-guide.md",
+        "specs/21-reading-interactions.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
       "id": "B073",
       "phase": "P1",
       "owner_role": "reader-design",
       "title": "Usability baseline review of the shell",
       "depends_on": [
         "B072",
-        "B076"
+        "B076",
+        "B077"
       ],
       "acceptance": [
         "Owner feedback from ~/OpenLogosFeedback triaged into accepted changes with screenshots before and after",
