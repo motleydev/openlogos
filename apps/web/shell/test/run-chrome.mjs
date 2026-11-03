@@ -24,6 +24,7 @@ const chromedriver = option("--chromedriver", process.env.CHROMEDRIVER);
 const shotsDir = option("--shots", null);
 const extraDir = option("--extra-shots", null); // shots beyond the ten kept in the evidence
 const wellShotsDir = option("--well-shots", null); // B076: the contextual well's states
+const menuShotsDir = option("--menu-shots", null); // B077: the context menu's states
 const headed = args.includes("--headed");
 const benchOn = args.includes("--bench");
 const samples = Number(option("--samples", "200"));
@@ -74,7 +75,7 @@ const capabilities = { alwaysMatch: { browserName: "chrome", "goog:chromeOptions
 
 // MARK: helpers
 
-const K = { Meta: "", Alt: "", Shift: "", Control: "", Enter: "", Escape: "", Tab: "", ArrowDown: "", ArrowUp: "" };
+const K = { Meta: "", Alt: "", Shift: "", Control: "", Enter: "", Escape: "", Tab: "", ArrowDown: "", ArrowUp: "", ArrowLeft: "", ArrowRight: "", F10: "" };
 let S = "";
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const js = (script, ...a) => wd("POST", `${S}/execute/sync`, { script, args: a });
@@ -115,6 +116,37 @@ async function click(x, y, count = 1) {
   await sleep(40);
 }
 
+/** B077: a right-click (button 2) at a viewport point, with Shift held for the escape hatch. */
+async function rightClick(x, y, { shift = false } = {}) {
+  const actions = [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [
+    { type: "pointerMove", duration: 0, x: Math.round(x), y: Math.round(y) }, ...(shift ? [{ type: "pause", duration: 0 }] : []), { type: "pointerDown", button: 2 }, { type: "pointerUp", button: 2 },
+  ] }];
+  if (shift) actions.push({ type: "key", id: "kb", actions: [{ type: "keyDown", value: K.Shift }, { type: "pause", duration: 0 }, { type: "pause", duration: 0 }, { type: "keyUp", value: K.Shift }] });
+  await wd("POST", `${S}/actions`, { actions });
+  await wd("DELETE", `${S}/actions`);
+  await sleep(40);
+}
+
+/** The middle of a word of column N's text. */
+async function wordPoint(column, w) {
+  const pts = await phrasePoints(column, w);
+  if (!pts) throw new Error(`no "${w}" in column ${column}`);
+  return [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2];
+}
+
+/** The top-level rows of the open context menu (or level `n`), as drawn. */
+async function menuRows(level = 0) {
+  const s = await snap();
+  return s.contextMenu && s.contextMenu.menus[level] ? s.contextMenu.menus[level].rows : null;
+}
+
+/** Clicks the row of the open context menu (at `level`) whose label is `label`. */
+async function chooseRow(label, level = 0) {
+  const at = await js("const m = document.querySelectorAll('.ctx-menu')[arguments[1]]; const r = m && [...m.querySelectorAll('.ctx-row')].find((x) => x.querySelector('.ctx-label > span').textContent === arguments[0]); if (!r) return null; const b = r.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2];", label, level);
+  if (!at) throw new Error(`no menu row "${label}"`);
+  await click(...at);
+}
+
 /** Centre of the first element matching a selector, in viewport pixels. */
 async function centre(selector) {
   const r = await js("const e = document.querySelector(arguments[0]); if (!e) return null; const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2];", selector);
@@ -149,6 +181,7 @@ async function load(query = "") {
 const rgb = (hex) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
 function expect(problems, ok, message) { if (!ok) problems.push(message); }
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const sorted = (o) => (o ? Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b))) : o);
 const groupsOf = (well) => well.groups.map((g) => [g.kind, g.items]);
 
 // MARK: cases
@@ -218,7 +251,7 @@ const CASES = {
     const r = await js(`const h = window.openlogosShell.host; const n = h.registry.reduce((a, s) => a + s.shortcuts.web.length, 0);
       return { bindings: h.bindings.length, shortcuts: n, commands: h.registry.length, wellKeys: [...document.querySelectorAll('.tool')].map((b) => b.getAttribute('aria-keyshortcuts')) };`);
     expect(p, r.bindings === r.shortcuts, `${r.bindings} bindings for ${r.shortcuts} registry shortcuts`);
-    expect(p, r.commands === 70, `${r.commands} commands`);
+    expect(p, r.commands === 84, `${r.commands} commands`);
     expect(p, eq(r.wellKeys, ["V", "H", "P", "M", "E", "C"]), `tool keys from the registry ${r.wellKeys}`);
   },
 
@@ -732,6 +765,296 @@ const CASES = {
     expect(p, s.active === 1 && s.dom[2].tabs.length === 2, `no lexicon from BSB (active ${s.active})`);
   },
 
+  // MARK: B077 — the context menu
+
+  async "menu-word-translation"(p) {
+    const before = (await snap()).log.length;
+    await rightClick(...(await wordPoint(1, "loved")));
+    let s = await snap();
+    const m = s.contextMenu && s.contextMenu.menus[0];
+    expect(p, m && m.title === "loved" && m.sections === 4, `word menu header ${JSON.stringify(m && [m.title, m.sections])}`);
+    const labels = m ? m.rows.map((r) => r.label) : [];
+    expect(p, eq(labels, ["Search “loved” in this edition", "Search “loved” in all editions", "Search lemma", "Word study", "Find in this chapter", "Compare in SBLGNT", "Open John 3:16 in", "Cross references", "Highlight", "Collect", "Note on it", "Copy"]), `rows ${JSON.stringify(labels)}`);
+    const row = (l) => m.rows.find((r) => r.label === l) || {};
+    expect(p, row("Word study").disabled === "Word study works on Greek and Hebrew text", `Word study disabled with words: ${JSON.stringify(row("Word study"))}`);
+    expect(p, row("Search lemma").disabled === "Needs the lexicon import" && row("Cross references").disabled === "Needs cross-reference data", "lemma and cross references say what they need");
+    expect(p, row("Highlight").submenu && row("Copy").submenu && row("Open John 3:16 in").submenu && row("Collect").end === "⌘⇧C", `submenus and keys ${JSON.stringify([row("Highlight"), row("Collect")])}`);
+    expect(p, s.selection === "loved", `the word is selected as the menu opens ("${s.selection}")`);
+    expect(p, eq(sorted(s.target), sorted({ kind: "word", text: "loved", reference: "John.3.16", segment_id: "John.3.16", scalar_start: 11, scalar_end: 16, resource_id: "bsb", tab_id: "t1" })), `target ${JSON.stringify(s.target)}`);
+    expect(p, s.log.length === before, "opening the menu dispatches nothing");
+    const inside = s.contextMenu.menus[0].rect;
+    expect(p, inside[0] >= 8 && inside[1] >= 8 && inside[2] <= width - 8 && inside[3] <= height - 8, `inside the viewport ${inside}`);
+    await chord("Escape");
+    s = await snap();
+    expect(p, !s.contextMenu && s.selection === "loved", `Esc closes, the word stays selected (${s.selection})`);
+  },
+
+  async "menu-word-greek-focus-on-choose"(p) {
+    await rightClick(...(await wordPoint(2, "ἠγάπησεν")));
+    let s = await snap();
+    const rows = s.contextMenu.menus[0].rows;
+    const study = rows.find((r) => r.label === "Word study");
+    expect(p, study && !study.disabled, `Word study enabled on Greek ${JSON.stringify(study)}`);
+    expect(p, rows.some((r) => r.label === "Compare in BSB"), "Compare in BSB");
+    expect(p, s.active === 1, `opening on column 2 does not focus it (active ${s.active})`);
+    await chooseRow("Word study");
+    s = await snap();
+    expect(p, s.active === 2 && s.dom[2].shown === "Lexicon Jn 3", `focus first, then Word study: active ${s.active}, column 3 ${s.dom[2].shown}`);
+    const ids = s.log.slice(-2).map((l) => l.command_id);
+    expect(p, eq(ids, ["tab.focus", "tab.open_lexicon"]), `dispatched ${ids}`);
+  },
+
+  async "menu-compare-and-undo"(p) {
+    // Column 2 shows the note once SBLGNT is moved out, so Compare opens the edition beside column 1.
+    await chord("Alt", "2");
+    await js("window.openlogosShell.run({ command_id: 'column.close' })");
+    await chord("Alt", "1");
+    let s = await snap();
+    const columns = s.dom.length;
+    await rightClick(...(await wordPoint(1, "world")));
+    await chooseRow("Compare in SBLGNT");
+    s = await snap();
+    const where = s.columns.findIndex((c) => c.shown.startsWith("SBLGNT"));
+    expect(p, where === 1 && s.columns[1].reference === "John.3.16", `SBLGNT opens in column 2: ${JSON.stringify(s.columns.map((c) => [c.shown, c.reference]))}`);
+    expect(p, s.log.some((l) => l.command_id === "tab.open_edition" && l.handled), "tab.open_edition is the core's");
+    await chord("Meta", "z");
+    s = await snap();
+    expect(p, !s.columns.some((c) => c.shown.startsWith("SBLGNT")) && s.dom.length === columns, `⌘Z takes it back: ${JSON.stringify(s.columns.map((c) => c.shown))}`);
+  },
+
+  async "menu-highlight-submenu-keyboard"(p) {
+    await rightClick(...(await wordPoint(1, "eternal")));
+    for (let i = 0; i < 9; i++) await chord("ArrowDown");
+    let s = await snap();
+    expect(p, s.contextMenu.focused === "Highlight", `↓ ×9 reaches Highlight (${s.contextMenu.focused})`);
+    await chord("ArrowRight");
+    s = await snap();
+    const sub = s.contextMenu.menus[1];
+    expect(p, sub && eq(sub.rows.map((r) => [r.label, r.checked, r.swatch]), [["Yellow", "true", true], ["Green", "false", true], ["Blue", "false", true], ["Pink", "false", true]]) && s.contextMenu.focused === "Yellow", `→ opens the swatches ${JSON.stringify(sub && sub.rows)}`);
+    expect(p, sub && sub.rect[0] >= s.contextMenu.menus[0].rect[2] - 4, "the submenu opens to the right");
+    await chord("ArrowLeft");
+    s = await snap();
+    expect(p, s.contextMenu.menus.length === 1 && s.contextMenu.focused === "Highlight", "← closes it");
+    await chord("ArrowRight");
+    await chord("ArrowDown");
+    await chord("Enter");
+    s = await snap();
+    expect(p, !s.contextMenu && s.highlights.length === 1 && s.highlights[0].swatch === "green" && s.highlights[0].anchors[0].exact === "eternal", `green highlight on the word ${JSON.stringify(s.highlights)}`);
+    // Type-ahead: "c" goes to the next row starting with C, "co" to Copy.
+    await rightClick(...(await wordPoint(1, "world")));
+    await type("c");
+    s = await snap();
+    expect(p, s.contextMenu.focused === "Compare in SBLGNT", `type-ahead c → ${s.contextMenu.focused}`);
+    await type("op");
+    s = await snap();
+    expect(p, s.contextMenu.focused === "Copy" && s.tool === "select", `type-ahead cop → ${s.contextMenu.focused}, no tool key (tool ${s.tool})`);
+    await chord("Escape");
+  },
+
+  async "menu-selection-copy-passage"(p) {
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(60);
+    await rightClick((pts[0][0] + pts[1][0]) / 2, pts[0][1]);
+    let s = await snap();
+    expect(p, s.target && s.target.kind === "selection" && s.target.text === "eternal life" && s.target.reference === "John.3.16" && s.target.resource_id === "bsb", `selection target ${JSON.stringify(s.target)}`);
+    const labels = s.contextMenu.menus[0].rows.map((r) => r.label);
+    expect(p, eq(labels.slice(-2), ["Copy", "Copy with reference"]) && labels.includes("Study"), `selection rows ${JSON.stringify(labels)}`);
+    await chooseRow("Copy with reference");
+    s = await snap();
+    expect(p, s.copied === "“eternal life” — John 3:16 (BSB)" && s.toast === "Copied John 3:16 with its text", `copied "${s.copied}", toast "${s.toast}"`);
+    const board = await jsAsync("const done = arguments[arguments.length - 1]; navigator.clipboard.readText().then(done, (e) => done('unreadable: ' + e.name))");
+    expect(p, board === s.copied || board.startsWith("unreadable"), `system clipboard "${board}"`);
+    // Copy ▸ Copy verse with reference on a word reads the verse from the text source.
+    await rightClick(...(await wordPoint(1, "condemn")));
+    await chooseRow("Copy");
+    await chooseRow("Copy verse with reference", 1);
+    s = await snap();
+    expect(p, s.copied.startsWith("“For God did not send His Son into the world to condemn") && s.copied.endsWith("” — John 3:17 (BSB)"), `verse copied "${s.copied}"`);
+    await js("document.getSelection().removeAllRanges()"); // else the right-click is on the selection
+    await rightClick(...(await wordPoint(1, "condemn")));
+    await chooseRow("Copy");
+    await chooseRow("Copy reference", 1);
+    s = await snap();
+    expect(p, s.copied === "John 3:17" && s.toast === "Copied John 3:17", `reference "${s.copied}" toast "${s.toast}"`);
+    p.clipboard = board;
+  },
+
+  async "menu-search-scope"(p) {
+    await rightClick(...(await wordPoint(1, "world")));
+    await chooseRow("Search “world” in this edition");
+    let s = await snap();
+    const titles = () => js("return [...document.querySelectorAll('.results .row .title')].map((t) => t.textContent)");
+    let rows = await titles();
+    expect(p, s.paletteOpen && s.paletteValue === "#world" && s.scope && s.scope.chip === "This edition · BSB", `palette "${s.paletteValue}" scope ${JSON.stringify(s.scope)}`);
+    expect(p, rows.length === 2 && rows.every((t) => t.startsWith("BSB · ")), `edition rows ${JSON.stringify(rows)}`);
+    await chord("Escape");
+    await rightClick(...(await wordPoint(2, "κόσμον")));
+    await chooseRow("Search “κόσμον” in all editions");
+    s = await snap();
+    rows = await titles();
+    expect(p, s.scope && s.scope.chip === "All editions" && rows.some((t) => t.startsWith("SBLGNT · ")), `all editions: ${JSON.stringify(s.scope)} ${JSON.stringify(rows)}`);
+    await click(...(await centre("#scope-chip button")));
+    s = await snap();
+    expect(p, !s.scope && s.paletteOpen, "× clears the scope");
+    await chord("Escape");
+    s = await snap();
+    expect(p, !s.scope, "closing the palette clears the scope");
+  },
+
+  async "menu-find-in-chapter"(p) {
+    await rightClick(...(await wordPoint(1, "world")));
+    await chooseRow("Find in this chapter");
+    let s = await snap();
+    expect(p, s.find && s.find.count === 4 && s.find.index === 0 && s.find.current === "world" && s.toast === "4 matches in John 3", `find ${JSON.stringify(s.find)} toast "${s.toast}"`);
+    const painted = await js("const h = CSS.highlights.get('ol-find'); return h ? h.size : 0");
+    expect(p, painted === 4, `4 ranges painted (${painted})`);
+    await chord("Meta", "g");
+    s = await snap();
+    expect(p, s.find.index === 1 && s.toast === "2 of 4 in John 3", `⌘G → ${s.find.index} "${s.toast}"`);
+    await chord("Meta", "Shift", "g");
+    await chord("Meta", "Shift", "g");
+    s = await snap();
+    expect(p, s.find.index === 3, `⇧⌘G wraps back (${s.find.index})`);
+    await chord("Escape");
+    s = await snap();
+    const left = await js("return CSS.highlights.has('ol-find')");
+    expect(p, !s.find && !left, "Esc clears the matches");
+  },
+
+  async "menu-tab-close-others-undo"(p) {
+    await rightClick(...(await centre('#columns > .column[data-number="1"] .tab:nth-child(1)')));
+    let s = await snap();
+    const m = s.contextMenu.menus[0];
+    expect(p, m.title === "BSB · Jn 3:16" && eq(m.rows.map((r) => r.label), ["Close tab", "Close other tabs", "Duplicate to", "Move to", "Pin", "Follow active passage", "Link group"]), `tab menu ${JSON.stringify([m.title, m.rows.map((r) => r.label)])}`);
+    await chooseRow("Close other tabs");
+    s = await snap();
+    expect(p, eq(s.dom[0].tabs, ["BSB Jn 3"]), `close others: ${s.dom[0].tabs}`);
+    await chord("Meta", "z");
+    s = await snap();
+    expect(p, eq(s.dom[0].tabs, ["BSB Jn 3", "WLC Gen 1"]), `⌘Z: ${s.dom[0].tabs}`);
+    // Move to ▸ on a tab in another column: the column's own row is disabled with words.
+    await rightClick(...(await centre('#columns > .column[data-number="2"] .tab')));
+    await chooseRow("Move to");
+    const sub = await menuRows(1);
+    const own = sub && sub.find((r) => r.label.startsWith("Column 2"));
+    expect(p, own && own.disabled === "The tab is already in column 2" && own.end === "⌥⇧2", `own column disabled: ${JSON.stringify(own)}`);
+    await chooseRow("Column 3 · Note", 1);
+    s = await snap();
+    expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3", "WLC Gen 1"], ["Note", "SBLGNT Jn 3"]]) || eq(s.dom[2] && s.dom[2].tabs, ["Note", "SBLGNT Jn 3"]), `moved: ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+  },
+
+  async "menu-note-link-remove"(p) {
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(60);
+    await click(...(await centre('#well button[data-command="selection.note"]')));
+    await rightClick(...(await centre('#columns > .column[data-number="3"] a.passage-link')));
+    let s = await snap();
+    const m = s.contextMenu.menus[0];
+    expect(p, s.target.kind === "note_link" && s.target.reference === "John.3.16" && s.target.tab_id === "t4", `link target ${JSON.stringify(s.target)}`);
+    expect(p, m.title === "John 3:16" && eq(m.rows.map((r) => r.label), ["Open John 3:16 in", "Compare in", "Copy reference", "Remove link"]), `link menu ${JSON.stringify([m.title, m.rows.map((r) => r.label)])}`);
+    await chooseRow("Remove link");
+    s = await snap();
+    const note = s.notes["fixture:note:1"];
+    expect(p, !note.includes("passage-link") && note.includes("“eternal life” — John 3:16</blockquote>") && s.toast === "Removed link to John 3:16", `link removed: ${note.slice(-120)} toast "${s.toast}"`);
+    // Note text: Edit, Format, Search.
+    await rightClick(...(await centre('#columns > .column[data-number="3"] .note-editor p')));
+    s = await snap();
+    expect(p, s.target.kind === "note_text" && eq(s.contextMenu.menus[0].rows.map((r) => r.label).slice(0, 5), ["Cut", "Copy", "Paste", "Bold", "Italic"]), `note text menu ${JSON.stringify(s.contextMenu.menus[0].rows.map((r) => [r.label, r.disabled]))}`);
+    await chord("Escape");
+  },
+
+  async "menu-column-background-theme"(p) {
+    await rightClick(...(await centre('#columns > .column[data-number="2"] .badge')));
+    let s = await snap();
+    expect(p, s.contextMenu.menus[0].title === "Column 2" && s.contextMenu.menus[0].rows[0].label === "Focus column 2" && s.active === 1, `column menu ${JSON.stringify(s.contextMenu.menus[0].rows.map((r) => r.label))}`);
+    await chooseRow("Move left");
+    s = await snap();
+    expect(p, s.dom[0].shown === "SBLGNT Jn 3" && s.active === 1, `column 2 moved left: ${JSON.stringify(s.dom.map((c) => c.shown))}`);
+    await chord("Meta", "z");
+    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .scroller').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom - 30];");
+    await rightClick(...box);
+    s = await snap();
+    expect(p, s.target.kind === "background" && s.target.column === 1 && eq(s.contextMenu.menus[0].rows.map((r) => r.label), ["New tab", "Paste passage", "Text size", "Theme"]), `background ${JSON.stringify(s.target)} ${JSON.stringify(s.contextMenu.menus[0].rows.map((r) => r.label))}`);
+    await chooseRow("Theme");
+    const themes = await menuRows(1);
+    expect(p, themes && eq(themes.map((r) => [r.label, r.checked]), [["System", "false"], ["Light", "true"], ["Dark", "false"], ["Sepia", "false"]]), `theme submenu ${JSON.stringify(themes)}`);
+    await chooseRow("Dark", 1);
+    s = await snap();
+    expect(p, s.theme === "dark", `theme ${s.theme}`);
+  },
+
+  async "menu-paste-passage"(p) {
+    await rightClick(...(await wordPoint(1, "condemn")));
+    await chooseRow("Copy");
+    await chooseRow("Copy reference", 1);
+    await chord("Alt", "Shift", "]");
+    const box = await js("const r = document.querySelector('#columns > .column .scroller').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom - 30];");
+    await rightClick(...box);
+    await chooseRow("Paste passage");
+    await sleep(100);
+    const s = await snap();
+    expect(p, s.columns[0].reference === "John.3.17" && s.toast === "Opened John 3:17", `paste passage navigates WLC to ${s.columns[0].reference}, toast "${s.toast}"`);
+  },
+
+  async "menu-escape-hatch"(p) {
+    await js("window.__prevented = null; window.addEventListener('contextmenu', (e) => { window.__prevented = e.defaultPrevented; })");
+    await rightClick(...(await wordPoint(1, "loved")), { shift: true });
+    const s = await snap();
+    const prevented = await js("return window.__prevented");
+    expect(p, !s.contextMenu && prevented === false, `⇧-right-click leaves the platform menu (menu ${!!s.contextMenu}, defaultPrevented ${prevented})`);
+    await rightClick(...(await wordPoint(1, "loved")));
+    const again = await js("return window.__prevented");
+    expect(p, again === true && (await snap()).contextMenu, "a plain right-click is the OpenLogos menu");
+    // In the palette field the platform menu stays.
+    await rightClick(...(await centre("#palette-field")));
+    expect(p, (await js("return window.__prevented")) === false && !(await snap()).contextMenu, "the palette field keeps the platform menu");
+  },
+
+  async "menu-keyboard-open"(p) {
+    await click(...(await centre('#columns > .column[data-number="1"] .tab:nth-child(1)')));
+    await chord("Shift", "F10");
+    let s = await snap();
+    expect(p, s.target && s.target.kind === "tab" && s.target.tab_id === "t1" && s.contextMenu.focused === "Close tab", `⇧F10 on the focused tab: ${JSON.stringify(s.target)} focused ${s.contextMenu && s.contextMenu.focused}`);
+    await chord("ArrowDown");
+    s = await snap();
+    expect(p, s.contextMenu.focused === "Close other tabs", `↓ ${s.contextMenu.focused}`);
+    await chord("Escape");
+    s = await snap();
+    expect(p, !s.contextMenu && s.focus === "tab", `Esc returns focus to the tab (${s.focus})`);
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(60);
+    await chord("Shift", "F10");
+    s = await snap();
+    expect(p, s.target && s.target.kind === "selection" && s.target.text === "eternal life", `⇧F10 with a selection: ${JSON.stringify(s.target)}`);
+    await chord("Escape");
+    // The context-menu key (DOM key "ContextMenu") on a collapsed caret in the text: the word there.
+    await js("const t = document.querySelector('#columns > .column[data-number=\"1\"] .t').firstChild; const r = document.createRange(); r.setStart(t, 13); r.collapse(true); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r); document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }));");
+    s = await snap();
+    expect(p, s.target && s.target.kind === "word" && s.target.text === "loved" && s.selection === "loved", `menu key at the caret: ${JSON.stringify(s.target)}`);
+    await chord("Escape");
+  },
+
+  async "menu-closes"(p) {
+    await rightClick(...(await wordPoint(1, "loved")));
+    await click(...(await centre('#columns > .column[data-number="2"] .identity .name')));
+    expect(p, !(await snap()).contextMenu, "a press outside closes it");
+    await rightClick(...(await wordPoint(1, "loved")));
+    await js("document.querySelector('#columns > .column .scroller').dispatchEvent(new Event('scroll'))");
+    expect(p, !(await snap()).contextMenu, "a scroll closes it");
+    // Near the bottom-right corner the menu flips to stay inside the viewport.
+    await setWindow(1024, 600);
+    const corner = await js("const r = document.querySelector('#columns > .column[data-number=\"3\"] .scroller').getBoundingClientRect(); return [r.right - 6, r.bottom - 6];");
+    await rightClick(...corner);
+    const m = (await snap()).contextMenu;
+    const r = m && m.menus[0].rect;
+    expect(p, r && r[0] >= 8 && r[1] >= 8 && r[2] <= 1024 - 8 && r[3] <= 600 - 8, `flipped inside 1024×600: ${r}`);
+    await chord("Escape");
+    await setWindow(width, height);
+  },
+
   async "only-registered-commands"(p) {
     // Drive a bit of everything, then check every dispatch was a registry id.
     await chord("Alt", "2"); await type("h"); await chord("Alt", "n"); await chord("Meta", "z");
@@ -863,6 +1186,59 @@ async function wellScreenshots() {
   await shot("web-well-fallback-pen-in-notes");
 }
 
+/** B077: the menu states the owner reviews, the same on the Mac (docs/evidence/B077). */
+async function menuScreenshots() {
+  await mkdir(menuShotsDir, { recursive: true });
+  const shot = async (name) => {
+    const file = join(menuShotsDir, `${name}.png`);
+    await writeFile(file, Buffer.from(await wd("GET", `${S}/screenshot`), "base64"));
+    console.log(`screenshot ${file}`);
+  };
+  const hover = async (label, level = 0) => {
+    const at = await js("const m = document.querySelectorAll('.ctx-menu')[arguments[1]]; const r = [...m.querySelectorAll('.ctx-row')].find((x) => x.querySelector('.ctx-label > span').textContent === arguments[0]); const b = r.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2];", label, level);
+    await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerMove", duration: 60, x: Math.round(at[0]), y: Math.round(at[1]) }] }] });
+    await wd("DELETE", `${S}/actions`);
+    await sleep(60);
+  };
+  await setWindow(1440, 900);
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await wordPoint(2, "ἠγάπησεν")));
+  await hover("Word study");
+  await shot("web-menu-word-greek");
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await wordPoint(1, "loved")));
+  await hover("Word study");
+  await shot("web-menu-word-bsb-disabled");
+  await hover("Highlight");
+  await sleep(60);
+  await hover("Green", 1);
+  await shot("web-menu-highlight-submenu");
+  await load("?theme=light&autotest=1");
+  const pts = await phrasePoints(1, "eternal life");
+  await drag(pts[0], pts[1]);
+  await rightClick((pts[0][0] + pts[1][0]) / 2, pts[0][1]);
+  await shot("web-menu-selection");
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await centre('#columns > .column[data-number="2"] .tab')));
+  await hover("Move to");
+  await shot("web-menu-tab");
+  await load("?theme=light&autotest=1");
+  await drag(pts[0], pts[1]);
+  await click(...(await centre('#well button[data-command="selection.note"]')));
+  await rightClick(...(await centre('#columns > .column[data-number="3"] a.passage-link')));
+  await hover("Compare in");
+  await shot("web-menu-note-link");
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await wordPoint(1, "world")));
+  await chooseRow("Find in this chapter");
+  await chord("Meta", "g");
+  await shot("web-menu-find-in-chapter");
+  await load("?theme=dark&autotest=1");
+  await rightClick(...(await wordPoint(1, "Son")));
+  await hover("Copy");
+  await shot("web-menu-dark");
+}
+
 // MARK: run
 
 let failures = 0;
@@ -918,12 +1294,28 @@ try {
       result[label].trusted_keystrokes = keys;
       console.log(JSON.stringify({ bench: label, name: "trusted keystroke → palette rendered", ...keys }));
       if (keys.n < samples) failures += 1;
+      // B077: trusted right-clicks on a word → the menu drawn (the selection cleared between, so
+      // each is a word menu: the core's menu, the word selected, the element laid out).
+      await load(query);
+      await js("window.openlogosShell.host.recordMenu = true; window.openlogosShell.menuReport(true); document.activeElement.blur()");
+      const at = await wordPoint(1, "loved");
+      for (let i = 0; i < samples; i++) {
+        await js("document.getSelection().removeAllRanges()");
+        await rightClick(...at);
+        await chord("Escape");
+      }
+      await sleep(100);
+      const menu = await js("window.openlogosShell.host.recordMenu = false; return window.openlogosShell.menuReport(true)");
+      result[label].trusted_right_click = menu;
+      console.log(JSON.stringify({ bench: label, name: "B077 trusted right-click → context menu drawn", ...menu }));
+      if (menu.n < samples) failures += 1;
     }
     if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, ...result }, null, 2)); console.log(`bench json ${benchJson}`); }
     summary.push(`bench: ${headed ? "headed" : "headless"} Chrome, ${samples} samples per interaction`);
   }
   if (shotsDir) await screenshots();
   if (wellShotsDir) await wellScreenshots();
+  if (menuShotsDir) await menuScreenshots();
 } catch (error) {
   console.error(String(error));
   failures = failures || 1;
