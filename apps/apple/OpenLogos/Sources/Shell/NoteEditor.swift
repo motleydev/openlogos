@@ -233,6 +233,47 @@ final class NoteTextView: NSTextView {
         super.mouseDown(with: event)
     }
 
+    // MARK: B077 context menu
+
+    /// The OpenLogos menu for a passage link or the note's text; ⌥-right-click keeps the
+    /// platform's (spelling, Look Up, Services).
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard let model = store?.model, !event.modifierFlags.contains(.option) else { return super.menu(for: event) }
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        onFocus()
+        return model.nsMenu(for: hit(at: characterIndexForInsertion(at: convert(event.locationInWindow, from: nil))), editor: self)
+    }
+
+    /// A passage link at the index (or just before it), else the selected text, if any.
+    func hit(at index: Int) -> NoteContextHit {
+        if let storage = textStorage, storage.length > 0 {
+            for candidate in [index, index - 1] where candidate >= 0 && candidate < storage.length {
+                var range = NSRange(location: 0, length: 0)
+                if let link = storage.attribute(.link, at: candidate, effectiveRange: &range), let reference = NoteStore.reference(link) {
+                    return .link(reference, range)
+                }
+            }
+        }
+        let selected = selectedRange()
+        return .text(selected.length > 0 ? (string as NSString).substring(with: selected) : nil)
+    }
+
+    /// The menu key or VO-⇧-M: the menu for the caret's link or the selection, at the caret.
+    func showKeyboardMenu() -> Bool {
+        guard let model = store?.model else { return false }
+        let selected = selectedRange()
+        let hit = selected.length > 0 ? NoteContextHit.text((string as NSString).substring(with: selected)) : hit(at: selected.location)
+        guard let menu = model.nsMenu(for: hit, editor: self) else { return false }
+        let caret = firstRect(forCharacterRange: NSRange(location: selected.location, length: 0), actualRange: nil)
+        let point = window.map { convert($0.convertPoint(fromScreen: caret.origin), from: nil) } ?? .zero
+        menu.popUp(positioning: nil, at: NSPoint(x: point.x, y: point.y + (isFlipped ? 4 : -4)), in: self)
+        return true
+    }
+
+    override func accessibilityPerformShowMenu() -> Bool {
+        showKeyboardMenu() || super.accessibilityPerformShowMenu()
+    }
+
     /// Replaces the text with a document, restyled.
     func load(_ document: NSAttributedString) {
         guard let storage = textStorage else { return }

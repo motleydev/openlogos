@@ -14,9 +14,11 @@ import os
 #if canImport(UIKit)
 import UIKit
 typealias PlatformTextView = UITextView
+typealias ReaderPlatformMenu = UIMenu
 #else
 import AppKit
 typealias PlatformTextView = NSTextView
+typealias ReaderPlatformMenu = NSMenu
 #endif
 
 /// The project actions the edit menu and the action strip offer (specs/21 §3).
@@ -47,6 +49,14 @@ enum SelectionAction: String, CaseIterable {
 /// the word under a click (Word study).
 enum ReaderDragMode: Equatable {
     case select, highlight, collect, word
+}
+
+/// B077: what a right-click (or the keyboard's menu key) landed on in the text: inside the
+/// selection, on a word (which the surface has just selected, as macOS does), or on no word.
+enum ReaderContextHit: Equatable {
+    case selection(ReaderSelection)
+    case word(ReaderSelection)
+    case background
 }
 
 /// A highlight the host keeps on the text: core ranges painted in a colour (B072).
@@ -101,6 +111,9 @@ struct ReaderTextView {
     var onSurface: (ReaderSurface) -> Void = { _ in }
     /// B072: a click or tap in the text (activates the column).
     var onActivate: () -> Void = {}
+    /// B077: the host's menu for a right-click (the Mac); nil keeps the platform menu with the
+    /// project group (the B005 prototype).
+    var onContextMenu: ((ReaderContextHit) -> ReaderPlatformMenu?)?
 
     func makeCoordinator() -> ReaderSurface {
         ReaderSurface(paneID: paneID, onSelection: onSelection, onAction: onAction, onMeasurement: onMeasurement)
@@ -112,6 +125,7 @@ struct ReaderTextView {
         surface.onMeasurement = onMeasurement
         surface.onDragEnd = onDragEnd
         surface.onActivate = onActivate
+        surface.onContextMenu = onContextMenu
         surface.dragMode = dragMode
         surface.apply(content: content, padding: horizontalPadding, typography: typography)
         surface.setMarks(marks)
@@ -157,6 +171,7 @@ final class ReaderSurface: NSObject {
     var onMeasurement: (String) -> Void
     var onDragEnd: (ReaderDragMode, ReaderSelection) -> Void = { _, _ in }
     var onActivate: () -> Void = {}
+    var onContextMenu: ((ReaderContextHit) -> ReaderPlatformMenu?)?
     var dragMode: ReaderDragMode = .select
     private var marks: [ReaderMark] = []
     private var typographyKey: String?
@@ -476,6 +491,11 @@ final class ReaderSurface: NSObject {
         contentOffsetY = maximumContentOffsetY * max(0, min(1, fraction))
     }
 
+    /// B077: scrolls a display range into view (find in this chapter).
+    func reveal(display range: NSRange) {
+        scrollRangeToVisible(range)
+    }
+
     private func scrollRangeToVisible(_ range: NSRange) {
         #if canImport(UIKit)
         textView?.scrollRangeToVisible(range)
@@ -617,6 +637,66 @@ extension ReaderSurface: NSTextViewDelegate {
         selectionChanged()
     }
 
+    // MARK: B077 context menu
+
+    /// What a right-click at a point (text view coordinates) landed on. Inside the selection
+    /// it is the selection; on a word the word is selected first, through the round trip, so
+    /// the host gets its text and anchors; elsewhere (margins, past the end, a verse number
+    /// with no word) the background.
+    func contextHit(at point: NSPoint) -> ReaderContextHit {
+        guard let textView, let storage, storage.length > 0 else { return .background }
+        let index = textView.characterIndexForInsertion(at: point)
+        let selected = selectedRange
+        if selected.length > 0, let current, NSLocationInRange(index, selected) || (index == NSMaxRange(selected) && rect(for: selected)?.insetBy(dx: -2, dy: -2).contains(point) == true) {
+            return .selection(current)
+        }
+        for candidate in [index, index - 1] where candidate >= 0 && candidate < storage.length {
+            let word = textView.selectionRange(forProposedRange: NSRange(location: candidate, length: 0), granularity: .selectByWord)
+            guard word.length > 0, let box = rect(for: word), box.insetBy(dx: -2, dy: -2).contains(point) else { continue }
+            let text = (storage.string as NSString).substring(with: word)
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)).isEmpty else { continue }
+            select(display: word)
+            if let current, !current.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)).isEmpty {
+                return .word(current)
+            }
+            clearSelection()
+            return .background
+        }
+        return .background
+    }
+
+    /// What the keyboard's menu key opens on: the selection, else the word at the caret.
+    func keyboardHit() -> ReaderContextHit {
+        guard let textView, let storage, storage.length > 0 else { return .background }
+        if selectedRange.length > 0, let current { return .selection(current) }
+        let caret = min(selectedRange.location, storage.length - 1)
+        let word = textView.selectionRange(forProposedRange: NSRange(location: caret, length: 0), granularity: .selectByWord)
+        guard word.length > 0 else { return .background }
+        select(display: word)
+        if let current, !current.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)).isEmpty {
+            return .word(current)
+        }
+        clearSelection()
+        return .background
+    }
+
+    /// The bounding box of a display range in text view coordinates, from TextKit 2 (never
+    /// `layoutManager`, which drops the view back to TextKit 1).
+    func rect(for range: NSRange) -> NSRect? {
+        guard let textView, let manager = textView.textLayoutManager, let content = manager.textContentManager,
+              let start = content.location(content.documentRange.location, offsetBy: range.location),
+              let end = content.location(start, offsetBy: range.length),
+              let textRange = NSTextRange(location: start, end: end) else { return nil }
+        var box = NSRect.null
+        manager.enumerateTextSegments(in: textRange, type: .standard, options: []) { _, frame, _, _ in
+            box = box.union(frame)
+            return true
+        }
+        guard !box.isNull else { return nil }
+        let origin = textView.textContainerOrigin
+        return box.offsetBy(dx: origin.x, dy: origin.y)
+    }
+
     /// specs/21 §3 on the Mac: the project actions at the top of the text view's context menu.
     func menu(for view: NSTextView, suggested menu: NSMenu) -> NSMenu {
         guard view.selectedRange().length > 0 else { return menu }
@@ -656,8 +736,25 @@ final class ReaderNSTextView: NSTextView {
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
+        // B077: the host's menu replaces the platform's; ⌥-right-click keeps the platform's.
+        if let surface, let provide = surface.onContextMenu {
+            if event.modifierFlags.contains(.option) { return super.menu(for: event) }
+            return provide(surface.contextHit(at: convert(event.locationInWindow, from: nil)))
+        }
         guard let menu = super.menu(for: event) else { return nil }
         return surface?.menu(for: self, suggested: menu) ?? menu
+    }
+
+    /// B077: VoiceOver's open-menu command (VO-⇧-M) opens the host's menu at the selection or
+    /// the caret's word.
+    override func accessibilityPerformShowMenu() -> Bool {
+        guard let surface, let provide = surface.onContextMenu else { return super.accessibilityPerformShowMenu() }
+        let hit = surface.keyboardHit()
+        guard let menu = provide(hit) else { return false }
+        let range = surface.selectedRange
+        let box = surface.rect(for: range.length > 0 ? range : NSRange(location: range.location, length: 0)) ?? NSRect(origin: .zero, size: .zero)
+        menu.popUp(positioning: nil, at: NSPoint(x: box.minX, y: box.maxY + 2), in: self)
+        return true
     }
 
     @objc func projectAction(_ sender: NSMenuItem) {
