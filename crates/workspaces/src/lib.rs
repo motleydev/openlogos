@@ -24,12 +24,14 @@
 //! [`commands`] (the one command registry, `apply` with undo, the [`commands::Shell`] that
 //! holds the stacks) and [`palette`] (the sectioned, ranked palette query).
 //!
-//! B076 adds [`well`]: the tool well fitted to what has focus (specs/22 §4.1).
+//! B076 adds [`well`]: the tool well fitted to what has focus (specs/22 §4.1). B077 adds
+//! [`menu`]: the context menu for what was right-clicked (specs/22 §4.2).
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub mod commands;
+pub mod menu;
 pub mod migration;
 pub mod navigation;
 pub mod palette;

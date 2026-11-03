@@ -177,7 +177,19 @@ pub struct CommandArgs {
     /// A scroll anchor's offset in scalar values.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scalar: Option<u32>,
+    /// Where `search.text` looks: one of [`SEARCH_SCOPES`] (B077).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
+    /// A resource (edition) id: the edition `tab.open_edition` opens, the edition a search
+    /// or a copied passage reads (B077).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
 }
+
+/// Where `search.text` looks (B077): the edition given (`resource_id`, else the active
+/// tab's), every installed edition, the editions open in the active workspace, or the
+/// chapter of `reference` in that edition. `all` when none is given.
+pub const SEARCH_SCOPES: [&str; 4] = ["edition", "all", "workspace", "chapter"];
 
 /// One command with its arguments: what every button, menu item, shortcut and palette row
 /// dispatches.
@@ -321,7 +333,8 @@ pub enum DisabledReason {
     /// A required argument is missing or empty.
     #[error("{}", argument_words(argument))]
     NeedsArgument {
-        /// The [`CommandArgs`] field; `word` for the `text` of `tab.open_lexicon`.
+        /// The [`CommandArgs`] field; `word` for the `text` of `tab.open_lexicon`, `query` for
+        /// the `text` of `search.text`.
         argument: String,
     },
     /// A tool or note action that does not fit what has focus (B076): `Pen works on Bible
@@ -332,6 +345,13 @@ pub enum DisabledReason {
         what: String,
         /// Where it works.
         place: String,
+    },
+    /// Needs data or a feature that is not installed yet (B077): `Needs the lexicon
+    /// import`, `Needs cross-reference data`.
+    #[error("Needs {needs}")]
+    Unavailable {
+        /// What is missing.
+        needs: String,
     },
 }
 
@@ -348,6 +368,9 @@ fn argument_words(argument: &str) -> &'static str {
         "number" => "Needs a value",
         "segment_id" | "scalar" => "Needs a scroll position",
         "word" => "Needs a word to look up",
+        "query" => "Needs words to search for",
+        "scope" => "Needs a search scope",
+        "resource_id" => "Choose an edition",
         _ => "Needs more information",
     }
 }
@@ -1125,6 +1148,120 @@ const DEFS: &[Def] = &[
         &["look up", "word study results"],
         &["lexicon", "define", "greek", "hebrew", "lemma"],
     ),
+    // B077: the context menu (specs/22 §4.2), appended so no earlier id moves.
+    def(
+        "search.text",
+        "Search text",
+        S::Session,
+        A::Text,
+        false,
+        false,
+    )
+    .names(
+        &["search editions", "find text", "full text search"],
+        &["word", "phrase", "edition", "chapter"],
+    ),
+    def(
+        "search.lemma",
+        "Search lemma",
+        S::Session,
+        A::Text,
+        false,
+        false,
+    )
+    .names(
+        &["lemma search"],
+        &["morphology", "greek", "hebrew", "root"],
+    ),
+    def(
+        "nav.cross_references",
+        "Cross references",
+        S::Tab,
+        A::Reference,
+        false,
+        false,
+    )
+    .names(
+        &["cross refs", "related passages"],
+        &["parallel", "references"],
+    ),
+    def(
+        "tab.open_edition",
+        "Open in edition",
+        S::Workspace,
+        A::Reference,
+        true,
+        true,
+    )
+    .names(
+        &["compare", "compare editions", "parallel edition"],
+        &["translation", "version", "side by side"],
+    ),
+    def(
+        "tab.close_others",
+        "Close other tabs",
+        S::Column,
+        A::None,
+        true,
+        true,
+    )
+    .names(&["close others"], &["remove", "tidy"]),
+    def("copy.text", "Copy text", S::Session, A::Text, false, false)
+        .names(&["copy word"], &["clipboard"]),
+    def(
+        "copy.reference",
+        "Copy passage reference",
+        S::Session,
+        A::Reference,
+        false,
+        false,
+    )
+    .names(&["copy verse reference"], &["clipboard", "cite"]),
+    def(
+        "copy.passage",
+        "Copy passage with reference",
+        S::Session,
+        A::Reference,
+        false,
+        false,
+    )
+    .names(
+        &["copy verse", "copy with reference"],
+        &["clipboard", "cite", "quote"],
+    ),
+    def("host.cut", "Cut", S::Selection, A::None, false, false).names(&[], &["clipboard"]),
+    def("host.copy", "Copy", S::Selection, A::None, false, false).names(&[], &["clipboard"]),
+    def("host.paste", "Paste", S::Session, A::None, false, false).names(&[], &["clipboard"]),
+    def(
+        "nav.paste_passage",
+        "Paste passage",
+        S::Tab,
+        A::None,
+        false,
+        false,
+    )
+    .names(&["go to copied passage"], &["clipboard", "reference"]),
+    def(
+        "selection.highlight_in",
+        "Highlight in colour",
+        S::Selection,
+        A::Text,
+        false,
+        false,
+    )
+    .names(
+        &["highlight in color", "highlight with swatch"],
+        &["mark", "colour", "color", "swatch"],
+    ),
+    def(
+        "note.remove_link",
+        "Remove passage link",
+        S::Tab,
+        A::Reference,
+        false,
+        false,
+    )
+    .names(&["unlink passage"], &["note", "reference"]),
 ];
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -1237,10 +1374,57 @@ pub fn enabled(
         | "selection.note"
         | "selection.search"
         | "selection.copy_reference"
+        | "selection.highlight_in"
+        | "host.cut"
+        | "host.copy"
             if !context.has_selection =>
         {
             Err(DisabledReason::NeedsSelection)
         }
+        "selection.highlight_in" => {
+            let swatch = non_empty(&args.text).ok_or_else(|| need("text"))?;
+            if is_swatch(swatch) {
+                Ok(())
+            } else {
+                Err(DisabledReason::InvalidValue {
+                    detail: "A swatch is a colour as #RRGGBB".to_owned(),
+                })
+            }
+        }
+        "search.lemma" => Err(DisabledReason::Unavailable {
+            needs: "the lexicon import".to_owned(),
+        }),
+        "nav.cross_references" => Err(DisabledReason::Unavailable {
+            needs: "cross-reference data".to_owned(),
+        }),
+        "search.text" => {
+            non_empty(&args.text).ok_or_else(|| need("query"))?;
+            match non_empty(&args.scope) {
+                Some(scope) if !SEARCH_SCOPES.contains(&scope) => {
+                    Err(DisabledReason::InvalidValue {
+                        detail: format!("A search scope is one of {}", SEARCH_SCOPES.join(", ")),
+                    })
+                }
+                _ => Ok(()),
+            }
+        }
+        "copy.text" => non_empty(&args.text)
+            .map(|_| ())
+            .ok_or_else(|| need("text")),
+        "copy.reference" | "copy.passage" | "note.remove_link" => non_empty(&args.reference)
+            .map(|_| ())
+            .ok_or_else(|| need("reference")),
+        "tab.open_edition" => {
+            non_empty(&args.resource_id).ok_or_else(|| need("resource_id"))?;
+            if non_empty(&args.reference).is_none() && tab.reference.is_none() {
+                return Err(need("reference"));
+            }
+            if args.column.is_some() && !args.new_column {
+                column_number(ws, args)?;
+            }
+            Ok(())
+        }
+        "tab.close_others" if column.tabs.len() < 2 => Err(DisabledReason::OneTab),
         "note.link_passage" => non_empty(&args.reference)
             .map(|_| ())
             .ok_or_else(|| need("reference")),
@@ -1450,6 +1634,19 @@ fn step(values: &[f64], current: f64, up: bool) -> Option<f64> {
 /// The content id a new Lexicon tab opens when the workspace has no lexicon tab to copy it
 /// from; the host resolves it to its default lexicon.
 pub const DEFAULT_LEXICON_CONTENT_ID: &str = "lexicon";
+
+/// The column a side tab opens in (`tab.open_lexicon`, `tab.open_edition`): the column
+/// asked for, else the one right of the active column; `None` for a new column after the
+/// active one.
+fn side_column(ws: &Workspace, args: &CommandArgs) -> Option<usize> {
+    if args.new_column {
+        None
+    } else if let Some(number) = args.column {
+        Some(number as usize - 1)
+    } else {
+        Some(ws.active_index() + 1).filter(|i| *i < ws.columns.len())
+    }
+}
 
 /// A copy of `source` under a new id, with an empty history.
 fn copy_tab(source: &Tab, id: String) -> Tab {
@@ -1996,14 +2193,7 @@ fn apply_in_place(
             // The lexicon tab is shown in its column and pinned; focus stays where the word
             // was clicked, so the reader keeps reading.
             let active = ws.active_index();
-            // The column asked for, else the one right of the active column, else a new one.
-            let target = if args.new_column {
-                None
-            } else if let Some(number) = args.column {
-                Some(number as usize - 1)
-            } else {
-                Some(active + 1).filter(|i| *i < ws.columns.len())
-            };
+            let target = side_column(ws, args);
             let reuse = target.and_then(|index| {
                 let column = &ws.columns[index];
                 column
@@ -2060,6 +2250,92 @@ fn apply_in_place(
                         }
                     }
                 }
+            }
+        }
+        "tab.open_edition" => {
+            let resource = non_empty(&args.resource_id).expect("enabled").to_owned();
+            let ws = s.active_mut();
+            let source = ws.active_tab().clone();
+            let reference = non_empty(&args.reference)
+                .map(str::to_owned)
+                .or_else(|| source.reference.clone())
+                .expect("enabled");
+            // As `tab.open_lexicon`: shown in its column, focus stays on the source.
+            let active = ws.active_index();
+            let target = side_column(ws, args);
+            let reuse = target.and_then(|index| {
+                let column = &ws.columns[index];
+                let reading =
+                    |t: &&Tab| t.kind == crate::PaneKind::Reading && t.content_id == resource;
+                column
+                    .shown()
+                    .filter(reading)
+                    .or_else(|| column.tabs.iter().find(reading))
+                    .map(|t| t.id.clone())
+            });
+            match (target, reuse) {
+                (Some(index), Some(tab_id)) => {
+                    // Moved alone: its group is not dragged along by a comparison.
+                    let transaction = ws.mint_id("nav");
+                    move_tab(tab_mut(ws, &tab_id), &reference, &transaction, false);
+                    ws.columns[index].shown_tab_id = tab_id;
+                }
+                (target, _) => {
+                    let content_revision = ws
+                        .tabs()
+                        .find(|t| t.content_id == resource)
+                        .map_or_else(|| "0".to_owned(), |t| t.content_revision.clone());
+                    let tab_id = ws.mint_id("t");
+                    // The source's link state, so the comparison keeps pace with it.
+                    let tab = Tab {
+                        id: tab_id.clone(),
+                        kind: crate::PaneKind::Reading,
+                        content_id: resource,
+                        content_revision,
+                        reference: Some(reference),
+                        scroll_anchor: None,
+                        link_group: source.link_group.clone(),
+                        pinned: source.pinned,
+                        history: Default::default(),
+                        lexicon_word: None,
+                    };
+                    match target {
+                        Some(index) => {
+                            let column = &mut ws.columns[index];
+                            column.tabs.push(tab);
+                            column.shown_tab_id = tab_id;
+                        }
+                        None => {
+                            let reading = ws.active_column_id.clone();
+                            insert_column(ws, active + 1, tab);
+                            ws.active_column_id = reading;
+                        }
+                    }
+                }
+            }
+        }
+        "tab.close_others" => {
+            let ws = s.active_mut();
+            let index = ws.active_index();
+            let keep = ws.active_tab().id.clone();
+            let column = &mut ws.columns[index];
+            let column_id = column.id.clone();
+            let tabs = std::mem::take(&mut column.tabs);
+            let mut closed = Vec::new();
+            for (position, tab) in tabs.into_iter().enumerate() {
+                if tab.id == keep {
+                    column.tabs.push(tab);
+                } else {
+                    closed.push(ClosedTab {
+                        tab,
+                        column_id: column_id.clone(),
+                        index: position,
+                    });
+                }
+            }
+            column.shown_tab_id = keep;
+            for closed in closed {
+                remember_closed(ws, closed);
             }
         }
         _ => {
@@ -2339,8 +2615,11 @@ pub(crate) mod tests {
         if spec.id == "view.theme" {
             args.text = Some("dark".into());
         }
-        if spec.id == "tool.swatch" {
+        if spec.id == "tool.swatch" || spec.id == "selection.highlight_in" {
             args.text = Some("#a1b2c3".into());
+        }
+        if spec.id == "tab.open_edition" {
+            args.resource_id = Some("sblgnt".into());
         }
         args
     }
@@ -2438,6 +2717,20 @@ pub(crate) mod tests {
                 shell
                     .apply(&Invocation::new("tab.close"), &context)
                     .unwrap();
+            }
+            if spec.id == "tab.close_others" {
+                shell.apply(&Invocation::new("tab.new"), &context).unwrap();
+            }
+            // Features whose data is not installed yet are registered, always disabled.
+            if matches!(spec.id.as_str(), "search.lemma" | "nav.cross_references") {
+                assert!(matches!(
+                    shell.apply(&invocation, &context),
+                    Err(CommandError::Disabled {
+                        reason: DisabledReason::Unavailable { .. },
+                        ..
+                    })
+                ));
+                continue;
             }
             let before = shell.session.clone();
             let outcome = shell.apply(&invocation, &context);

@@ -191,6 +191,99 @@ with "Needs a word to look up".
 The well is rebuilt on every focus change; building it is part of the column-focus budget
 of §7.
 
+### 4.2 Context menu (B077)
+
+Owner direction, 2026-11-03: the OpenLogos menu replaces the right-click menu on web and in
+the native app, with power features such as word searches. As with the well, the core
+decides the menu for what was clicked (`ShellHandle.context_menu` / `contextMenu`) and the
+hosts only draw it and perform host-side effects, so web and Mac stay in lockstep (§8).
+
+**Where.** The OpenLogos menu replaces the platform menu in reading text, notes, tab strips,
+identity rows and the empty area of a column. Elsewhere (the palette field, dialogs) the
+platform menu stays.
+
+**The platform menu stays reachable.** ⇧-right-click on web and ⌥-right-click on Mac fall
+through to the platform's own menu, so Copy, Look Up, spelling, Services and Inspect remain
+one modifier away. One convention per host; neither is a registered command, as opening a
+menu is not an action.
+
+**Keyboard.** The same menu opens from the keyboard for what has focus: ⇧F10 or the
+context-menu key on web; ⌃-click, VoiceOver's open-menu command (VO-⇧-M) and the context-menu
+key of a PC keyboard on Mac. The target is the selection if there is one, else the word at
+the caret in reading text or the caret in a note, else the focused tab, else the background
+of the active column; the menu opens at it. Arrow keys move, Return runs, Esc closes and
+returns focus.
+
+**Targets** (the host passes what was clicked; `tab_id` absent means the active tab, or the
+notes dock for a note):
+
+| Target | Fields | Menu context |
+|---|---|---|
+| `word` | `text` as shown, `reference`, `segment_id`, `scalar_start`/`scalar_end`, `resource_id`, `tab_id` | the host selects the word as it opens the menu, as macOS does, so Mark items are the selection commands |
+| `selection` | `text`, `reference` (start), `end_reference` when it ends in another verse, `resource_id`, `tab_id` | a selection |
+| `note_text` | `text` when note text is selected, `tab_id` of a Notes tab | notes, with or without a selection |
+| `note_link` | `reference` of a passage link, `tab_id` | notes |
+| `tab` | `tab_id` | the tab |
+| `column` | `column` number (identity row or badge) | the column |
+| `background` | `column` number, optional | the column |
+
+**Focus first.** A menu on something that does not have focus carries `focus`: the
+`tab.focus` or `column.focus` a click there would have run. The host applies it before the
+chosen row (focus changes are not undoable) and dispatches every row under the menu's
+`context`; the menu's rows are worked out as if that focus change had happened. A tab or
+column that does not exist is refused (`no_such_tab`, `no_such_column`).
+
+**Menu shape.** `ContextMenu { target_kind, title, focus, context, sections: [{ label, items
+}] }`; a row is `{ command_id, args, label, key, icon, active, value, disabled_text, submenu }`,
+the tool well's fields where they overlap. Every row is a registered command with its
+arguments filled from the target (the clicked word's passage and edition, the tab's column).
+Disabled rows stay visible with words; a section that does not apply (Open without a passage)
+is left out. A submenu is one level deep; its parent row carries the first enabled child's
+command, which a host may run on click where its platform allows. `active` marks the current
+choice (theme, swatch, the tab's link mode). Menus have at most twelve top-level rows, power
+features first.
+
+| Target | Sections and rows |
+|---|---|
+| `word` | **Search**: Search “word” in this edition, … in all editions (`search.text`, scope `edition` / `all`), Search lemma (disabled: "Needs the lexicon import"), Word study (`tab.open_lexicon`; on a translation disabled: "Word study works on Greek and Hebrew text"), Find in this chapter (`search.text`, scope `chapter`). **Open** (with a passage): Compare in *edition* or Compare in ▸ (`tab.open_edition`), Open John 3:16 in ▸ column N / New column (`nav.navigate`), Cross references (disabled: "Needs cross-reference data"). **Mark**: Highlight ▸ swatches (`selection.highlight_in`), Collect, Note on it. **Copy** ▸: Copy word (`copy.text`), Copy reference (`copy.reference`), Copy verse with reference (`copy.passage`) |
+| `selection` | **Search**: Search selection in this edition / in all editions. **Open**: Compare, Open in ▸. **Mark**: Highlight ▸, Collect, Note on it, Study. **Copy**: Copy (`host.copy`), Copy with reference (`copy.passage` with the text and the passage range) |
+| `note_text` | **Edit**: Cut, Copy, Paste (`host.cut`, `host.copy`, `host.paste`; Cut and Copy need a selection). **Format**: Bold, Italic, Link passage (the host asks for the passage). **Search**: Search selection in all editions |
+| `note_link` | **Open**: Open in ▸ column N / New column, Compare in ▸. **Link**: Copy reference, Remove link (`note.remove_link`) |
+| `tab` | **Tab**: Close tab, Close other tabs (`tab.close_others`). **Move**: Duplicate to ▸, Move to ▸ (every column and New column). **Link**: Pin, Follow active passage, Link group ▸ (the workspace's groups and the next free number) |
+| `column` | **Column**: Focus column N, New tab. **Move**: Move left, Move right. **Layout**: Equalize widths, Close column |
+| `background` | **Tab**: New tab, Paste passage (`nav.paste_passage`; reading tabs). **View**: Text size ▸ (Larger, Smaller, Actual size), Theme ▸ |
+
+Open in ▸ lists every column except the one the passage is read in and columns showing a note.
+**Editions** are the resources with a registered language; Compare offers the others,
+leaving out an original-language edition that cannot hold the passage (Greek outside the New
+Testament, Hebrew and Aramaic outside the Old). The swatches are the four of
+design/tokens/shell.json, with a custom current swatch first.
+
+**New commands**, appended to the registry and findable in the palette:
+
+| Command | Arguments | Performed by | Notes |
+|---|---|---|---|
+| `search.text` "Search text" | `text`, `scope` (`edition`, `all`, `workspace`, `chapter`; default `all`), `resource_id`, `reference` | host | puts the query in the palette with the scope and runs it |
+| `search.lemma` "Search lemma" | `text` | host | disabled: "Needs the lexicon import" |
+| `nav.cross_references` "Cross references" | `reference` | host | disabled: "Needs cross-reference data" |
+| `tab.open_edition` "Open in edition" | `resource_id`, `reference` (else the active tab's), `column` or `new_column` | core, undoable | the target column is the one given, else right of the active one, else a new column; a Reading tab of that edition there is reused (moved alone, its group not dragged), else a new tab with the source's link state opens there; focus stays on the source |
+| `tab.close_others` "Close other tabs" | none | core, undoable | closes the active column's other tabs, each reopenable |
+| `copy.text` "Copy text" | `text` | host | |
+| `copy.reference` "Copy passage reference" | `reference` | host | `formatHuman` form |
+| `copy.passage` "Copy passage with reference" | `reference`, `text` (else the passage's text in `resource_id`) | host | |
+| `host.cut`, `host.copy`, `host.paste` | none | host | the platform's own action; ⌘X ⌘C ⌘V shown in the menu, no registry binding |
+| `nav.paste_passage` "Paste passage" | none | host | parses a passage from the clipboard and opens it |
+| `selection.highlight_in` "Highlight in colour" | `text` (swatch `#RRGGBB`) | host | needs a selection |
+| `note.remove_link` "Remove passage link" | `reference` | host | in notes only |
+
+Icons beyond the well's: `search-all`, `lemma`, `find`, `compare`, `open`, `column`,
+`new-column`, `cross-references`, `copy`, `copy-passage`, `cut`, `paste`, `remove-link`,
+`close`, `close-others`, `duplicate`, `move`, `pin`, `follow`, `link`, `focus`, `move-left`,
+`move-right`, `new-tab`, `equalize`, `close-column`, `paste-passage`, `text-size`,
+`text-larger`, `text-smaller`, `text-reset`, `theme`.
+
+The menu is built on every right-click and must show on the next frame (§7).
+
 ## 5. Text search for the baseline
 
 The palette's Text section searches the three editions approved for the preview on
@@ -218,6 +311,8 @@ and Mac; native hosts may add the platform-conventional aliases.
 | Tools | V H P M E C, W word study, T type (§4.1); X swaps swatches | |
 | Note editor (focus in a note) | ⌘B bold, ⌘I italic | |
 | Search the selection | ⌘E | |
+| Context menu (§4.2) | right-click, ⇧F10, context-menu key | ⌃-click, VO-⇧-M |
+| Platform menu instead (§4.2) | ⇧-right-click | ⌥-right-click |
 | Back, forward | ⌘[, ⌘] | |
 
 Every binding is a command, so the palette shows it next to the command and the user can
@@ -237,6 +332,7 @@ when the device is available. p95 over at least 200 samples unless stated.
 | Open a chapter in a tab (warm) | ≤ 100 ms |
 | Cold launch to the restored workspace's text | ≤ 1 s |
 | Tool change | next frame |
+| Context menu shown after a right-click | next frame (≤ 16 ms) |
 
 Hidden tabs and workspaces keep their model state but release their rendered text; the
 budgets above include re-rendering a released tab.

@@ -211,6 +211,35 @@ final class CoreHostTests: XCTestCase {
         XCTAssertEqual(shell.session().workspaces[0].activeColumnNumber, 2, "focus stays where the word was clicked")
     }
 
+    // B077: the context menu through the UniFFI handle.
+    func testContextMenuComesFromTheCore() throws {
+        let shell = ShellHandle.fixture()
+        let none = ShellCommandContext(hasSelection: false, focus: .tab)
+        let menu = try shell.contextMenu(
+            target: .word(text: "ἠγάπησεν", reference: "John.3.16", segmentId: nil, scalarStart: nil, scalarEnd: nil, resourceId: nil, tabId: "t3"),
+            context: none)
+        XCTAssertEqual(menu.targetKind, "word")
+        XCTAssertEqual(menu.sections.map(\.label), ["Search", "Open", "Mark", "Copy"])
+        let rows = menu.sections.flatMap(\.items)
+        XCTAssertNil(rows.first { $0.label == "Word study" }?.disabledText)
+        let compare = try XCTUnwrap(rows.first { $0.label == "Compare in bsb" })
+        XCTAssertEqual(compare.args.resourceId, "bsb")
+        let focus = try XCTUnwrap(menu.focus)
+        XCTAssertEqual(focus.args.tabId, "t3")
+        _ = try shell.applyIn(commandId: focus.commandId, args: focus.args, context: menu.context)
+        XCTAssertTrue(try shell.applyIn(commandId: compare.commandId, args: compare.args, context: menu.context).recorded)
+        XCTAssertEqual(shell.session().workspaces[0].activeColumnNumber, 2)
+        let tab = try shell.contextMenu(target: .tab(tabId: "t2"), context: none)
+        let pin = tab.sections[2].items[0]
+        XCTAssertEqual(pin.label, "Pin")
+        XCTAssertTrue(pin.active)
+        XCTAssertEqual(pin.disabledText, "The tab is already pinned")
+        XCTAssertThrowsError(try shell.contextMenu(target: .column(column: 9), context: none)) { error in
+            guard case ShellCommandError.InvalidDocument(let detail) = error else { return XCTFail("\(error)") }
+            XCTAssertTrue(detail.contains("There is no column 9"))
+        }
+    }
+
     // MARK: - Fixture decoding
 
     struct Span: Decodable { let start: UInt32; let end: UInt32 }
