@@ -28,6 +28,7 @@ import { fixtureTextSource } from "./text-source.js";
 import { seedSession, benchSession } from "./seed.js";
 import { bindingsFrom, match } from "./keys.js";
 import { humanPassage, shortcutGlyphs, linkWord } from "./format.js";
+import { openContextMenu, closeContextMenu, isOpen as contextMenuOpen, openMenuElement } from "./context-menu.js";
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -74,6 +75,39 @@ const ICONS = {
   search: '<circle cx="8.5" cy="8.5" r="4.8"/><path d="M12 12l4.5 4.5"/>',
   "copy-reference": '<rect x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path d="M13 7V4.8a1.3 1.3 0 0 0-1.3-1.3H4.8a1.3 1.3 0 0 0-1.3 1.3v6.9A1.3 1.3 0 0 0 4.8 13H7"/>',
   study: '<path d="M5.8 3.5h9.7v13H5.8A1.8 1.8 0 0 1 4 14.7V5.3a1.8 1.8 0 0 1 1.8-1.8z"/><path d="M4 14.7a1.8 1.8 0 0 1 1.8-1.8h9.7"/><path d="M7.5 6.5h5M7.5 9h5"/>',
+  // B077: the context menu's icons (menu::MENU_ICONS); the Mac app maps them to SF Symbols.
+  "search-all": '<circle cx="8.5" cy="8.5" r="4.8"/><path d="M12 12l4.5 4.5"/><path d="M3.7 8.5h9.6M8.5 3.7c-1.6 1.4-2.4 3-2.4 4.8s.8 3.4 2.4 4.8c1.6-1.4 2.4-3 2.4-4.8s-.8-3.4-2.4-4.8"/>',
+  lemma: '<circle cx="8.5" cy="8.5" r="4.8"/><path d="M12 12l4.5 4.5"/>' + glyph(8.5, 7, "α", 'font-weight="600"', 11),
+  find: '<rect x="3" y="3.5" width="14" height="13" rx="1.5"/><circle cx="9" cy="9.5" r="2.8"/><path d="M11 11.5l3 3"/>',
+  compare: '<rect x="3" y="4" width="6" height="12" rx="1"/><rect x="11" y="4" width="6" height="12" rx="1"/><path d="M4.8 7h2.4M4.8 9.5h2.4M12.8 7h2.4M12.8 9.5h2.4"/>',
+  open: '<path d="M10.5 3.5h6v6M16.5 3.5l-7 7"/><path d="M14 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/>',
+  column: '<rect x="3.5" y="3.5" width="13" height="13" rx="1.5"/><path d="M10 3.5v13"/>',
+  "new-column": '<rect x="3.5" y="3.5" width="8" height="13" rx="1.5"/><path d="M15 7v6M12 10h6"/>',
+  "cross-references": '<path d="M5 4.5h7M5 8h4"/><path d="M8 12.5h7M11 16h4"/><path d="M13.5 5.5l2 2-2 2M6.5 10.5l-2 2 2 2"/>',
+  copy: '<rect x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path d="M13 7V4.8a1.3 1.3 0 0 0-1.3-1.3H4.8a1.3 1.3 0 0 0-1.3 1.3v6.9A1.3 1.3 0 0 0 4.8 13H7"/>',
+  "copy-passage": '<rect x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path d="M13 7V4.8a1.3 1.3 0 0 0-1.3-1.3H4.8a1.3 1.3 0 0 0-1.3 1.3v6.9A1.3 1.3 0 0 0 4.8 13H7"/><path d="M9.3 10h4.9M9.3 12.8h3.2"/>',
+  cut: '<circle cx="6" cy="14.5" r="2.2"/><circle cx="14" cy="14.5" r="2.2"/><path d="M7.5 12.8L14 3.5M12.5 12.8L6 3.5"/>',
+  paste: '<rect x="4" y="4.5" width="12" height="12.5" rx="1.5"/><rect x="7.2" y="3" width="5.6" height="3" rx="1"/><path d="M7 10h6M7 13h4"/>',
+  "remove-link": '<path d="M8.6 11.4a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M11.4 8.6a3 3 0 0 0-4.2 0l-2.6 2.6a3 3 0 0 0 4.2 4.2l1-1"/><path d="M3.5 3.5l13 13"/>',
+  close: '<path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>',
+  "close-others": '<rect x="3" y="5" width="6" height="10" rx="1"/><path d="M12 7.5l5 5M17 7.5l-5 5"/>',
+  duplicate: '<rect x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path d="M13 7V4.8a1.3 1.3 0 0 0-1.3-1.3H4.8a1.3 1.3 0 0 0-1.3 1.3v6.9A1.3 1.3 0 0 0 4.8 13H7"/><path d="M11.75 9.5v4.5M9.5 11.75h4.5"/>',
+  move: '<path d="M3.5 10h12M12 6.5l3.5 3.5-3.5 3.5"/>',
+  pin: '<path d="M8 3.5h4l-.5 4.5 2.5 2.5H6L8.5 8z"/><path d="M10 10.5v6"/>',
+  follow: '<path d="M4 6.5h9.5M10.5 3.5l3 3-3 3"/><path d="M16 13.5H6.5M9.5 10.5l-3 3 3 3"/>',
+  link: '<path d="M8.6 11.4a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M11.4 8.6a3 3 0 0 0-4.2 0l-2.6 2.6a3 3 0 0 0 4.2 4.2l1-1"/>',
+  focus: '<path d="M3.5 7V4.5a1 1 0 0 1 1-1H7M13 3.5h2.5a1 1 0 0 1 1 1V7M16.5 13v2.5a1 1 0 0 1-1 1H13M7 16.5H4.5a1 1 0 0 1-1-1V13"/><circle cx="10" cy="10" r="2"/>',
+  "move-left": '<path d="M16.5 10h-12M8 6.5L4.5 10 8 13.5"/>',
+  "move-right": '<path d="M3.5 10h12M12 6.5l3.5 3.5-3.5 3.5"/>',
+  "new-tab": '<path d="M3.5 16.5V6a1 1 0 0 1 1-1h4l1.5 2h5.5a1 1 0 0 1 1 1v8.5z"/><path d="M10 9.5v4.5M7.75 11.75h4.5"/>',
+  equalize: '<rect x="3" y="4" width="14" height="12" rx="1.5"/><path d="M7.7 4v12M12.3 4v12"/>',
+  "close-column": '<rect x="3.5" y="3.5" width="13" height="13" rx="1.5"/><path d="M7.5 7.5l5 5M12.5 7.5l-5 5"/>',
+  "paste-passage": '<rect x="4" y="4.5" width="12" height="12.5" rx="1.5"/><rect x="7.2" y="3" width="5.6" height="3" rx="1"/><path d="M7 11.5h6M10.5 9l2.5 2.5-2.5 2.5"/>',
+  "text-size": glyph(7, 15, "A", 'font-family="ui-serif, Georgia, serif"', 15.5) + glyph(14.5, 10, "A", 'font-family="ui-serif, Georgia, serif"', 15.5),
+  "text-larger": glyph(8, 15, "A", 'font-family="ui-serif, Georgia, serif"', 15.5) + '<path d="M15 5v5M12.5 7.5h5"/>',
+  "text-smaller": glyph(8, 11, "A", 'font-family="ui-serif, Georgia, serif"', 15.5) + '<path d="M12.5 7.5h5"/>',
+  "text-reset": glyph(10, 14, "A", 'font-family="ui-serif, Georgia, serif"', 15.5),
+  theme: '<circle cx="10" cy="10" r="6.5"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z" fill="currentColor" stroke="none"/>',
 };
 const svg = (icon) => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[icon] || ""}</svg>`;
 
@@ -103,11 +137,12 @@ function hasSelection() {
 const context = () => ({ has_selection: hasSelection(), focus: host.focus });
 
 /** Dispatches one registered command; the only path from the UI to the session. A quiet
- *  command (tab.record_scroll) changes nothing on screen, so it does not re-render. */
-export function run(invocation) {
+ *  command (tab.record_scroll) changes nothing on screen, so it does not re-render. A context
+ *  menu's rows run under the menu's own `context` (B077). */
+export function run(invocation, ctx = context()) {
   let outcome;
   try {
-    outcome = host.handle.apply(invocation, context());
+    outcome = host.handle.apply(invocation, ctx);
   } catch (error) {
     toast(error.reason_text || error.message);
     host.log.push({ command_id: invocation.command_id, error: error.kind || String(error) });
@@ -152,6 +187,15 @@ function perform({ command_id: id, args }) {
     case "view.collection_drawer": toast("The collection drawer is not built yet"); break;
     case "view.study_drawer": toast("The study drawer is not built yet"); break;
     case "workspace.export": exportWorkspace(); break;
+    // B077: the context menu's host commands (specs/22 §4.2).
+    case "search.text": searchText(args); break;
+    case "copy.text": copyText(args.text, `Copied “${args.text}”`); break;
+    case "copy.reference": copyText(humanPassage(core, args.reference), `Copied ${humanPassage(core, args.reference)}`); break;
+    case "copy.passage": copyPassage(args); break;
+    case "host.cut": case "host.copy": case "host.paste": clipboardAction(id.slice(5)); break;
+    case "nav.paste_passage": pastePassage(); break;
+    case "selection.highlight_in": highlightSelection(args.text); break;
+    case "note.remove_link": removeLink(args.reference); break;
     default: toast(`${id} has no host action`);
   }
 }
@@ -226,6 +270,7 @@ export function render() {
   if (activeTab().kind === "reading") host.readingColumn = ws.columns.findIndex((c) => c.id === ws.active_column_id) + 1;
   // The well for what has focus; the tool in effect (not the stored one) drives the text.
   fetchWell();
+  if (host.find && !host.find.view.text.isConnected) clearFind();
   root.dataset.theme = r.theme;
   root.dataset.tool = host.toolWell.effective_tool;
   root.classList.toggle("focus-mode", host.focusMode);
@@ -434,7 +479,8 @@ function buildColumn(ws, column, number) {
     view.scrollTimer = setTimeout(() => recordScroll(view), 150);
   }, { passive: true });
   section.addEventListener("pointerdown", (e) => {
-    if (e.target.closest(".tabstrip, .pane-menu")) return;
+    // A right-click focuses nothing: the context menu carries the focus change for its rows.
+    if (e.button !== 0 || e.target.closest(".tabstrip, .pane-menu")) return;
     if (host.focus !== "tab") { host.focus = "tab"; render(); }
     if (activeWorkspace().active_column_id !== column.id) {
       const n = activeWorkspace().columns.findIndex((c) => c.id === column.id) + 1;
@@ -580,10 +626,10 @@ function selectionInView() {
   return trip ? { view, trip } : null;
 }
 
-function highlightSelection() {
+function highlightSelection(swatch = host.session.ink.swatch) {
   const found = selectionInView();
   if (!found) return toast("Select some text first");
-  host.highlights.push({ edition_id: found.view.paragraph.edition_id, anchors: found.trip.anchors, swatch: host.session.ink.swatch.toUpperCase() });
+  host.highlights.push({ edition_id: found.view.paragraph.edition_id, anchors: found.trip.anchors, swatch: swatch.toUpperCase() });
   document.getSelection().removeAllRanges();
 }
 
@@ -657,7 +703,7 @@ document.addEventListener("selectionchange", selectionChanged);
 /** Focus moving between a column and the notes dock changes the context; the palette field
  *  and menus keep the context they were opened from. */
 document.addEventListener("focusin", (e) => {
-  if (!host.session || e.target === field || e.target.closest(".menu")) return;
+  if (!host.session || e.target === field || e.target.closest(".menu, .ctx-menu")) return;
   const focus = e.target.closest(".dock") ? "notes_dock" : "tab";
   if (focus !== host.focus) { host.focus = focus; render(); }
 });
@@ -722,13 +768,17 @@ const wordSegmenter = typeof Intl !== "undefined" && Intl.Segmenter ? new Intl.S
 /** The word under a point of a column's text, as it appears there, and its verse. */
 function wordAt(view, x, y) {
   const caret = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
-  const node = caret && caret.startContainer;
+  return caret ? wordAtCaret(view, caret.startContainer, caret.startOffset) : null;
+}
+
+/** The word at a DOM point of a column's text, with its text node and UTF-16 offsets there
+ *  (B077 selects it as the context menu opens). */
+function wordAtCaret(view, node, offset) {
   if (!node || node.nodeType !== 3 || !node.parentElement.classList.contains("t") || !view.text.contains(node)) return null;
   const verse = node.parentElement.closest("[data-segment]");
-  const offset = caret.startOffset;
   if (!wordSegmenter) return null;
   for (const part of wordSegmenter.segment(node.data)) {
-    if (part.index <= offset && offset <= part.index + part.segment.length && part.isWordLike) return { word: part.segment, segment_id: verse.dataset.segment };
+    if (part.index <= offset && offset <= part.index + part.segment.length && part.isWordLike) return { word: part.segment, segment_id: verse.dataset.segment, node, start: part.index, end: part.index + part.segment.length };
   }
   return null;
 }
@@ -1259,6 +1309,356 @@ function openPaneMenu(button) {
   });
 }
 
+// MARK: - Context menu (B077, specs/22 §4.2): the core's menu for what was right-clicked
+
+const VERSE = /^[A-Za-z0-9]+\.\d+\.\d+$/;
+const viewOfSection = (section) => [...host.views.values()].find((v) => v.section === section) || null;
+const activeView = () => host.views.get(`${activeWorkspace().id}/${activeColumn().id}`) || null;
+
+/** The tab a note editor belongs to: its column's Notes tab, or none for the dock. */
+function notesTabOf(editor) {
+  const view = viewOfSection(editor.closest("#columns > .column"));
+  return view ? view.tab.id : null;
+}
+
+function pointInSelection(x, y) {
+  const s = document.getSelection();
+  return s.rangeCount > 0 && [...s.getRangeAt(0).getClientRects()].some((r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom);
+}
+
+function selectionTarget(found) {
+  const ids = found.trip.anchors.map((a) => a.segment_id);
+  const first = ids[0], last = ids[ids.length - 1];
+  return {
+    kind: "selection", text: selectedQuote(found), reference: VERSE.test(first) ? first : null,
+    end_reference: VERSE.test(last) && last !== first ? last : null, resource_id: found.view.tab.content_id, tab_id: found.view.tab.id,
+  };
+}
+
+function wordTarget(view, word) {
+  const start = [...word.node.data.slice(0, word.start)].length;
+  return {
+    kind: "word", text: word.word, reference: VERSE.test(word.segment_id) ? word.segment_id : null, segment_id: word.segment_id,
+    scalar_start: start, scalar_end: start + [...word.word].length, resource_id: view.tab.content_id, tab_id: view.tab.id,
+  };
+}
+
+/** What a right-click at (x, y) on `el` is on, as the core's ContextTarget; null leaves the
+ *  platform menu (the palette field, the tool well, the shell's own menus). Without a point
+ *  (the keyboard) a word comes from `caret`. */
+function targetAt(el, x, y, caret = null) {
+  if (!el || !el.closest || el.closest(".topbar, .well, .menu, .ctx-menu, .toast")) return null;
+  const columnEl = el.closest("#columns > .column");
+  const number = columnEl ? Number(columnEl.dataset.number) : null;
+  const tabEl = el.closest(".tabstrip .tab");
+  if (tabEl) return { target: { kind: "tab", tab_id: tabEl.dataset.tabId }, el: tabEl };
+  if (el.closest(".identity")) return { target: { kind: "column", column: number }, el: el.closest(".identity") };
+  const editor = el.closest(".note-editor");
+  if (editor) {
+    const tab_id = notesTabOf(editor);
+    const link = el.closest("a.passage-link");
+    if (link) return { target: { kind: "note_link", reference: link.dataset.reference, tab_id }, editor, link, el: link };
+    const s = document.getSelection();
+    const text = s.rangeCount > 0 && !s.isCollapsed && editor.contains(s.getRangeAt(0).commonAncestorContainer) ? s.toString().trim() : "";
+    return { target: { kind: "note_text", text: text || null, tab_id }, editor, el: editor };
+  }
+  const dockEl = el.closest(".dock");
+  if (dockEl) return { target: { kind: "note_text", text: null, tab_id: null }, editor: dockEl.querySelector(".note-editor"), el: dockEl };
+  if (!columnEl) return null;
+  const view = viewOfSection(columnEl);
+  if (view && view.text && view.text.contains(el)) {
+    const found = selectionInView();
+    if (found && found.view === view && (x == null || pointInSelection(x, y))) return { target: selectionTarget(found), view, el };
+    const word = x != null ? wordAt(view, x, y) : caret ? wordAtCaret(view, caret.node, caret.offset) : null;
+    if (word) return { target: wordTarget(view, word), view, word, el };
+  }
+  return { target: { kind: "background", column: number }, el: columnEl };
+}
+
+/** Selects a right-clicked word, as macOS does: the menu's Mark rows act on it. */
+function selectWord(word) {
+  const r = document.createRange();
+  r.setStart(word.node, word.start);
+  r.setEnd(word.node, word.end);
+  const s = document.getSelection();
+  s.removeAllRanges();
+  s.addRange(r);
+}
+
+function restoreRange(range) {
+  if (!range) return;
+  const s = document.getSelection();
+  s.removeAllRanges();
+  s.addRange(range);
+}
+
+/** Asks the core for the menu (opening it changes nothing in the session) and draws it. */
+export function showContextMenu(hit, x, y, keyboard = false) {
+  if (hit.word) selectWord(hit.word);
+  let menu;
+  try {
+    menu = host.handle.contextMenu(hit.target, context());
+  } catch (error) {
+    toast(error.message || String(error));
+    return null;
+  }
+  const s = document.getSelection();
+  host.ctx = { menu, hit, range: s.rangeCount > 0 ? s.getRangeAt(0).cloneRange() : null, returnTo: document.activeElement };
+  host.lastTarget = hit.target;
+  openContextMenu(menu, {
+    x, y, keyboard, icon: svg, glyphs: shortcutGlyphs,
+    onChoose: chooseContextItem,
+    onClose: (restore) => {
+      if (!restore || !host.ctx) return;
+      const { returnTo, range } = host.ctx;
+      if (returnTo && returnTo.isConnected && returnTo !== document.body) returnTo.focus({ preventScroll: true });
+      restoreRange(range);
+    },
+  });
+  return menu;
+}
+
+/** A chosen row: the selection and note caret the menu was opened on are put back (keyboard
+ *  navigation moved focus into the menu), the menu's focus change runs, then the row, both
+ *  under the menu's context. */
+function chooseContextItem(item) {
+  const { menu, hit, range } = host.ctx;
+  if (hit.editor && hit.editor.isConnected) hit.editor.focus({ preventScroll: true });
+  restoreRange(range);
+  if (menu.focus) run(menu.focus, menu.context);
+  run({ command_id: item.command_id, args: item.args }, menu.context);
+  host.ctx = null;
+}
+
+/** ⇧F10 or the context-menu key: the menu for the selection, else the word at the caret in
+ *  reading text or the caret in a note, else the focused tab, else the active column. */
+function contextMenuKey(e) {
+  if (!(e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey))) return false;
+  if (document.activeElement === field) return false; // the field keeps the platform menu
+  e.preventDefault();
+  host.keyMenuAt = performance.now();
+  const s = document.getSelection();
+  const range = s.rangeCount > 0 ? s.getRangeAt(0) : null;
+  const active = document.activeElement;
+  const startEl = range && (range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement);
+  let hit = null, rect = null;
+  if (range && startEl && (viewOfNode(range.startContainer) || (active && active.closest && active.closest(".note-editor") && active.contains(startEl)))) {
+    hit = targetAt(startEl, null, null, { node: range.startContainer, offset: range.startOffset });
+    rect = range.getBoundingClientRect();
+  }
+  if (!hit && active && active.closest && active.closest(".tabstrip .tab, .note-editor")) hit = targetAt(active, null, null);
+  if (!hit) {
+    const view = activeView();
+    hit = view && { target: { kind: "background", column: view.number }, el: view.scroller };
+  }
+  if (!hit) return true;
+  if (hit.word) { selectWord(hit.word); rect = document.getSelection().getRangeAt(0).getBoundingClientRect(); }
+  if (!rect || (!rect.width && !rect.height)) {
+    const r = hit.el.getBoundingClientRect();
+    rect = hit.target.kind === "background" ? { left: r.left + 24, bottom: r.top + 24 } : r;
+  }
+  showContextMenu(hit, rect.left, rect.bottom + 2, true);
+  return true;
+}
+
+document.addEventListener("contextmenu", (e) => {
+  if (!host.session || e.shiftKey) return; // ⇧-right-click: the platform's own menu
+  // The context-menu key's own contextmenu event, after contextMenuKey opened the menu.
+  if (performance.now() - (host.keyMenuAt ?? -1e9) < 250) { e.preventDefault(); return; }
+  const hit = targetAt(e.target, e.clientX, e.clientY);
+  if (!hit) return;
+  e.preventDefault();
+  showContextMenu(hit, e.clientX, e.clientY);
+  if (host.recordMenu) {
+    // From the trusted event's timeStamp to the menu laid out, and to the next frame.
+    void document.body.offsetHeight;
+    const sample = { done: performance.now() - e.timeStamp };
+    menuLatency.push(sample);
+    requestAnimationFrame(() => { sample.frame = performance.now() - e.timeStamp; });
+  }
+});
+const menuLatency = [];
+export function menuReport(reset) {
+  const out = menuLatency.length ? { n: menuLatency.length, handler_done_ms: stats(menuLatency.map((k) => k.done)), next_frame_ms: stats(menuLatency.filter((k) => k.frame != null).map((k) => k.frame)) } : { n: 0 };
+  if (reset) menuLatency.length = 0;
+  return out;
+}
+
+// MARK: - The context menu's host commands (B077)
+
+function copyText(text, message) {
+  host.copied = text;
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+  toast(message);
+}
+
+/** The text of a verse or verse range of a resource, as the text source has it. */
+function verseText(resourceId, reference) {
+  const passage = resourceId && reference && host.text.passage(resourceId, reference);
+  if (!passage) return "";
+  const [first, last = first] = reference.split("-");
+  const segments = passage.paragraph.segments;
+  const i = segments.findIndex((x) => x.segment_id === first);
+  const j = segments.findIndex((x) => x.segment_id === last);
+  return i < 0 ? "" : segments.slice(i, Math.max(i, j) + 1).map((x) => x.text).join(" ");
+}
+
+/** copy.passage: `“text” — John 3:16 (BSB)`, the shape Note on it quotes in (B076). */
+function copyPassage({ text, reference, resource_id: resource }) {
+  const where = humanPassage(core, reference);
+  const words = text || verseText(resource, reference);
+  const edition = resource ? ` (${host.text.resource(resource).short})` : "";
+  copyText(`“${words}” — ${where}${edition}`, `Copied ${where} with its text`);
+}
+
+/** The clipboard's text; the shell's own last copy when the browser does not grant reading. */
+function readClipboard() {
+  const read = navigator.clipboard && navigator.clipboard.readText ? navigator.clipboard.readText() : Promise.reject(new Error("no clipboard"));
+  return read.then((text) => text || host.copied || "", () => host.copied || "");
+}
+
+/** Cut, Copy and Paste on the selection or the note caret the menu was opened on. */
+function clipboardAction(kind) {
+  const s = document.getSelection();
+  const editor = host.ctx && host.ctx.hit.editor;
+  if (kind === "paste") {
+    const range = s.rangeCount > 0 ? s.getRangeAt(0).cloneRange() : null;
+    readClipboard().then((text) => {
+      if (!text) return toast("The clipboard is empty");
+      if (!editor || !editor.isConnected) return;
+      editor.focus({ preventScroll: true });
+      restoreRange(range);
+      document.execCommand("insertText", false, text);
+      noteChanged(editor);
+    });
+    return;
+  }
+  const text = s.toString();
+  host.copied = text;
+  if (!document.execCommand(kind)) {
+    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+    if (kind === "cut" && editor) document.execCommand("delete");
+  }
+  if (editor) noteChanged(editor);
+}
+
+/** A passage in pasted text: all of it, else the reference copy.passage writes after the
+ *  dash, else the first run that reads as a reference. */
+function passageIn(text) {
+  const tries = [text.trim()];
+  const dash = /—\s*([^—(]+?)\s*(\(|$)/.exec(text);
+  if (dash) tries.push(dash[1]);
+  for (const m of text.matchAll(/(?:[1-3] ?)?[A-Z][a-z]+\.? \d+(?::\d+(?:[–-]\d+)?)?/g)) tries.push(m[0]);
+  for (const t of tries) {
+    try { return core.formatOsis(core.parseReference(t)); } catch { /* not a passage */ }
+  }
+  return null;
+}
+
+function pastePassage() {
+  readClipboard().then((text) => {
+    const reference = passageIn(text);
+    if (!reference) return toast("The clipboard has no passage");
+    run({ command_id: "nav.navigate", args: { reference } });
+  });
+}
+
+/** Remove link: the passage link becomes its words. */
+function removeLink(reference) {
+  const hit = host.ctx && host.ctx.hit;
+  const link = hit && hit.link && hit.link.isConnected ? hit.link : document.querySelector(`.note-editor a.passage-link[data-reference="${CSS.escape(reference)}"]`);
+  if (!link) return;
+  const editor = link.closest(".note-editor");
+  link.replaceWith(document.createTextNode(link.textContent));
+  noteChanged(editor);
+}
+
+const SCOPE_LABELS = { all: "All editions", workspace: "This workspace" };
+
+/** search.text: the palette's Text section with the words and a scope chip; the chapter scope
+ *  finds in the column instead. */
+function searchText({ text, scope, resource_id: resource, reference }) {
+  if (scope === "chapter") { findInChapter(text, resource, reference); return; }
+  host.palette.scope = { scope: scope || "all", resource: resource || null };
+  focusPalette(`#${text}`);
+}
+
+/** The resources a scoped search keeps (null: all). */
+function scopeResources() {
+  const scope = host.palette.scope;
+  if (!scope || scope.scope === "all") return null;
+  if (scope.scope === "edition") return new Set([scope.resource]);
+  return new Set(activeWorkspace().columns.flatMap((c) => c.tabs.map((t) => t.content_id)));
+}
+
+function renderScopeChip() {
+  const chip = $("scope-chip");
+  const scope = host.palette.scope;
+  chip.hidden = !scope;
+  field.classList.toggle("scoped", !!scope);
+  if (!scope) return;
+  const label = scope.scope === "edition" ? `This edition · ${host.text.resource(scope.resource).short}` : SCOPE_LABELS[scope.scope] || scope.scope;
+  chip.firstChild.textContent = label;
+  chip.title = `Searching ${label.toLowerCase()}`;
+}
+
+// MARK: - Find in this chapter (search.text, scope chapter)
+
+function findInChapter(text, resource, reference) {
+  clearFind();
+  const views = [...host.views.values()].filter((v) => v.text && v.section.isConnected && v.tab.content_id === resource);
+  const view = views.find((v) => v === activeView()) || views[0];
+  const where = humanPassage(core, reference);
+  if (!view) return toast(`${where} is not open`);
+  document.getSelection().removeAllRanges();
+  const needle = text.toLocaleLowerCase();
+  const ranges = [];
+  for (const t of view.text.querySelectorAll(".t")) {
+    const node = t.firstChild;
+    if (!node || !needle) continue;
+    const hay = node.data.toLocaleLowerCase();
+    if (hay.length !== node.data.length) continue; // lower-casing changed the offsets
+    for (let i = hay.indexOf(needle); i >= 0; i = hay.indexOf(needle, i + needle.length)) {
+      const r = document.createRange();
+      r.setStart(node, i);
+      r.setEnd(node, i + needle.length);
+      ranges.push(r);
+    }
+  }
+  if (!ranges.length) return toast(`No matches for “${text}” in ${where}`);
+  host.find = { view, ranges, index: 0, text, where };
+  showFind();
+  toast(ranges.length === 1 ? `1 match in ${where}` : `${ranges.length} matches in ${where}`);
+}
+
+function showFind() {
+  const { view, ranges, index } = host.find;
+  if (!("highlights" in CSS)) return;
+  CSS.highlights.set("ol-find", new Highlight(...ranges));
+  CSS.highlights.set("ol-find-current", new Highlight(ranges[index]));
+  const r = ranges[index].getBoundingClientRect(), box = view.scroller.getBoundingClientRect();
+  if (r.top < box.top || r.bottom > box.bottom) view.scroller.scrollTop += r.top - box.top - box.height / 3;
+}
+
+function clearFind() {
+  host.find = null;
+  if ("highlights" in CSS) { CSS.highlights.delete("ol-find"); CSS.highlights.delete("ol-find-current"); }
+}
+
+/** While matches are shown: ⌘G / ⇧⌘G next and previous, Esc clears (host view keys, like Esc
+ *  closing the palette; not registered commands). */
+function findKey(e) {
+  if (!host.find) return false;
+  if (e.key === "Escape" && !host.menu && results.hidden) { e.preventDefault(); clearFind(); return true; }
+  if (e.code !== "KeyG" || !(e.metaKey || e.ctrlKey) || e.altKey) return false;
+  e.preventDefault();
+  const f = host.find;
+  f.index = (f.index + (e.shiftKey ? -1 : 1) + f.ranges.length) % f.ranges.length;
+  showFind();
+  toast(`${f.index + 1} of ${f.ranges.length} in ${f.where}`);
+  return true;
+}
+
 // MARK: - The palette
 
 const field = $("palette-field");
@@ -1284,6 +1684,8 @@ function closePalette(restore) {
   host.palette.expanded = null;
   host.palette.rows = [];
   host.palette.index = -1;
+  host.palette.scope = null;
+  renderScopeChip();
   if (restore) {
     const back = host.palette.returnTo;
     host.palette.returnTo = null;
@@ -1298,8 +1700,20 @@ function closePalette(restore) {
 /** Every keystroke asks the core; nothing is debounced (specs/22 §7: one frame). */
 export function queryPalette() {
   const text = field.value;
-  const result = host.handle.paletteQuery(text, { platform: "web", ...context(), expanded: host.palette.expanded });
+  // A scoped search (B077) asks for every text row and keeps those of the scope's editions.
+  const expanded = host.palette.expanded || (host.palette.scope ? "text" : null);
+  const result = host.handle.paletteQuery(text, { platform: "web", ...context(), expanded });
+  const keep = scopeResources();
+  if (keep) {
+    const shorts = [...keep].map((id) => `${host.text.resource(id).short} · `);
+    for (const group of result.groups) {
+      if (group.section !== "text") continue;
+      group.items = group.items.filter((item) => shorts.some((p) => item.title.startsWith(p)));
+      group.total = group.items.length;
+    }
+  }
   host.palette.result = result;
+  renderScopeChip();
   renderPalette(result);
   return result;
 }
@@ -1423,6 +1837,10 @@ function inTextField(el) {
 }
 
 document.addEventListener("keydown", (e) => {
+  // The context menu takes every key while it is open (type-ahead letters are not tool keys).
+  if (contextMenuOpen()) return;
+  if (contextMenuKey(e)) return;
+  if (findKey(e)) return;
   if (e.key === "Escape" && host.menu) { e.preventDefault(); closeMenu(true); return; }
   const typing = inTextField(document.activeElement);
   const invocation = match(host.bindings, e, typing);
@@ -1471,9 +1889,10 @@ function stats(values) {
  *  (performance.now() around the action with a forced layout), `frame` the time from the start
  *  of the action to the requestAnimationFrame callback of the next frame, the one that paints
  *  it (so it includes waiting for that frame: up to one 16.7 ms interval at 60 Hz). */
-async function measure(name, samples, action) {
+async function measure(name, samples, action, prepare = null) {
   const work = [], frame = [];
   for (let i = 0; i < samples; i++) {
+    if (prepare) prepare(i);
     await nextFrame();
     await new Promise((ok) => setTimeout(ok, Math.random() * 15));
     const t0 = performance.now();
@@ -1545,11 +1964,62 @@ export async function bench({ samples = 200 } = {}) {
     document.getSelection().removeAllRanges();
     selectionChanged();
   }
+  // B077: the context menu. Opening is the core's menu plus drawing it; choosing is the focus
+  // change and the row with its effect (the menu is opened outside the timed part).
+  const first = activeWorkspace().columns.findIndex((c) => shownTab(c).kind === "reading" && host.views.get(`${activeWorkspace().id}/${c.id}`).text) + 1;
+  if (first > 0) {
+    run({ command_id: "column.focus", args: { column: first } });
+    const view = activeView();
+    const node = view.text.querySelector(".t").firstChild;
+    const word = wordAtCaret(view, node, 1);
+    const tabEl = view.section.querySelector(".tab");
+    const hits = {
+      word: () => ({ target: wordTarget(view, word), view, word, el: view.text }),
+      tab: () => targetAt(tabEl, null, null),
+      background: () => ({ target: { kind: "background", column: first }, el: view.scroller }),
+    };
+    for (const [kind, hit] of Object.entries(hits)) {
+      out.push(await measure(`B077 context menu opens (${kind}: core menu + drawn)`, samples, () => showContextMenu(hit(), 300, 200), () => closeContextMenu(false)));
+    }
+    closeContextMenu(false);
+    const row = (menu, id, scope) => menu.sections.flatMap((x) => x.items).find((i) => i.command_id === id && (!scope || i.args.scope === scope));
+    const compare = row(host.handle.contextMenu(hits.word().target, context()), "tab.open_edition");
+    if (compare) {
+      out.push(await measure(`B077 choose → effect: ${compare.label} (tab.open_edition)`, samples, () => {
+        chooseContextItem(row(host.ctx.menu, "tab.open_edition"));
+      }, () => { closePalette(false); run({ command_id: "column.focus", args: { column: first } }); showContextMenu(hits.word(), 300, 200); closeContextMenu(false); }));
+    }
+    out.push(await measure("B077 choose → effect: Search in all editions (palette with results)", samples, () => {
+      chooseContextItem(row(host.ctx.menu, "search.text", "all"));
+    }, () => { closePalette(false); showContextMenu(hits.word(), 300, 200); closeContextMenu(false); }));
+    closePalette(false);
+    document.getSelection().removeAllRanges();
+  }
   out.push(await measure("open a chapter in a tab, warm (nav.navigate)", samples, (i) => run({ command_id: "nav.navigate", args: { reference: ["John.3", "Gen.1", "John.3.16", "Gen.1.2"][i % 4] } })));
   return { user_agent: navigator.userAgent, dpr: window.devicePixelRatio, viewport: [innerWidth, innerHeight], workspaces: host.session.workspaces.length, tabs: host.session.workspaces.reduce((a, w) => a + w.columns.reduce((b, c) => b + c.tabs.length, 0), 0), rows: out };
 }
 
 // MARK: - Boot
+
+function contextMenuSnapshot() {
+  const el = openMenuElement();
+  if (!el) return null;
+  return {
+    focused: document.activeElement && document.activeElement.closest(".ctx-row") ? document.activeElement.querySelector(".ctx-label > span").textContent : null,
+    menus: [...el.querySelectorAll(".ctx-menu")].map((m) => {
+      const r = m.getBoundingClientRect();
+      return {
+        label: m.getAttribute("aria-label"), title: m.querySelector(".ctx-title")?.textContent || null,
+        sections: m.querySelectorAll(":scope > [role=group]").length, rect: [r.left, r.top, r.right, r.bottom],
+        rows: [...m.querySelectorAll(".ctx-row")].map((row) => ({
+          label: row.querySelector(".ctx-label > span").textContent, command: row.dataset.command, role: row.getAttribute("role"),
+          disabled: row.querySelector(".ctx-why")?.textContent || null, end: row.querySelector(".ctx-end").textContent,
+          submenu: row.hasAttribute("aria-haspopup"), checked: row.getAttribute("aria-checked"), swatch: !!row.querySelector(".ctx-swatch"),
+        })),
+      };
+    }),
+  };
+}
 
 /** A compact picture of what is on screen, for the tests. */
 export function snapshot() {
@@ -1577,6 +2047,11 @@ export function snapshot() {
       top: $("well").getBoundingClientRect().top,
     },
     notes: Object.fromEntries(host.notes), copied: host.copied || null,
+    // B077: the context menu as drawn (every open level), the last target, find and scope.
+    contextMenu: contextMenuSnapshot(), target: host.lastTarget || null, selection: document.getSelection().toString(),
+    find: host.find ? { count: host.find.ranges.length, index: host.find.index, where: host.find.where, current: host.find.ranges[host.find.index].toString() } : null,
+    scope: host.palette.scope ? { ...host.palette.scope, chip: $("scope-chip").firstChild.textContent } : null,
+    paletteValue: field.value,
   };
 }
 
@@ -1599,7 +2074,8 @@ async function main() {
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();
   render();
-  window.openlogosShell = { core, host, run, render, selectionChanged, snapshot, bench, keyReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab };
+  $("scope-chip").lastChild.addEventListener("click", () => { host.palette.scope = null; field.focus(); queryPalette(); });
+  window.openlogosShell = { core, host, run, render, selectionChanged, snapshot, bench, keyReport, menuReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab, showContextMenu, closeContextMenu };
   window.openlogosReady = true;
 }
 
