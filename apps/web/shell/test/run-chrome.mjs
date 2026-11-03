@@ -24,6 +24,7 @@ const chromedriver = option("--chromedriver", process.env.CHROMEDRIVER);
 const shotsDir = option("--shots", null);
 const extraDir = option("--extra-shots", null); // shots beyond the ten kept in the evidence
 const wellShotsDir = option("--well-shots", null); // B076: the contextual well's states
+const menuShotsDir = option("--menu-shots", null); // B077: the context menu's states
 const headed = args.includes("--headed");
 const benchOn = args.includes("--bench");
 const samples = Number(option("--samples", "200"));
@@ -1185,6 +1186,59 @@ async function wellScreenshots() {
   await shot("web-well-fallback-pen-in-notes");
 }
 
+/** B077: the menu states the owner reviews, the same on the Mac (docs/evidence/B077). */
+async function menuScreenshots() {
+  await mkdir(menuShotsDir, { recursive: true });
+  const shot = async (name) => {
+    const file = join(menuShotsDir, `${name}.png`);
+    await writeFile(file, Buffer.from(await wd("GET", `${S}/screenshot`), "base64"));
+    console.log(`screenshot ${file}`);
+  };
+  const hover = async (label, level = 0) => {
+    const at = await js("const m = document.querySelectorAll('.ctx-menu')[arguments[1]]; const r = [...m.querySelectorAll('.ctx-row')].find((x) => x.querySelector('.ctx-label > span').textContent === arguments[0]); const b = r.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2];", label, level);
+    await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerMove", duration: 60, x: Math.round(at[0]), y: Math.round(at[1]) }] }] });
+    await wd("DELETE", `${S}/actions`);
+    await sleep(60);
+  };
+  await setWindow(1440, 900);
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await wordPoint(2, "ἠγάπησεν")));
+  await hover("Word study");
+  await shot("web-menu-word-greek");
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await wordPoint(1, "loved")));
+  await hover("Word study");
+  await shot("web-menu-word-bsb-disabled");
+  await hover("Highlight");
+  await sleep(60);
+  await hover("Green", 1);
+  await shot("web-menu-highlight-submenu");
+  await load("?theme=light&autotest=1");
+  const pts = await phrasePoints(1, "eternal life");
+  await drag(pts[0], pts[1]);
+  await rightClick((pts[0][0] + pts[1][0]) / 2, pts[0][1]);
+  await shot("web-menu-selection");
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await centre('#columns > .column[data-number="2"] .tab')));
+  await hover("Move to");
+  await shot("web-menu-tab");
+  await load("?theme=light&autotest=1");
+  await drag(pts[0], pts[1]);
+  await click(...(await centre('#well button[data-command="selection.note"]')));
+  await rightClick(...(await centre('#columns > .column[data-number="3"] a.passage-link')));
+  await hover("Compare in");
+  await shot("web-menu-note-link");
+  await load("?theme=light&autotest=1");
+  await rightClick(...(await wordPoint(1, "world")));
+  await chooseRow("Find in this chapter");
+  await chord("Meta", "g");
+  await shot("web-menu-find-in-chapter");
+  await load("?theme=dark&autotest=1");
+  await rightClick(...(await wordPoint(1, "Son")));
+  await hover("Copy");
+  await shot("web-menu-dark");
+}
+
 // MARK: run
 
 let failures = 0;
@@ -1261,6 +1315,7 @@ try {
   }
   if (shotsDir) await screenshots();
   if (wellShotsDir) await wellScreenshots();
+  if (menuShotsDir) await menuScreenshots();
 } catch (error) {
   console.error(String(error));
   failures = failures || 1;
