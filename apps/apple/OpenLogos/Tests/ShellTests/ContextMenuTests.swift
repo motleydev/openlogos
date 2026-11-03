@@ -317,7 +317,7 @@ final class ContextMenuTests: XCTestCase {
         let verse = try XCTUnwrap(NSPasteboard.general.string(forType: .string))
         XCTAssertTrue(verse.hasPrefix("“For God so loved the world"), verse)
         XCTAssertTrue(verse.hasSuffix("” — John 3:16 (BSB)"), verse)
-        XCTAssertFalse(verse.contains("16"), "no verse numbers in the text")
+        XCTAssertFalse(verse.components(separatedBy: "”").first?.contains("16") ?? true, "no verse numbers in the quoted text")
         XCTAssertEqual(model.toast, "Copied John 3:16 with its text")
 
         // A selection over two verses: its text and the range.
