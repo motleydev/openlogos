@@ -354,8 +354,11 @@ struct TabBody: View {
             ZStack {
                 #if os(macOS)
                 let isNote = tab.kind == "notes"
+                // B078: a reading tab is its edition's stream of chapters.
+                let continuous = tab.kind == "reading" && tab.reference != nil
                 #else
                 let isNote = false
+                let continuous = false
                 #endif
                 if isNote {
                     #if os(macOS)
@@ -365,6 +368,14 @@ struct TabBody: View {
                     #endif
                 } else if tab.kind == "lexicon" {
                     LexiconView(model: model, tab: tab)
+                } else if let reason = model.readingError(for: tab) {
+                    NotInEditionView(model: model, resource: model.textSource.resource(tab.contentId), reference: tab.reference, reason: reason)
+                } else if continuous {
+                    #if os(macOS)
+                    ContinuousReaderView(model: model, tab: tab, column: column, horizontalPadding: padding)
+                        .id("\(tab.id)|\(tab.contentId)")
+                        .accessibilityLabel("\(model.textSource.resource(tab.contentId).name), \(ShellReference.human(tab.reference))")
+                    #endif
                 } else if let text = model.text(for: tab) {
                     ReaderTextView(
                         paneID: tab.id,
@@ -404,6 +415,33 @@ struct TabBody: View {
             .padding(.leading, leadingInset)
         }
         .background(BackgroundMenu(model: model, key: "background-\(column.number)", column: column.number))
+    }
+}
+
+/// specs/21's not-in-this-edition state (B078): the tab keeps its passage and says, in the
+/// core's words, why its edition has no text for it; never another edition's text.
+struct NotInEditionView: View {
+    @ObservedObject var model: ShellModel
+    let resource: ResourceInfo
+    let reference: String?
+    let reason: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ShellTokens.Spacing.s) {
+            Label("Not in this edition", systemImage: "book.closed")
+                .font(ShellTokens.chromeFont.weight(.semibold))
+            Text(reason)
+                .font(ShellTokens.chromeFont)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("\(resource.name) has no text for \(ShellReference.humanOsis(reference)). Type another passage, or open it in another edition.")
+                .font(ShellTokens.chromeFont)
+                .foregroundStyle(model.theme.chromeColor)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(ShellTokens.Spacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("shell-not-in-edition")
     }
 }
 

@@ -21,6 +21,8 @@ final class ShellModel: ObservableObject {
     let registry: [ShellCommandInfo]
     let keymap: ShellKeymap
     let textSource: TextSource
+    /// B078: the editions as streams of chapters (placeholder editions until B071's packs).
+    let reading: ReadingHandle
 
     @Published private(set) var session: ShellSession
 
@@ -89,21 +91,29 @@ final class ShellModel: ObservableObject {
 
     private var inkSheets: [String: InkSheet] = [:]
     private var surfaces: [String: WeakSurface] = [:]
+    #if os(macOS)
+    private var streams: [String: WeakStream] = [:]
+    #endif
+    private var labelsStale = false
+    private var labelRefreshPending = false
     private var toastTask: Task<Void, Never>?
     private var markCounter = 0
     #if canImport(AppKit)
     private var monitor: Any?
     #endif
 
-    init(handle: ShellHandle, textSource: TextSource = FixtureTextSource()) {
+    init(handle: ShellHandle, textSource: TextSource = FixtureTextSource(), reading: ReadingHandle = .placeholder()) {
         self.handle = handle
         self.textSource = textSource
+        self.reading = reading
         registry = shellRegistry()
         keymap = ShellKeymap(registry: registry, platform: .mac)
         // Tab views and palette rows name resources by these (`BSB · Jn 3:16`).
         handle.setResourceTitles(titles: textSource.resourceTitles)
         // Original-language tabs get the original tools (Word study).
         handle.setResourceLanguages(languages: textSource.resourceLanguages)
+        // B078: linked tabs follow through each edition's versification.
+        handle.setResourceSchemes(schemes: reading.schemes())
         session = handle.session()
         well = handle.toolWell(context: ShellCommandContext(hasSelection: false, focus: .tab))
         notes.model = self
@@ -152,7 +162,14 @@ final class ShellModel: ObservableObject {
     }
 
     func refreshWell() {
-        let next = handle.toolWell(context: commandContext)
+        var next = handle.toolWell(context: commandContext)
+        if selectionIsPlaceholder {
+            for g in next.groups.indices {
+                for i in next.groups[g].items.indices where Self.placeholderBlocked.contains(next.groups[g].items[i].commandId) {
+                    next.groups[g].items[i].disabledText = Self.placeholderReason
+                }
+            }
+        }
         if next != well { well = next }
     }
 
@@ -226,8 +243,13 @@ final class ShellModel: ObservableObject {
     func run(_ id: String, args: ShellCommandArgs = ShellCommandArgs(), context: ShellCommandContext? = nil) -> Bool {
         rememberScroll()
         do {
+            if let reason = placeholderRefusal(id) {
+                show(toast: reason)
+                return false
+            }
             let outcome = try handle.applyIn(commandId: id, args: args, context: context ?? commandContext)
             if !outcome.handled { performHost(id, args: args) }
+            apply(positions: outcome)
             refresh()
             return true
         } catch let error as ShellCommandError {
@@ -245,6 +267,7 @@ final class ShellModel: ObservableObject {
     }
 
     func refresh() {
+        labelRefreshPending = false
         let next = handle.session()
         if next != session { session = next }
         if activeTab?.kind == "reading" { lastReadingColumnID = activeColumn.id }
@@ -420,11 +443,142 @@ final class ShellModel: ObservableObject {
 
     func surface(for tabID: String) -> ReaderSurface? { surfaces[tabID]?.surface }
 
+    // MARK: Continuous reading (B078)
+
+    #if os(macOS)
+    /// A reading tab's stream, registered by its view; it also stands as the tab's surface.
+    func register(_ stream: ReadingStream) {
+        guard streams[stream.tabID]?.stream !== stream else { return }
+        streams[stream.tabID] = WeakStream(stream: stream)
+        surfaces[stream.tabID] = WeakSurface(surface: stream.surface)
+    }
+
+    func stream(for tabID: String) -> ReadingStream? { streams[tabID]?.stream }
+    #endif
+
+    /// The verse at the top of a reading tab moved (the reader scrolled): the core moves the
+    /// tab's passage and its linked tabs (quiet: no undo, no history). Followers scroll now;
+    /// the labels follow when the chapter changes and when scrolling settles, so a scroll
+    /// does not re-render the shell for every verse.
+    func recordScroll(tabID: String, segmentID: String) {
+        let ws = activeWorkspace
+        guard let outcome = try? handle.apply(commandId: "tab.record_scroll",
+                                              args: ShellCommandArgs(workspaceId: ws.id, tabId: tabID, segmentId: segmentID, scalar: 0),
+                                              hasSelection: false),
+              !outcome.positions.isEmpty else { return }
+        apply(positions: outcome)
+        recordedScrolls += 1
+        let shown = ws.columns.lazy.flatMap(\.tabs).first { $0.id == tabID }?.chapterLabel
+        if outcome.positions.contains(where: { $0.chapterLabel != nil && $0.chapterLabel != shown && $0.driver }) {
+            scheduleLabelRefresh()
+        } else {
+            labelsStale = true
+        }
+    }
+
+    /// Scrolling stopped: the identity rows and tab labels catch up.
+    func scrollSettled() {
+        guard labelsStale else { return }
+        labelsStale = false
+        refresh()
+    }
+
+    private func scheduleLabelRefresh() {
+        labelsStale = false
+        guard !labelRefreshPending else { return }
+        labelRefreshPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.labelRefreshPending else { return }
+            self.refresh()
+        }
+    }
+
+    /// Hands every tab the core moved to its stream: the scrolled tab learns its new passage,
+    /// followers scroll, navigated tabs jump and flash.
+    func apply(positions outcome: ShellOutcome) {
+        #if os(macOS)
+        // Streams are the active workspace's shown tabs (tab ids repeat across workspaces).
+        for position in outcome.positions where position.workspaceId == session.activeWorkspaceId {
+            streams[position.tabId]?.stream?.apply(position, revision: outcome.revision)
+        }
+        #endif
+    }
+
+    /// Whether a tab is shown as a continuous stream (it reports its own scrolling).
+    func hasStream(_ tabID: String) -> Bool {
+        #if os(macOS)
+        return streams[tabID]?.stream != nil
+        #else
+        return false
+        #endif
+    }
+
+    /// Scroll reports the core moved a passage for (the evidence counts them).
+    private(set) var recordedScrolls = 0
+
+    /// specs/21's not-in-this-edition state: the core's words when a reading tab's passage is
+    /// not in its edition (`John is not in WLC`, `John has no chapter 22`), else nil.
+    func readingError(for tab: ShellTab) -> String? {
+        guard tab.kind == "reading", let reference = tab.reference else { return nil }
+        let key = "\(tab.contentId)|\(reference)"
+        if let known = readingErrors[key] { return known }
+        var reason: String?
+        do {
+            _ = try reading.locate(resourceId: tab.contentId, input: reference)
+        } catch ReadingCallError.Refused(let kind, let words) {
+            reason = kind == "unknown_resource" ? nil : words
+        } catch {
+            reason = "\(error)"
+        }
+        if readingErrors.count > 512 { readingErrors.removeAll() }
+        readingErrors[key] = reason
+        return reason
+    }
+
+    private var readingErrors: [String: String?] = [:]
+
+    /// The fixtures' licence line under a block whose verses include real fixture text.
+    func attribution(for chapter: ReadingChapter) -> String? {
+        guard chapter.verses.contains(where: { !$0.placeholder }),
+              let text = textSource.text(resourceID: chapter.resourceId, reference: "\(chapter.chapterKey).1") else { return nil }
+        return text.content.attribution
+    }
+
+    /// The verses of a passage in a reading edition, joined (B078: from the stream's source).
+    func readingText(resourceID: String, from first: String, to last: String) -> (text: String, placeholder: Bool)? {
+        let chapter = ShellReference.chapter(of: first)
+        guard let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: chapter),
+              let start = block.verses.firstIndex(where: { $0.segmentId == first }) else { return nil }
+        var verses = Array(block.verses[start...])
+        if let end = verses.firstIndex(where: { $0.segmentId == last }) { verses = Array(verses[...end]) } else if first == last { verses = [verses[0]] }
+        return (verses.map(\.text).joined(separator: " "), verses.contains { $0.placeholder })
+    }
+
+    // MARK: Placeholder text (specs/23 §5)
+
+    /// What a placeholder verse cannot be: quoted, collected, highlighted into a collection,
+    /// studied or sent on.
+    static let placeholderBlocked: Set<String> = [
+        "selection.highlight", "selection.collect", "selection.note", "selection.study", "selection.highlight_in",
+        "copy.passage", "tab.open_lexicon",
+    ]
+    static let placeholderReason = "Placeholder text can't be quoted or collected"
+
+    /// Whether the selection (or the word a menu was opened on) touches placeholder text.
+    var selectionIsPlaceholder: Bool {
+        guard let selection, let layout = surface(for: selection.paneID)?.layout else { return false }
+        return selection.anchors.contains { layout.placeholderSegments.contains($0.segmentId) }
+    }
+
+    private func placeholderRefusal(_ id: String) -> String? {
+        Self.placeholderBlocked.contains(id) && selectionIsPlaceholder ? Self.placeholderReason : nil
+    }
+
     /// Records every shown tab's scroll anchor in the core (`tab.record_scroll`, quiet: no
     /// revision bump, no undo) before a command can hide or rebuild it.
     private func rememberScroll() {
         let ws = activeWorkspace
-        for column in ws.columns {
+        for column in ws.columns where !hasStream(column.shownTabId) {
             guard let segment = surfaces[column.shownTabId]?.surface?.topSegmentID,
                   column.tabs.first(where: { $0.id == column.shownTabId })?.scrollSegmentId != segment else { continue }
             _ = try? handle.apply(commandId: "tab.record_scroll",
@@ -457,6 +611,10 @@ final class ShellModel: ObservableObject {
     }
 
     func dragEnded(_ mode: ReaderDragMode, _ selection: ReaderSelection) {
+        if mode != .select, let layout = surface(for: selection.paneID)?.layout,
+           selection.anchors.contains(where: { layout.placeholderSegments.contains($0.segmentId) }) {
+            return show(toast: Self.placeholderReason)
+        }
         switch mode {
         case .highlight: highlight(selection)
         case .collect: collect(selection)
@@ -476,7 +634,11 @@ final class ShellModel: ObservableObject {
 
     func highlight(_ selection: ReaderSelection, in color: ShellTokens.Swatch? = nil) {
         markCounter += 1
-        let mark = ReaderMark(id: "mark-\(markCounter)", ranges: selection.highlights, color: (color ?? swatch).platformColor)
+        var mark = ReaderMark(id: "mark-\(markCounter)", ranges: selection.highlights, color: (color ?? swatch).platformColor)
+        // B078: kept as segment spans, so it stays on its verses in a continuous window.
+        if let layout = surface(for: selection.paneID)?.layout, !layout.blocks.isEmpty {
+            mark.spans = selection.highlights.flatMap(layout.spans(ofDisplay:))
+        }
         marks[selection.paneID, default: []].append(mark)
         self.selection = nil
     }
@@ -673,6 +835,12 @@ final class PaletteState: ObservableObject {
 private struct WeakSurface {
     weak var surface: ReaderSurface?
 }
+
+#if os(macOS)
+private struct WeakStream {
+    weak var stream: ReadingStream?
+}
+#endif
 
 extension Array {
     subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
