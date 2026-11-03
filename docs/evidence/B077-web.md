@@ -55,7 +55,9 @@ plus), `move`, `pin`, `follow`, `link`, `focus` (corners round a dot), `move-lef
 | `82de890` | 14 cases, registry count 84 |
 | `81e0f53` | speed rows (open per target, choose → effect, trusted right-clicks with a pointerdown baseline) |
 | `9d52846` | screenshots, the header aligned with the labels |
-| this commit | this file |
+| `e8749a9` | toasts and the Workspace chip label as agreed with the Mac host |
+| `b307a70` | this file |
+| this commit | the commit table |
 
 ## Cases (`just test-shell-web`, WebDriver Actions: trusted keys and pointer, right-clicks with button 2)
 
