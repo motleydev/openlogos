@@ -843,7 +843,7 @@
       }
     }
   ],
-  "segments": [
+  "segment_references": [
     {
       "segment_id": "John.3.16",
       "reference": "John.3.16"

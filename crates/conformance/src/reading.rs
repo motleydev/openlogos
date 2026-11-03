@@ -563,8 +563,9 @@ pub struct ReadingFixture {
     pub neighbors: Vec<NeighborCase>,
     /// `chapter_content` cases.
     pub chapters: Vec<ChapterCase>,
-    /// `reference_for_segment` cases.
-    pub segments: Vec<SegmentCase>,
+    /// `reference_for_segment` cases (not `segments`, which text fixtures use: hosts decode
+    /// every fixture with one shape).
+    pub segment_references: Vec<SegmentCase>,
     /// Canon mapping cases.
     pub canon: Vec<CanonCase>,
     /// Canon structure cases.
@@ -645,14 +646,18 @@ pub(crate) fn run_reading(fixture: &ReadingFixture, recorder: &mut Recorder) {
         );
     }
     let segments: Vec<SegmentCase> = fixture
-        .segments
+        .segment_references
         .iter()
         .map(|c| SegmentCase {
             segment_id: c.segment_id.clone(),
             reference: reference_for_segment(&c.segment_id),
         })
         .collect();
-    recorder.check("reference_for_segment", &fixture.segments, &segments);
+    recorder.check(
+        "reference_for_segment",
+        &fixture.segment_references,
+        &segments,
+    );
 
     let canon_case = |name: &str, reference: &str, from: &str, to: &str| -> CanonCase {
         let parsed = openlogos_workspaces::palette::parse_tab_reference(reference)
