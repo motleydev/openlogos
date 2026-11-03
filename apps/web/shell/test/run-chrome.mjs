@@ -447,7 +447,7 @@ const CASES = {
 
   async "pen-and-eraser"(p) {
     await type("p");
-    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .measure').getBoundingClientRect(); return [r.left, r.top, r.width];");
+    const box = await js("const m = document.querySelector('#columns > .column[data-number=\"1\"] .measure').getBoundingClientRect(); const r = document.querySelector('#columns > .column[data-number=\"1\"] .scroller').getBoundingClientRect(); return [m.left, r.top, m.width];");
     const y = box[1] + 140;
     await drag([box[0] + 40, y], [box[0] + 240, y + 30], 12);
     let s = await snap();
@@ -465,13 +465,13 @@ const CASES = {
   },
 
   async "placeholder-and-navigation"(p) {
+    // B078: Romans 8 is a placeholder chapter of the BSB and SBLGNT streams, marked as such.
     await chord("Meta", "k");
     await type("rom 8");
     await chord("Enter");
     const s = await snap();
-    expect(p, s.dom[0].placeholder && s.dom[1].placeholder, `Rom 8 shows the placeholder in the group: ${JSON.stringify(s.dom.map((c) => c.placeholder))}`);
-    const text = await js("return document.querySelector('.placeholder h2').textContent");
-    expect(p, text === "Berean Standard Bible · Rom 8", `placeholder "${text}"`);
+    expect(p, s.reading[0].blocks.includes("Rom.8") && s.reading[1].blocks.includes("Rom.8"), `Rom 8 opens in the group: ${JSON.stringify(s.reading.map((r) => r && r.blocks))}`);
+    expect(p, s.reading[0].header === "BSB · Rom 8" && s.reading[0].notice === "Placeholder text — this edition is not installed", `header and notice ${JSON.stringify(s.reading[0])}`);
     await chord("Meta", "[");
     const back = await snap();
     expect(p, back.columns[0].reference === "John.3.16", `⌘[ goes back (${back.columns[0].reference})`);
@@ -528,23 +528,24 @@ const CASES = {
   },
 
   async "scroll-anchor-recorded"(p) {
-    // Large text so the passage scrolls; scroll column 1, let it settle, check the core has it.
+    // Large text; scroll column 1 on from the typed verse, let it settle, check the core has it.
     await setWindow(1024, 420);
     for (let i = 0; i < 4; i++) await js("window.openlogosShell.run({ command_id: 'view.text_size_up' })");
-    const room = await js("const s = document.querySelector('#columns > .column .scroller'); s.scrollTop = 200; return [s.scrollHeight, s.clientHeight, s.scrollTop];");
-    expect(p, room[2] > 100, `column 1 scrolls (${room})`);
+    const room = await js("const s = document.querySelector('#columns > .column .scroller'); const t = s.scrollTop; s.scrollTop = t + 200; return [t, s.scrollTop];");
+    expect(p, room[1] - room[0] > 100, `column 1 scrolls (${room})`);
     await sleep(400);
     let s = await snap();
     const a = s.anchors[0];
-    expect(p, a && /^John\.3\.1[67]$/.test(a.segment_id) && a.scalar >= 0, `scroll anchor ${JSON.stringify(a)}`);
+    expect(p, a && /^John\.3\.(1[6-9]|2\d)$/.test(a.segment_id) && a.scalar >= 0, `scroll anchor ${JSON.stringify(a)}`);
     expect(p, s.log.some((l) => l.command_id === "tab.record_scroll" && l.handled), "tab.record_scroll dispatched");
     // Away and back: the column is rebuilt from the session and lands on the same anchor.
     const top = await js("return document.querySelector('#columns > .column .scroller').scrollTop");
+    const verse = (await snap()).reading[0].top;
     await chord("Alt", "]");
     await chord("Alt", "[");
     await sleep(300);
-    const again = await js("return document.querySelector('#columns > .column .scroller').scrollTop");
-    expect(p, Math.abs(again - top) < 40, `scroll restored from the anchor (${top} → ${again})`);
+    const again = await snap();
+    expect(p, again.reading[0].top && again.reading[0].top.segment_id === verse.segment_id, `scroll restored from the anchor (${JSON.stringify(verse)} → ${JSON.stringify(again.reading[0].top)})`);
     await setWindow(width, height);
   },
 
@@ -973,7 +974,8 @@ const CASES = {
     s = await snap();
     expect(p, s.dom[0].shown === "SBLGNT Jn 3" && s.active === 1, `column 2 moved left: ${JSON.stringify(s.dom.map((c) => c.shown))}`);
     await chord("Meta", "z");
-    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .scroller').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom - 30];");
+    // B078: the stream fills the column; its sticky header is background.
+    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .reading-header').getBoundingClientRect(); return [r.right - 30, r.top + r.height / 2];");
     await rightClick(...box);
     s = await snap();
     expect(p, s.target.kind === "background" && s.target.column === 1 && eq(s.contextMenu.menus[0].rows.map((r) => r.label), ["New tab", "Paste passage", "Text size", "Theme"]), `background ${JSON.stringify(s.target)} ${JSON.stringify(s.contextMenu.menus[0].rows.map((r) => r.label))}`);
@@ -990,7 +992,7 @@ const CASES = {
     await chooseRow("Copy");
     await chooseRow("Copy reference", 1);
     await chord("Alt", "Shift", "]");
-    const box = await js("const r = document.querySelector('#columns > .column .scroller').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom - 30];");
+    const box = await js("const r = document.querySelector('#columns > .column .reading-header').getBoundingClientRect(); return [r.right - 30, r.top + r.height / 2];");
     await rightClick(...box);
     await chooseRow("Paste passage");
     await sleep(100);
@@ -1031,7 +1033,7 @@ const CASES = {
     expect(p, s.target && s.target.kind === "selection" && s.target.text === "eternal life", `⇧F10 with a selection: ${JSON.stringify(s.target)}`);
     await chord("Escape");
     // The context-menu key (DOM key "ContextMenu") on a collapsed caret in the text: the word there.
-    await js("const t = document.querySelector('#columns > .column[data-number=\"1\"] .t').firstChild; const r = document.createRange(); r.setStart(t, 13); r.collapse(true); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r); document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }));");
+    await js("const t = document.querySelector('#columns > .column[data-number=\"1\"] [data-segment=\"John.3.16\"] .t').firstChild; const r = document.createRange(); r.setStart(t, 13); r.collapse(true); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r); document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }));");
     s = await snap();
     expect(p, s.target && s.target.kind === "word" && s.target.text === "loved" && s.selection === "loved", `menu key at the caret: ${JSON.stringify(s.target)}`);
     await chord("Escape");
