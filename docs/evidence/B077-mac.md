@@ -157,7 +157,8 @@ appearance's window background. On screen the menu has the system's glass.
    test, word selection, core, NSMenu) is ≤ 2.7 ms p95 for every target; showing an NSMenu
    is AppKit's presentation, and a plain NSMenu of the same 18 rows costs about as much as
    ours (table above). Meeting 16 ms would mean drawing our own menu in a panel instead of a
-   native NSMenu, against the brief's "Mac = native NSMenu". Owner decision below.
+   native NSMenu, against the brief's "Mac = native NSMenu". The lead accepted it on
+   3 November 2026 as a platform cost of the native menu (specs/22 §7 notes it).
 2. **No section labels drawn.** The core's labels (`Search`, `Open`, …) are optional; macOS
    menus separate groups with separators, and the header row is the word. Same on web.
 
@@ -174,9 +175,9 @@ column; languages only for the three editions.
 
 ## For the owner
 
-- The NSMenu takes about 50 ms to come up on this machine (AppKit, with the system's glass);
-  keep the native menu (looks and behaves like every Mac menu, VoiceOver included), or draw a
-  custom menu that could open on the next frame?
+- The native NSMenu takes about 50 ms to come up on this machine (AppKit, with the system's
+  glass); the lead accepted it as a platform cost. A custom menu that opens on the next frame
+  stays possible if the owner prefers speed over the native menu.
 
 ## Skipped
 

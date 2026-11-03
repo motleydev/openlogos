@@ -337,6 +337,10 @@ when the device is available. p95 over at least 200 samples unless stated.
 Hidden tabs and workspaces keep their model state but release their rendered text; the
 budgets above include re-rendering a released tab.
 
+On the Mac the context menu's own work (hit test, core, NSMenu) is held to the frame (≤ 2.2 ms
+p95, B077); the menu window's appearance is bounded by AppKit's NSMenu presentation (about
+50 ms for an 18-row menu on the Mac mini), accepted as a platform cost of the native menu.
+
 ## 8. Lockstep on web and Mac
 
 Each sprint lands on both the web shell (apps/web) and the Mac app (apps/apple) from the same
