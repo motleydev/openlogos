@@ -48,6 +48,8 @@ pub struct TabView {
     pub can_go_forward: bool,
     /// The word a Lexicon tab looks up (B076, `tab.open_lexicon`).
     pub lexicon_word: Option<String>,
+    /// The verses the last navigation named, to mark until the next one (B078).
+    pub highlight_range: Option<String>,
 }
 
 /// One column; `number` is its position, 1-based.
@@ -150,6 +152,7 @@ fn tab_view(shell: &Shell, tab: &Tab) -> TabView {
         can_go_back: !tab.history.back.is_empty(),
         can_go_forward: !tab.history.forward.is_empty(),
         lexicon_word: tab.lexicon_word.clone(),
+        highlight_range: tab.highlight_range.clone(),
     }
 }
 

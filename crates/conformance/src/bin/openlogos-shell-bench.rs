@@ -69,6 +69,7 @@ fn session() -> Session {
                     pinned,
                     history: Default::default(),
                     lexicon_word: None,
+                    highlight_range: None,
                 });
             }
             columns.push(Column {
@@ -105,6 +106,7 @@ fn session() -> Session {
         ink: Default::default(),
         resource_titles: Default::default(),
         resource_languages: Default::default(),
+        resource_schemes: Default::default(),
     };
     session.check().expect("the bench session is valid");
     session

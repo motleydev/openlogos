@@ -29,6 +29,7 @@ use std::sync::OnceLock;
 
 use crate::ScrollAnchor;
 use crate::navigation::{Visit, followers_among};
+use crate::reading::{FollowMapping, TabPosition, highlight_of, holds, map_reference};
 use crate::shell::{
     CLOSED_TABS_KEPT, ClosedTab, Column, INK_WIDTHS, LINE_SPACINGS, NotesDock, Session,
     TEXT_SIZE_STEPS, THEMES, Tab, Tool, Workspace, is_swatch,
@@ -468,6 +469,11 @@ pub struct Effects {
     /// Tabs moved by a navigation's link group or follow mode, to remap through the host's
     /// reference mapping when their scheme differs from the driver's.
     pub followed_tab_ids: Vec<String>,
+    /// Tabs whose passage moved (B078), driver first: a navigation's driver and followers
+    /// with their mapped references, or a scroll that carried a tab into another verse and
+    /// its linked tabs along. A host relabels each and scrolls each follower.
+    #[serde(default)]
+    pub positions: Vec<TabPosition>,
 }
 
 /// The result of [`apply`].
@@ -1751,11 +1757,10 @@ fn move_tab(tab: &mut Tab, reference: &str, transaction_id: &str, driven: bool) 
     });
 }
 
-/// A deliberate navigation in `driver`: the driver moves, then its link group's other
-/// members and every following tab of the workspace, shown or not (specs/22 §2). Followers
-/// land on the same reference; a host whose follower uses another scheme remaps it.
-fn navigate(ws: &mut Workspace, driver: &str, reference: &str) -> Vec<String> {
-    let transaction = ws.mint_id("nav");
+/// The tabs a move of `driver` carries along: its link group's other members, then every
+/// following tab of the workspace, shown or not (specs/22 §2), unless the driver itself
+/// follows or `follow_mode` is off.
+fn carried(ws: &Workspace, driver: &str, follow_mode: bool) -> Vec<String> {
     let members: Vec<(String, Option<String>, bool)> = ws
         .tabs()
         .map(|t| (t.id.clone(), t.link_group.clone(), t.pinned))
@@ -1769,18 +1774,117 @@ fn navigate(ws: &mut Workspace, driver: &str, reference: &str) -> Vec<String> {
     let driver_follows = members
         .iter()
         .any(|(id, group, pinned)| id == driver && group.is_none() && !pinned);
-    if !driver_follows {
+    if follow_mode && !driver_follows {
         for (id, group, pinned) in &members {
             if id != driver && group.is_none() && !pinned {
                 followed.push(id.clone());
             }
         }
     }
-    move_tab(tab_mut(ws, driver), reference, &transaction, true);
-    for id in &followed {
-        move_tab(tab_mut(ws, id), reference, &transaction, false);
-    }
     followed
+}
+
+/// A deliberate navigation in `driver`: the driver moves, then the tabs it carries
+/// ([`carried`]). Followers land on the reference mapped into their resource's scheme
+/// ([`map_reference`]); each tab marks the verses it landed on (B078).
+fn navigate(
+    ws: &mut Workspace,
+    schemes: &std::collections::BTreeMap<String, String>,
+    driver: &str,
+    reference: &str,
+) -> (Vec<String>, Vec<TabPosition>) {
+    let transaction = ws.mint_id("nav");
+    let followed = carried(ws, driver, true);
+    let workspace_id = ws.id.clone();
+    let tab = tab_mut(ws, driver);
+    let from = tab.content_id.clone();
+    move_tab(tab, reference, &transaction, true);
+    tab.highlight_range = highlight_of(reference);
+    let mut positions = vec![TabPosition::of(
+        &workspace_id,
+        tab,
+        true,
+        false,
+        FollowMapping::Same,
+    )];
+    for id in &followed {
+        let tab = tab_mut(ws, id);
+        let (mapped, mapping) = map_reference(schemes, reference, &from, &tab.content_id);
+        move_tab(tab, &mapped, &transaction, false);
+        tab.highlight_range = highlight_of(&mapped);
+        positions.push(TabPosition::of(&workspace_id, tab, false, false, mapping));
+    }
+    (followed, positions)
+}
+
+/// A quiet scroll of `tab_id` to the segment at the top of its viewport (B078): a Reading
+/// tab's passage becomes that verse unless its stored verse range already holds it, its
+/// current visit is updated in place (Back returns to where the reader was, and no visit
+/// is added), and the tabs it carries follow through versification. Follow-mode tabs follow
+/// only the active tab. A follower already at the mapped verse does not move, so a host
+/// that reports the scroll it was told to make changes nothing.
+fn scroll(
+    ws: &mut Workspace,
+    schemes: &std::collections::BTreeMap<String, String>,
+    tab_id: &str,
+    anchor: ScrollAnchor,
+    verse: Option<openlogos_core::reference::Reference>,
+    active: bool,
+) -> Vec<TabPosition> {
+    let workspace_id = ws.id.clone();
+    let tab = tab_mut(ws, tab_id);
+    tab.scroll_anchor = Some(anchor);
+    let moved = match verse {
+        Some(verse) if tab.kind == crate::PaneKind::Reading => {
+            (!holds(tab.reference.as_deref(), &verse)).then(|| verse.to_osis())
+        }
+        _ => None,
+    };
+    if let Some(current) = tab.history.current.as_mut() {
+        if let Some(reference) = &moved {
+            current.reference = Some(reference.clone());
+        }
+        current.scroll_anchor = tab.scroll_anchor.clone();
+    }
+    let Some(reference) = moved else {
+        return Vec::new();
+    };
+    tab.reference = Some(reference.clone());
+    let from = tab.content_id.clone();
+    let mut positions = vec![TabPosition::of(
+        &workspace_id,
+        tab,
+        true,
+        true,
+        FollowMapping::Same,
+    )];
+    for id in carried(ws, tab_id, active) {
+        let tab = tab_mut(ws, &id);
+        let (mapped, mapping) = map_reference(schemes, &reference, &from, &tab.content_id);
+        let Some(target) =
+            crate::palette::parse_tab_reference(&mapped).map(|set| set.ranges[0].start.clone())
+        else {
+            continue;
+        };
+        if tab.reference.as_deref() == Some(mapped.as_str())
+            || holds(tab.reference.as_deref(), &target)
+        {
+            continue;
+        }
+        tab.reference = Some(mapped.clone());
+        if tab.kind == crate::PaneKind::Reading {
+            tab.scroll_anchor = Some(ScrollAnchor {
+                segment_id: mapped.clone(),
+                scalar: 0,
+            });
+        }
+        if let Some(current) = tab.history.current.as_mut() {
+            current.reference = tab.reference.clone();
+            current.scroll_anchor = tab.scroll_anchor.clone();
+        }
+        positions.push(TabPosition::of(&workspace_id, tab, false, true, mapping));
+    }
+    positions
 }
 
 /// Runs one invocation against a session: the new session, an undo record for an undoable
@@ -1839,6 +1943,7 @@ fn apply_in_place(
     match id {
         "nav.navigate" => {
             let reference = non_empty(&args.reference).expect("enabled").to_owned();
+            let schemes = s.resource_schemes.clone();
             let ws = s.active_mut();
             let driver = if args.new_column {
                 let source = ws.active_tab().clone();
@@ -1856,10 +1961,12 @@ fn apply_in_place(
                 }
                 ws.active_tab().id.clone()
             };
-            effects.followed_tab_ids = navigate(ws, &driver, &reference);
+            (effects.followed_tab_ids, effects.positions) =
+                navigate(ws, &schemes, &driver, &reference);
         }
         "nav.back" | "nav.forward" => {
             let ws = s.active_mut();
+            let workspace_id = ws.id.clone();
             let tab_id = ws.active_tab().id.clone();
             let tab = tab_mut(ws, &tab_id);
             let visit = if id == "nav.back" {
@@ -1871,6 +1978,9 @@ fn apply_in_place(
             .expect("enabled");
             tab.reference = visit.reference;
             tab.scroll_anchor = visit.scroll_anchor;
+            tab.highlight_range = None;
+            let position = TabPosition::of(&workspace_id, tab, true, false, FollowMapping::Same);
+            effects.positions.push(position);
         }
         "workspace.new" => {
             let source = s.active().active_tab().clone();
@@ -2170,15 +2280,26 @@ fn apply_in_place(
         "tab.record_scroll" => {
             let target = target_workspace(s, args).expect("enabled").id.clone();
             let tab_id = args.tab_id.clone().expect("enabled");
+            let segment_id = non_empty(&args.segment_id).expect("enabled").to_owned();
+            // The verse at the top: the host's reference if it sends one, else the
+            // segment's own verse (`John.4.7`).
+            let verse = non_empty(&args.reference)
+                .and_then(crate::palette::parse_tab_reference)
+                .map(|set| set.ranges[0].start.clone())
+                .filter(|r| r.verse.is_some())
+                .or_else(|| openlogos_core::canon::segment_reference(&segment_id));
+            let active = s.active_workspace_id == target && s.active().active_tab().id == tab_id;
+            let schemes = s.resource_schemes.clone();
             let ws = s
                 .workspaces
                 .iter_mut()
                 .find(|w| w.id == target)
                 .expect("enabled");
-            tab_mut(ws, &tab_id).scroll_anchor = Some(ScrollAnchor {
-                segment_id: non_empty(&args.segment_id).expect("enabled").to_owned(),
+            let anchor = ScrollAnchor {
+                segment_id,
                 scalar: args.scalar.expect("enabled"),
-            });
+            };
+            effects.positions = scroll(ws, &schemes, &tab_id, anchor, verse, active);
         }
         "view.notes_dock" => {
             let ws = s.active_mut();
@@ -2236,6 +2357,7 @@ fn apply_in_place(
                         pinned: true,
                         history: Default::default(),
                         lexicon_word: Some(word),
+                        highlight_range: None,
                     };
                     match target {
                         Some(index) => {
@@ -2254,12 +2376,15 @@ fn apply_in_place(
         }
         "tab.open_edition" => {
             let resource = non_empty(&args.resource_id).expect("enabled").to_owned();
+            let schemes = s.resource_schemes.clone();
             let ws = s.active_mut();
             let source = ws.active_tab().clone();
             let reference = non_empty(&args.reference)
                 .map(str::to_owned)
                 .or_else(|| source.reference.clone())
                 .expect("enabled");
+            // In the edition's own versification (B078): English Joel 2:28 is Hebrew 3:1.
+            let (reference, _) = map_reference(&schemes, &reference, &source.content_id, &resource);
             // As `tab.open_lexicon`: shown in its column, focus stays on the source.
             let active = ws.active_index();
             let target = side_column(ws, args);
@@ -2298,6 +2423,7 @@ fn apply_in_place(
                         pinned: source.pinned,
                         history: Default::default(),
                         lexicon_word: None,
+                        highlight_range: None,
                     };
                     match target {
                         Some(index) => {
@@ -2467,7 +2593,10 @@ impl Shell {
                 revision: self.revision,
             });
         }
-        let quiet = command(&invocation.command_id).is_some_and(|c| c.quiet);
+        // A quiet command that moved a tab's passage (a scroll into the next verse) still
+        // changes what labels and palette rows show.
+        let quiet = command(&invocation.command_id).is_some_and(|c| c.quiet)
+            && effects.positions.is_empty();
         let recorded = undo.is_some();
         if let Some(record) = undo {
             self.undo_stack.push(record);
@@ -2503,6 +2632,14 @@ impl Shell {
         languages: std::collections::BTreeMap<String, String>,
     ) {
         self.session.resource_languages = languages;
+        self.revision += 1;
+    }
+
+    /// Registers resource versification schemes (`bsb` → `eng`, `wlc` → `org`), replacing
+    /// any registered before (B078), so linked tabs follow through versification. A
+    /// [`crate::reading`] host takes them from its installed packs. Bumps the revision.
+    pub fn set_resource_schemes(&mut self, schemes: std::collections::BTreeMap<String, String>) {
+        self.session.resource_schemes = schemes;
         self.revision += 1;
     }
 

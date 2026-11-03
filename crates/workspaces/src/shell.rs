@@ -59,6 +59,10 @@ pub struct Tab {
     /// `None` for every other tab.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lexicon_word: Option<String>,
+    /// The verses the last navigation named (B078, `John.3.16-John.3.18`), which the host
+    /// marks until the next navigation; `None` after a chapter or book was opened.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub highlight_range: Option<String>,
 }
 
 impl Tab {
@@ -433,6 +437,11 @@ pub struct Session {
     /// state, not persisted.
     #[serde(skip)]
     pub resource_languages: BTreeMap<String, String>,
+    /// Versification schemes of resources by content id (B078: `bsb` → `eng`, `wlc` →
+    /// `org`), registered by the host from its installed packs; linked tabs follow through
+    /// them ([`crate::reading`]). Runtime state, not persisted.
+    #[serde(skip)]
+    pub resource_schemes: BTreeMap<String, String>,
 }
 
 impl Session {
@@ -735,6 +744,7 @@ impl Workspace {
             pinned: p.pinned,
             history: PaneHistory::default(),
             lexicon_word: None,
+            highlight_range: None,
         };
         let structure = [
             DeviceClass::UltraWide,
@@ -994,6 +1004,7 @@ impl Session {
             ink: InkSettings::default(),
             resource_titles: BTreeMap::new(),
             resource_languages: BTreeMap::new(),
+            resource_schemes: BTreeMap::new(),
         }
     }
 
@@ -1114,6 +1125,7 @@ impl Session {
             ink: record.ink,
             resource_titles: BTreeMap::new(),
             resource_languages: BTreeMap::new(),
+            resource_schemes: BTreeMap::new(),
         };
         session.check()?;
         Ok(session)
