@@ -91,9 +91,112 @@ final class ShellMeasure {
         stats.append(await measure("open a chapter in a tab, warm (nav.navigate, group follows)", budget: 100) { i in
             self.model.run("nav.navigate", args: ShellCommandArgs(reference: i % 2 == 0 ? "John.3.17" : "John.3.16"))
         })
+        #if os(macOS)
+        stats += await measureContextMenu()
+        #endif
         let size = Self.windowSize
         let tabs = model.session.workspaces.reduce(0) { $0 + $1.columns.reduce(0) { $0 + $1.tabs.count } }
         return Report(host: "mac", window: "\(Int(size.width))x\(Int(size.height))", workspaces: model.session.workspaces.count, tabs: tabs, stats: stats)
+    }
+
+    #if os(macOS)
+    /// B077: the context menu. Built (hit test, core, NSMenu) for each target kind in turn;
+    /// on screen (the menu's window open and its tracking running); and two choices through to
+    /// their effect drawn: Compare (`tab.open_edition`) and Search in all editions (the palette).
+    private func measureContextMenu() async -> [Stat] {
+        var stats: [Stat] = []
+        let ws = model.activeWorkspace
+        // A column showing text with words: the first one with a laid-out surface.
+        guard let column = ws.columns.first(where: { model.surface(for: $0.shownTabId)?.layout?.display.length ?? 0 > 40 }),
+              let tab = column.tabs.first(where: { $0.id == column.shownTabId }), let surface = model.surface(for: tab.id),
+              let layout = surface.layout, let text = surface.textView else { return stats }
+        model.focusColumn(column.number)
+        Self.flush()
+        let string = layout.display.string as NSString
+        // Word starts in the first verse, for right-clicks on different words.
+        var points: [NSPoint] = []
+        string.enumerateSubstrings(in: NSRange(location: 0, length: min(string.length, 400)), options: .byWords) { _, range, _, _ in
+            if let box = surface.rect(for: range) { points.append(NSPoint(x: box.midX, y: box.midY)) }
+        }
+        guard !points.isEmpty else { return stats }
+        let other = ws.columns.first { $0.number != column.number }?.number ?? column.number
+        let kinds: [(Int) -> NSMenu?] = [
+            { i in self.model.nsMenu(for: surface.contextHit(at: points[i % points.count]), tab: tab, column: column) },
+            { i in
+                surface.select(display: NSRange(location: 0, length: min(string.length, 30)))
+                return self.model.nsMenu(for: surface.contextHit(at: points[1 % points.count]), tab: tab, column: column)
+            },
+            { _ in self.model.nsMenu(for: .tab(tabId: ws.columns[Int(other) - 1].tabs.last?.id ?? tab.id)) },
+            { _ in self.model.nsMenu(for: .column(column: other)) },
+            { _ in self.model.nsMenu(for: .background(column: column.number)) },
+            { _ in self.model.nsMenu(for: .noteText(text: "grace", tabId: nil)) },
+            { _ in self.model.nsMenu(for: .noteLink(reference: "Rom.8.28", tabId: nil)) },
+        ]
+        stats.append(await measure("context menu built: hit test, core, NSMenu (7 target kinds)", budget: 16, count: max(samplesPerInteraction, 7 * 30),
+                                   prepare: { _ in surface.clearSelection() }) { i in
+            _ = kinds[i % kinds.count](i)
+        })
+        surface.clearSelection()
+        Self.flush()
+
+        // On screen: popUp shows the menu window and starts tracking; a timer in the tracking
+        // run loop mode stops the clock (the menu is drawn by then) and closes it.
+        var open: [Double] = []
+        for i in 0..<max(samplesPerInteraction, 200) {
+            surface.clearSelection()
+            Self.flush()
+            let t0 = CACurrentMediaTime()
+            guard let menu = model.nsMenu(for: surface.contextHit(at: points[i % points.count]), tab: tab, column: column) else { continue }
+            Self.flush()
+            let timer = Timer(timeInterval: 0, repeats: false) { _ in
+                MainActor.assumeIsolated {
+                    open.append((CACurrentMediaTime() - t0) * 1000)
+                    menu.cancelTracking()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .eventTracking)
+            menu.popUp(positioning: nil, at: points[i % points.count], in: text)
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        surface.clearSelection()
+        stats.append(Self.stat("right-click → menu window open and tracking (popUp, word menu)", budget: 16, open))
+
+        // Choices: the menu's focus, the row, the effect drawn.
+        let wordMenu = { () -> ShellNSMenu? in
+            surface.clearSelection()
+            return self.model.nsMenu(for: surface.contextHit(at: points[0]), tab: tab, column: column) as? ShellNSMenu
+        }
+        if let menu = wordMenu(), let row = menu.items.first(where: { $0.identifier?.rawValue == "tab.open_edition" && $0.action != nil }),
+           let choice = row.representedObject as? MenuChoice, let core = menu.shellMenu {
+            stats.append(await measure("choose → effect: \(row.title) (tab.open_edition, drawn)", budget: 16,
+                                       prepare: { i in if i > 0 { self.model.run("edit.undo") } }) { _ in
+                self.model.choose(core, commandId: choice.commandId, args: choice.args)
+            })
+            model.run("edit.undo")
+        }
+        if let menu = wordMenu(), let row = menu.items.first(where: { ($0.representedObject as? MenuChoice)?.args.scope == "all" }),
+           let choice = row.representedObject as? MenuChoice, let core = menu.shellMenu {
+            stats.append(await measure("choose → effect: \(row.title) (palette Text section drawn)", budget: 50,
+                                       prepare: { _ in self.model.closePalette() }) { _ in
+                self.model.choose(core, commandId: choice.commandId, args: choice.args)
+            })
+            model.closePalette()
+        }
+        surface.clearSelection()
+        Self.flush()
+        return stats
+    }
+    #endif
+
+    private static func stat(_ name: String, budget: Double, _ values: [Double]) -> Stat {
+        func pct(_ p: Double) -> Double {
+            guard !values.isEmpty else { return 0 }
+            let sorted = values.sorted()
+            return sorted[min(sorted.count - 1, Int((Double(sorted.count - 1) * p).rounded()))]
+        }
+        func r(_ v: Double) -> Double { (v * 100).rounded() / 100 }
+        return Stat(interaction: name, budgetMs: budget, samples: values.count, p50Ms: r(pct(0.5)), p95Ms: r(pct(0.95)),
+                    maxMs: r(values.max() ?? 0), nextFrameP50Ms: r(pct(0.5)), nextFrameP95Ms: r(pct(0.95)))
     }
 
     /// `prepare` runs and is drawn before the timer starts (the state an interaction starts from).

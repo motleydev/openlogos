@@ -261,7 +261,7 @@ extension ShellModel {
         #else
         let text = ""
         #endif
-        guard let start = (try? parseReference(text: text))?.ranges.first?.start, let osis = try? formatOsis(reference: start) else {
+        guard let start = (try? parseReference(text: text.trimmingCharacters(in: .whitespacesAndNewlines)))?.ranges.first?.start, let osis = try? formatOsis(reference: start) else {
             return show(toast: "No passage on the clipboard")
         }
         run("nav.navigate", args: ShellCommandArgs(reference: osis))
@@ -303,11 +303,12 @@ extension ShellModel {
     /// The menu for what has focus: the selection or the caret's word in reading text, the
     /// caret in a note, else the focused tab, else the active column's background.
     func openKeyboardMenu() {
-        let responder = NSApp.keyWindow?.firstResponder
+        let window = catchers.view("background-\(activeColumn.number)")?.window ?? NSApp.keyWindow
+        let responder = window?.firstResponder
         if let note = responder as? NoteTextView, note.showKeyboardMenu() { return }
         if let reader = responder as? ReaderNSTextView, reader.surface?.onContextMenu != nil, reader.accessibilityPerformShowMenu() { return }
-        if let tab = activeTab, MenuCatchers.popUp("tab-\(tab.id)") { return }
-        _ = MenuCatchers.popUp("background-\(activeColumn.number)")
+        if let tab = activeTab, catchers.popUp("tab-\(tab.id)") { return }
+        catchers.popUp("background-\(activeColumn.number)")
     }
 
     // MARK: Drawing
@@ -316,7 +317,9 @@ extension ShellModel {
     func nsMenu(for target: ShellContextTarget, subject: MenuSubject? = nil) -> NSMenu? {
         guard let menu = contextMenu(for: target) else { return nil }
         menuSubject = subject
-        return ContextMenuBuilder.build(menu, model: self)
+        let built = ContextMenuBuilder.build(menu, model: self)
+        lastMenu = built
+        return built
     }
 
     /// A reading tab's right-click.
@@ -496,18 +499,19 @@ enum ContextMenuBuilder {
 
 // MARK: - SwiftUI chrome
 
-/// The catchers on screen by key (`tab-t1`, `column-2`, `background-2`), for the keyboard.
+/// A shell's catchers on screen by key (`tab-t1`, `column-2`, `background-2`), for the
+/// keyboard.
 @MainActor
-enum MenuCatchers {
+final class MenuCatchers {
     private struct Weak { weak var view: MenuCatcherView? }
-    private static var views: [String: Weak] = [:]
+    private var views: [String: Weak] = [:]
 
-    static func register(_ view: MenuCatcherView) { views[view.key] = Weak(view: view) }
-    static func view(_ key: String) -> MenuCatcherView? { views[key]?.view.flatMap { $0.window == nil ? nil : $0 } }
+    func register(_ view: MenuCatcherView) { views[view.key] = Weak(view: view) }
+    func view(_ key: String) -> MenuCatcherView? { views[key]?.view.flatMap { $0.window == nil ? nil : $0 } }
 
     /// Opens the catcher's menu at its leading bottom corner; false when it is not on screen.
     @discardableResult
-    static func popUp(_ key: String) -> Bool {
+    func popUp(_ key: String) -> Bool {
         guard let view = view(key), let menu = view.provide() else { return false }
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: view.isFlipped ? view.bounds.maxY : 0), in: view)
         return true
@@ -537,6 +541,7 @@ final class MenuCatcherView: NSView {
 }
 
 struct MenuCatcher: NSViewRepresentable {
+    let model: ShellModel
     let key: String
     let provide: () -> NSMenu?
 
@@ -549,7 +554,7 @@ struct MenuCatcher: NSViewRepresentable {
     func updateNSView(_ view: MenuCatcherView, context: Context) {
         view.key = key
         view.provide = provide
-        MenuCatchers.register(view)
+        model.catchers.register(view)
     }
 }
 #endif
@@ -558,8 +563,8 @@ extension View {
     /// The OpenLogos menu for this piece of chrome; VoiceOver's show-menu action opens it too.
     func shellContextMenu(_ key: String, _ provide: @escaping () -> ShellContextTarget, model: ShellModel) -> some View {
         #if canImport(AppKit)
-        overlay(MenuCatcher(key: key) { model.nsMenu(for: provide()) })
-            .accessibilityAction(.showMenu) { MenuCatchers.popUp(key) }
+        overlay(MenuCatcher(model: model, key: key) { model.nsMenu(for: provide()) })
+            .accessibilityAction(.showMenu) { model.catchers.popUp(key) }
         #else
         self
         #endif

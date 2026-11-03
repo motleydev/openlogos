@@ -204,12 +204,12 @@ enum ShellLaunch {
         case "tab":
             guard let number = column, let col = model.activeWorkspace.columns.first(where: { $0.number == number }),
                   let index = parts.count > 2 ? Int(parts[2]) : 0, let tab = col.tabs[safe: index],
-                  let catcher = MenuCatchers.view("tab-\(tab.id)") else { return }
+                  let catcher = model.catchers.view("tab-\(tab.id)") else { return }
             menu = model.nsMenu(for: .tab(tabId: tab.id))
             view = catcher
             point = NSPoint(x: 8, y: catcher.isFlipped ? catcher.bounds.maxY : 0)
         case "column", "background":
-            guard let number = column, let catcher = MenuCatchers.view("\(kind)-\(number)") else { return }
+            guard let number = column, let catcher = model.catchers.view("\(kind)-\(number)") else { return }
             menu = model.nsMenu(for: kind == "column" ? .column(column: number) : .background(column: number))
             view = catcher
             point = kind == "column" ? NSPoint(x: 12, y: catcher.isFlipped ? catcher.bounds.maxY : 0)

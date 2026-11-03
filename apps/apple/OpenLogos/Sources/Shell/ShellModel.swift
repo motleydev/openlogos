@@ -76,6 +76,12 @@ final class ShellModel: ObservableObject {
     /// B077: what the menu was opened on, for the host commands that act on it (a note link
     /// to remove).
     var menuSubject: MenuSubject?
+    #if canImport(AppKit)
+    /// B077: the chrome's menu catchers, for the keyboard.
+    let catchers = MenuCatchers()
+    /// The menu built last (the measurement and the tests close it as it opens).
+    weak var lastMenu: NSMenu?
+    #endif
     /// Column widths while a rule is dragged; the drag's end commits `column.resize`.
     @Published var widthOverrides: [String: CGFloat] = [:]
     /// The core's layout constants (measure caps, pane minimums).

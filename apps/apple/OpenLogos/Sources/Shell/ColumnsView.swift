@@ -120,11 +120,16 @@ struct TabStrip: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(column.tabs, id: \.id) { tab in
-                        TabLabel(model: model, column: column, tab: tab, shown: tab.id == column.shownTabId)
+            GeometryReader { geometry in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(column.tabs, id: \.id) { tab in
+                            TabLabel(model: model, column: column, tab: tab, shown: tab.id == column.shownTabId)
+                        }
                     }
+                    // B077: the strip's empty area is inside the scroll view, so its catcher is too.
+                    .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .leading)
+                    .background(BackgroundMenu(model: model, key: "strip-\(column.number)", column: column.number))
                 }
             }
             Button {
@@ -141,7 +146,6 @@ struct TabStrip: View {
         }
         .padding(.leading, ShellTokens.Spacing.xs)
         .frame(height: ShellTokens.tabStripHeight)
-        .background(BackgroundMenu(model: model, key: "strip-\(column.number)", column: column.number))
     }
 }
 
@@ -153,7 +157,7 @@ struct BackgroundMenu: View {
 
     var body: some View {
         #if os(macOS)
-        MenuCatcher(key: key) { model.nsMenu(for: .background(column: column)) }
+        MenuCatcher(model: model, key: key) { model.nsMenu(for: .background(column: column)) }
         #else
         Color.clear
         #endif
