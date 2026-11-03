@@ -18,6 +18,7 @@ import org.openlogos.core.Segment
 import org.openlogos.core.ShellCommandArgs
 import org.openlogos.core.ShellCommandContext
 import org.openlogos.core.ShellCommandException
+import org.openlogos.core.ShellContextTarget
 import org.openlogos.core.ShellFocus
 import org.openlogos.core.ShellHandle
 import org.openlogos.core.ShellPaletteContext
