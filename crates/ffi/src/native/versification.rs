@@ -173,6 +173,24 @@ pub fn map_verse(
         .into())
 }
 
+/// Maps one verse between `eng` and `org` through the canon table (B078,
+/// `core::canon`): English and Hebrew numbering for the whole Bible, with Psalm titles as
+/// `eng` verse 0. A scheme the table does not know is `Unmapped`.
+#[uniffi::export]
+pub fn canon_map_verse(
+    reference: Reference,
+    from_scheme: String,
+    to_scheme: String,
+) -> Result<MappingResult, VersificationError> {
+    let reference = openlogos_core::reference::Reference::try_from(reference)?;
+    Ok(openlogos_core::canon::map(
+        &reference,
+        &SchemeId::new(&from_scheme),
+        &SchemeId::new(&to_scheme),
+    )
+    .into())
+}
+
 fn verse_map(rows: Vec<VerseMapRow>) -> Result<VerseMap, VersificationError> {
     let rows: Vec<FixtureRow> = rows.into_iter().map(FixtureRow::from).collect();
     openlogos_conformance::verse_map_from_rows(&rows)
