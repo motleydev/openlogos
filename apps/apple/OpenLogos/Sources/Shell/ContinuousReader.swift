@@ -345,7 +345,12 @@ final class ReadingStream: NSObject {
             blocks.insert(block, at: 0)
             relayout(.prepend)
         }
-        if let top = top(of: target) {
+        // A chapter's first verse (or a Psalm's title) opens with the chapter's heading in view.
+        let block = layout.blocks.first { $0.chapterKey == ShellReference.chapter(of: target) }
+        let opensChapter = block.map { b in layout.segmentOrder.first { (layout.verseRanges[$0]?.location ?? -1) >= NSMaxRange(b.headingRange) } == target } ?? false
+        if opensChapter, let key = block?.chapterKey, let top = top(ofBlock: key) {
+            setOrigin(top - Self.topMargin)
+        } else if let top = top(of: target) {
             setOrigin(top - Self.topMargin)
         }
         recordTop(target)

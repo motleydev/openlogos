@@ -248,7 +248,7 @@ struct IdentityRow: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .layoutPriority(0)
-            Text(ShellReference.human(tab?.reference))
+            Text(ShellReference.humanOsis(tab?.reference))
                 .font(ShellTokens.chromeFont)
                 .foregroundStyle(model.theme.chromeColor)
                 .lineLimit(1)
@@ -268,7 +268,7 @@ struct IdentityRow: View {
         .frame(height: ShellTokens.identityRowHeight)
         .shellContextMenu("column-\(column.number)", { .column(column: column.number) }, model: model)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Column \(column.number), \(resource?.name ?? ""), \(ShellReference.human(tab?.reference)), \(tab.map(TabTitle.linkState) ?? "")\(isActive ? ", active" : "")")
+        .accessibilityLabel("Column \(column.number), \(resource?.name ?? ""), \(ShellReference.humanOsis(tab?.reference)), \(tab.map(TabTitle.linkState) ?? "")\(isActive ? ", active" : "")")
         .accessibilityIdentifier("shell-identity-\(column.number)")
     }
 }
