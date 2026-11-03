@@ -23,10 +23,10 @@ docs/evidence/B077-core.md); the web shell draws it and performs the host-side e
 | **Opening from the keyboard**: ⇧F10 or the ContextMenu key. The target is the selection, else the word at a collapsed caret in reading text, else the caret in a note, else the focused tab, else the active column's background; the menu opens at it with the first row focused | `contextMenuKey` |
 | **Closes** on a press outside, a scroll or wheel outside the menu, a window resize and the window losing focus | `context-menu.js` |
 | **Host effects** (`handled: false`) | `perform` |
-| · `search.text` scope `edition` / `all` / `workspace` | the palette opens with `#word` (its Text section) and a chip in the field: "This edition · BSB", "All editions", "Workspace". The Text section is expanded and its rows are filtered to the scope's editions (from the existing fixture text source; edition: that resource, workspace: every resource open in the workspace). × on the chip drops the scope; closing the palette clears it | `searchText`, `queryPalette`, `renderScopeChip` |
-| · `search.text` scope `chapter` (Find in this chapter) | every case-insensitive match in the column's text is painted (CSS Custom Highlight `ol-find`, the current one darker), the current one scrolled into view; toast "4 matches in John 3" (or "No matches in John 3"). ⌘G / ⇧⌘G step and wrap ("2 of 4 in John 3"), Esc clears. A rebuild of the column clears it | `findInChapter`, `findKey` |
+| · `search.text` scope `edition` / `all` / `workspace` | the palette opens with `#word` (its Text section) and a chip in the field: "This edition · BSB", "All editions", "This workspace". The Text section is expanded and its rows are filtered to the scope's editions (from the existing fixture text source; edition: that resource, workspace: every resource open in the workspace). × on the chip drops the scope; closing the palette clears it | `searchText`, `queryPalette`, `renderScopeChip` |
+| · `search.text` scope `chapter` (Find in this chapter) | every case-insensitive match in the column's text is painted (CSS Custom Highlight `ol-find`, the current one darker), the current one scrolled into view; toast "4 matches in John 3" (or "No matches for “x” in John 3"). ⌘G / ⇧⌘G step and wrap ("2 of 4 in John 3"), Esc clears. A rebuild of the column clears it | `findInChapter`, `findKey` |
 | · `copy.text` / `copy.reference` / `copy.passage` | clipboard `loved` / `John 3:17` (`formatHuman`) / `“eternal life” — John 3:16 (BSB)`, the shape of B076's Note on it quote; without `text` the verse (or range) comes from the text source (`“For God did not send … through Him.” — John 3:17 (BSB)`). Toasts "Copied “loved”", "Copied John 3:17", "Copied John 3:16 with its text" | `copyText`, `copyPassage`, `verseText` |
-| · `host.cut` / `host.copy` / `host.paste` | the browser's cut and copy on the restored selection (`execCommand`, then `navigator.clipboard.writeText` if refused); paste reads the clipboard and inserts it at the note caret the menu was opened on; toasts "Copied" / "Cut" | `clipboardAction` |
+| · `host.cut` / `host.copy` / `host.paste` | the browser's cut and copy on the restored selection (`execCommand`, then `navigator.clipboard.writeText` if refused); paste reads the clipboard and inserts it at the note caret the menu was opened on; toast "Copied" after Copy (none after Cut) | `clipboardAction` |
 | · `nav.paste_passage` | reads the clipboard, parses it (all of it, else the reference after the dash that `copy.passage` writes, else the first run that reads as one) and runs `nav.navigate` with the toast "Opened John 3:17"; "No passage on the clipboard" otherwise. When the browser does not grant reading the clipboard, the shell's own last copy is used | `pastePassage`, `passageIn`, `readClipboard` |
 | · `selection.highlight_in` | the selection (the right-clicked word) highlighted in the chosen swatch | `highlightSelection(swatch)` |
 | · `note.remove_link` | the passage link becomes its words, and both views of the note follow; toast "Removed link to John 3:16" | `removeLink` |
@@ -161,9 +161,9 @@ between separators with no labels drawn, disabled rows with the reason as a subt
 tooltip, keys shown (dimmed on disabled rows), submenu parents that only open, the word
 selected on right-click, editions registered only for bsb / sblgnt / wlc (so BSB shows
 "Compare in SBLGNT" and SBLGNT "Compare in BSB"), the chip labels "This edition · BSB",
-"All editions", "Workspace", and the toasts: "Copied “loved”", "Copied John 3:16",
-"Copied John 3:16 with its text", "Copied" / "Cut", "Opened John 3:17" / "No passage on the
-clipboard", "Removed link to John 3:16", "4 matches in John 3" / "No matches in John 3",
+"All editions", "This workspace", and the toasts: "Copied “loved”", "Copied John 3:16",
+"Copied John 3:16 with its text", "Copied" (Copy; Cut has none), "Opened John 3:17" / "No passage on the
+clipboard", "Removed link to John 3:16", "4 matches in John 3" / "No matches for “x” in John 3",
 "2 of 4 in John 3". Highlight in colour has no toast.
 
 Ruled by team-lead (3 November 2026), both already as built on web: (a) Copy with reference
@@ -171,6 +171,9 @@ and Copy verse with reference write `“text” — John 3:16 (BSB)` (curly quot
 reference, edition short name in parentheses; plain text on one line, no verse numbers);
 (b) Find in this chapter does not open the palette: it highlights in the column with the
 toast "N matches in John 3", ⌘G / ⇧⌘G step through them and Esc clears.
+Final lead rulings (same day): the workspace chip reads "This workspace"; no matches is
+"No matches for “x” in John 3"; Paste passage keeps "Opened John 3:17"; Cut has no toast; every
+chip keeps its ×; the curly quotes stay.
 Chip placement (inside the field on web, left of it on the Mac) is platform layout.
 
 ## Deviations from the brief

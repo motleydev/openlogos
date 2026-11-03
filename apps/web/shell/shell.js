@@ -1549,7 +1549,7 @@ function clipboardAction(kind) {
     if (kind === "cut" && editor) document.execCommand("delete");
   }
   if (editor) noteChanged(editor);
-  toast(kind === "cut" ? "Cut" : "Copied");
+  if (kind === "copy") toast("Copied");
 }
 
 /** A passage in pasted text: all of it, else the reference copy.passage writes after the
@@ -1584,7 +1584,7 @@ function removeLink(reference) {
   toast(`Removed link to ${humanPassage(core, reference)}`);
 }
 
-const SCOPE_LABELS = { all: "All editions", workspace: "Workspace" };
+const SCOPE_LABELS = { all: "All editions", workspace: "This workspace" };
 
 /** search.text: the palette's Text section with the words and a scope chip; the chapter scope
  *  finds in the column instead. */
@@ -1636,7 +1636,7 @@ function findInChapter(text, resource, reference) {
       ranges.push(r);
     }
   }
-  if (!ranges.length) return toast(`No matches in ${where}`);
+  if (!ranges.length) return toast(`No matches for “${text}” in ${where}`);
   host.find = { view, ranges, index: 0, text, where };
   showFind();
   toast(ranges.length === 1 ? `1 match in ${where}` : `${ranges.length} matches in ${where}`);
