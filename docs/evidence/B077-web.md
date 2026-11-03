@@ -166,11 +166,11 @@ selected on right-click, editions registered only for bsb / sblgnt / wlc (so BSB
 clipboard", "Removed link to John 3:16", "4 matches in John 3" / "No matches in John 3",
 "2 of 4 in John 3". Highlight in colour has no toast.
 
-Open when this file was written (web's proposal, sent to b077mac; if they disagree it goes to
-team-lead): (a) `copy.passage` keeps curly quotes, `“text” — John 3:16 (BSB)`, like Note on
-it; the Mac proposed `text — John 3:16 (BSB)` without them. (b) Find in this chapter only
-highlights in the column (no palette and no "This chapter" chip), because with the palette
-open Esc and focus belong to the field; the Mac proposed palette rows for the chapter as well.
+Ruled by team-lead (3 November 2026), both already as built on web: (a) Copy with reference
+and Copy verse with reference write `“text” — John 3:16 (BSB)` (curly quotes, em dash, human
+reference, edition short name in parentheses; plain text on one line, no verse numbers);
+(b) Find in this chapter does not open the palette: it highlights in the column with the
+toast "N matches in John 3", ⌘G / ⇧⌘G step through them and Esc clears.
 Chip placement (inside the field on web, left of it on the Mac) is platform layout.
 
 ## Deviations from the brief
