@@ -25,6 +25,7 @@ use openlogos_core::versification::{SchemeId, VerseMap};
 use openlogos_ink::{Easing, EndOptions, InputPoint, StrokeOptions, Taper};
 use openlogos_text::{Utf16Range, scalar_to_utf16, utf16_to_scalar};
 use openlogos_workspaces::commands::{CommandContext, CommandError, Invocation, Shell, registry};
+use openlogos_workspaces::menu::ContextTarget;
 use openlogos_workspaces::migrate_workspace_to_2;
 use openlogos_workspaces::palette::{
     PaletteContext, PaletteIndex, TextProvider, palette_query_indexed,
@@ -143,7 +144,7 @@ export interface ShellReading { text_size_step: number; line_spacing: number; th
 export interface ShellInk { width: number; swatch: string; alternate_swatch: string }
 export interface ShellSession { schema_version: "1.0"; fixture_only: boolean; workspaces: ShellWorkspace[]; active_workspace_id: string; tool: ShellTool; next_serial: number; reading: ShellReading; ink: ShellInk }
 export interface ShellSessionRecord { schema_version: "1.0"; fixture_only: boolean; workspace_ids: string[]; active_workspace_id: string; tool: ShellTool; next_serial: number; reading?: ShellReading; ink?: ShellInk }
-export interface ShellCommandArgs { column?: number; new_column?: boolean; text?: string; reference?: string; workspace_id?: string; tab_id?: string; group?: string; number?: number; segment_id?: string; scalar?: number }
+export interface ShellCommandArgs { column?: number; new_column?: boolean; text?: string; reference?: string; workspace_id?: string; tab_id?: string; group?: string; number?: number; segment_id?: string; scalar?: number; scope?: "edition" | "all" | "workspace" | "chapter"; resource_id?: string }
 /** The core's pane minimums and measure caps, in points. */
 export interface LayoutConstants { pane_minimum_standard_pt: number; pane_minimum_accessibility_pt: number; measure_cap_standard_pt: number; measure_cap_accessibility_pt: number }
 export interface ShellInvocation { command_id: string; args?: ShellCommandArgs }
@@ -170,6 +171,20 @@ export type ShellToolContext = "translation" | "original" | "notes" | "reference
 export interface ShellToolWellItem { command_id: string; tool: ShellTool | null; label: string; key: string | null; icon: string; active: boolean; value: string | null; disabled_text: string | null }
 export interface ShellToolWellGroup { kind: "tools" | "ink" | "selection"; items: ShellToolWellItem[] }
 export interface ShellToolWell { context: ShellToolContext; tool: ShellTool; effective_tool: ShellTool; groups: ShellToolWellGroup[] }
+/** B077 context menu (specs/22 §4.2): what was right-clicked. `tab_id` absent means the active tab (the notes dock for a note). */
+export type ShellContextTarget =
+  | { kind: "word"; text: string; reference?: string | null; segment_id?: string | null; scalar_start?: number | null; scalar_end?: number | null; resource_id?: string | null; tab_id?: string | null }
+  | { kind: "selection"; text: string; reference?: string | null; end_reference?: string | null; resource_id?: string | null; tab_id?: string | null }
+  | { kind: "note_text"; text?: string | null; tab_id?: string | null }
+  | { kind: "note_link"; reference: string; tab_id?: string | null }
+  | { kind: "tab"; tab_id: string }
+  | { kind: "column"; column: number }
+  | { kind: "background"; column?: number | null };
+export type ShellContextTargetKind = ShellContextTarget["kind"];
+/** A row: `command_id` and `args` are what a click dispatches (`apply`) under the menu's `context`, after its `focus`. A row with a `submenu` carries its first enabled child's command. */
+export interface ShellContextMenuItem { command_id: string; args: ShellCommandArgs; label: string; key: string | null; icon: string; active: boolean; value: string | null; disabled_text: string | null; submenu?: ShellContextMenuItem[] }
+export interface ShellContextMenuSection { label: string | null; items: ShellContextMenuItem[] }
+export interface ShellContextMenu { target_kind: ShellContextTargetKind; title: string | null; focus: ShellInvocation | null; context: { has_selection: boolean; focus: ShellFocus }; sections: ShellContextMenuSection[] }
 export interface InkDocument { schema_version: "1.0" | "1.1"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
 "#;
 
@@ -559,6 +574,21 @@ impl ShellHandle {
     ) -> Result<JsValue, JsValue> {
         let context: CommandContext = optional("context", context)?;
         to_js(&self.shell.tool_well(&context))
+    }
+
+    /// B077: the context menu for what was right-clicked (`context.has_selection` for a tab,
+    /// column or background menu). Apply `focus` first when it is set, then the chosen row
+    /// under `context`. Throws `no_such_tab` or `no_such_column` for a target that is gone.
+    #[wasm_bindgen(js_name = contextMenu, unchecked_return_type = "ShellContextMenu")]
+    pub fn context_menu(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "ShellContextTarget")] target: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "ShellCommandContext | undefined")] context: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let target: ContextTarget = from_js("target", target)?;
+        let context: CommandContext = optional("context", context)?;
+        let menu = self.shell.context_menu(&target, &context).map_err(throw)?;
+        to_js(&menu)
     }
 
     /// The session.

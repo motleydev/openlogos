@@ -181,3 +181,28 @@ test("B076: the tool well follows focus, keeps the stored tool and refuses tools
   assert.equal(shell.view().workspaces[0].active_column_number, 2, "focus stays where the word was clicked");
   assert.equal(shell.view().workspaces[0].columns[0].tabs[0].lexicon_word, null);
 });
+
+test("B077: the context menu comes from the core, with its focus change and rows to dispatch", () => {
+  const shell = core.ShellHandle.fixture();
+  const menu = shell.contextMenu({ kind: "word", text: "ἠγάπησεν", reference: "John.3.16", tab_id: "t3" });
+  assert.equal(menu.target_kind, "word");
+  assert.deepEqual(menu.focus, { command_id: "tab.focus", args: { tab_id: "t3" } });
+  assert.deepEqual(menu.context, { has_selection: true, focus: "tab" });
+  assert.deepEqual(menu.sections.map((s) => s.label), ["Search", "Open", "Mark", "Copy"]);
+  const rows = menu.sections.flatMap((s) => s.items);
+  assert.equal(rows.find((r) => r.label === "Word study").disabled_text, null);
+  assert.equal(rows.find((r) => r.label === "Search lemma").disabled_text, "Needs the lexicon import");
+  const compare = rows.find((r) => r.label === "Compare in bsb");
+  assert.deepEqual(compare.args, { reference: "John.3.16", resource_id: "bsb" });
+  shell.apply(menu.focus, menu.context);
+  assert.equal(shell.apply({ command_id: compare.command_id, args: compare.args }, menu.context).recorded, true);
+  assert.equal(shell.view().workspaces[0].active_column_number, 2, "focus stays on the word's column");
+  const tab = shell.contextMenu({ kind: "tab", tab_id: "t2" });
+  const pin = tab.sections[2].items[0];
+  assert.deepEqual([pin.label, pin.active, pin.disabled_text], ["Pin", true, "The tab is already pinned"]);
+  assert.equal(tab.sections[1].items[1].submenu.at(-1).label, "New column");
+  assert.throws(
+    () => shell.contextMenu({ kind: "column", column: 9 }),
+    (error) => error.kind === "no_such_column" && error.message === "There is no column 9",
+  );
+});

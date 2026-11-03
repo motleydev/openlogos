@@ -427,6 +427,13 @@ pub fn parse_tab_reference(text: &str) -> Option<ReferenceSet> {
         .filter(|set| !set.ranges.is_empty())
 }
 
+/// A stored reference in words (`John 3:16`), as palette rows and menu labels show it;
+/// `None` when it does not parse.
+#[must_use]
+pub fn human_reference(text: &str) -> Option<String> {
+    parse_tab_reference(text).map(|set| set.to_human(english()))
+}
+
 /// A single `Book.C` or `Book.C.V` OSIS reference without the alias table, which is what
 /// tabs store; anything else goes through [`parse`]. Indexing 120 tabs through the full
 /// parser cost about 5 ms (docs/evidence/B070.md), most of a frame.
@@ -633,7 +640,7 @@ fn command_items(
 
 /// The shortcut a row shows: a `{n}` template filled with the row's column (1–9), else
 /// none (a new column, a column past 9, or no column given); any other shortcut as is.
-fn concrete_shortcut(template: Option<&str>, args: &CommandArgs) -> Option<String> {
+pub(crate) fn concrete_shortcut(template: Option<&str>, args: &CommandArgs) -> Option<String> {
     let template = template?;
     if !template.contains("{n}") {
         return Some(template.to_owned());

@@ -241,7 +241,21 @@
     "selection.note",
     "selection.search",
     "selection.copy_reference",
-    "tab.open_lexicon"
+    "tab.open_lexicon",
+    "search.text",
+    "search.lemma",
+    "nav.cross_references",
+    "tab.open_edition",
+    "tab.close_others",
+    "copy.text",
+    "copy.reference",
+    "copy.passage",
+    "host.cut",
+    "host.copy",
+    "host.paste",
+    "nav.paste_passage",
+    "selection.highlight_in",
+    "note.remove_link"
   ],
   "scenarios": [
     {
@@ -2688,9 +2702,9 @@
         },
         {
           "section": "commands",
-          "title": "Highlighter pen tool",
-          "command": "tool.highlighter_pen",
-          "disabled": null
+          "title": "Highlight in colour",
+          "command": "selection.highlight_in",
+          "disabled": "needs_selection"
         }
       ]
     },
