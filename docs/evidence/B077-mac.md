@@ -78,7 +78,7 @@ What the host does on a right-click is within the frame (≤ 2.2 ms p95; the cor
 B077-core bench's 84 µs p95). The menu window itself is not: AppKit's `popUp` of an 18-row
 menu is 50 / 57 ms on this machine with nothing of ours in it, and ours is 53 / 65 ms (its
 symbols, subtitles and a header). Over the day's runs the gap between ours and the plain
-18-row menu was 1–17 ms p50. An experiment in an earlier run (not kept) showed the symbols
+18-row menu was 1–19 ms p50. An experiment in an earlier run (not kept) showed the symbols
 account for about 7 ms p50 of it and the subtitles for none. Every B072 / B076 row is within
 budget and at B076's level (B076 p95 at 1440: palette 12.0, tab switch 14.1, column focus 9.0,
 workspace 39.5, tool 9.8, original ↔ translation 11.0, dock 7.9, selection 8.9, chapter 11.7);
