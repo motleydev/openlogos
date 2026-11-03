@@ -1,0 +1,32 @@
+{
+  "format": "openlogos-text-pack",
+  "format_version": "1.0",
+  "resource_id": "sblgnt",
+  "content_revision": "sblgnt-2010",
+  "title": "SBLGNT",
+  "name": "SBL Greek New Testament",
+  "language": "grc",
+  "direction": "ltr",
+  "scheme": "org",
+  "book_order": "protestant",
+  "license": "SBLGNT: CC BY 4.0, Society of Biblical Literature and Logos Bible Software (https://sblgnt.com/).",
+  "source": "alignment-john-3-16-sblgnt-bsb.json source_segment (SBLGNT John 3:16, apparatus siglum removed)",
+  "fixture_only": true,
+  "complete": false,
+  "books": [
+    {
+      "book": "John",
+      "title": "John",
+      "chapters": [
+        {
+          "chapter": 3,
+          "first_verse": 16,
+          "last_verse": 16,
+          "path": "chapters/John/3.json",
+          "length": 1749,
+          "sha256": "904a43b7fd14ff528e9ef85901eadf0b358e3a6ac0604fce48f83d0d113c09c7"
+        }
+      ]
+    }
+  ]
+}

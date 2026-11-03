@@ -30,6 +30,7 @@ pub mod identity;
 pub mod layout;
 pub mod locators;
 pub mod menu;
+pub mod reading;
 pub mod shell;
 pub mod well;
 
@@ -52,6 +53,11 @@ pub use menu::{
     SectionView,
 };
 
+pub use reading::{
+    FIXTURE_PACK_FILES, ReadingFixture, fixture_pack_library, fixture_packs,
+    fixture_resource_schemes, reading_library,
+};
+
 pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 
 pub use identity::{
@@ -66,7 +72,7 @@ pub use locators::{
 };
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 19] = [
+pub const FIXTURE_FILES: [(&str, &str); 20] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -140,6 +146,10 @@ pub const FIXTURE_FILES: [(&str, &str); 19] = [
         "context-menu",
         include_str!("../fixtures/context-menu.json"),
     ),
+    (
+        "continuous-reading",
+        include_str!("../fixtures/continuous-reading.json"),
+    ),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -184,6 +194,8 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/tool-well.json"),
         ",",
         include_str!("../fixtures/context-menu.json"),
+        ",",
+        include_str!("../fixtures/continuous-reading.json"),
         "]"
     )
 }
@@ -554,6 +566,9 @@ pub enum Fixture {
     ToolWell(Box<ToolWellFixture>),
     /// The context menu (B077).
     ContextMenu(Box<ContextMenuFixture>),
+    /// Continuous reading: locate, chapters, the canon table, packs and the shell following
+    /// the reading position (B078).
+    Reading(Box<ReadingFixture>),
 }
 
 impl Fixture {
@@ -575,6 +590,7 @@ impl Fixture {
             Fixture::ShellCommands(f) => &f.id,
             Fixture::ToolWell(f) => &f.id,
             Fixture::ContextMenu(f) => &f.id,
+            Fixture::Reading(f) => &f.id,
         }
     }
 }
@@ -694,6 +710,7 @@ pub fn run_all() -> ConformanceReport {
             Ok(Fixture::ShellCommands(fixture)) => shell::run_shell(&fixture, &mut recorder),
             Ok(Fixture::ToolWell(fixture)) => well::run_tool_well(&fixture, &mut recorder),
             Ok(Fixture::ContextMenu(fixture)) => menu::run_context_menu(&fixture, &mut recorder),
+            Ok(Fixture::Reading(fixture)) => reading::run_reading(&fixture, &mut recorder),
             Err(error) => recorder.fail(
                 "fixture parses",
                 "a fixture of a known kind",

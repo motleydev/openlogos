@@ -1800,6 +1800,7 @@ fn navigate(
     let from = tab.content_id.clone();
     move_tab(tab, reference, &transaction, true);
     tab.highlight_range = highlight_of(reference);
+    let marks = tab.highlight_range.is_some();
     let mut positions = vec![TabPosition::of(
         &workspace_id,
         tab,
@@ -1811,7 +1812,9 @@ fn navigate(
         let tab = tab_mut(ws, id);
         let (mapped, mapping) = map_reference(schemes, reference, &from, &tab.content_id);
         move_tab(tab, &mapped, &transaction, false);
-        tab.highlight_range = highlight_of(&mapped);
+        // A follower marks verses only when the driver did: a chapter that maps to a verse
+        // (`Mal.4` → `Mal.3.19`) is still a chapter.
+        tab.highlight_range = highlight_of(&mapped).filter(|_| marks);
         positions.push(TabPosition::of(&workspace_id, tab, false, false, mapping));
     }
     (followed, positions)

@@ -243,7 +243,7 @@ pub enum ReadingError {
         book: String,
     },
     /// The book has fewer chapters.
-    #[error("{book} has {chapters} chapters")]
+    #[error("{book} has no chapter {chapter}")]
     ChapterOutOfRange {
         /// The book's title.
         book: String,
@@ -252,8 +252,8 @@ pub enum ReadingError {
         /// How many it has.
         chapters: u32,
     },
-    /// The chapter has fewer verses.
-    #[error("{chapter_title} has {last_verse} verses")]
+    /// The chapter does not have the verse.
+    #[error("{chapter_title} has no verse {verse}")]
     VerseOutOfRange {
         /// Book and chapter (`John 3`).
         chapter_title: String,
@@ -499,6 +499,8 @@ pub fn book_title(book: BookId) -> &'static str {
 fn chapter_title(book: &BookShape, chapter: u32) -> String {
     if book.book.is_single_chapter() {
         book.title.clone()
+    } else if book.book == BookId::Ps {
+        format!("Psalm {chapter}")
     } else {
         format!("{} {chapter}", book.title)
     }
