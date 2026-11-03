@@ -206,3 +206,38 @@ test("B077: the context menu comes from the core, with its focus change and rows
     (error) => error.kind === "no_such_column" && error.message === "There is no column 9",
   );
 });
+
+test("B078: continuous reading streams chapters, packs load chunk by chunk, and the shell follows a scroll", async () => {
+  const reading = core.ReadingHandle.placeholder();
+  assert.deepEqual(reading.editions().map((e) => e.resource_id), ["bsb", "sblgnt", "wlc"]);
+  const location = reading.locate("bsb", "Jn 3:16-18");
+  assert.deepEqual([location.chapter_key, location.segment_id, location.highlight_range], ["John.3", "John.3.16", "John.3.16-John.3.18"]);
+  assert.deepEqual(reading.chapterNeighbors("bsb", "Mal.4"), { chapter_key: "Mal.4", prev: "Mal.3", next: "Matt.1" });
+  const psalm = reading.chapterContent("bsb", "Ps.3");
+  assert.equal(psalm.heading.chapter_label, "Psalm 3");
+  assert.equal(psalm.verses[0].superscription, true);
+  assert.equal(reading.chapterContent("wlc", "Gen.1").verses[2].text, "טקסט ממלא מקום — 1:3");
+  assert.throws(() => reading.locate("wlc", "John 3:16"), (e) => e.kind === "book_not_in_edition" && e.message === "John is not in WLC");
+  assert.equal(core.referenceForSegment("Num.26.3-4"), "Num.26.3");
+  assert.deepEqual(core.canonMapVerse("Joel 2:28", "eng", "org").targets, [{ book: "Joel", chapter: 3, verse: 1, subverse: null }]);
+
+  // A fixture pack as a browser reads it: manifest, then the chunk's byte range of the bundle.
+  const dir = new URL("crates/conformance/fixtures/packs/wlc/", repo);
+  const browser = new core.ReadingHandle();
+  browser.addPackManifest(await readFile(new URL("manifest.json", dir), "utf8"));
+  const chunk = browser.chunkFor("wlc", "Gen.1");
+  assert.throws(() => browser.chapterContent("wlc", "Gen.1"), (e) => e.kind === "chunk_not_loaded");
+  const bundle = await readFile(new URL(chunk.path, dir));
+  browser.supplyChunk("wlc", "Gen.1", bundle.subarray(chunk.offset, chunk.offset + chunk.length));
+  assert.equal(browser.chapterContent("wlc", "Gen.1").verses.length, 2);
+
+  const shell = core.ShellHandle.fixture();
+  shell.setResourceSchemes(reading.schemes());
+  const scrolled = shell.apply({ command_id: "tab.record_scroll", args: { tab_id: "t1", segment_id: "John.3.17", scalar: 0 } });
+  assert.deepEqual(scrolled.effects.positions.map((p) => p.tab_id), ["t1", "t3", "t4"]);
+  assert.equal(scrolled.effects.positions[0].reference_label, "Jn 3:17");
+  assert.equal(scrolled.recorded, false);
+  shell.apply({ command_id: "nav.navigate", args: { reference: "Joel.2.28-Joel.2.29" } });
+  const tabs = shell.view().workspaces[0].columns.map((c) => c.tabs[0]);
+  assert.deepEqual([tabs[0].highlight_range, tabs[1].highlight_range], ["Joel.2.28-Joel.2.29", "Joel.3.1-Joel.3.2"]);
+});

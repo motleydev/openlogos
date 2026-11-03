@@ -9,7 +9,7 @@ import XCTest
 
 final class CoreHostTests: XCTestCase {
     func testApiVersionMatchesTheCore() {
-        XCTAssertEqual(apiVersion(), "0.1.2")
+        XCTAssertEqual(apiVersion(), "0.1.3")
         XCTAssertEqual(runConformance().apiVersion, apiVersion())
     }
 
@@ -238,6 +238,43 @@ final class CoreHostTests: XCTestCase {
             guard case ShellCommandError.InvalidDocument(let detail) = error else { return XCTFail("\(error)") }
             XCTAssertTrue(detail.contains("There is no column 9"))
         }
+    }
+
+    // B078: continuous reading through the UniFFI handles, and the shell following a scroll.
+    func testContinuousReadingStreamsChaptersAndTheShellFollows() throws {
+        let reading = ReadingHandle.placeholder()
+        XCTAssertEqual(reading.editions().map(\.resourceId), ["bsb", "sblgnt", "wlc"])
+        let location = try reading.locate(resourceId: "bsb", input: "Jn 3:16-18")
+        XCTAssertEqual([location.chapterKey, location.segmentId], ["John.3", "John.3.16"])
+        XCTAssertEqual(location.highlightRange, "John.3.16-John.3.18")
+        XCTAssertEqual(try reading.chapterNeighbors(resourceId: "bsb", chapterKey: "Mal.4").next, "Matt.1")
+        let psalm = try reading.chapterContent(resourceId: "bsb", chapterKey: "Ps.3")
+        XCTAssertEqual(psalm.heading.chapterLabel, "Psalm 3")
+        XCTAssertTrue(psalm.verses[0].superscription)
+        let genesis = try reading.chapterContent(resourceId: "wlc", chapterKey: "Gen.1")
+        XCTAssertFalse(genesis.verses[0].placeholder)
+        XCTAssertEqual(genesis.verses[2].text, "טקסט ממלא מקום — 1:3")
+        XCTAssertThrowsError(try reading.locate(resourceId: "wlc", input: "John 3:16")) { error in
+            guard case ReadingCallError.Refused(let kind, let reason) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(kind, "book_not_in_edition")
+            XCTAssertEqual(reason, "John is not in WLC")
+        }
+        XCTAssertEqual(referenceForSegment(segmentId: "Num.26.3-4"), "Num.26.3")
+        let joel = try parseReference(text: "Joel 2:28").ranges[0].start
+        XCTAssertEqual(try canonMapVerse(reference: joel, fromScheme: "eng", toScheme: "org").targets,
+                       [Reference(book: "Joel", chapter: 3, verse: 1, subverse: nil)])
+
+        let shell = ShellHandle.fixture()
+        shell.setResourceSchemes(schemes: reading.schemes())
+        let scrolled = try shell.apply(commandId: "tab.record_scroll",
+                                       args: ShellCommandArgs(tabId: "t1", segmentId: "John.3.17", scalar: 0), hasSelection: false)
+        XCTAssertEqual(scrolled.positions.map(\.tabId), ["t1", "t3", "t4"])
+        XCTAssertEqual(scrolled.positions[0].referenceLabel, "Jn 3:17")
+        XCTAssertFalse(scrolled.recorded)
+        XCTAssertEqual(shell.session().workspaces[0].columns[0].tabs[0].referenceLabel, "Jn 3:17")
+        _ = try shell.apply(commandId: "nav.navigate", args: ShellCommandArgs(reference: "Joel.2.28-Joel.2.29"), hasSelection: false)
+        XCTAssertEqual(shell.session().workspaces[0].columns[0].tabs[0].highlightRange, "Joel.2.28-Joel.2.29")
+        XCTAssertEqual(shell.session().workspaces[0].columns[1].tabs[0].highlightRange, "Joel.3.1-Joel.3.2")
     }
 
     // MARK: - Fixture decoding
