@@ -141,7 +141,7 @@ open (no screen capture). One part is substituted: the menu's Liquid Glass backd
 menu white on white, so the picture hides those layers and fills the menu's shape with the
 appearance's window background. On screen the menu has the system's glass.
 
-## Lanes (committed tree f06174e)
+## Lanes (committed tree f06174e; rerun after the lead's rulings on dea1ebf: ci 312/312 exit 0, test-reader mac 58/58 exit 0, test-swift 9/9 and 1594 conformance exit 0)
 
 | Command | Result |
 |---|---|
