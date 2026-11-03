@@ -251,10 +251,11 @@ button { font: inherit; color: inherit; }
 .placeholder button:hover { border-color: var(--accent); }
 
 canvas.margin { position: absolute; inset: 0; pointer-events: none; touch-action: pan-y; }
-:root[data-tool="pen"] canvas.margin, :root[data-tool="highlighter_pen"] canvas.margin, :root[data-tool="eraser"] canvas.margin { pointer-events: auto; cursor: crosshair; }
-:root[data-tool="eraser"] canvas.margin { cursor: cell; }
-:root[data-tool="highlight"] .measure .text, :root[data-tool="collect"] .measure .text { cursor: text; }
-:root[data-tool="highlight"] .measure .text ::selection { background: color-mix(in srgb, var(--swatch) calc(var(--swatch-opacity) * 100%), transparent); }
+/* The tool in effect as one class per rule (shell.js `TOOL_CLASSES`): a tool change toggles only
+   the classes whose rules change, so it does not restyle every verse of the streams (B078). */
+:root.tool-ink canvas.margin { pointer-events: auto; cursor: crosshair; }
+:root.tool-eraser canvas.margin { cursor: cell; }
+:root.tool-highlight .measure .text .t::selection { background: color-mix(in srgb, var(--swatch) calc(var(--swatch-opacity) * 100%), transparent); }
 
 /* Painted highlights (CSS Custom Highlight API, as the B005 reader). */
 ::highlight(ol-yellow) { background-color: color-mix(in srgb, #F5D90A 35%, transparent); }
@@ -273,7 +274,7 @@ canvas.margin { position: absolute; inset: 0; pointer-events: none; touch-action
 .note-editor h3 { font-size: 1.25em; font-weight: 600; line-height: 1.3; margin: 0.4em 0 0.4em; }
 .note-editor blockquote { margin: 0 0 0.6em; padding-inline-start: var(--space-3); border-inline-start: 2px solid var(--rule); }
 .note-editor a.passage-link { white-space: nowrap; color: var(--accent); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; }
-:root[data-tool="word_study"] .measure .text { cursor: pointer; }
+:root.tool-word-study .measure .text { cursor: pointer; }
 /* B076: the lexicon tab (word, language and passage, an honest placeholder line). */
 .lexicon .word { font: 600 calc(var(--reading-size) * 1.5)/1.2 var(--font-reading); color: var(--text); margin: 0 0 var(--space-2); }
 .lexicon .where { color: var(--chrome); font-size: 14px; margin: 0 0 var(--space-4); }

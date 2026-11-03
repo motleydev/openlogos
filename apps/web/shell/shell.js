@@ -49,6 +49,8 @@ export const TOKENS = {
   themes: ["light", "sepia", "dark"],
 };
 const SWATCH_ORDER = ["yellow", "green", "blue", "pink"];
+/** The root classes the tool in effect sets (shell.css); no style rule reads `data-tool`. */
+const TOOL_CLASSES = [["tool-ink", ["pen", "highlighter_pen", "eraser"]], ["tool-eraser", ["eraser"]], ["tool-highlight", ["highlight"]], ["tool-word-study", ["word_study"]]];
 
 /** The swatch name of a `#RRGGBB` (the core stores colours), or null for another colour. */
 function swatchName(hex) {
@@ -291,6 +293,7 @@ export function render() {
   if (host.find && !host.find.view.text.isConnected) clearFind();
   root.dataset.theme = r.theme;
   root.dataset.tool = host.toolWell.effective_tool;
+  for (const [name, tools] of TOOL_CLASSES) root.classList.toggle(name, tools.includes(host.toolWell.effective_tool));
   root.classList.toggle("focus-mode", host.focusMode);
   root.classList.toggle("well-collapsed", host.well.collapsed);
   root.style.setProperty("--reading-size", `${r.size}px`);
