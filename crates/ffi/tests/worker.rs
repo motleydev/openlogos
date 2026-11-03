@@ -207,6 +207,40 @@ fn shell_handle_returns_the_tool_well() {
     assert_eq!(view["tool_context"], "original");
 }
 
+/// B077: the context menu for a word in another column, its focus change and a row.
+#[wasm_bindgen_test]
+fn shell_handle_returns_the_context_menu() {
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    let word = js_sys::JSON::parse(
+        r#"{"kind": "word", "text": "ἠγάπησεν", "reference": "John.3.16", "tab_id": "t3"}"#,
+    )
+    .unwrap();
+    let menu: serde_json::Value =
+        serde_wasm_bindgen::from_value(shell.context_menu(word, JsValue::UNDEFINED).unwrap())
+            .unwrap();
+    assert_eq!(menu["target_kind"], "word");
+    assert_eq!(menu["focus"]["args"]["tab_id"], "t3");
+    let compare = &menu["sections"][1]["items"][0];
+    assert_eq!(compare["label"], "Compare in bsb");
+    let context = serde_wasm_bindgen::to_value(&menu["context"]).unwrap();
+    let focus = js_sys::JSON::parse(&menu["focus"].to_string()).unwrap();
+    shell.apply(focus, context.clone()).unwrap();
+    let row = js_sys::JSON::parse(
+        &serde_json::json!({"command_id": compare["command_id"], "args": compare["args"]})
+            .to_string(),
+    )
+    .unwrap();
+    let outcome: serde_json::Value =
+        serde_wasm_bindgen::from_value(shell.apply(row, context).unwrap()).unwrap();
+    assert_eq!(outcome["recorded"], true);
+    let gone = js_sys::JSON::parse(r#"{"kind": "tab", "tab_id": "t9"}"#).unwrap();
+    let error = shell.context_menu(gone, JsValue::UNDEFINED).unwrap_err();
+    assert_eq!(
+        property(&error, "kind").as_string().as_deref(),
+        Some("no_such_tab")
+    );
+}
+
 /// B064: with `--features retrieval`, SQLite with FTS5 and the `openlogos` tokenizer run
 /// inside the worker's module and answer an unaccented query against accented text.
 #[cfg(feature = "retrieval")]

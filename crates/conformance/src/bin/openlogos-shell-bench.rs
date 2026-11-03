@@ -16,13 +16,18 @@
 //! `view()` on every render, with every tab's reference and chapter labels. Command timings run `Shell::apply` (undo record included) and exclude any
 //! host rendering: they are the core's share of the frame. The tool well row (B076) is
 //! `Shell::tool_well` after each column focus, alternating the tab and the notes dock with a
-//! selection, so every group is built; it rides inside the column-focus budget.
+//! selection, so every group is built; it rides inside the column-focus budget. The context
+//! menu row (B077) is `Shell::context_menu` after each column focus for every target kind:
+//! a word and a selection in the active tab, a note spot and a passage link in the dock, a
+//! hidden tab in the next column (the menu works on a copy of the session with that tab
+//! focused), a column and the background; budget: shown on the next frame.
 
 use std::time::{Duration, Instant};
 
 use openlogos_conformance::FixtureTextProvider;
 use openlogos_workspaces::PaneKind;
 use openlogos_workspaces::commands::{CommandArgs, CommandContext, Focus, Invocation, Shell};
+use openlogos_workspaces::menu::ContextTarget;
 use openlogos_workspaces::palette::{
     PaletteContext, PaletteIndex, TextProvider, palette_query_indexed,
 };
@@ -189,6 +194,7 @@ fn main() {
     let mut undo = Vec::new();
     let mut view = Vec::new();
     let mut tool_well = Vec::new();
+    let mut context_menu = Vec::new();
     shell.set_resource_languages(
         [("sblgnt", "grc"), ("wlc", "hbo"), ("bsb", "en")]
             .map(|(k, v)| (k.to_owned(), v.to_owned()))
@@ -255,6 +261,47 @@ fn main() {
             for context in [&command_context, &dock] {
                 time(&mut tool_well, || {
                     std::hint::black_box(shell.tool_well(context));
+                });
+            }
+            let ws = shell.session.active();
+            let hidden = ws.columns[n as usize % 3].tabs[1].id.clone();
+            let reference = ws.active_tab().reference.clone();
+            let targets = [
+                ContextTarget::Word {
+                    text: "loved".to_owned(),
+                    reference: reference.clone(),
+                    segment_id: reference.clone(),
+                    scalar_start: Some(11),
+                    scalar_end: Some(16),
+                    resource_id: None,
+                    tab_id: None,
+                },
+                ContextTarget::Selection {
+                    text: "For God so loved the world".to_owned(),
+                    reference: reference.clone(),
+                    end_reference: None,
+                    resource_id: None,
+                    tab_id: None,
+                },
+                ContextTarget::NoteText {
+                    text: None,
+                    tab_id: None,
+                },
+                ContextTarget::NoteLink {
+                    reference: "Rom.8.28".to_owned(),
+                    tab_id: None,
+                },
+                ContextTarget::Tab { tab_id: hidden },
+                ContextTarget::Column { column: 2 },
+                ContextTarget::Background { column: None },
+            ];
+            for target in &targets {
+                time(&mut context_menu, || {
+                    std::hint::black_box(
+                        shell
+                            .context_menu(target, &command_context)
+                            .expect("context menu"),
+                    );
                 });
             }
         }
@@ -325,6 +372,11 @@ fn main() {
             "tool well for the focused tab or dock (Shell::tool_well)",
             16.0,
             &mut tool_well,
+        ),
+        row(
+            "context menu for every target kind (Shell::context_menu)",
+            16.0,
+            &mut context_menu,
         ),
         row(
             "workspace switch (workspace.next, 10 × 3 × 4)",

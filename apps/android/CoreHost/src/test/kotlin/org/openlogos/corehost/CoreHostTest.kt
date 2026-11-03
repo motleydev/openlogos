@@ -235,6 +235,34 @@ class CoreHostTest {
         assertEquals(2u, shell.session().workspaces[0].activeColumnNumber)
     }
 
+    // B077: the context menu through the UniFFI handle.
+    @Test
+    fun contextMenuComesFromTheCore() {
+        val shell = ShellHandle.fixture()
+        val none = ShellCommandContext(hasSelection = false, focus = ShellFocus.TAB)
+        val menu = shell.contextMenu(
+            ShellContextTarget.Word("ἠγάπησεν", "John.3.16", null, null, null, null, "t3"),
+            none,
+        )
+        assertEquals("word", menu.targetKind)
+        assertEquals(listOf("Search", "Open", "Mark", "Copy"), menu.sections.map { it.label })
+        val rows = menu.sections.flatMap { it.items }
+        assertEquals(null, rows.first { it.label == "Word study" }.disabledText)
+        val compare = rows.first { it.label == "Compare in bsb" }
+        assertEquals("bsb", compare.args.resourceId)
+        val focus = menu.focus!!
+        assertEquals("t3", focus.args.tabId)
+        shell.applyIn(focus.commandId, focus.args, menu.context)
+        assertTrue(shell.applyIn(compare.commandId, compare.args, menu.context).recorded)
+        assertEquals(2u, shell.session().workspaces[0].activeColumnNumber)
+        val pin = shell.contextMenu(ShellContextTarget.Tab("t2"), none).sections[2].items[0]
+        assertEquals(listOf<Any?>("Pin", true, "The tab is already pinned"), listOf(pin.label, pin.active, pin.disabledText))
+        val refused = assertFailsWith<ShellCommandException.InvalidDocument> {
+            shell.contextMenu(ShellContextTarget.Column(9u), none)
+        }
+        assertTrue(refused.detail.contains("There is no column 9"))
+    }
+
     // Fixture decoding
 
     class LoadedSelection(

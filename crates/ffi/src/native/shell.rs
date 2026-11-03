@@ -10,6 +10,11 @@
 //! B076 adds the contextual tool well: `tool_well` with a [`ShellCommandContext`] (the
 //! selection and where focus is), `set_resource_languages`, and `commands_in` / `apply_in`,
 //! the context-taking forms of `commands` / `apply` (which keep meaning "focus on the tab").
+//!
+//! B077 adds the context menu: `context_menu` with a [`ShellContextTarget`] (what was
+//! right-clicked) returns a [`ShellContextMenu`]: the focus change to apply first, the context
+//! to dispatch rows under, and the sections. A submenu is one level deep
+//! ([`ShellContextMenuSubitem`]), as the core builds it.
 
 use std::sync::{Arc, Mutex};
 
@@ -18,6 +23,7 @@ use openlogos_workspaces::commands::{
     ArgumentShape, CommandArgs, CommandContext, CommandError, CommandSpec, DisabledReason, Focus,
     Invocation, Outcome, Platform, Scope, Shell, registry,
 };
+use openlogos_workspaces::menu::{ContextMenu, ContextMenuItem, ContextTarget};
 use openlogos_workspaces::migrate_workspace_to_2;
 use openlogos_workspaces::palette::{
     ColumnTarget, PaletteContext, PaletteIndex, PaletteItem, PaletteMode, PaletteSection,
@@ -275,6 +281,12 @@ pub struct ShellCommandArgs {
     /// A scroll anchor's offset in scalar values.
     #[uniffi(default = None)]
     pub scalar: Option<u32>,
+    /// Where `search.text` looks: `edition`, `all`, `workspace` or `chapter` (B077).
+    #[uniffi(default = None)]
+    pub scope: Option<String>,
+    /// An edition id: what `tab.open_edition` opens, what a search or copy reads (B077).
+    #[uniffi(default = None)]
+    pub resource_id: Option<String>,
 }
 
 impl From<ShellCommandArgs> for CommandArgs {
@@ -290,6 +302,8 @@ impl From<ShellCommandArgs> for CommandArgs {
             number: a.number,
             segment_id: a.segment_id,
             scalar: a.scalar,
+            scope: a.scope,
+            resource_id: a.resource_id,
         }
     }
 }
@@ -307,6 +321,8 @@ impl From<CommandArgs> for ShellCommandArgs {
             number: a.number,
             segment_id: a.segment_id,
             scalar: a.scalar,
+            scope: a.scope,
+            resource_id: a.resource_id,
         }
     }
 }
@@ -576,6 +592,256 @@ impl From<ToolWell> for ShellToolWell {
     }
 }
 
+/// What was right-clicked (`menu::ContextTarget`, B077). A reading or note target's `tab_id`
+/// absent means the active tab, or the notes dock for a note.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum ShellContextTarget {
+    /// A word in reading text; the host selects it as it opens the menu.
+    Word {
+        /// The word as shown.
+        text: String,
+        /// Its passage, OSIS.
+        reference: Option<String>,
+        /// Its segment.
+        segment_id: Option<String>,
+        /// Where it starts in the segment, in scalar values.
+        scalar_start: Option<u32>,
+        /// Where it ends, exclusive.
+        scalar_end: Option<u32>,
+        /// Its edition; the tab's resource when absent.
+        resource_id: Option<String>,
+        /// The tab it is in.
+        tab_id: Option<String>,
+    },
+    /// Selected reading text.
+    Selection {
+        /// The selected text.
+        text: String,
+        /// The passage it starts in.
+        reference: Option<String>,
+        /// The passage it ends in, when another.
+        end_reference: Option<String>,
+        /// Its edition; the tab's resource when absent.
+        resource_id: Option<String>,
+        /// The tab it is in.
+        tab_id: Option<String>,
+    },
+    /// A spot or selected text in a note.
+    NoteText {
+        /// The selected text; `None` for a plain spot.
+        text: Option<String>,
+        /// The Notes tab; the dock when absent.
+        tab_id: Option<String>,
+    },
+    /// A passage link in a note.
+    NoteLink {
+        /// The linked passage, OSIS.
+        reference: String,
+        /// The Notes tab; the dock when absent.
+        tab_id: Option<String>,
+    },
+    /// A tab in a strip.
+    Tab {
+        /// The tab.
+        tab_id: String,
+    },
+    /// A column's identity row or badge.
+    Column {
+        /// Its number, 1-based.
+        column: u32,
+    },
+    /// The empty area of a column.
+    Background {
+        /// Its number; the active column when absent.
+        column: Option<u32>,
+    },
+}
+
+impl From<ShellContextTarget> for ContextTarget {
+    fn from(t: ShellContextTarget) -> Self {
+        match t {
+            ShellContextTarget::Word {
+                text,
+                reference,
+                segment_id,
+                scalar_start,
+                scalar_end,
+                resource_id,
+                tab_id,
+            } => ContextTarget::Word {
+                text,
+                reference,
+                segment_id,
+                scalar_start,
+                scalar_end,
+                resource_id,
+                tab_id,
+            },
+            ShellContextTarget::Selection {
+                text,
+                reference,
+                end_reference,
+                resource_id,
+                tab_id,
+            } => ContextTarget::Selection {
+                text,
+                reference,
+                end_reference,
+                resource_id,
+                tab_id,
+            },
+            ShellContextTarget::NoteText { text, tab_id } => {
+                ContextTarget::NoteText { text, tab_id }
+            }
+            ShellContextTarget::NoteLink { reference, tab_id } => {
+                ContextTarget::NoteLink { reference, tab_id }
+            }
+            ShellContextTarget::Tab { tab_id } => ContextTarget::Tab { tab_id },
+            ShellContextTarget::Column { column } => ContextTarget::Column { column },
+            ShellContextTarget::Background { column } => ContextTarget::Background { column },
+        }
+    }
+}
+
+/// A command with its arguments: the focus change a menu runs first.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ShellInvocation {
+    /// The command.
+    pub command_id: String,
+    /// Its arguments.
+    pub args: ShellCommandArgs,
+}
+
+/// A submenu row (`menu::ContextMenuItem` without a further submenu).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ShellContextMenuSubitem {
+    /// The command a click dispatches (`apply_in` under the menu's context).
+    pub command_id: String,
+    /// Its arguments.
+    pub args: ShellCommandArgs,
+    /// What the row says.
+    pub label: String,
+    /// The default key (`Alt+W`, `Cmd+C`), the same on web and Mac.
+    pub key: Option<String>,
+    /// A neutral icon name the host maps to an SF Symbol.
+    pub icon: String,
+    /// Whether it is the current choice (theme, swatch, link mode).
+    pub active: bool,
+    /// A value to show: a swatch `#RRGGBB`.
+    pub value: Option<String>,
+    /// Why it cannot run now, in words.
+    pub disabled_text: Option<String>,
+}
+
+/// A top-level row; with a submenu it carries its first enabled child's command.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ShellContextMenuItem {
+    /// The command a click dispatches.
+    pub command_id: String,
+    /// Its arguments.
+    pub args: ShellCommandArgs,
+    /// What the row says.
+    pub label: String,
+    /// The default key, the same on web and Mac.
+    pub key: Option<String>,
+    /// A neutral icon name.
+    pub icon: String,
+    /// Whether it is the current choice.
+    pub active: bool,
+    /// A value to show.
+    pub value: Option<String>,
+    /// Why it cannot run now, in words.
+    pub disabled_text: Option<String>,
+    /// Its submenu; empty for a plain row.
+    pub submenu: Vec<ShellContextMenuSubitem>,
+}
+
+/// A run of rows between separators.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ShellContextMenuSection {
+    /// A heading a host may show.
+    pub label: Option<String>,
+    /// Its rows.
+    pub items: Vec<ShellContextMenuItem>,
+}
+
+/// The context menu for one target (specs/22 §4.2).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ShellContextMenu {
+    /// `word`, `selection`, `note_text`, `note_link`, `tab`, `column` or `background`.
+    pub target_kind: String,
+    /// A header; `None` for none.
+    pub title: Option<String>,
+    /// The focus change to apply before the chosen row.
+    pub focus: Option<ShellInvocation>,
+    /// The context to dispatch rows under.
+    pub context: ShellCommandContext,
+    /// The sections, in order.
+    pub sections: Vec<ShellContextMenuSection>,
+}
+
+impl From<Focus> for ShellFocus {
+    fn from(f: Focus) -> Self {
+        match f {
+            Focus::Tab => ShellFocus::Tab,
+            Focus::NotesDock => ShellFocus::NotesDock,
+            Focus::Empty => ShellFocus::Empty,
+        }
+    }
+}
+
+fn subitem(i: ContextMenuItem) -> ShellContextMenuSubitem {
+    ShellContextMenuSubitem {
+        command_id: i.command_id,
+        args: i.args.into(),
+        label: i.label,
+        key: i.key,
+        icon: i.icon,
+        active: i.active,
+        value: i.value,
+        disabled_text: i.disabled_text,
+    }
+}
+
+impl From<ContextMenu> for ShellContextMenu {
+    fn from(m: ContextMenu) -> Self {
+        ShellContextMenu {
+            target_kind: m.target_kind.name().to_owned(),
+            title: m.title,
+            focus: m.focus.map(|f| ShellInvocation {
+                command_id: f.command_id,
+                args: f.args.into(),
+            }),
+            context: ShellCommandContext {
+                has_selection: m.context.has_selection,
+                focus: m.context.focus.into(),
+            },
+            sections: m
+                .sections
+                .into_iter()
+                .map(|s| ShellContextMenuSection {
+                    label: s.label,
+                    items: s
+                        .items
+                        .into_iter()
+                        .map(|i| ShellContextMenuItem {
+                            command_id: i.command_id,
+                            args: i.args.into(),
+                            label: i.label,
+                            key: i.key,
+                            icon: i.icon,
+                            active: i.active,
+                            value: i.value,
+                            disabled_text: i.disabled_text,
+                            submenu: i.submenu.into_iter().map(subitem).collect(),
+                        })
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
 /// One result row.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ShellPaletteItem {
@@ -809,6 +1075,22 @@ impl ShellHandle {
     /// the groups to draw. Call it on every render; it costs microseconds.
     pub fn tool_well(&self, context: ShellCommandContext) -> ShellToolWell {
         self.lock().shell.tool_well(&context.into()).into()
+    }
+
+    /// The context menu for what was right-clicked (`context.has_selection` for a tab,
+    /// column or background menu). Apply `focus` first when set, then the chosen row with
+    /// `apply_in` under the menu's `context`. A tab or column that does not exist fails as
+    /// `InvalidDocument`.
+    pub fn context_menu(
+        &self,
+        target: ShellContextTarget,
+        context: ShellCommandContext,
+    ) -> Result<ShellContextMenu, ShellCommandError> {
+        self.lock()
+            .shell
+            .context_menu(&target.into(), &context.into())
+            .map(Into::into)
+            .map_err(|reason| invalid(format!("context menu target: {reason}")))
     }
 
     /// `commands` with where focus is, so tool and note commands carry their context's
@@ -1167,6 +1449,78 @@ mod tests {
             "focus stays put"
         );
         assert_eq!(column.shown_tab_id, column.tabs[0].id);
+    }
+
+    #[test]
+    fn the_context_menu_comes_through_the_handle() {
+        let shell = ShellHandle::fixture();
+        let none = ShellCommandContext {
+            has_selection: false,
+            focus: ShellFocus::Tab,
+        };
+        let menu = shell
+            .context_menu(
+                ShellContextTarget::Word {
+                    text: "ἠγάπησεν".into(),
+                    reference: Some("John.3.16".into()),
+                    segment_id: None,
+                    scalar_start: None,
+                    scalar_end: None,
+                    resource_id: None,
+                    tab_id: Some("t3".into()),
+                },
+                none,
+            )
+            .unwrap();
+        assert_eq!(menu.target_kind, "word");
+        assert!(menu.context.has_selection);
+        let focus = menu.focus.clone().unwrap();
+        assert_eq!(
+            (focus.command_id.as_str(), focus.args.tab_id.as_deref()),
+            ("tab.focus", Some("t3"))
+        );
+        let rows: Vec<&ShellContextMenuItem> =
+            menu.sections.iter().flat_map(|s| s.items.iter()).collect();
+        let study = rows.iter().find(|i| i.label == "Word study").unwrap();
+        assert_eq!(study.disabled_text, None);
+        let compare = rows.iter().find(|i| i.label == "Compare in bsb").unwrap();
+        assert_eq!(compare.args.resource_id.as_deref(), Some("bsb"));
+        let highlight = rows.iter().find(|i| i.label == "Highlight").unwrap();
+        assert_eq!(highlight.submenu[0].value.as_deref(), Some("#F5D90A"));
+        assert!(highlight.submenu[0].active);
+        shell
+            .apply_in(focus.command_id, focus.args, menu.context)
+            .unwrap();
+        let opened = shell
+            .apply_in(
+                compare.command_id.clone(),
+                compare.args.clone(),
+                menu.context,
+            )
+            .unwrap();
+        assert!(opened.recorded);
+        let session = shell.session();
+        assert_eq!(session.workspaces[0].active_column_number, 2);
+        let column = &session.workspaces[0].columns[2];
+        assert_eq!(column.tabs.last().unwrap().content_id, "bsb");
+
+        let tab = shell
+            .context_menu(
+                ShellContextTarget::Tab {
+                    tab_id: "t2".into(),
+                },
+                none,
+            )
+            .unwrap();
+        let pin = tab.sections[2].items[0].clone();
+        assert_eq!(
+            (pin.label.as_str(), pin.active, pin.disabled_text.as_deref()),
+            ("Pin", true, Some("The tab is already pinned"))
+        );
+        assert!(matches!(
+            shell.context_menu(ShellContextTarget::Tab { tab_id: "t9".into() }, none),
+            Err(ShellCommandError::InvalidDocument { ref detail }) if detail.contains("That tab is not open")
+        ));
     }
 
     #[test]
