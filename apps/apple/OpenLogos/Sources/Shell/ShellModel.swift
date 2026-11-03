@@ -6,7 +6,9 @@
 // `handled == false` for. B076: the tool well comes from the core for what has focus (a tab,
 // the notes dock) and whether text is selected; every command carries that context.
 // Every button, menu item and shortcut goes through `run(_:args:)`, which dispatches a
-// registered command; the view re-renders from `session` after each.
+// registered command; the view re-renders from `session` after each. B077: the context menu
+// comes from the core for what was right-clicked (ContextMenu.swift); its rows dispatch under
+// the menu's context.
 import Combine
 import SwiftUI
 #if canImport(AppKit)
@@ -69,6 +71,11 @@ final class ShellModel: ObservableObject {
     @Published private(set) var selection: ReaderSelection? {
         didSet { if selection != oldValue { refreshWell() } }
     }
+    /// B077: Find in this chapter, painted over the tab's text until Esc.
+    @Published var find: FindState?
+    /// B077: what the menu was opened on, for the host commands that act on it (a note link
+    /// to remove).
+    var menuSubject: MenuSubject?
     /// Column widths while a rule is dragged; the drag's end commits `column.resize`.
     @Published var widthOverrides: [String: CGFloat] = [:]
     /// The core's layout constants (measure caps, pane minimums).
@@ -210,10 +217,10 @@ final class ShellModel: ObservableObject {
 
     /// Dispatches a registered command; the host performs what the core does not.
     @discardableResult
-    func run(_ id: String, args: ShellCommandArgs = ShellCommandArgs()) -> Bool {
+    func run(_ id: String, args: ShellCommandArgs = ShellCommandArgs(), context: ShellCommandContext? = nil) -> Bool {
         rememberScroll()
         do {
-            let outcome = try handle.applyIn(commandId: id, args: args, context: commandContext)
+            let outcome = try handle.applyIn(commandId: id, args: args, context: context ?? commandContext)
             if !outcome.handled { performHost(id, args: args) }
             refresh()
             return true
@@ -276,7 +283,9 @@ final class ShellModel: ObservableObject {
         case "view.collection_drawer", "view.study_drawer", "view.focus_mode", "workspace.export":
             show(toast: "\(command(id)?.title ?? id): not in this preview yet")
         default:
-            show(toast: "\(command(id)?.title ?? id) is not performed by this host")
+            if !performMenuHost(id, args: args) {
+                show(toast: "\(command(id)?.title ?? id) is not performed by this host")
+            }
         }
     }
 
@@ -316,7 +325,7 @@ final class ShellModel: ObservableObject {
     /// Called on every keystroke; no debounce (specs/22 §7: 16 ms).
     func query() {
         queriedText = paletteText
-        palette.result = handle.paletteQuery(text: paletteText, context: paletteContext)
+        palette.result = scoped(handle.paletteQuery(text: paletteText, context: paletteContext))
         paletteSelection = min(paletteSelection, max(0, paletteRows.count - 1))
     }
 
@@ -369,6 +378,7 @@ final class ShellModel: ObservableObject {
 
     /// Esc: closes the list and returns focus to the tab that had it.
     func closePalette() {
+        palette.scope = nil
         palette.open = false
         palette.text = ""
         palette.expanded = nil
@@ -458,9 +468,9 @@ final class ShellModel: ObservableObject {
         }
     }
 
-    private func highlight(_ selection: ReaderSelection) {
+    func highlight(_ selection: ReaderSelection, in color: ShellTokens.Swatch? = nil) {
         markCounter += 1
-        let mark = ReaderMark(id: "mark-\(markCounter)", ranges: selection.highlights, color: swatch.platformColor)
+        let mark = ReaderMark(id: "mark-\(markCounter)", ranges: selection.highlights, color: (color ?? swatch).platformColor)
         marks[selection.paneID, default: []].append(mark)
         self.selection = nil
     }
@@ -511,7 +521,7 @@ final class ShellModel: ObservableObject {
     }
 
     /// Search this: the selected text in the palette field, the palette open.
-    private func search(_ text: String) {
+    func search(_ text: String) {
         focusPalette()
         paletteText = text
         paletteTextChanged()
@@ -529,7 +539,7 @@ final class ShellModel: ObservableObject {
     }
 
     /// What Copy reference put on the pasteboard last (the tests read it).
-    private(set) var lastCopied: String?
+    var lastCopied: String?
 
     /// Link passage without a passage: the palette asks for it (`link passage Jn 3:16`).
     func askForPassageLink() {
@@ -625,7 +635,10 @@ final class ShellModel: ObservableObject {
     func installKeyMonitor() {
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, let chord = KeyChord(event: event) else { return event }
+            guard let self else { return event }
+            // B077: the menu key, and ⌘G / ⇧⌘G / Esc while Find in this chapter is showing.
+            if self.handleMenuKey(event) { return nil }
+            guard let chord = KeyChord(event: event) else { return event }
             return self.handle(chord: chord, inTextField: self.textFieldHasFocus) ? nil : event
         }
     }
@@ -647,6 +660,8 @@ final class PaletteState: ObservableObject {
     @Published var expanded: ShellPaletteSection?
     /// Bumped to ask the view to focus the field.
     @Published var focusRequest = 0
+    /// B077: the scope a menu's Search put on the Text section, shown as a chip.
+    @Published var scope: SearchScope?
 }
 
 private struct WeakSurface {
