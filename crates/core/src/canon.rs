@@ -275,6 +275,27 @@ pub fn map(reference: &Reference, from: &SchemeId, to: &SchemeId) -> MappingResu
     }
 }
 
+/// The verse a segment id starts at: `John.3.16` → John 3:16, a bridge `Num.26.3-4` → Numbers
+/// 26:3, a split verse `Num.26.5a` → Numbers 26:5, a Psalm title `Ps.3.0` → Psalm 3:0.
+/// `None` for an id that is not `Book.C.V` with an optional suffix (a note paragraph, a
+/// commentary locator).
+#[must_use]
+pub fn segment_reference(segment_id: &str) -> Option<Reference> {
+    let mut parts = segment_id.splitn(3, '.');
+    let book = BookId::from_osis(parts.next()?)?;
+    let chapter: u32 = parts.next()?.parse().ok().filter(|c| *c > 0)?;
+    let rest = parts.next()?;
+    let digits = rest.len() - rest.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    let verse: u32 = rest[..digits].parse().ok()?;
+    let suffix = &rest[digits..];
+    let valid_suffix = suffix.is_empty()
+        || suffix.chars().all(|c| c.is_ascii_lowercase())
+        || suffix
+            .strip_prefix('-')
+            .is_some_and(|end| !end.is_empty() && end.chars().all(|c| c.is_ascii_digit()));
+    valid_suffix.then(|| Reference::verse(book, chapter, verse))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -389,6 +410,18 @@ mod tests {
         }
         // English verses the original numbering folds into a neighbour.
         assert_eq!(unmapped, ["Acts.19.41", "2Cor.13.14"]);
+    }
+
+    #[test]
+    fn segment_ids_name_their_first_verse() {
+        assert_eq!(segment_reference("John.3.16"), Some(v(BookId::John, 3, 16)));
+        assert_eq!(segment_reference("Num.26.3-4"), Some(v(BookId::Num, 26, 3)));
+        assert_eq!(segment_reference("Num.26.5a"), Some(v(BookId::Num, 26, 5)));
+        assert_eq!(segment_reference("Ps.3.0"), Some(v(BookId::Ps, 3, 0)));
+        assert_eq!(segment_reference("John.3"), None);
+        assert_eq!(segment_reference("fixture:note:1#p1"), None);
+        assert_eq!(segment_reference("John.3.16.2"), None);
+        assert_eq!(segment_reference("John.0.1"), None);
     }
 
     #[test]

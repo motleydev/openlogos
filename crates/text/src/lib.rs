@@ -9,6 +9,7 @@
 //! docs/adr/0001-rust-core-native-ui.md.
 
 pub mod offsets;
+pub mod reading;
 
 pub use offsets::{
     GraphemeRange, OffsetError, OffsetUnit, Utf16Range, grapheme_len, grapheme_to_scalar,
