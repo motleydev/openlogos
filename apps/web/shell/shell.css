@@ -222,6 +222,8 @@ button { font: inherit; color: inherit; }
 .column:first-child .reading-header { padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-width) + var(--space-2)); }
 :root.well-collapsed .column:first-child .reading-header { padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-collapsed) + var(--space-2)); }
 .stream .chapter { padding-bottom: var(--space-5); }
+/* Room after the text so an edition's last verse can still reach the reading line. */
+.measure.stream { padding-bottom: 80vh; }
 .stream .book-title { font: 600 calc(var(--reading-size) * 1.6)/1.2 var(--font-reading); text-align: center; margin: var(--space-5) 0 var(--space-4); color: var(--text); }
 .stream .chapter-heading {
   font: 600 13px var(--font-chrome); letter-spacing: 0.08em; text-transform: uppercase; color: var(--chrome);
@@ -236,7 +238,7 @@ button { font: inherit; color: inherit; }
 .stream .verses p.line + p.line { margin-top: 0.1em; }
 .stream .verses p.para + p.line { margin-top: 0.6em; }
 .stream .verses p.superscription { font-style: italic; color: var(--chrome); margin-bottom: 0.4em; }
-.stream .verse.placeholder-verse .t { color: var(--chrome); }
+.stream .verse.placeholder-verse .t { color: color-mix(in srgb, var(--chrome) 85%, var(--page)); }
 .stream .attribution { font-size: 12px; color: var(--chrome); margin: var(--space-3) 0 0; font-family: var(--font-chrome); }
 /* Flash once on navigation; the quiet mark (.target) stays until the next navigation. */
 @keyframes ol-flash { from { background-color: color-mix(in srgb, var(--accent) 30%, transparent); } to { background-color: transparent; } }

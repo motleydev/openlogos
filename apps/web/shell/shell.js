@@ -155,7 +155,9 @@ export function run(invocation, ctx = context()) {
     host.log.push({ command_id: invocation.command_id, error: error.kind || String(error) });
     return null;
   }
-  host.log.push({ command_id: invocation.command_id, handled: outcome.handled });
+  host.log.push(invocation.command_id === "tab.record_scroll"
+    ? { command_id: invocation.command_id, handled: outcome.handled, tab_id: invocation.args.tab_id, segment_id: invocation.args.segment_id }
+    : { command_id: invocation.command_id, handled: outcome.handled });
   const spec = host.specs.get(invocation.command_id);
   if (spec && spec.quiet) { sync(); followPositions(outcome); return outcome; }
   if (outcome.handled) {
