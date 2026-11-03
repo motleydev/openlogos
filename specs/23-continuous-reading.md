@@ -58,6 +58,14 @@ The same calls on every host: Rust (`openlogos_text::reading::ReadingLibrary`), 
 | `chunk_for` / `supply_chunk` | A file pack's chapter location `{path, offset, length, sha256}`; the bytes handed back, checked against the hash (§4). |
 | `editions()`, `schemes()` | The installed editions; resource id → scheme for the shell. |
 
+**Books in the palette.** A bare book name or abbreviation the reference parser knows
+(`Genesis`, `Gen`, `1 Jn`, `Song`, `Acts`) is a Passage row titled with the book
+(“Genesis”) that dispatches `nav.navigate {reference: "Gen.1"}`, ranked first; a prefix of two
+or more letters (`Jo`) offers up to five matching books (Joshua, Job, Joel, Jonah, John) as
+Passage rows. ` @N` and ` @new` target them like any passage. The row navigates to chapter 1
+rather than to the bare book so the tab label, identity row and linked tabs have a chapter
+from the start; `locate` opens it at its first verse either way.
+
 Which segment is at the top of the viewport is the host's measurement; the core turns it into
 a reference.
 
