@@ -222,6 +222,42 @@ final class InkSheet: ObservableObject {
     @Published private(set) var revision = 0
 
     var policy = InkTouchPolicy(mode: .stylus)
+
+    // MARK: B078: strokes on verses
+
+    /// Where a stroke is pinned in a continuous reading column (host-only; not in the ink
+    /// document): the segment under its top and that segment's top, in canvas points, when it
+    /// was drawn.
+    struct Anchor: Equatable {
+        let segment: String
+        let y: CGFloat
+    }
+    private(set) var anchors: [String: Anchor] = [:]
+    /// The column's answers: the segment under a canvas y and its top there, and how far a
+    /// segment has moved since it was at `y` (nil when it is not in the window). Nil for a
+    /// column that does not scroll as a stream: the strokes stay where they were drawn.
+    var placeAnchor: ((CGFloat) -> Anchor?)?
+    var offset: ((Anchor) -> CGFloat?)?
+    /// The canvas showing this sheet, so the column can move the strokes without a re-render.
+    weak var engine: InkCanvasEngine?
+    /// Pinned strokes are not drawn above this canvas height (the column's sticky header).
+    var clipTop: CGFloat = 0
+
+    /// Pins the strokes that have no anchor yet to the verse under them.
+    func anchorStrokes() {
+        guard let placeAnchor else { return }
+        for stroke in liveStrokes where anchors[stroke.id] == nil {
+            guard let top = stroke.points.map(\.y).min(), let anchor = placeAnchor(CGFloat(top)) else { continue }
+            anchors[stroke.id] = anchor
+        }
+    }
+
+    /// How far a stroke is drawn from where its points are: 0 unpinned, nil out of the window.
+    func displacement(of id: String) -> CGFloat? {
+        guard let anchor = anchors[id] else { return 0 }
+        return offset?(anchor)
+    }
+
     private var undoStack: [HistoryOp] = []
     private var redoStack: [HistoryOp] = []
     private var counter = 0
@@ -280,8 +316,11 @@ final class InkSheet: ObservableObject {
     }
 
     /// Stroke eraser: the topmost live stroke whose centre line passes within its half width (+4 pt).
-    func erase(at p: CGPoint) {
+    func erase(at point: CGPoint) {
         for stroke in liveStrokes.reversed() {
+            // B078: a pinned stroke is hit where it is drawn.
+            guard let dy = displacement(of: stroke.id) else { continue }
+            let p = CGPoint(x: point.x, y: point.y - dy)
             let r = stroke.width / 2 + 4
             for i in 1..<stroke.points.count where Self.distance(p, stroke.points[i - 1], stroke.points[i]) <= r {
                 document.deletedStrokeIds.append(stroke.id)

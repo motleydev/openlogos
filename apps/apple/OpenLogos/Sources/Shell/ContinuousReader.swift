@@ -451,6 +451,7 @@ final class ReadingStream: NSObject {
             let first = layoutWidth == 0
             layoutWidth = width
             if !first, !blocks.isEmpty, pendingJump == nil { anchored(stored: true) { ensureLayout() } }
+            onScrolled()
         }
         if let pending = pendingJump, scroll.contentView.bounds.height > 0 {
             ensureLayout()
@@ -462,6 +463,7 @@ final class ReadingStream: NSObject {
     // MARK: Scrolling
 
     @objc private func boundsChanged(_ note: Notification) {
+        defer { if !maintaining { onScrolled() } }
         guard !maintaining, let scroll = container?.scrollView else { return }
         // A resize reflows the text before `containerDidLayout` re-anchors it: not a scroll.
         guard pendingJump == nil, scroll.contentView.bounds.width == layoutWidth else { return }
@@ -545,9 +547,15 @@ final class ReadingStream: NSObject {
     /// is below the probe (a gap between paragraphs counts as the line after it), read from
     /// TextKit 2's line fragments.
     func probeTopSegment() -> String? {
-        guard let scroll = container?.scrollView, let textView = surface.textView, let layout = surface.layout, layout.display.length > 0,
+        guard let scroll = container?.scrollView else { return nil }
+        return segment(atTextY: scroll.contentView.bounds.minY + Self.topMargin + 4)
+    }
+
+    /// The segment whose line is at a height of the text view (or the next line below a gap).
+    func segment(atTextY textY: CGFloat) -> String? {
+        guard let textView = surface.textView, let layout = surface.layout, layout.display.length > 0,
               let manager = textView.textLayoutManager, let content = manager.textContentManager else { return nil }
-        let y = scroll.contentView.bounds.minY + Self.topMargin + 4 - textView.textContainerOrigin.y
+        let y = textY - textView.textContainerOrigin.y
         var offset: Int?
         let start = manager.textLayoutFragment(for: CGPoint(x: 0, y: max(0, y)))?.rangeInElement.location ?? manager.documentRange.location
         manager.enumerateTextLayoutFragments(from: start, options: []) { fragment in
@@ -559,6 +567,28 @@ final class ReadingStream: NSObject {
             return false
         }
         return layout.segment(at: offset ?? layout.display.length - 1)
+    }
+
+    // MARK: Ink on verses
+
+    /// Called after every scroll and window change (the ink layer follows the text).
+    var onScrolled: () -> Void = {}
+
+    /// The canvas (over the header and the text) to text view coordinates and back.
+    private var canvasShift: CGFloat {
+        (container?.scrollView.contentView.bounds.minY ?? 0) - ReadingHeaderView.height
+    }
+
+    /// The verse under a canvas height and the top of its first line there.
+    func inkAnchor(atCanvasY y: CGFloat) -> InkSheet.Anchor? {
+        guard let segment = segment(atTextY: y + canvasShift), let top = top(of: segment) else { return nil }
+        return InkSheet.Anchor(segment: segment, y: top - canvasShift)
+    }
+
+    /// How far the verse a stroke was drawn on has moved on the canvas; nil when it is not in
+    /// the window.
+    func inkOffset(_ anchor: InkSheet.Anchor) -> CGFloat? {
+        top(of: anchor.segment).map { $0 - canvasShift - anchor.y }
     }
 
     /// The chapter block whose text is at the top.

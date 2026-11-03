@@ -471,6 +471,18 @@ final class ShellModel: ObservableObject {
         if let tab = activeWorkspace.columns.lazy.flatMap(\.tabs).first(where: { $0.id == stream.tabID }), tab.contentId != stream.resourceID { return }
         streams[stream.tabID] = WeakStream(stream: stream)
         surfaces[stream.tabID] = WeakSurface(surface: stream.surface)
+        if let sheet = inkSheets[stream.tabID] { pin(sheet, to: stream) }
+    }
+
+    /// The tab's ink moves with its verses: strokes are pinned to the verse under them.
+    private func pin(_ sheet: InkSheet, to stream: ReadingStream) {
+        sheet.placeAnchor = { [weak stream] y in stream?.inkAnchor(atCanvasY: y) }
+        sheet.offset = { [weak stream] anchor in stream?.inkOffset(anchor) }
+        stream.onScrolled = { [weak sheet] in sheet?.engine?.syncOffsets() }
+        sheet.clipTop = ReadingHeaderView.height
+        sheet.engine?.clipTop = ReadingHeaderView.height
+        sheet.anchorStrokes()
+        sheet.engine?.syncOffsets()
     }
 
     func stream(for tabID: String) -> ReadingStream? { streams[tabID]?.stream }
@@ -760,6 +772,9 @@ final class ShellModel: ObservableObject {
         let sheet = InkSheet(id: "shell-ink-\(tabID)")
         inkSheets[tabID] = sheet
         configure(sheet)
+        #if os(macOS)
+        if let stream = stream(for: tabID) { pin(sheet, to: stream) }
+        #endif
         return sheet
     }
 

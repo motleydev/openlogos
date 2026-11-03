@@ -358,7 +358,7 @@ final class ReadingTests: XCTestCase {
         XCTAssertNil(model.marks["t1"])
     }
 
-    func testHighlightsAndFindStayOnTheirVersesAsBlocksComeAndGo() throws {
+    func testHighlightsAndInkStayOnTheirVersesAsBlocksComeAndGo() throws {
         let model = ShellModel()
         let window = host(model)
         defer { window.close() }
@@ -372,10 +372,27 @@ final class ReadingTests: XCTestCase {
         stream.surface.dragEnded()
         model.run("tool.select")
         XCTAssertEqual(model.marks["t1"]?.count, 1)
+        // A pen stroke under John 3:16's first line.
+        model.run("tool.pen")
+        spin(0.2)
+        let sheet = model.inkSheet(for: "t1")
+        let lineY = try XCTUnwrap(screenY(stream, "John.3.16")) + ReadingHeaderView.height + 22
+        let samples = (0..<12).map { InkSample(x: 120 + Double($0) * 10, y: Double(lineY), pressure: nil, time: Double($0) * 0.01, altitude: nil, azimuth: nil) }
+        sheet.commit(try XCTUnwrap(sheet.makeStroke(samples: samples)))
+        model.run("tool.select")
+        spin(0.3)
+        let stroke = try XCTUnwrap(sheet.liveStrokes.first?.id)
+        XCTAssertEqual(sheet.anchors[stroke]?.segment, "John.3.16", "the stroke is pinned to its verse")
+        XCTAssertEqual(try XCTUnwrap(sheet.displacement(of: stroke)), 0, accuracy: 0.5)
+        stream.scrollAsReader(by: 120)
+        XCTAssertEqual(try XCTUnwrap(sheet.displacement(of: stroke)), -120, accuracy: 1, "it scrolls with the text")
         // Down until John 3 is released, then back up until it is loaded again.
         _ = scroll(stream, by: 200, limit: 400) { !$0.blocks.contains { $0.chapterKey == "John.3" } }
         XCTAssertFalse(stream.blocks.contains { $0.chapterKey == "John.3" })
+        XCTAssertNil(sheet.displacement(of: stroke), "out of the window, the stroke is not drawn")
         _ = scroll(stream, by: -200, limit: 400) { $0.topSegment?.hasPrefix("John.3.") == true }
+        let drawnAt = try XCTUnwrap(sheet.displacement(of: stroke)) + lineY
+        XCTAssertEqual(drawnAt, try XCTUnwrap(screenY(stream, "John.3.16")) + ReadingHeaderView.height + 22, accuracy: 1, "back on its verse")
         spin(0.2)
         let back = try XCTUnwrap(stream.surface.layout)
         let storage = try XCTUnwrap(stream.surface.storage)
