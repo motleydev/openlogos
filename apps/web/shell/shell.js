@@ -17,12 +17,17 @@
 // and collapse, a column-rule drag until it ends in `column.resize`, and highlights and ink
 // strokes (in memory until the annotation store, B074), and the notes as edited (B074 too).
 //
-// Rendering is per column: a column's DOM is rebuilt only when its tabs, shown tab or passage
-// change; focus, tool and theme changes touch classes and attributes only, so they cost a
-// style pass, and a drag in the text is never cut short by a re-render. Hidden tabs and other
-// workspaces keep no DOM (specs/22 §7: they release their rendered text).
+// Rendering is per column: a column's DOM is rebuilt only when its tabs or shown tab change or
+// its tab is navigated; focus, tool and theme changes touch classes and attributes only, so
+// they cost a style pass, and a drag in the text is never cut short by a re-render. Hidden tabs
+// and other workspaces keep no DOM (specs/22 §7: they release their rendered text).
+//
+// A reading tab is one continuous scroll through its edition (B078, specs/23; reading.js): the
+// reading handle's chapter blocks, a window of them around the reading line. Scrolling moves the
+// tab's passage quietly (`tab.record_scroll`) and carries linked tabs along; labels change in
+// place and the column is not rebuilt for it.
 import init, * as core from "../core-host/pkg/openlogos_ffi.js";
-import { renderParagraph, selectionAnchors, anchorRange } from "../reader/surface.js";
+import { selectionAnchors, anchorRange } from "../reader/surface.js";
 import { BRUSHES, HIGHLIGHTER_WIDTH_FACTOR, TouchArbiter, compositeAt, strokeOutline, distanceToSegment } from "../ink/layer.js";
 import { fixtureTextSource } from "./text-source.js";
 import { seedSession, benchSession } from "./seed.js";
@@ -119,7 +124,7 @@ const host = {
   well: { top: null, collapsed: false },
   highlights: [], ink: new Map(),
   palette: { expanded: null, rows: [], index: -1, result: null, returnTo: null },
-  menu: null, log: [], targets: new Map(), colourRules: new Set(), labels: new Map(),
+  menu: null, log: [], colourRules: new Set(), labels: new Map(),
   // B076: what has focus for the core's context (`tab`, `notes_dock`; `empty` never arises, a
   // column always has a tab), the last tool well drawn, the notes as edited (HTML per note id,
   // in memory until B074) and the column a passage link navigates.
@@ -163,9 +168,6 @@ export function run(invocation, ctx = context()) {
   if (outcome.handled) {
     sync();
     followPositions(outcome);
-    if (invocation.command_id === "nav.navigate" && invocation.args && invocation.args.reference) {
-      host.targets.set(activeTab().id, invocation.args.reference);
-    }
   } else {
     perform(invocation);
   }
@@ -327,8 +329,7 @@ function renderSwitcher() {
  *  passage follows the scroll, and a navigation bumps the tab's serial instead. */
 function columnSignature(ws, column, number) {
   const tabs = column.tabs.map((t) => `${t.id}:${t.content_id}:${isStream(t) ? `n${host.navSerial.get(tabKey(ws, t)) || 0}` : t.reference}:${t.link_group}:${t.pinned}:${t.lexicon_word || ""}`).join("|");
-  const target = isStream(shownTab(column)) ? "" : host.targets.get(column.shown_tab_id) || "";
-  return `${ws.id}#${number}#${column.shown_tab_id}#${tabs}#${target}`;
+  return `${ws.id}#${number}#${column.shown_tab_id}#${tabs}`;
 }
 
 /** A stream whose tab's passage or mark is no longer what it was put at or reported was
@@ -485,8 +486,7 @@ function buildColumn(ws, column, number) {
   const page = document.createElement("div");
   page.className = "page";
   scroller.appendChild(page);
-  const view = { section, scroller, page, ws, column, tab, resource, number, text: null, paragraph: null, stream: null, canvas: null, key: tabKey(ws, tab) };
-  const passageText = isStream(tab) ? null : host.text.passage(tab.content_id, tab.reference);
+  const view = { section, scroller, page, ws, column, tab, resource, number, text: null, stream: null, canvas: null, key: tabKey(ws, tab) };
   if (isStream(tab)) {
     buildStream(view);
   } else if (resource.kind === "notes") {
@@ -496,38 +496,9 @@ function buildColumn(ws, column, number) {
     page.appendChild(article);
   } else if (resource.kind === "lexicon") {
     page.appendChild(lexiconPage(tab));
-  } else if (passageText) {
-    const article = document.createElement("article");
-    article.className = "measure";
-    article.lang = resource.lang;
-    const text = renderParagraph(passageText.paragraph, resource.dir, resource.lang);
-    const attribution = document.createElement("p");
-    attribution.className = "attribution";
-    attribution.textContent = passageText.attribution;
-    article.append(text, attribution);
-    page.appendChild(article);
-    view.text = text;
-    view.paragraph = passageText.paragraph;
-    text.addEventListener("click", (e) => studyWordAt(view, e));
-    const target = host.targets.get(tab.id);
-    if (target && /\.\d+$/.test(target.split("-")[0])) {
-      const verse = text.querySelector(`[data-segment="${target.split("-")[0]}"]`);
-      if (verse) { verse.classList.add("target"); view.scrollTo = verse; }
-    }
-    const canvas = document.createElement("canvas");
-    canvas.className = "margin";
-    canvas.setAttribute("aria-hidden", "true");
-    page.appendChild(canvas);
-    view.canvas = canvas;
-    attachInk(view);
   } else {
     page.appendChild(placeholder(ws, tab, resource));
   }
-  scroller.addEventListener("scroll", () => {
-    if (view.stream) return; // the stream reports its own position
-    clearTimeout(view.scrollTimer);
-    view.scrollTimer = setTimeout(() => recordScroll(view), 150);
-  }, { passive: true });
   section.addEventListener("pointerdown", (e) => {
     // A right-click focuses nothing: the context menu carries the focus change for its rows.
     if (e.button !== 0 || e.target.closest(".tabstrip, .pane-menu")) return;
@@ -715,60 +686,13 @@ function dockView(ws) {
   return el;
 }
 
-/** Where the reader is: the segment and scalar at the top of the text, sent to the core as
- *  `tab.record_scroll` once scrolling settles (a quiet command: no re-render, no undo). */
-function scrollAnchorOf(view) {
-  if (!view.text || !view.section.isConnected) return null;
-  const box = view.scroller.getBoundingClientRect();
-  const text = view.text.getBoundingClientRect();
-  const rtl = view.resource.dir === "rtl";
-  const x = rtl ? Math.min(text.right, box.right) - 2 : Math.max(text.left, box.left) + 2;
-  const y = box.top + 2;
-  const caret = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
-  const node = caret && caret.startContainer;
-  const verse = node && node.parentElement && node.parentElement.closest("[data-segment]");
-  if (verse && view.text.contains(verse) && node.parentElement.classList.contains("t")) {
-    return { segment_id: verse.dataset.segment, scalar: [...node.data.slice(0, caret.startOffset)].length };
-  }
-  // Between lines or above the text: the first segment whose bottom is below the top edge.
-  for (const v of view.text.querySelectorAll("[data-segment]")) {
-    if (v.getBoundingClientRect().bottom > y) return { segment_id: v.dataset.segment, scalar: 0 };
-  }
-  return null;
-}
-
-function recordScroll(view) {
-  const anchor = scrollAnchorOf(view);
-  if (!anchor) return;
-  const old = view.tab.scroll_anchor;
-  if (!old && view.scroller.scrollTop < 4) return;
-  if (old && old.segment_id === anchor.segment_id && old.scalar === anchor.scalar) return;
-  run({ command_id: "tab.record_scroll", args: { workspace_id: view.ws.id, tab_id: view.tab.id, ...anchor } });
-  view.tab = { ...view.tab, scroll_anchor: anchor };
-}
-
-/** Scrolls a freshly built column to a navigation target, or to its tab's scroll_anchor. */
+/** Opens a freshly built stream at its tab's passage or scroll anchor, or puts a moved one
+ *  back on the verse it had (moving a node resets its scroll position). */
 function restoreScroll(view) {
-  if (view.stream) {
-    const o = view.pendingOpen;
-    view.pendingOpen = null;
-    if (o) view.stream.open(o.chapterKey, o); else view.stream.restore();
-    return;
-  }
-  if (view.scrollTo) { view.scroller.scrollTop = Math.max(0, view.scrollTo.offsetTop - 24); view.scrollTo = null; return; }
-  const anchor = view.tab.scroll_anchor;
-  const verse = anchor && view.text && view.text.querySelector(`[data-segment="${CSS.escape(anchor.segment_id)}"]`);
-  if (!verse) return;
-  const node = verse.querySelector(".t").firstChild;
-  let top = verse.getBoundingClientRect().top;
-  if (node && anchor.scalar > 0) {
-    const r = document.createRange();
-    const at = [...node.data].slice(0, anchor.scalar).join("").length;
-    r.setStart(node, Math.min(at, node.length));
-    r.setEnd(node, Math.min(at + 1, node.length));
-    top = r.getBoundingClientRect().top;
-  }
-  view.scroller.scrollTop += top - view.scroller.getBoundingClientRect().top - 1;
+  if (!view.stream) return;
+  const o = view.pendingOpen;
+  view.pendingOpen = null;
+  if (o) view.stream.open(o.chapterKey, o); else view.stream.restore();
 }
 
 function viewOfNode(node) {
@@ -819,8 +743,8 @@ function selectionInView() {
   const range = s.getRangeAt(0);
   const view = viewOfNode(range.commonAncestorContainer);
   if (!view) return null;
-  const trip = view.stream ? streamAnchors(view, range) : selectionAnchors(core, view.paragraph, view.text, range);
-  return trip ? { view, trip, range, placeholder: !!view.stream && view.stream.touchesPlaceholder(range) } : null;
+  const trip = streamAnchors(view, range);
+  return trip ? { view, trip, range, placeholder: view.stream.touchesPlaceholder(range) } : null;
 }
 
 /** A selection in a reading stream: each block it touches is one core paragraph (B078), so
@@ -896,27 +820,15 @@ function paintHighlights() {
   if (!("highlights" in CSS)) return;
   const bySwatch = new Map(SWATCH_ORDER.map((s) => [`ol-${s}`, []]));
   for (const view of host.views.values()) {
-    if (!view.text || !view.section.isConnected) continue;
-    if (view.stream) {
-      // Anchors, not DOM: a block loaded again repaints its highlights (B078).
-      for (const h of host.highlights) {
-        for (const anchor of h.anchors) {
-          const b = view.stream.blocks.find((x) => x.paragraph.edition_id === h.edition_id && x.paragraph.segments.some((s) => s.segment_id === anchor.segment_id));
-          if (!b) continue;
-          const name = highlightName(h.swatch);
-          if (!bySwatch.has(name)) bySwatch.set(name, []);
-          bySwatch.get(name).push(anchorRange(core, b.paragraph, b.verses, anchor));
-        }
-      }
-      continue;
-    }
+    if (!view.stream || !view.section.isConnected) continue;
+    // Anchors, not DOM: a block loaded again repaints its highlights (B078).
     for (const h of host.highlights) {
-      if (h.edition_id !== view.paragraph.edition_id) continue;
       for (const anchor of h.anchors) {
-        if (!view.paragraph.segments.some((s) => s.segment_id === anchor.segment_id)) continue;
+        const b = view.stream.blocks.find((x) => x.paragraph.edition_id === h.edition_id && x.paragraph.segments.some((s) => s.segment_id === anchor.segment_id));
+        if (!b) continue;
         const name = highlightName(h.swatch);
         if (!bySwatch.has(name)) bySwatch.set(name, []);
-        bySwatch.get(name).push(anchorRange(core, view.paragraph, view.text, anchor));
+        bySwatch.get(name).push(anchorRange(core, b.paragraph, b.verses, anchor));
       }
     }
   }

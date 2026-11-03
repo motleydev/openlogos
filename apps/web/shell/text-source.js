@@ -1,8 +1,9 @@
-// The shell's one door to text (B072): a resource id and a passage in, display metadata and
-// core segments out. Until B071's preview pack lands this is the conformance fixture texts the
-// core ships (BSB John 3:16–17, WLC Genesis 1:1–2, SBLGNT John 3:16, the study note); B071
-// replaces `fixtureTextSource` with a pack-backed source of the same shape and the shell does
-// not change.
+// The shell's resource metadata and the fixture texts (B072): a resource id and a passage in,
+// display metadata and core segments out, over the conformance fixture texts the core ships
+// (BSB John 3:16–17, WLC Genesis 1:1–2, SBLGNT John 3:16, the study note). Since B078 reading
+// tabs take their text from the core's ReadingHandle (placeholder editions with these fixture
+// verses overlaid; B071's packs later); this source still names the resources, holds the study
+// note and gives the fixture verses' licence line.
 //
 //   resource(contentId)          → { id, short, name, dir, lang, kind } (always; an unknown id
 //                                  gets its id as its name)
