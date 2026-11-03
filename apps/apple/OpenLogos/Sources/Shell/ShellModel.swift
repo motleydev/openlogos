@@ -354,8 +354,25 @@ final class ShellModel: ObservableObject {
     /// Called on every keystroke; no debounce (specs/22 §7: 16 ms).
     func query() {
         queriedText = paletteText
-        palette.result = scoped(handle.paletteQuery(text: paletteText, context: paletteContext))
+        palette.result = scoped(withBookRow(handle.paletteQuery(text: paletteText, context: paletteContext)))
         paletteSelection = min(paletteSelection, max(0, paletteRows.count - 1))
+    }
+
+    /// B078: a whole book typed (`Genesis`) is a passage too: the core's palette has no row
+    /// for it yet, so the host adds one when the reading stream locates it as a book (it opens
+    /// at the book's first chapter).
+    func withBookRow(_ result: ShellPaletteResult) -> ShellPaletteResult {
+        let text = paletteText.trimmingCharacters(in: .whitespaces)
+        guard result.mode == "all" || result.mode.isEmpty || result.mode == "passage", !text.isEmpty, text.first?.isLetter == true || text.first?.isNumber == true,
+              !result.groups.contains(where: { $0.section == .passage }),
+              let location = try? reading.locate(resourceId: activeTab?.kind == "reading" ? activeTab!.contentId : "bsb", input: text),
+              location.granularity == "book" else { return result }
+        let row = ShellPaletteItem(section: .passage, title: ShellReference.human(location.chapterKey), subtitle: "The whole book, from its first chapter",
+                                   score: 1000, commandId: "nav.navigate", args: ShellCommandArgs(reference: location.chapterKey),
+                                   disabledKind: nil, disabledReason: nil, shortcut: nil)
+        var result = result
+        result.groups.insert(ShellPaletteGroup(section: .passage, items: [row], total: 1), at: 0)
+        return result
     }
 
     func paletteTextChanged() {
@@ -449,6 +466,9 @@ final class ShellModel: ObservableObject {
     /// A reading tab's stream, registered by its view; it also stands as the tab's surface.
     func register(_ stream: ReadingStream) {
         guard streams[stream.tabID]?.stream !== stream else { return }
+        // A released workspace's stream, updated once more on its way out, must not take the
+        // place of the shown tab with the same id.
+        if let tab = activeWorkspace.columns.lazy.flatMap(\.tabs).first(where: { $0.id == stream.tabID }), tab.contentId != stream.resourceID { return }
         streams[stream.tabID] = WeakStream(stream: stream)
         surfaces[stream.tabID] = WeakSurface(surface: stream.surface)
     }

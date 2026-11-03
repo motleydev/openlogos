@@ -578,7 +578,12 @@ final class ReaderSurface: NSObject {
         scrollRangeToVisible(range)
     }
 
+    /// B078: the owner scrolls a range into view itself (a continuous window reveals it at the
+    /// top, and only when it is out of view).
+    var revealOverride: ((NSRange) -> Void)?
+
     private func scrollRangeToVisible(_ range: NSRange) {
+        if let revealOverride { return revealOverride(range) }
         #if canImport(UIKit)
         textView?.scrollRangeToVisible(range)
         #else

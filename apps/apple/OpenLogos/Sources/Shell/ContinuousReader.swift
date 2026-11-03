@@ -172,8 +172,10 @@ final class ReadingStream: NSObject {
     var onTopSegment: (String) -> Void = { _ in }
     var onSettle: () -> Void = {}
 
-    /// At most this many blocks: the one in view and two each side.
+    /// This many blocks: the one in view and two each side. Short chapters (Psalm 117) can
+    /// need more to fill the screens around the reader; never more than `hardMaxBlocks`.
     static let maxBlocks = 5
+    static let hardMaxBlocks = 8
     /// The typed verse's first line sits this far below the top of the text.
     static let topMargin: CGFloat = 8
 
@@ -186,6 +188,8 @@ final class ReadingStream: NSObject {
     /// the top of the visible text (what a relayout keeps).
     private(set) var topSegment: String?
     private var topOffset: CGFloat = 0
+    /// The segment last reported, or set by the stream itself (a jump, a follow).
+    private var reportedTop: String?
     /// Set while the stream scrolls itself: those scrolls are not the reader's.
     private var programmatic = 0
     private var maintaining = false
@@ -204,6 +208,7 @@ final class ReadingStream: NSObject {
         surface = ReaderSurface(paneID: tabID, onSelection: { _ in }, onAction: { _, _ in }, onMeasurement: { _ in })
         surface.keepsLayoutExact = true
         super.init()
+        surface.revealOverride = { [weak self] range in self?.reveal(range) }
     }
 
     func makeView() -> ReadingContainerView {
@@ -269,6 +274,8 @@ final class ReadingStream: NSObject {
     /// passage's first segment) at the top, the highlight range marked and, for a typed
     /// passage, flashed once.
     func open(reference: String?, segment: String?, highlightRange: String?, flash: Bool) {
+        programmatic += 1
+        defer { programmatic -= 1 }
         knownReference = reference
         guard let reference else { return }
         let location: ReadingLocation
@@ -299,6 +306,8 @@ final class ReadingStream: NSObject {
 
     /// A linked tab's move: the verse at the top, no flash, not reported back.
     func follow(segment: String) {
+        programmatic += 1
+        defer { programmatic -= 1 }
         let chapter = ShellReference.chapter(of: segment)
         if !blocks.contains(where: { $0.chapterKey == chapter }) {
             guard let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: chapter) else { return }
@@ -340,6 +349,7 @@ final class ReadingStream: NSObject {
             setOrigin(top - Self.topMargin)
         }
         recordTop(target)
+        reportedTop = target
         updateHeader()
         if flash { self.flash() } else { paintHighlight() }
     }
@@ -350,6 +360,9 @@ final class ReadingStream: NSObject {
 
     /// Builds the window's layout and puts it in the text storage by the smallest edit.
     private func relayout(_ change: Change) {
+        // The storage edit resizes the text view, which moves the clip view: not the reader.
+        programmatic += 1
+        defer { programmatic -= 1 }
         serial += 1
         let built = ReaderLayout(blocks: blocks, id: "\(resourceID)|window-\(tabID)-\(serial)", editionId: resourceID,
                                  isRightToLeft: edition.isRightToLeft, typography: typography, attribution: attribution)
@@ -452,13 +465,17 @@ final class ReadingStream: NSObject {
         guard !maintaining, let scroll = container?.scrollView else { return }
         // A resize reflows the text before `containerDidLayout` re-anchors it: not a scroll.
         guard pendingJump == nil, scroll.contentView.bounds.width == layoutWidth else { return }
+        let previous = reportedTop
         maintain()
         let top = probeTopSegment()
         updateHeader()
         if let top {
-            let changed = top != topSegment
+            let changed = top != previous
             recordTop(top)
-            if changed, programmatic == 0 { onTopSegment(top) }
+            if changed, programmatic == 0 {
+                reportedTop = top
+                onTopSegment(top)
+            }
         }
         if programmatic == 0 {
             settleTimer?.invalidate()
@@ -502,7 +519,8 @@ final class ReadingStream: NSObject {
     private func trim(keepingNear visible: NSRect) -> Bool {
         guard blocks.count > Self.maxBlocks, let scroll = container?.scrollView, let layout = surface.layout else { return false }
         let bounds = scroll.contentView.bounds
-        let height = max(bounds.height, 200)
+        // Over the hard cap the farther block goes even if it is near.
+        let height = blocks.count > Self.hardMaxBlocks ? 0 : max(bounds.height, 200)
         if let first = layout.blocks.first, let second = layout.blocks.dropFirst().first,
            let end = surface.rect(for: NSRange(location: second.range.location, length: 1))?.minY, end < bounds.minY - height {
             anchored {
@@ -610,6 +628,15 @@ final class ReadingStream: NSObject {
         flashLevel = 0
         highlight = nil
         surface.setOverlay([])
+    }
+
+    /// A range the reader asked for (a selection made in code, Find's next match): left where
+    /// it is when it is in view, else brought to the top. The scroll is reported like theirs.
+    func reveal(_ range: NSRange) {
+        guard let scroll = container?.scrollView, let box = surface.rect(for: range) else { return }
+        let visible = scroll.contentView.bounds
+        guard box.minY < visible.minY || box.maxY > visible.maxY else { return }
+        scrollAsReader(by: box.minY - Self.topMargin - visible.minY)
     }
 
     /// Scrolls as the reader would (a wheel or a trackpad: each step reported like theirs), for

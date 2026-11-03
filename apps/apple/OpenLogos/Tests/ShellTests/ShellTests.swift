@@ -165,10 +165,18 @@ final class ShellTests: XCTestCase {
         model.run("column.equalize")
         XCTAssertEqual(model.activeWorkspace.columns[0].widthFraction, 1.0 / 3, accuracy: 0.0001)
         let revision = model.session.revision
+        _ = try? model.handle.apply(commandId: "tab.record_scroll", args: ShellCommandArgs(workspaceId: "w1", tabId: "t1", segmentId: "John.3.16", scalar: 0), hasSelection: false)
+        model.refresh()
+        XCTAssertEqual(model.session.revision, revision, "recording a scroll anchor within the verse is quiet")
+        // B078: scrolling into the next verse moves the tab's passage (labels change), still
+        // without an undo record.
+        let undo = model.disabledReason("edit.undo")
         _ = try? model.handle.apply(commandId: "tab.record_scroll", args: ShellCommandArgs(workspaceId: "w1", tabId: "t1", segmentId: "John.3.17", scalar: 0), hasSelection: false)
         model.refresh()
-        XCTAssertEqual(model.session.revision, revision, "recording a scroll anchor is quiet")
+        XCTAssertEqual(model.session.revision, revision + 1)
         XCTAssertEqual(model.activeTab?.scrollSegmentId, "John.3.17")
+        XCTAssertEqual(model.activeTab?.reference, "John.3.17")
+        XCTAssertEqual(model.disabledReason("edit.undo"), undo, "nothing to undo")
     }
 
     /// The Swift tokens against design/tokens/shell.json, once the web branch's file is in this
