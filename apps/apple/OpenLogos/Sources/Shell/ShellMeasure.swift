@@ -118,6 +118,12 @@ final class ShellMeasure {
         string.enumerateSubstrings(in: NSRange(location: 0, length: min(string.length, 400)), options: .byWords) { _, range, _, _ in
             if let box = surface.rect(for: range) { points.append(NSPoint(x: box.midX, y: box.midY)) }
         }
+        // Only the points a right-click finds a word at (not a verse number).
+        points = points.filter { point in
+            defer { surface.clearSelection() }
+            if case .word = surface.contextHit(at: point) { return true }
+            return false
+        }
         guard !points.isEmpty else { return stats }
         let other = ws.columns.first { $0.number != column.number }?.number ?? column.number
         let kinds: [(Int) -> NSMenu?] = [
@@ -132,34 +138,56 @@ final class ShellMeasure {
             { _ in self.model.nsMenu(for: .noteText(text: "grace", tabId: nil)) },
             { _ in self.model.nsMenu(for: .noteLink(reference: "Rom.8.28", tabId: nil)) },
         ]
-        stats.append(await measure("context menu built: hit test, core, NSMenu (7 target kinds)", budget: 16, count: max(samplesPerInteraction, 7 * 30),
-                                   prepare: { _ in surface.clearSelection() }) { i in
-            _ = kinds[i % kinds.count](i)
-        })
+        // Built: what AppKit waits for between the right-click and showing the menu (no
+        // redraw: the word's selection is drawn while the menu is up).
+        func built(_ kind: (Int) -> NSMenu?) -> [Double] {
+            (0..<max(samplesPerInteraction, 210)).map { i in
+                surface.clearSelection()
+                let t0 = CACurrentMediaTime()
+                _ = kind(i)
+                return (CACurrentMediaTime() - t0) * 1000
+            }
+        }
+        for _ in 0..<5 { kinds.forEach { _ = $0(0) } }
+        stats.append(Self.stat("right-click → menu built, word (hit test selects it, core, NSMenu)", budget: 16, built(kinds[0])))
+        stats.append(Self.stat("right-click → menu built, selection", budget: 16, built(kinds[1])))
+        stats.append(Self.stat("right-click → menu built, tab · column · background · note text · note link", budget: 16,
+                               built { i in kinds[2 + i % 5](i) }))
         surface.clearSelection()
         Self.flush()
 
         // On screen: popUp shows the menu window and starts tracking; a timer in the tracking
-        // run loop mode stops the clock (the menu is drawn by then) and closes it.
-        var open: [Double] = []
-        for i in 0..<max(samplesPerInteraction, 200) {
-            surface.clearSelection()
-            Self.flush()
-            let t0 = CACurrentMediaTime()
-            guard let menu = model.nsMenu(for: surface.contextHit(at: points[i % points.count]), tab: tab, column: column) else { continue }
-            Self.flush()
-            let timer = Timer(timeInterval: 0, repeats: false) { _ in
-                MainActor.assumeIsolated {
-                    open.append((CACurrentMediaTime() - t0) * 1000)
-                    menu.cancelTracking()
+        // run loop mode stops the clock (the window is up by then) and closes the menu.
+        func popUp(_ make: (Int) -> NSMenu?) async -> [Double] {
+            var open: [Double] = []
+            for i in 0..<max(samplesPerInteraction, 200) {
+                surface.clearSelection()
+                Self.flush()
+                let t0 = CACurrentMediaTime()
+                guard let menu = make(i) else { continue }
+                let timer = Timer(timeInterval: 0, repeats: false) { _ in
+                    MainActor.assumeIsolated {
+                        open.append((CACurrentMediaTime() - t0) * 1000)
+                        menu.cancelTracking()
+                    }
                 }
+                RunLoop.main.add(timer, forMode: .eventTracking)
+                menu.popUp(positioning: nil, at: points[i % points.count], in: text)
+                try? await Task.sleep(nanoseconds: 20_000_000)
             }
-            RunLoop.main.add(timer, forMode: .eventTracking)
-            menu.popUp(positioning: nil, at: points[i % points.count], in: text)
-            try? await Task.sleep(nanoseconds: 20_000_000)
+            return open
+        }
+        stats.append(Self.stat("right-click → menu window open and tracking (word menu, end to end)", budget: 16,
+                               await popUp { i in self.model.nsMenu(for: surface.contextHit(at: points[i % points.count]), tab: tab, column: column) }))
+        // AppKit's own cost of showing a menu, for a short one and one the word menu's size.
+        for rows in [3, 18] {
+            stats.append(Self.stat("AppKit floor: popUp of a plain \(rows)-row NSMenu → tracking", budget: 16, await popUp { _ in
+                let plain = NSMenu()
+                (1...rows).forEach { plain.addItem(withTitle: "Row \($0)", action: nil, keyEquivalent: "") }
+                return plain
+            }))
         }
         surface.clearSelection()
-        stats.append(Self.stat("right-click → menu window open and tracking (popUp, word menu)", budget: 16, open))
 
         // Choices: the menu's focus, the row, the effect drawn.
         let wordMenu = { () -> ShellNSMenu? in
