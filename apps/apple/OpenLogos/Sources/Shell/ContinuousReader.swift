@@ -156,9 +156,9 @@ final class ReadingHeaderView: NSView {
     }
 }
 
-/// Work that can wait a frame, one item per display-link frame: the streams' loads and
-/// releases that are not urgent, and the labels' refresh after a scroll moved a chapter. An
-/// item that did something (returns true) goes again in a later frame.
+/// Work that can wait a frame, one item per display-link frame: the streams' loads, releases
+/// and layout of blocks added below that are not urgent. An item that did something (returns
+/// true) goes again in a later frame.
 @MainActor
 final class ReadingScheduler: NSObject {
     static let shared = ReadingScheduler()

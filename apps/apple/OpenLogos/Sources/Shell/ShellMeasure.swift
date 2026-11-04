@@ -316,9 +316,7 @@ final class ShellMeasure {
         }
         let scheduler = ReadingScheduler.shared
         let window = zip(scheduler.durations, scheduler.kinds).filter { $0.1 == "window" && $0.0 > 0.05 }.map(\.0)
-        let labels = zip(scheduler.durations, scheduler.kinds).filter { $0.1 == "labels" }.map(\.0)
         stats.append(Self.stat("deferred, one per frame: a block loaded or released (one column)", budget: 16, window))
-        stats.append(Self.stat("deferred, one per frame: labels after the chapter changed", budget: 16, labels))
         return (stats, runs)
     }
 
