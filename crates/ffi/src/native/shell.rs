@@ -1035,8 +1035,8 @@ fn view(shell: &Shell) -> ShellSession {
     }
 }
 
-struct State {
-    shell: Shell,
+pub(crate) struct State {
+    pub(crate) shell: Shell,
     index: Option<(u64, PaletteIndex)>,
     text: Option<FixtureTextProvider>,
 }
@@ -1059,7 +1059,7 @@ impl ShellHandle {
         }))
     }
 
-    fn lock(&self) -> std::sync::MutexGuard<'_, State> {
+    pub(crate) fn lock(&self) -> std::sync::MutexGuard<'_, State> {
         // A panic inside a call poisons nothing a later call could misread: every mutation
         // replaces the session whole.
         self.state

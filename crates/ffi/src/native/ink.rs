@@ -204,6 +204,62 @@ impl From<document::InkError> for InkError {
     }
 }
 
+impl From<InkStroke> for document::Stroke {
+    fn from(s: InkStroke) -> Self {
+        document::Stroke {
+            id: s.id,
+            tool: match s.tool {
+                InkTool::Pen => document::Tool::Pen,
+                InkTool::Highlighter => document::Tool::Highlighter,
+            },
+            brush_version: s.brush_version,
+            width: s.width,
+            color: s.color,
+            opacity: s.opacity,
+            points: s
+                .points
+                .into_iter()
+                .map(|p| document::InkPoint {
+                    x: p.x,
+                    y: p.y,
+                    pressure: p.pressure,
+                    elapsed_ms: p.elapsed_ms,
+                    altitude: p.altitude,
+                    azimuth: p.azimuth,
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<document::Stroke> for InkStroke {
+    fn from(s: document::Stroke) -> Self {
+        InkStroke {
+            id: s.id,
+            tool: match s.tool {
+                document::Tool::Pen => InkTool::Pen,
+                document::Tool::Highlighter => InkTool::Highlighter,
+            },
+            brush_version: s.brush_version,
+            width: s.width,
+            color: s.color,
+            opacity: s.opacity,
+            points: s
+                .points
+                .into_iter()
+                .map(|p| InkPoint {
+                    x: p.x,
+                    y: p.y,
+                    pressure: p.pressure,
+                    elapsed_ms: p.elapsed_ms,
+                    altitude: p.altitude,
+                    azimuth: p.azimuth,
+                })
+                .collect(),
+        }
+    }
+}
+
 impl From<InkDocument> for document::InkDocument {
     fn from(d: InkDocument) -> Self {
         document::InkDocument {
@@ -212,33 +268,7 @@ impl From<InkDocument> for document::InkDocument {
             id: d.id,
             snapshot_id: d.snapshot_id,
             coordinate_space_id: d.coordinate_space_id,
-            strokes: d
-                .strokes
-                .into_iter()
-                .map(|s| document::Stroke {
-                    id: s.id,
-                    tool: match s.tool {
-                        InkTool::Pen => document::Tool::Pen,
-                        InkTool::Highlighter => document::Tool::Highlighter,
-                    },
-                    brush_version: s.brush_version,
-                    width: s.width,
-                    color: s.color,
-                    opacity: s.opacity,
-                    points: s
-                        .points
-                        .into_iter()
-                        .map(|p| document::InkPoint {
-                            x: p.x,
-                            y: p.y,
-                            pressure: p.pressure,
-                            elapsed_ms: p.elapsed_ms,
-                            altitude: p.altitude,
-                            azimuth: p.azimuth,
-                        })
-                        .collect(),
-                })
-                .collect(),
+            strokes: d.strokes.into_iter().map(Into::into).collect(),
             deleted_stroke_ids: d.deleted_stroke_ids,
             viewport_transform: document::ViewportTransform {
                 scale: d.viewport_transform.scale,

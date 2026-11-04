@@ -295,6 +295,12 @@ impl ReadingHandle {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
+    /// Whether a segment is placeholder text (B074: never highlighted); `false` when the
+    /// library does not know it.
+    pub(crate) fn is_placeholder(&self, resource_id: &str, segment_id: &str) -> bool {
+        self.lock().segment_is_placeholder(resource_id, segment_id) == Some(true)
+    }
+
     fn install(&self, pack: FilePack) -> ReadingEdition {
         let edition = core::TextPack::edition(&pack).clone();
         self.lock().insert(Box::new(pack));
