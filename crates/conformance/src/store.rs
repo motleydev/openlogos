@@ -427,4 +427,3 @@ pub(crate) fn run_user_store(fixture: &UserStoreFixture, r: &mut Recorder) {
         r.check(&format!("placeholder: {}", case.name), &case.error, &actual);
     }
 }
-
