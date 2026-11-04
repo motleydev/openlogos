@@ -78,6 +78,7 @@ fn session() -> Session {
                     pinned,
                     history: Default::default(),
                     lexicon_word: None,
+                    lexicon_language: None,
                     highlight_range: None,
                 });
             }

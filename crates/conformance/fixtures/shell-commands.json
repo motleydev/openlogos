@@ -255,7 +255,8 @@
     "host.paste",
     "nav.paste_passage",
     "selection.highlight_in",
-    "note.remove_link"
+    "note.remove_link",
+    "tab.move"
   ],
   "scenarios": [
     {
@@ -2108,6 +2109,313 @@
           }
         }
       ]
+    },
+    {
+      "name": "tab drag and column resize (B074)",
+      "steps": [
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t2",
+            "column": 2,
+            "index": 0
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t2",
+                "t3"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t2"
+            }
+          }
+        },
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t3",
+            "column": 2,
+            "index": 0
+          },
+          "expect": {
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t3",
+                "t2"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t3"
+            }
+          }
+        },
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t4",
+            "column": 1,
+            "index": 1
+          },
+          "expect": {
+            "columns": [
+              [
+                "t1",
+                "*t4"
+              ],
+              [
+                "*t3",
+                "t2"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 1,
+              "tab": "t4"
+            },
+            "widths_permille": [
+              500,
+              500
+            ]
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t3",
+                "t2"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t3"
+            },
+            "widths_permille": [
+              400,
+              400,
+              200
+            ],
+            "can_redo": true
+          }
+        },
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t2",
+            "new_column": true
+          },
+          "expect": {
+            "recorded": true,
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t3"
+              ],
+              [
+                "*t2"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 3,
+              "tab": "t2"
+            },
+            "widths_permille": [
+              300,
+              300,
+              250,
+              150
+            ]
+          }
+        },
+        {
+          "command": "column.resize",
+          "args": {
+            "column": 1,
+            "number": 0.4
+          },
+          "expect": {
+            "recorded": true,
+            "widths_permille": [
+              400,
+              257,
+              214,
+              129
+            ]
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "widths_permille": [
+              300,
+              300,
+              250,
+              150
+            ]
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t3",
+                "t2"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t3"
+            },
+            "widths_permille": [
+              400,
+              400,
+              200
+            ]
+          }
+        },
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t3",
+            "column": 2,
+            "index": 1
+          },
+          "expect": {
+            "error": "already_in_column"
+          }
+        },
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t9",
+            "column": 1
+          },
+          "expect": {
+            "error": "no_such_tab"
+          }
+        },
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t4",
+            "new_column": true
+          },
+          "expect": {
+            "error": "one_tab"
+          }
+        },
+        {
+          "command": "tab.move",
+          "args": {
+            "tab_id": "t1",
+            "column": 3
+          },
+          "expect": {
+            "columns": [
+              [
+                "*t3",
+                "t2"
+              ],
+              [
+                "t4",
+                "*t1"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            },
+            "widths_permille": [
+              667,
+              333
+            ]
+          }
+        },
+        {
+          "command": "edit.undo",
+          "expect": {
+            "columns": [
+              [
+                "*t1"
+              ],
+              [
+                "*t3",
+                "t2"
+              ],
+              [
+                "*t4"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t3"
+            }
+          }
+        },
+        {
+          "command": "edit.redo",
+          "expect": {
+            "columns": [
+              [
+                "*t3",
+                "t2"
+              ],
+              [
+                "t4",
+                "*t1"
+              ]
+            ],
+            "active": {
+              "workspace": "w1",
+              "column": 2,
+              "tab": "t1"
+            }
+          }
+        }
+      ]
     }
   ],
   "palette": [
@@ -2972,6 +3280,23 @@
       "expect": [],
       "count": 0,
       "notice": "unknown book `Hezek`"
+    },
+    {
+      "name": "a tab in another workspace",
+      "query": "@wlc",
+      "expect": [
+        {
+          "section": "tabs",
+          "title": "WLC · Gen 1:1",
+          "command": "tab.focus",
+          "args": {
+            "workspace_id": "w2",
+            "tab_id": "t1"
+          },
+          "subtitle": "Genesis · column 1"
+        }
+      ],
+      "count": 1
     }
   ],
   "migrations": [

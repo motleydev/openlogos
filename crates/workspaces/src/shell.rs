@@ -59,6 +59,11 @@ pub struct Tab {
     /// `None` for every other tab.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lexicon_word: Option<String>,
+    /// The language a Lexicon tab studies, as the BCP 47 tag of the edition the word was
+    /// clicked in (B074, `grc` → Greek, `hbo` → Hebrew), so a restored tab looks the word up
+    /// in the right lexicon; `None` for every other tab or when the edition had no language.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lexicon_language: Option<String>,
     /// The verses the last navigation named (B078, `John.3.16-John.3.18`), which the host
     /// marks until the next navigation; `None` after a chapter or book was opened.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -744,6 +749,7 @@ impl Workspace {
             pinned: p.pinned,
             history: PaneHistory::default(),
             lexicon_word: None,
+            lexicon_language: None,
             highlight_range: None,
         };
         let structure = [
