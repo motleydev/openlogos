@@ -146,6 +146,24 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(back.handle.exportStore(), String(decoding: saved, as: UTF8.self))
     }
 
+    func testTheEraserTakesAStoredStrokeOutOfTheCore() throws {
+        let model = ShellModel(store: file)
+        let window = host(model)
+        defer { window.close() }
+        spin()
+        let stream = try XCTUnwrap(model.stream(for: "t1"))
+        StoreLaunch.drawInk(model, stream: stream, on: "John.3.17")
+        XCTAssertEqual(model.handle.inkIn(resourceId: "bsb", chapterKey: "John.3").count, 1)
+        let sheet = model.inkSheet(for: "t1")
+        let stroke = try XCTUnwrap(sheet.liveStrokes.first)
+        let point = try XCTUnwrap(stroke.points.dropFirst(10).first)
+        let dy = try XCTUnwrap(sheet.displacement(of: stroke.id))
+        sheet.erase(at: CGPoint(x: point.x, y: point.y + Double(dy)))
+        XCTAssertTrue(sheet.liveStrokes.isEmpty)
+        XCTAssertTrue(model.handle.inkIn(resourceId: "bsb", chapterKey: "John.3").isEmpty, "the core forgets it")
+        XCTAssertTrue(try XCTUnwrap(model.persistence).isDirty)
+    }
+
     func testSavesWaitForTheDebounceAndCountQuietChanges() throws {
         let model = ShellModel(store: file)
         let window = host(model)

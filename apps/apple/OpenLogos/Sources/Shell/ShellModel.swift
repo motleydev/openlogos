@@ -790,7 +790,6 @@ final class ShellModel: ObservableObject {
         // B074: in a reading stream the core keeps it, as segment spans in Unicode scalars;
         // it refuses placeholder text.
         if let stream = stream(for: selection.paneID), let layout = stream.surface.layout, !layout.blocks.isEmpty {
-            self.selection = nil
             let spans = Self.merged(selection.highlights.flatMap(layout.spans(ofDisplay:))).compactMap(layout.storeSpan)
             guard !spans.isEmpty else { return }
             let highlight = StoreHighlight(resourceId: stream.resourceID, contentRevision: layout.content.contentRevision, spans: spans,
@@ -802,6 +801,7 @@ final class ShellModel: ObservableObject {
             } catch {
                 return show(toast: "\(error)")
             }
+            self.selection = nil
             repaintHighlights(resourceID: stream.resourceID)
             storeChanged()
             return
@@ -977,7 +977,7 @@ final class ShellModel: ObservableObject {
 
     /// A finished stroke on a reading stream goes to the core, pinned to the verse under its
     /// first point: `x` from the text's left edge, `y` from that verse's top. The sheet keeps it
-    /// under the core's id, drawn from the verse's top as a restored stroke is.
+    /// under the core's id, pinned to that verse as B078 pins a stroke.
     private func storeInk(_ stroke: InkStroke, tabID: String, sheet: InkSheet) -> (InkStroke, InkSheet.Anchor)? {
         guard let stream = stream(for: tabID), let first = stroke.points.first,
               let anchor = stream.inkAnchor(atCanvasY: CGFloat(first.y)) else { return nil }
@@ -1001,9 +1001,13 @@ final class ShellModel: ObservableObject {
     /// The eraser took a stroke: the core forgets it, and every tab of the edition drops it.
     private func eraseInk(_ id: String, tabID: String) {
         guard let stream = stream(for: tabID), (try? handle.removeInk(id: id)) != nil else { return }
+        erasedInk.insert(id)
         storeChanged()
         syncStoredInk(resourceID: stream.resourceID, except: tabID)
     }
+
+    /// Strokes the eraser took this session (other tabs of the edition drop them too).
+    private var erasedInk: Set<String> = []
 
     /// Every shown stream of the edition takes the core's strokes again.
     private func syncStoredInk(resourceID: String, except tabID: String? = nil) {
@@ -1028,7 +1032,7 @@ final class ShellModel: ObservableObject {
         if strokes.isEmpty && inkSheets[stream.tabID] == nil { return }
         let sheet = inkSheet(for: stream.tabID)
         let wasEmpty = sheet.liveStrokes.isEmpty
-        sheet.syncStored(strokes)
+        sheet.syncStored(strokes, erased: erasedInk)
         if wasEmpty != sheet.liveStrokes.isEmpty {
             DispatchQueue.main.async { [weak self] in self?.inkRevision += 1 }
         }

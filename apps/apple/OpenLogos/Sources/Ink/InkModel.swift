@@ -262,24 +262,25 @@ final class InkSheet: ObservableObject {
     /// The ids of the strokes that came from the core.
     private(set) var stored: Set<String> = []
 
-    /// Shows the core's strokes for the chapters in view: those not shown yet are added,
-    /// stored ones no longer there are dropped; the sheet's own strokes stay.
-    func syncStored(_ strokes: [(InkStroke, Anchor)]) {
-        let wanted = Set(strokes.map(\.0.id))
+    /// Shows the core's strokes for the chapters in view: those not shown yet are added, and
+    /// those erased (here or in another tab) are dropped. A stroke whose chapter left the window
+    /// stays, hidden, and is drawn again when its verse comes back.
+    func syncStored(_ strokes: [(InkStroke, Anchor)], erased: Set<String>) {
         var changed = false
-        let gone = stored.subtracting(wanted)
+        let gone = stored.intersection(erased)
         if !gone.isEmpty {
             document.strokes.removeAll { gone.contains($0.id) }
             for id in gone { anchors[id] = nil }
+            stored.subtract(gone)
             changed = true
         }
         let shown = Set(document.strokes.map(\.id))
-        for (stroke, anchor) in strokes where !shown.contains(stroke.id) {
+        for (stroke, anchor) in strokes where !shown.contains(stroke.id) && !erased.contains(stroke.id) {
             document.strokes.append(stroke)
             anchors[stroke.id] = anchor
+            stored.insert(stroke.id)
             changed = true
         }
-        stored = wanted
         if changed { bump() }
     }
 
