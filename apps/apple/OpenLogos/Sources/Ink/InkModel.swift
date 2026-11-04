@@ -252,6 +252,37 @@ final class InkSheet: ObservableObject {
         }
     }
 
+    // MARK: B074: strokes the core keeps
+
+    /// A finished stroke is offered here first: the shell stores it in the core and answers
+    /// the stroke as kept (the core's id) with its anchor; nil keeps it on this sheet only.
+    var onCommit: ((InkStroke) -> (InkStroke, Anchor)?)?
+    /// The eraser took a stroke.
+    var onErase: ((String) -> Void)?
+    /// The ids of the strokes that came from the core.
+    private(set) var stored: Set<String> = []
+
+    /// Shows the core's strokes for the chapters in view: those not shown yet are added,
+    /// stored ones no longer there are dropped; the sheet's own strokes stay.
+    func syncStored(_ strokes: [(InkStroke, Anchor)]) {
+        let wanted = Set(strokes.map(\.0.id))
+        var changed = false
+        let gone = stored.subtracting(wanted)
+        if !gone.isEmpty {
+            document.strokes.removeAll { gone.contains($0.id) }
+            for id in gone { anchors[id] = nil }
+            changed = true
+        }
+        let shown = Set(document.strokes.map(\.id))
+        for (stroke, anchor) in strokes where !shown.contains(stroke.id) {
+            document.strokes.append(stroke)
+            anchors[stroke.id] = anchor
+            changed = true
+        }
+        stored = wanted
+        if changed { bump() }
+    }
+
     /// How far a stroke is drawn from where its points are: 0 unpinned, nil out of the window.
     func displacement(of id: String) -> CGFloat? {
         guard let anchor = anchors[id] else { return 0 }
@@ -308,6 +339,12 @@ final class InkSheet: ObservableObject {
     }
 
     func commit(_ stroke: InkStroke) {
+        var stroke = stroke
+        if let (kept, anchor) = onCommit?(stroke) {
+            stroke = kept
+            anchors[kept.id] = anchor
+            stored.insert(kept.id)
+        }
         document.strokes.append(stroke)
         undoStack.append(.add(stroke.id))
         redoStack.removeAll()
@@ -327,6 +364,7 @@ final class InkSheet: ObservableObject {
                 undoStack.append(.erase(stroke.id))
                 redoStack.removeAll()
                 bump()
+                onErase?(stroke.id)
                 readout = "erased \(stroke.id) (tombstone kept in deleted_stroke_ids)"
                 return
             }

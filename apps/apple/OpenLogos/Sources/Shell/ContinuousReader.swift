@@ -507,6 +507,8 @@ final class ReadingStream: NSObject {
         // The text view takes its height from what is laid out (and estimated) now.
         surface.textView?.textLayoutManager?.textViewportLayoutController.layoutViewport()
         if Self.timings.count > 4096 { Self.timings.removeFirst(2048) }
+        onWindowChanged()
+        ShellPersistence.firstText(self)
     }
 
     /// Blocks laid out once for every stream (a tab switch or a workspace switch shows chapters
@@ -871,6 +873,11 @@ final class ReadingStream: NSObject {
         return InkSheet.Anchor(segment: segment, y: top - canvasShift)
     }
 
+    /// A verse's top on the ink canvas, when it is in the window.
+    func canvasTop(of segment: String) -> CGFloat? {
+        top(of: segment).map { $0 - canvasShift }
+    }
+
     /// How far the verse a stroke was drawn on has moved on the canvas; nil when it is not in
     /// the window.
     func inkOffset(_ anchor: InkSheet.Anchor) -> CGFloat? {
@@ -893,9 +900,28 @@ final class ReadingStream: NSObject {
 
     // MARK: The typed verses' mark
 
-    /// The typed verses from `verse_start` to `verse_end` in document order; a range that runs
-    /// past an end of the window is marked up to that end.
+    /// B074: the core's highlights on the window's chapters (the model answers), painted
+    /// under the typed verses' mark.
+    var storedMarks: (String, ReaderLayout) -> [ReaderMark] = { _, _ in [] }
+    /// After every window change (the model shows the core's ink on the new chapters).
+    var onWindowChanged: () -> Void = {}
+
+    /// The highlights painted again (one was added).
+    func repaintMarks() { paintHighlight() }
+
+    /// The text's left edge on the ink canvas: stored strokes measure `x` from it.
+    var inkLeading: CGFloat {
+        guard let textView = surface.textView else { return padding }
+        return textView.textContainerOrigin.x + (textView.textContainer?.lineFragmentPadding ?? 0)
+    }
+
+    /// The stored highlights, then the typed verses from `verse_start` to `verse_end` in
+    /// document order; a range that runs past an end of the window is marked up to that end.
     private func overlayMarks(in layout: ReaderLayout) -> [ReaderMark] {
+        storedMarks(resourceID, layout) + typedMarks(in: layout)
+    }
+
+    private func typedMarks(in layout: ReaderLayout) -> [ReaderMark] {
         guard let highlight else { return [] }
         let order = layout.segmentOrder
         let startIndex = order.firstIndex(of: highlight.start), endIndex = order.lastIndex(of: highlight.end)
@@ -952,7 +978,7 @@ final class ReadingStream: NSObject {
         flashTimer = nil
         flashLevel = 0
         highlight = nil
-        surface.setOverlay([])
+        paintHighlight()
     }
 
     /// A range the reader asked for (a selection made in code, Find's next match): left where
