@@ -712,7 +712,11 @@ impl Shell {
             let id = id_of(&item);
             let checked = serde_json::from_value::<InkMark>(item)
                 .map_err(|e| e.to_string())
-                .and_then(|k| k.check().map(|()| k).map_err(|e| e.to_string()));
+                .and_then(|mut k| {
+                    // The stroke carries its mark's id (a hand-edited file may leave it out).
+                    k.stroke.id.clone_from(&k.id);
+                    k.check().map(|()| k).map_err(|e| e.to_string())
+                });
             match checked {
                 Ok(k) if k.id.is_empty() || annotations.ink.iter().any(|o| o.id == k.id) => {
                     issues.push(StoreIssue {
