@@ -845,7 +845,7 @@ function noOpDrop(target, column, tabId) {
 }
 
 /** Draws where the tab would go: a bar at a strip slot, the column outlined, or the new-column
- *  zone. */
+ *  zone labelled "New column" (the Mac's words). */
 function showDrop(target) {
   let bar = $("drop-slot");
   if (!bar) { bar = document.createElement("div"); bar.id = "drop-slot"; document.body.appendChild(bar); }
@@ -857,6 +857,7 @@ function showDrop(target) {
     const r = host.views.get(`${ws.id}/${ws.columns[ws.columns.length - 1].id}`).section.getBoundingClientRect();
     Object.assign(bar.style, { left: `${r.right - NEW_COLUMN_ZONE}px`, top: `${r.top}px`, width: `${NEW_COLUMN_ZONE}px`, height: `${r.height}px` });
     bar.className = "zone";
+    bar.textContent = "New column";
     return;
   }
   const view = host.views.get(`${ws.id}/${ws.columns[target.column - 1].id}`);
@@ -867,6 +868,7 @@ function showDrop(target) {
   const x = target.index < tabs.length ? tabs[target.index].getBoundingClientRect().left : (tabs.length ? tabs[tabs.length - 1].getBoundingClientRect().right : sr.left);
   Object.assign(bar.style, { left: `${x - 1}px`, top: `${sr.top + 4}px`, width: "2px", height: `${sr.height - 8}px` });
   bar.className = "slot";
+  bar.textContent = "";
 }
 
 function startTabDrag(event, el, ws, column, tab) {

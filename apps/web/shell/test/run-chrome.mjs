@@ -1517,7 +1517,19 @@ const CASES = {
     // Into a new column at the trailing edge.
     const again = await strip(1);
     const box = await js("const r = document.querySelector('#columns > .column[data-number=\"3\"]').getBoundingClientRect(); return [r.right - 20, r.top + 300];");
-    await drag([(again[1][1] + again[1][2]) / 2, again[1][3]], box, 12);
+    // Held over the trailing zone: the band is drawn with its label.
+    const from = [(again[1][1] + again[1][2]) / 2, again[1][3]];
+    const steps = [];
+    for (let i = 1; i <= 12; i++) steps.push({ type: "pointerMove", duration: 16, x: Math.round(from[0] + ((box[0] - from[0]) * i) / 12), y: Math.round(from[1] + ((box[1] - from[1]) * i) / 12) });
+    await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerMove", duration: 0, x: Math.round(from[0]), y: Math.round(from[1]) }, { type: "pointerDown", button: 0 }, ...steps] }] });
+    await sleep(60);
+    const band = await js("const b = document.getElementById('drop-slot'); if (!b || b.hidden) return null; const r = b.getBoundingClientRect(); return [b.className, b.textContent, Math.round(r.width), getComputedStyle(b).display];");
+    expect(p, band && band[0] === "zone" && band[1] === "New column" && band[2] === 56 && band[3] !== "none", `the new-column band shows its label during the drag ${JSON.stringify(band)}`);
+    await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerUp", button: 0 }] }] });
+    await wd("DELETE", `${S}/actions`);
+    await sleep(60);
+    const gone = await js("const b = document.getElementById('drop-slot'); return !b || b.hidden;");
+    expect(p, gone, "the band goes when the drop ends");
     s = await snap();
     expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3"], ["SBLGNT Jn 3"], ["Note"], ["WLC Gen 1"]]), `new column ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
     await chord("Meta", "z");
