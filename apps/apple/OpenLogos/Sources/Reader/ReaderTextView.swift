@@ -280,17 +280,10 @@ final class ReaderSurface: NSObject {
         paint(current)
     }
 
-    /// B078: a continuous window lays out all its text after every change, attributes
-    /// included: TextKit 2 gives what an edit invalidated an estimated height until it lays it
-    /// out again, and text below an estimate moves when the estimate is replaced.
-    var keepsLayoutExact = false
-
-    func ensureLayout() {
-        #if !canImport(UIKit)
-        guard let manager = textView?.textLayoutManager else { return }
-        manager.ensureLayout(for: manager.documentRange)
-        #endif
-    }
+    /// B078: called after every paint. A continuous window lays its text out again down to the
+    /// reader after an attribute change: TextKit 2 gives what an edit invalidated an estimated
+    /// height until it lays it out again, and text below an estimate moves when it is replaced.
+    var afterPaint: (() -> Void)?
 
     /// B078: the owner's marks (painted first), replaced when they change.
     func setOverlay(_ marks: [ReaderMark]) {
@@ -414,7 +407,7 @@ final class ReaderSurface: NSObject {
         clearHighlights()
         paintMarks(overlay)
         paintMarks(marks)
-        defer { if keepsLayoutExact { ensureLayout() } }
+        defer { afterPaint?() }
         guard let selection, let storage = storage else { return }
         storage.beginEditing()
         for range in selection.highlights where range.location + range.length <= storage.length {

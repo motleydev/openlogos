@@ -88,7 +88,7 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(model.session.workspaces.map(\.title), ["Study", "Hebrew"])
         let study = model.session.workspaces[0]
         XCTAssertEqual(study.columns.map(\.number), [1, 2, 3])
-        let labels = study.columns.map { $0.tabs.map(TabTitle.label) }
+        let labels = study.columns.map { $0.tabs.map { TabTitle.label($0) } }
         XCTAssertEqual(labels, [["BSB Jn 3", "WLC Gen 1"], ["SBLGNT Jn 3"], ["Note"]], "the core's resource titles and chapter labels")
         XCTAssertEqual(model.session.ink.swatch, "#F5D90A", "the core's default swatches are the tokens'")
         XCTAssertEqual(model.session.ink.alternateSwatch, "#4CC38A")

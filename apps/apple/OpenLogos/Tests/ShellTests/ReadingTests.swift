@@ -109,7 +109,7 @@ final class ReadingTests: XCTestCase {
         XCTAssertEqual(greek.topSegment, "John.3.16")
         XCTAssertEqual(shownTab(model, column: 2)?.highlightRange, "John.3.16")
         XCTAssertFalse(greek.surface.overlay.isEmpty)
-        XCTAssertEqual(shownTab(model, column: 1).map(TabTitle.label), "BSB Jn 3")
+        XCTAssertEqual(shownTab(model, column: 1).map { TabTitle.label($0) }, "BSB Jn 3")
     }
 
     func testRangesBooksChaptersAndOneChapterBooksOpenWhereTheyShould() throws {
@@ -126,7 +126,8 @@ final class ReadingTests: XCTestCase {
 
         type("Jude 3", model)
         XCTAssertEqual(stream.topSegment, "Jude.1.3")
-        XCTAssertEqual(try XCTUnwrap(screenY(stream, "Jude.1.3")), ReadingStream.topMargin, accuracy: 1)
+        // Three short chapters were added above since (one a frame), each anchored to the pixel.
+        XCTAssertEqual(try XCTUnwrap(screenY(stream, "Jude.1.3")), ReadingStream.topMargin, accuracy: 2)
         XCTAssertEqual(stream.container?.header.text, "Jude · BSB")
 
         type("Ps 3", model)
@@ -149,7 +150,7 @@ final class ReadingTests: XCTestCase {
         spin()
         let tab = try XCTUnwrap(shownTab(model, column: 1))
         XCTAssertEqual(model.readingError(for: tab), "John has no chapter 22")
-        XCTAssertNil(model.stream(for: "t1"), "no text is shown, none of another edition's")
+        XCTAssertNil(model.stream(for: "t1")?.container?.window, "no text is shown, none of another edition's")
         model.run("nav.navigate", args: ShellCommandArgs(reference: "John.3.16"))
         spin()
         XCTAssertEqual(model.stream(for: "t1")?.topSegment, "John.3.16", "the next passage opens again")
@@ -175,11 +176,13 @@ final class ReadingTests: XCTestCase {
         let steps = scroll(stream, by: 40, limit: 200) { self.at($0, "Acts.1", atLeast: 3) }
         XCTAssertLessThan(steps, 200)
         XCTAssertEqual(stream.container?.header.text, "Acts 1 · BSB")
+        XCTAssertEqual(model.liveLabels.byTab["t1"]?.chapterLabel, "Acts 1", "the tab label follows while the reader scrolls")
+        XCTAssertEqual(model.liveLabels.byTab["t3"]?.chapterLabel, "Acts 1", "and the linked column's")
         XCTAssertEqual(stream.surface.layout?.blocks.first { $0.chapterKey == "Acts.1" }.map { stream.surface.layout!.display.attributedSubstring(from: $0.headingRange).string }, "Acts\nChapter 1\n\(ReadingNotice.placeholder)\n")
         spin(0.4)
-        XCTAssertEqual(shownTab(model, column: 1).map(TabTitle.label), "BSB Acts 1", "the tab label follows")
+        XCTAssertEqual(shownTab(model, column: 1).map { TabTitle.label($0) }, "BSB Acts 1", "the tab label follows")
         XCTAssertEqual(shownTab(model, column: 1)?.referenceLabel?.hasPrefix("Acts 1:"), true, "the identity row follows")
-        XCTAssertEqual(shownTab(model, column: 2).map(TabTitle.label), "SBLGNT Acts 1", "the linked column followed")
+        XCTAssertEqual(shownTab(model, column: 2).map { TabTitle.label($0) }, "SBLGNT Acts 1", "the linked column followed")
         // Up: back through John 21 and John 20 into John 19.
         _ = scroll(stream, by: -40, limit: 400) { $0.topSegment?.hasPrefix("John.19.") == true }
         XCTAssertTrue(stream.topSegment?.hasPrefix("John.19.") == true)
@@ -208,13 +211,17 @@ final class ReadingTests: XCTestCase {
         var over = 0
         while seen.count < 32, steps < 4000 {
             stream.scrollAsReader(by: 120)
+            // A frame: the loads and releases that can wait run one per frame.
+            spin(0.018)
             steps += 1
             seen.formUnion(stream.blocks.map(\.chapterKey))
             longest = max(longest, stream.surface.storage?.length ?? 0)
             XCTAssertLessThanOrEqual(stream.blocks.count, ReadingStream.hardMaxBlocks)
             if stream.blocks.count > ReadingStream.maxBlocks { over += 1 }
         }
-        XCTAssertLessThan(over, steps / 20, "beyond five blocks only among short chapters")
+        spin(0.4)
+        XCTAssertLessThanOrEqual(stream.blocks.count, ReadingStream.maxBlocks, "when the reader stops, the window goes back to five blocks")
+        XCTAssertGreaterThan(over, 0, "while scrolling, up to eight (releases wait)")
         XCTAssertGreaterThanOrEqual(seen.count, 32, "Matthew into Mark and beyond")
         XCTAssertLessThan(longest, 40_000, "never the whole Bible: the longest window was \(longest) UTF-16 units")
         XCTAssertTrue(stream.edits.contains { if case .delete = $0 { return true } else { return false } }, "far blocks are released")

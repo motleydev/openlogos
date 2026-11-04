@@ -20,16 +20,22 @@ struct ContinuousReaderView: NSViewRepresentable {
     let column: ShellColumn
     let horizontalPadding: CGFloat
 
+    /// The tab's stream, kept by the model while the tab is hidden, so showing it again
+    /// shows its window as it was (a tab or workspace switch lays nothing out again).
     func makeCoordinator() -> ReadingStream {
-        ReadingStream(tabID: tab.id, resourceID: tab.contentId, reading: model.reading)
+        model.pooledStream(for: tab)
     }
 
     func makeNSView(context: Context) -> ReadingContainerView {
         let stream = context.coordinator
-        let view = stream.makeView()
+        let view = stream.container ?? stream.makeView()
         configure(stream)
         model.register(stream)
-        stream.start(tab: tab, revision: model.session.revision)
+        if stream.started {
+            stream.update(tab: tab, revision: model.session.revision)
+        } else {
+            stream.start(tab: tab, revision: model.session.revision)
+        }
         return view
     }
 
@@ -98,21 +104,20 @@ final class ReadingContainerView: NSView {
     }
 }
 
-/// `Jn 3 · BSB`: the block in view, over a 1 pt rule.
+/// `Jn 3 · BSB`: the block in view, over a 1 pt rule. Drawn by the view itself: a label whose
+/// text changes would ask the window for a layout pass (SwiftUI's included) at every chapter.
 final class ReadingHeaderView: NSView {
     static let height: CGFloat = 28
-    let label = NSTextField(labelWithString: "")
-    private let rule = NSView()
+    private var title = NSAttributedString()
+    private var page = PlatformColor.clear
+    private var rules = PlatformColor.clear
     private var padding: CGFloat = 24
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        wantsLayer = true
-        rule.wantsLayer = true
-        label.lineBreakMode = .byTruncatingTail
-        label.setAccessibilityIdentifier("reading-header")
-        addSubview(label)
-        addSubview(rule)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        setAccessibilityIdentifier("reading-header")
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
@@ -120,7 +125,6 @@ final class ReadingHeaderView: NSView {
     override var isFlipped: Bool { true }
 
     func set(chapter: String, edition: String, theme: ShellTokens.Theme, padding: CGFloat) {
-        self.padding = padding
         let text = NSMutableAttributedString(string: chapter, attributes: [
             .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize, weight: .semibold),
             .foregroundColor: PlatformColor(hex: theme.text),
@@ -129,20 +133,79 @@ final class ReadingHeaderView: NSView {
             .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize),
             .foregroundColor: PlatformColor(hex: theme.chrome),
         ]))
-        if label.attributedStringValue != text { label.attributedStringValue = text }
-        label.setAccessibilityLabel("\(chapter), \(edition)")
-        layer?.backgroundColor = PlatformColor(hex: theme.page).cgColor
-        rule.layer?.backgroundColor = PlatformColor(hex: theme.rules).cgColor
-        needsLayout = true
+        let page = PlatformColor(hex: theme.page), rules = PlatformColor(hex: theme.rules)
+        guard text != title || page != self.page || rules != self.rules || padding != self.padding else { return }
+        title = text
+        self.page = page
+        self.rules = rules
+        self.padding = padding
+        setAccessibilityLabel("\(chapter), \(edition)")
+        needsDisplay = true
     }
 
-    var text: String { label.stringValue }
+    var text: String { title.string }
 
-    override func layout() {
-        super.layout()
-        let size = label.intrinsicContentSize
-        label.frame = NSRect(x: padding, y: (bounds.height - size.height) / 2, width: max(0, bounds.width - 2 * padding), height: size.height)
-        rule.frame = NSRect(x: 0, y: bounds.height - ShellTokens.rule, width: bounds.width, height: ShellTokens.rule)
+    override func draw(_ dirtyRect: NSRect) {
+        page.setFill()
+        bounds.fill()
+        rules.setFill()
+        NSRect(x: 0, y: bounds.height - ShellTokens.rule, width: bounds.width, height: ShellTokens.rule).fill()
+        let size = title.size()
+        title.draw(with: NSRect(x: padding, y: (bounds.height - size.height) / 2, width: max(0, bounds.width - 2 * padding), height: size.height),
+                   options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+    }
+}
+
+/// Work that can wait a frame, one item per display-link frame: the streams' loads and
+/// releases that are not urgent, and the labels' refresh after a scroll moved a chapter. An
+/// item that did something (returns true) goes again in a later frame.
+@MainActor
+final class ReadingScheduler: NSObject {
+    static let shared = ReadingScheduler()
+    private var work: [(key: String, run: () -> Bool)] = []
+    private var link: CADisplayLink?
+    /// How long each item took, and what it was (the measurement reads them).
+    var durations: [Double] = []
+    var kinds: [String] = []
+
+    func enqueue(_ key: String, _ run: @escaping () -> Bool) {
+        guard !work.contains(where: { $0.key == key }) else { return }
+        work.append((key, run))
+        guard link == nil else { return }
+        if let view = NSApp.windows.first(where: { $0.isVisible })?.contentView {
+            link = view.displayLink(target: self, selector: #selector(tick(_:)))
+            link?.add(to: .main, forMode: .common)
+        } else {
+            DispatchQueue.main.async { [weak self] in self?.drain() }
+        }
+    }
+
+    var isIdle: Bool { work.isEmpty }
+
+    @objc private func tick(_ link: CADisplayLink) {
+        guard !work.isEmpty else {
+            link.invalidate()
+            self.link = nil
+            return
+        }
+        let next = work.removeFirst()
+        let t0 = CACurrentMediaTime()
+        let again = next.run()
+        if durations.count < 8192 {
+            durations.append((CACurrentMediaTime() - t0) * 1000)
+            kinds.append(next.key.hasPrefix("maintain") ? "window" : next.key)
+        }
+        if again { enqueue(next.key, next.run) }
+    }
+
+    /// Runs everything now (no window to time frames by).
+    func drain() {
+        var rounds = 0
+        while !work.isEmpty, rounds < 64 {
+            let next = work.removeFirst()
+            if next.run() { work.append(next) }
+            rounds += 1
+        }
     }
 }
 
@@ -150,7 +213,9 @@ final class ReadingHeaderView: NSView {
 @MainActor
 final class ReadingStream: NSObject {
     let tabID: String
+    let workspaceID: String
     private(set) var resourceID: String
+    private(set) var started = false
     let reading: ReadingHandle
     let surface: ReaderSurface
     private(set) var container: ReadingContainerView?
@@ -172,16 +237,22 @@ final class ReadingStream: NSObject {
     var onTopSegment: (String) -> Void = { _ in }
     var onSettle: () -> Void = {}
 
-    /// This many blocks: the one in view and two each side. Short chapters (Psalm 117) can
-    /// need more to fill the screens around the reader; never more than `hardMaxBlocks`.
+    /// This many blocks when the reader stops: the one in view and two each side. While the
+    /// text moves, releases wait (an edit above the reader costs TextKit 2 a relayout of all
+    /// the text down to the view, a dropped frame or two), up to `hardMaxBlocks`.
     static let maxBlocks = 5
-    static let hardMaxBlocks = 8
+    static let hardMaxBlocks = 12
     /// The typed verse's first line sits this far below the top of the text.
     static let topMargin: CGFloat = 8
 
     private var typography: ReaderTypography = .current()
     private var padding: CGFloat = 24
     private var layoutWidth: CGFloat = 0
+    /// The window waits for the column's first width.
+    private var needsReplace = false
+    /// A block added below is laid out in a frame of its own before the reader reaches it (else
+    /// the frame that first shows it lays it all out).
+    private var tailNeedsLayout = false
     /// A jump waiting for the view to have a size.
     private var pendingJump: (segment: String, flash: Bool)?
     /// The segment at the top, as last reported or set, and how far its first line is below
@@ -201,14 +272,15 @@ final class ReadingStream: NSObject {
     /// Window edits since the stream opened (the tests and the measurement read them).
     private(set) var edits: [ReaderLayoutEdit] = []
 
-    init(tabID: String, resourceID: String, reading: ReadingHandle) {
+    init(tabID: String, workspaceID: String = "", resourceID: String, reading: ReadingHandle) {
         self.tabID = tabID
+        self.workspaceID = workspaceID
         self.resourceID = resourceID
         self.reading = reading
         surface = ReaderSurface(paneID: tabID, onSelection: { _ in }, onAction: { _, _ in }, onMeasurement: { _ in })
-        surface.keepsLayoutExact = true
         super.init()
         surface.revealOverride = { [weak self] range in self?.reveal(range) }
+        surface.afterPaint = { [weak self] in self?.ensureExact() }
     }
 
     func makeView() -> ReadingContainerView {
@@ -226,6 +298,7 @@ final class ReadingStream: NSObject {
     /// The tab as the view first shows it: where it was left (its scroll anchor), else its
     /// passage, with the typed verses marked (not flashed again).
     func start(tab: ShellTab, revision: UInt64) {
+        started = true
         knownRevision = revision
         open(reference: tab.reference, segment: tab.scrollSegmentId, highlightRange: tab.highlightRange, flash: false)
     }
@@ -316,18 +389,18 @@ final class ReadingStream: NSObject {
         jump(to: segment, flash: false)
     }
 
-    /// A fresh window: the chapter and one block each side.
+    /// A fresh window: the chapter and the next. The chapter before comes in the next frame
+    /// (ReadingScheduler), anchored, so opening lays out only from the chapter's start.
     private func load(around chapter: ReadingChapter?) {
         guard let chapter else { return }
         var window = [chapter]
-        if let prev = chapter.prev, let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: prev) { window.insert(block, at: 0) }
         if let next = chapter.next, let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: next) { window.append(block) }
         blocks = window
         relayout(.replace)
     }
 
     private func jump(to segment: String, flash: Bool) {
-        guard let scroll = container?.scrollView, scroll.contentView.bounds.height > 0, let layout = surface.layout else {
+        guard let scroll = container?.scrollView, scroll.contentView.bounds.height > 0, !needsReplace, let layout = surface.layout else {
             pendingJump = (segment, flash)
             return
         }
@@ -336,14 +409,9 @@ final class ReadingStream: NSObject {
         // Enough text on both sides of the target to put it at the top and scroll on.
         let height = scroll.contentView.bounds.height
         while blocks.count < Self.maxBlocks, let next = blocks.last?.next, let top = top(of: target),
-              documentHeight - top < height * 2, let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: next) {
+              documentHeight - top < height * 1.2, let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: next) {
             blocks.append(block)
             relayout(.append)
-        }
-        while blocks.count < Self.maxBlocks, let prev = blocks.first?.prev, let top = top(of: target), top < height,
-              let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: prev) {
-            blocks.insert(block, at: 0)
-            relayout(.prepend)
         }
         // A chapter's first verse (or a Psalm's title) opens with the chapter's heading in view.
         let block = layout.blocks.first { $0.chapterKey == ShellReference.chapter(of: target) }
@@ -365,32 +433,102 @@ final class ReadingStream: NSObject {
 
     /// Builds the window's layout and puts it in the text storage by the smallest edit.
     private func relayout(_ change: Change) {
+        if case .none = change { return }
+        // Not laid out before the column has a width (at width 0 every glyph is a line): the
+        // first layout of the container does it.
+        guard (container?.scrollView.contentView.bounds.width ?? 0) > 0 else {
+            needsReplace = true
+            return
+        }
+        needsReplace = false
         // The storage edit resizes the text view, which moves the clip view: not the reader.
         programmatic += 1
         defer { programmatic -= 1 }
         serial += 1
-        let built = ReaderLayout(blocks: blocks, id: "\(resourceID)|window-\(tabID)-\(serial)", editionId: resourceID,
-                                 isRightToLeft: edition.isRightToLeft, typography: typography, attribution: attribution)
+        let t0 = CACurrentMediaTime()
+        let built = ReaderLayout(pieces: blocks.map(piece), id: "\(resourceID)|window-\(tabID)-\(serial)", editionId: resourceID,
+                                 isRightToLeft: edition.isRightToLeft)
+        let t1 = CACurrentMediaTime()
+        var t2 = t1
+        var kind = "replace"
+        defer { Self.timings.append((t1 - t0, t2 - t1, CACurrentMediaTime() - t2, kind)) }
         let edit: ReaderLayoutEdit
         let old = surface.layout?.display.length ?? 0
-        switch change {
+        switch surface.layout == nil || surface.storage?.length != old ? .replace : change {
         case .none: return
         case .replace: edit = .replace
         case .append: edit = .insert(at: old, length: built.display.length - old)
         case .prepend: edit = .insert(at: 0, length: built.display.length - old)
         case .dropFirst(let range), .dropLast(let range): edit = .delete(range)
         }
+        switch edit {
+        case .replace: kind = "replace"
+        case .insert(let at, _): kind = at == 0 ? "add above" : "add below"
+        case .delete(let range): kind = range.location == 0 ? "release above" : "release below"
+        }
         surface.replace(layout: built, edit: edit, typographyKey: typography.key, overlay: overlayMarks(in: built))
+        t2 = CACurrentMediaTime()
         edits.append(edit)
-        ensureLayout()
+        // A block added above is laid out now (the verse at the top is placed after it); one
+        // added below is laid out as it scrolls into view.
+        if case .insert(0, let length) = edit { ensureExact(through: length) } else { ensureExact() }
+        if case .insert(let at, _) = edit, at > 0 { tailNeedsLayout = true }
+        // The text view takes its height from what is laid out (and estimated) now.
+        surface.textView?.textLayoutManager?.textViewportLayoutController.layoutViewport()
+        if Self.timings.count > 4096 { Self.timings.removeFirst(2048) }
     }
 
-    /// Lays the whole window out, so heights above the reader are exact, never estimates
-    /// (TextKit 2 estimates what it has not laid out, and an estimate that changes moves the text).
+    /// Blocks laid out once for every stream (a tab switch or a workspace switch shows chapters
+    /// already laid out), by edition, typography and chapter; the oldest go past the cap.
+    private static var pieces: [String: ReaderBlockPiece] = [:]
+    private static var pieceOrder: [String] = []
+    static let pieceCap = 96
+
+    private func pieceKey(_ chapterKey: String, revision: String) -> String {
+        "\(resourceID)|\(typography.key)|\(edition.isRightToLeft)|\(revision)|\(chapterKey)"
+    }
+
+    private func hasPiece(_ chapterKey: String) -> Bool {
+        Self.pieces[pieceKey(chapterKey, revision: blocks.first?.contentRevision ?? "")] != nil
+    }
+
+    private func piece(_ chapter: ReadingChapter) -> ReaderBlockPiece {
+        let key = pieceKey(chapter.chapterKey, revision: chapter.contentRevision)
+        if let piece = Self.pieces[key] { return piece }
+        let piece = ReaderBlockPiece(chapter: chapter, editionId: resourceID, isRightToLeft: edition.isRightToLeft, typography: typography,
+                                     attribution: attribution(chapter))
+        Self.pieces[key] = piece
+        Self.pieceOrder.append(key)
+        if Self.pieceOrder.count > Self.pieceCap {
+            for old in Self.pieceOrder.prefix(Self.pieceOrder.count - Self.pieceCap) { Self.pieces[old] = nil }
+            Self.pieceOrder.removeFirst(Self.pieceOrder.count - Self.pieceCap)
+        }
+        return piece
+    }
+
+    /// Lays the window out from its start to the end of the view (or `offset`, if further), so
+    /// heights above and in view are exact, never estimates: TextKit 2 estimates what it has not
+    /// laid out, and an estimate that changes moves the text below it. Text below the view may
+    /// stay estimated: nothing the reader sees sits under it.
+    func ensureExact(through offset: Int? = nil) {
+        guard let textView = surface.textView, let manager = textView.textLayoutManager, let content = manager.textContentManager else { return }
+        let start = manager.documentRange.location
+        var end = manager.textViewportLayoutController.viewportRange?.endLocation ?? manager.documentRange.endLocation
+        if let scroll = container?.scrollView,
+           let fragment = manager.textLayoutFragment(for: CGPoint(x: 0, y: scroll.contentView.bounds.maxY - textView.textContainerOrigin.y)),
+           fragment.rangeInElement.endLocation.compare(end) == .orderedDescending {
+            end = fragment.rangeInElement.endLocation
+        }
+        if let offset, let location = content.location(start, offsetBy: min(offset, surface.storage?.length ?? 0)),
+           location.compare(end) == .orderedDescending {
+            end = location
+        }
+        if let range = NSTextRange(location: start, end: end) { manager.ensureLayout(for: range) }
+    }
+
     private func ensureLayout() {
-        guard let textView = surface.textView, let manager = textView.textLayoutManager else { return }
-        manager.ensureLayout(for: manager.documentRange)
-        manager.textViewportLayoutController.layoutViewport()
+        ensureExact()
+        surface.textView?.textLayoutManager?.textViewportLayoutController.layoutViewport()
     }
 
     var documentHeight: CGFloat { surface.textView?.frame.height ?? 0 }
@@ -398,20 +536,25 @@ final class ReadingStream: NSObject {
     /// The top of a segment's first line, in the text view's coordinates.
     func top(of segment: String) -> CGFloat? {
         guard let range = surface.layout?.verseRanges[segment] else { return nil }
+        ensureExact(through: NSMaxRange(range))
         return surface.rect(for: NSRange(location: range.location, length: min(1, range.length)))?.minY
     }
 
     /// The top of a block's heading.
     func top(ofBlock key: String) -> CGFloat? {
         guard let block = surface.layout?.blocks.first(where: { $0.chapterKey == key }) else { return nil }
+        ensureExact(through: block.range.location + 1)
         return surface.rect(for: NSRange(location: block.range.location, length: 1))?.minY
     }
 
     private func setOrigin(_ y: CGFloat) {
         guard let scroll = container?.scrollView else { return }
+        if y + scroll.contentView.bounds.height > documentHeight {
+            surface.textView?.textLayoutManager?.textViewportLayoutController.layoutViewport()
+        }
         let maxY = max(0, documentHeight - scroll.contentView.bounds.height)
         programmatic += 1
-        scroll.contentView.setBoundsOrigin(NSPoint(x: 0, y: max(0, min(maxY, y.rounded()))))
+        scroll.contentView.setBoundsOrigin(NSPoint(x: 0, y: max(0, min(maxY, y))))
         scroll.reflectScrolledClipView(scroll.contentView)
         programmatic -= 1
     }
@@ -420,7 +563,9 @@ final class ReadingStream: NSObject {
     /// text has already reflowed (a width change), so the anchor is the one recorded before.
     private func anchored(stored: Bool = false, _ change: () -> Void) {
         guard let scroll = container?.scrollView else { return change() }
-        let anchor = stored ? topSegment : probeTopSegment()
+        // The verse the stream last put or found at the top: a jump's verse stays the top verse
+        // (even when its first line starts with the verse before) until the reader scrolls.
+        let anchor = topSegment ?? probeTopSegment()
         let before = stored ? topOffset : anchor.flatMap(top(of:)).map { $0 - scroll.contentView.bounds.minY }
         change()
         if let anchor, let before, let after = top(of: anchor) {
@@ -458,8 +603,8 @@ final class ReadingStream: NSObject {
             if !first, !blocks.isEmpty, pendingJump == nil { anchored(stored: true) { ensureLayout() } }
             onScrolled()
         }
+        if needsReplace, width > 0 { relayout(.replace) }
         if let pending = pendingJump, scroll.contentView.bounds.height > 0 {
-            ensureLayout()
             jump(to: pending.segment, flash: pending.flash)
         }
         updateHeader()
@@ -473,12 +618,17 @@ final class ReadingStream: NSObject {
         // A resize reflows the text before `containerDidLayout` re-anchors it: not a scroll.
         guard pendingJump == nil, scroll.contentView.bounds.width == layoutWidth else { return }
         let previous = reportedTop
-        maintain()
-        let top = probeTopSegment()
+        // A block is loaded now only when the reader is close to an end of the window; other
+        // loads and releases go one per frame (ReadingScheduler), so a scroll that crosses a
+        // chapter in three linked columns does not do three columns' work in one frame.
+        if programmatic == 0 { maintain(urgent: true) }
+        ReadingScheduler.shared.enqueue("maintain-\(ObjectIdentifier(self).hashValue)") { [weak self] in self?.maintain() ?? false }
+        // Only the reader's scrolls move the top verse; the stream's own keep it.
+        let top = programmatic == 0 ? probeTopSegment() : nil
+        if let top { recordTop(top) }
         updateHeader()
         if let top {
             let changed = top != previous
-            recordTop(top)
             if changed, programmatic == 0 {
                 reportedTop = top
                 onTopSegment(top)
@@ -487,60 +637,97 @@ final class ReadingStream: NSObject {
         if programmatic == 0 {
             settleTimer?.invalidate()
             settleTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: false) { [weak self] _ in
-                MainActor.assumeIsolated { self?.onSettle() }
+                MainActor.assumeIsolated {
+                    self?.releaseFar()
+                    self?.onSettle()
+                }
             }
         }
     }
 
-    /// Loads a block when the reader nears an end of the window and releases one far out of
-    /// view; one change per call, so a fast scroll spreads the work over frames.
+    /// Loads a block when the reader nears an end of the window; one change per call, so a fast
+    /// scroll spreads the work over frames. Blocks far out of view are released when the
+    /// reader stops (`releaseFar`), or, past the hard cap, several at once: an edit above the
+    /// reader costs TextKit 2 a relayout down to the view, so it is done as rarely as possible
+    /// while the text moves.
     @discardableResult
-    func maintain() -> Bool {
-        guard let scroll = container?.scrollView, !blocks.isEmpty, let layout = surface.layout else { return false }
+    func maintain(urgent: Bool = false) -> Bool {
+        guard let scroll = container?.scrollView, !blocks.isEmpty, surface.layout != nil, !needsReplace, pendingJump == nil else { return false }
         maintaining = true
         defer { maintaining = false }
         let visible = scroll.contentView.bounds
         let height = max(visible.height, 200)
-        if visible.minY < height * 1.5, let prev = blocks.first?.prev,
+        let reach = urgent ? 0.75 : 1.5
+        let needsBlock = (visible.minY < height * reach && blocks.first?.prev != nil)
+            || (documentHeight - visible.maxY < height * reach && blocks.last?.next != nil)
+        // At the hard cap, release first (several blocks in one edit), then load.
+        if needsBlock, blocks.count >= Self.hardMaxBlocks {
+            return trim(to: Self.maxBlocks, margin: height) || trim(to: Self.hardMaxBlocks - 1, margin: 0)
+        }
+        // A block not laid out yet is laid out in this frame and added in the next.
+        if !urgent, tailNeedsLayout {
+            tailNeedsLayout = false
+            ensureExact(through: surface.storage?.length ?? 0)
+            return true
+        }
+        if !urgent {
+            let wanted = visible.minY < height * reach ? blocks.first?.prev : documentHeight - visible.maxY < height * reach ? blocks.last?.next : nil
+            if let wanted, !hasPiece(wanted), let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: wanted) {
+                _ = piece(block)
+                return true
+            }
+        }
+        if visible.minY < height * reach, let prev = blocks.first?.prev,
            let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: prev) {
             anchored {
                 blocks.insert(block, at: 0)
                 relayout(.prepend)
             }
-            trim(keepingNear: visible)
             return true
         }
-        if documentHeight - visible.maxY < height * 1.5, let next = blocks.last?.next,
+        if documentHeight - visible.maxY < height * reach, let next = blocks.last?.next,
            let block = try? reading.chapterContent(resourceId: resourceID, chapterKey: next) {
             blocks.append(block)
             anchored { relayout(.append) }
-            trim(keepingNear: visible)
             return true
         }
-        _ = layout
-        return trim(keepingNear: visible)
+        guard blocks.count > Self.hardMaxBlocks else { return false }
+        return trim(to: Self.maxBlocks, margin: height)
     }
 
-    /// Releases blocks beyond the cap that are more than a screen out of view.
+    /// The reader stopped: blocks more than two screens out of view go, down to the cap.
+    func releaseFar() {
+        guard let scroll = container?.scrollView, !needsReplace, pendingJump == nil else { return }
+        maintaining = true
+        defer { maintaining = false }
+        trim(to: Self.maxBlocks, margin: max(scroll.contentView.bounds.height, 200) * 2)
+    }
+
+    /// Releases blocks at one end, as many as can go in one edit: down to `count` blocks, each
+    /// more than `margin` out of view (what stays then still reaches past the load threshold).
     @discardableResult
-    private func trim(keepingNear visible: NSRect) -> Bool {
-        guard blocks.count > Self.maxBlocks, let scroll = container?.scrollView, let layout = surface.layout else { return false }
+    private func trim(to count: Int, margin: CGFloat) -> Bool {
+        guard blocks.count > count, let scroll = container?.scrollView, let layout = surface.layout, layout.blocks.count == blocks.count else { return false }
         let bounds = scroll.contentView.bounds
-        // Over the hard cap the farther block goes even if it is near.
-        let height = blocks.count > Self.hardMaxBlocks ? 0 : max(bounds.height, 200)
-        if let first = layout.blocks.first, let second = layout.blocks.dropFirst().first,
-           let end = surface.rect(for: NSRange(location: second.range.location, length: 1))?.minY, end < bounds.minY - height {
+        // Where a block starts; below the view an estimate does (no layout for a release).
+        func start(_ index: Int) -> CGFloat? { surface.rect(for: NSRange(location: layout.blocks[index].range.location, length: 1))?.minY }
+        var front = 0
+        while blocks.count - front > count, front + 1 < layout.blocks.count, let next = start(front + 1), next < bounds.minY - margin { front += 1 }
+        if front > 0 {
+            let keep = layout.blocks[front].range.location
             anchored {
-                blocks.removeFirst()
-                relayout(.dropFirst(NSRange(location: 0, length: second.range.location)))
+                blocks.removeFirst(front)
+                relayout(.dropFirst(NSRange(location: 0, length: keep)))
             }
-            _ = first
             return true
         }
-        if let last = layout.blocks.last, let top = top(ofBlock: last.chapterKey), top > bounds.maxY + height {
-            let from = last.range.location - (layout.content.joiner as NSString).length - (ReaderLayout.blockBreak as NSString).length
+        var back = 0
+        while blocks.count - back > count, back + 1 < layout.blocks.count, let top = start(layout.blocks.count - 1 - back), top > bounds.maxY + margin { back += 1 }
+        if back > 0 {
+            let first = layout.blocks[layout.blocks.count - back]
+            let from = first.range.location - (layout.content.joiner as NSString).length - (ReaderLayout.blockBreak as NSString).length
             anchored {
-                blocks.removeLast()
+                blocks.removeLast(back)
                 relayout(.dropLast(NSRange(location: from, length: layout.display.length - from)))
             }
             return true
@@ -625,6 +812,9 @@ final class ReadingStream: NSObject {
         return [ReaderMark(id: "typed", ranges: [range], color: accent.withAlphaComponent(max(Self.quietMark, flashLevel)))]
     }
 
+    /// Each window edit's parts (layout from blocks, storage edit and paint, TextKit 2 layout)
+    /// and its kind, for the measurement.
+    static var timings: [(Double, Double, Double, String)] = []
     static let quietMark: CGFloat = 0.12
     static let flashPeak: CGFloat = 0.35
 

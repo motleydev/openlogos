@@ -93,9 +93,10 @@ final class ShellModel: ObservableObject {
     private var surfaces: [String: WeakSurface] = [:]
     #if os(macOS)
     private var streams: [String: WeakStream] = [:]
+    private var streamPool: [String: ReadingStream] = [:]
+    private var streamPoolOrder: [String] = []
     #endif
     private var labelsStale = false
-    private var labelRefreshPending = false
     private var toastTask: Task<Void, Never>?
     private var markCounter = 0
     #if canImport(AppKit)
@@ -267,7 +268,7 @@ final class ShellModel: ObservableObject {
     }
 
     func refresh() {
-        labelRefreshPending = false
+        defer { liveLabels.clear() }
         let next = handle.session()
         if next != session { session = next }
         if activeTab?.kind == "reading" { lastReadingColumnID = activeColumn.id }
@@ -462,12 +463,16 @@ final class ShellModel: ObservableObject {
 
     // MARK: Continuous reading (B078)
 
+    /// What a scroll moved, ahead of the session.
+    let liveLabels = ReadingLabels()
+
     #if os(macOS)
     /// A reading tab's stream, registered by its view; it also stands as the tab's surface.
     func register(_ stream: ReadingStream) {
         guard streams[stream.tabID]?.stream !== stream else { return }
         // A released workspace's stream, updated once more on its way out, must not take the
         // place of the shown tab with the same id.
+        if !stream.workspaceID.isEmpty, stream.workspaceID != session.activeWorkspaceId { return }
         if let tab = activeWorkspace.columns.lazy.flatMap(\.tabs).first(where: { $0.id == stream.tabID }), tab.contentId != stream.resourceID { return }
         streams[stream.tabID] = WeakStream(stream: stream)
         surfaces[stream.tabID] = WeakSurface(surface: stream.surface)
@@ -486,26 +491,48 @@ final class ShellModel: ObservableObject {
     }
 
     func stream(for tabID: String) -> ReadingStream? { streams[tabID]?.stream }
+
+    /// A reading tab's stream: the one kept since it was last shown, or a new one. The most
+    /// recently shown `streamPoolCap` are kept (each a window of at most eight chapters).
+    func pooledStream(for tab: ShellTab) -> ReadingStream {
+        let key = "\(session.activeWorkspaceId)|\(tab.id)|\(tab.contentId)"
+        if let stream = streamPool[key] {
+            streamPoolOrder.removeAll { $0 == key }
+            streamPoolOrder.append(key)
+            return stream
+        }
+        let stream = ReadingStream(tabID: tab.id, workspaceID: session.activeWorkspaceId, resourceID: tab.contentId, reading: reading)
+        streamPool[key] = stream
+        streamPoolOrder.append(key)
+        while streamPoolOrder.count > Self.streamPoolCap { streamPool[streamPoolOrder.removeFirst()] = nil }
+        return stream
+    }
+
+    static let streamPoolCap = 40
     #endif
 
     /// The verse at the top of a reading tab moved (the reader scrolled): the core moves the
-    /// tab's passage and its linked tabs (quiet: no undo, no history). Followers scroll now;
-    /// the labels follow when the chapter changes and when scrolling settles, so a scroll
-    /// does not re-render the shell for every verse.
+    /// tab's passage and its linked tabs (quiet: no undo, no history). Followers scroll now,
+    /// and the tab labels and identity rows follow (`liveLabels`); the session is refreshed
+    /// when scrolling settles, so a scroll does not re-render the shell for every verse.
     func recordScroll(tabID: String, segmentID: String) {
         let ws = activeWorkspace
+        let t0 = CACurrentMediaTime()
+        defer {
+            if followSamples.count < 4096 { followSamples.append((CACurrentMediaTime() - t0) * 1000) }
+        }
         guard let outcome = try? handle.apply(commandId: "tab.record_scroll",
                                               args: ShellCommandArgs(workspaceId: ws.id, tabId: tabID, segmentId: segmentID, scalar: 0),
                                               hasSelection: false),
               !outcome.positions.isEmpty else { return }
         apply(positions: outcome)
         recordedScrolls += 1
-        let shown = ws.columns.lazy.flatMap(\.tabs).first { $0.id == tabID }?.chapterLabel
-        if outcome.positions.contains(where: { $0.chapterLabel != nil && $0.chapterLabel != shown && $0.driver }) {
-            scheduleLabelRefresh()
-        } else {
-            labelsStale = true
+        // The tab labels and identity rows follow now, through a small object only they
+        // observe; the session (and the whole shell) catches up when scrolling stops.
+        for position in outcome.positions where position.workspaceId == ws.id {
+            liveLabels.set(position.tabId, ReadingLabels.Live(chapterLabel: position.chapterLabel, reference: position.reference))
         }
+        labelsStale = true
     }
 
     /// Scrolling stopped: the identity rows and tab labels catch up.
@@ -513,16 +540,6 @@ final class ShellModel: ObservableObject {
         guard labelsStale else { return }
         labelsStale = false
         refresh()
-    }
-
-    private func scheduleLabelRefresh() {
-        labelsStale = false
-        guard !labelRefreshPending else { return }
-        labelRefreshPending = true
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.labelRefreshPending else { return }
-            self.refresh()
-        }
     }
 
     /// Hands every tab the core moved to its stream: the scrolled tab learns its new passage,
@@ -547,6 +564,9 @@ final class ShellModel: ObservableObject {
 
     /// Scroll reports the core moved a passage for (the evidence counts them).
     private(set) var recordedScrolls = 0
+    /// How long each scroll report took on the host: the core's record_scroll and the
+    /// followers scrolled (the measurement reads them).
+    var followSamples: [Double] = []
 
     /// specs/21's not-in-this-edition state: the core's words when a reading tab's passage is
     /// not in its edition (`John is not in WLC`, `John has no chapter 22`), else nil.
@@ -851,6 +871,25 @@ final class ShellModel: ObservableObject {
         monitor = nil
     }
     #endif
+}
+
+/// B078: tab labels and identity rows a scroll moved, by tab, until the session is refreshed.
+@MainActor
+final class ReadingLabels: ObservableObject {
+    struct Live: Equatable {
+        let chapterLabel: String?
+        let reference: String
+    }
+
+    @Published private(set) var byTab: [String: Live] = [:]
+
+    func set(_ tabID: String, _ live: Live) {
+        if byTab[tabID] != live { byTab[tabID] = live }
+    }
+
+    func clear() {
+        if !byTab.isEmpty { byTab = [:] }
+    }
 }
 
 /// The palette field's text, its results, the selected row and the expanded section.
