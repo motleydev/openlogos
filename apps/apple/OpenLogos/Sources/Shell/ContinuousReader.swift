@@ -873,9 +873,11 @@ final class ReadingStream: NSObject {
         return InkSheet.Anchor(segment: segment, y: top - canvasShift)
     }
 
-    /// A verse's top on the ink canvas, when it is in the window.
-    func canvasTop(of segment: String) -> CGFloat? {
-        top(of: segment).map { $0 - canvasShift }
+    /// A verse's first character (its number) on the ink canvas, when it is in the window.
+    func canvasBox(of segment: String) -> CGRect? {
+        guard let range = surface.layout?.verseRanges[segment] else { return nil }
+        ensureExact(through: NSMaxRange(range))
+        return surface.rect(for: NSRange(location: range.location, length: min(2, range.length))).map { $0.offsetBy(dx: 0, dy: -canvasShift) }
     }
 
     /// How far the verse a stroke was drawn on has moved on the canvas; nil when it is not in

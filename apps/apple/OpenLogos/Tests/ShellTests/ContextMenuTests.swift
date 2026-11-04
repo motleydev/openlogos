@@ -345,7 +345,7 @@ final class ContextMenuTests: XCTestCase {
         spin()
         let menu = try self.menu(try rightClick("loved", in: "t1", model), in: "t1", model)
         try choose("Green", in: menu)
-        let mark = try XCTUnwrap(model.marks["t1"]?.first)
+        let mark = try XCTUnwrap(model.highlights("t1").first)
         XCTAssertEqual(mark.color, ShellTokens.swatch(hex: "#4CC38A").platformColor)
         XCTAssertNil(model.selection, "the selection collapses into the highlight")
     }

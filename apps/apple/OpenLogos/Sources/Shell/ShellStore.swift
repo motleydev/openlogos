@@ -117,6 +117,8 @@ struct StoreRestore {
     var bytes = 0
     /// When the file read began (CACurrentMediaTime).
     var started: CFTimeInterval = 0
+    /// The file as read, when it restored without issues (a save of the same bytes is skipped).
+    var cleanText: String?
 }
 
 /// The save policy over a shell's store file (specs/24 §4).
@@ -135,6 +137,8 @@ final class ShellPersistence {
     /// How long each `exportStore` took on the main thread, and each write off it (ms).
     private(set) var exportSamples: [Double] = []
     private(set) var writeSamples: [Double] = []
+    /// What the file holds now: a save that would write the same bytes writes nothing.
+    private var written: String?
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
     let debounce: TimeInterval
@@ -144,9 +148,10 @@ final class ShellPersistence {
 
     /// `lastSaved`: the count before the restore (a restore that set something aside moved
     /// it, so the repaired store is saved).
-    init(file: UserStoreFile, handle: ShellHandle, lastSaved: UInt64? = nil) {
+    init(file: UserStoreFile, handle: ShellHandle, lastSaved: UInt64? = nil, written: String? = nil) {
         self.file = file
         self.handle = handle
+        self.written = written
         self.lastSaved = lastSaved ?? handle.changeCount()
         debounce = Double(storeConstants().saveDebounceMs) / 1000
         #if canImport(AppKit)
@@ -191,6 +196,8 @@ final class ShellPersistence {
         let t0 = CACurrentMediaTime()
         let json = handle.exportStore()
         record(&exportSamples, (CACurrentMediaTime() - t0) * 1000)
+        if json == written { return finished(true, count: count) }
+        written = json
         file.write(json) { [weak self] ok, ms in
             guard let self else { return }
             self.record(&self.writeSamples, ms)
@@ -206,7 +213,10 @@ final class ShellPersistence {
         file.flush()
         guard isDirty else { return }
         let count = handle.changeCount()
-        finished(file.writeNow(handle.exportStore()), count: count)
+        let json = handle.exportStore()
+        if json == written { return finished(true, count: count) }
+        written = json
+        finished(file.writeNow(json), count: count)
     }
 
     private func finished(_ ok: Bool, count: UInt64) {
@@ -218,6 +228,7 @@ final class ShellPersistence {
             changed()
         } else {
             // The old file stays; the next change tries again.
+            written = nil
             failures += 1
             if failures == Self.failuresBeforeNotice { onFailure(Self.failureNotice) }
         }
@@ -241,8 +252,10 @@ final class ShellPersistence {
         result.bytes = data.count
         let t1 = CACurrentMediaTime()
         do {
-            let report = try handle.importStore(json: String(decoding: data, as: UTF8.self))
+            let text = String(decoding: data, as: UTF8.self)
+            let report = try handle.importStore(json: text)
             result.report = report
+            if report.issues.isEmpty { result.cleanText = text }
             if !report.issues.isEmpty {
                 result.backup = file.backup(data)
                 result.notice = notice(for: report.issues)

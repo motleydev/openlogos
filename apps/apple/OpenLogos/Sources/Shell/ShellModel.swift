@@ -135,7 +135,8 @@ final class ShellModel: ObservableObject {
                 ShellPersistence.paintProbe = (restored.started, handle.session().activeWorkspaceId)
             }
             #endif
-            let persistence = ShellPersistence(file: store, handle: handle, lastSaved: before)
+            // After a clean restore a save of the same bytes writes nothing.
+            let persistence = ShellPersistence(file: store, handle: handle, lastSaved: before, written: restored?.cleanText)
             self.persistence = persistence
         }
         session = handle.session()
@@ -843,6 +844,17 @@ final class ShellModel: ObservableObject {
             }
         }
         return marks
+    }
+
+    /// The highlights a tab paints: the core's on a reading stream's window, else the host's
+    /// on its single passage.
+    func highlights(_ tabID: String) -> [ReaderMark] {
+        #if os(macOS)
+        if let stream = stream(for: tabID), let layout = stream.surface.layout, !layout.blocks.isEmpty {
+            return storedMarks(resourceID: stream.resourceID, layout: layout)
+        }
+        #endif
+        return marks[tabID] ?? []
     }
 
     /// Every shown stream of the edition paints the core's highlights again.

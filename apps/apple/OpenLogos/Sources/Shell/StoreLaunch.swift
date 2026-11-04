@@ -90,6 +90,7 @@ enum StoreLaunch {
         model.run("workspace.new", args: ShellCommandArgs(text: "Romans"))
         model.run("nav.navigate", args: ShellCommandArgs(column: 1, reference: "Rom.8.1"))
         model.run("column.new")
+        model.run("tab.pin")
         model.run("nav.navigate", args: ShellCommandArgs(column: 2, reference: "Ps.23.1"))
         await settle()
         model.run("workspace.switch", args: ShellCommandArgs(workspaceId: "w1"))
@@ -130,10 +131,10 @@ enum StoreLaunch {
 
     /// A pen line under the first line of a verse, through the sheet's own commit.
     static func drawInk(_ model: ShellModel, stream: ReadingStream, on segment: String) {
-        guard let top = stream.canvasTop(of: segment) else { return }
+        guard let box = stream.canvasBox(of: segment) else { return }
         let sheet = model.inkSheet(for: stream.tabID)
-        let left = Double(stream.inkLeading) + 8
-        let y = Double(top) + Double(model.readingSize) * 1.25
+        let left = Double(box.maxX) + 4
+        let y = Double(box.maxY) + 1
         let t0 = CACurrentMediaTime()
         let samples = (0..<60).map { i -> InkSample in
             let f = Double(i) / 59

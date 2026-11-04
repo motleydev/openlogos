@@ -260,7 +260,9 @@ final class NoteStore {
             let line = string.range(of: "\n", range: NSRange(location: location, length: string.length - location))
             let end = line.location == NSNotFound ? string.length : line.location
             var content = NSRange(location: location, length: end - location)
-            let probe = content.length > 0 ? content.location : (line.location != NSNotFound ? line.location : max(0, location - 1))
+            // An empty paragraph's marks are on its line break; the last one, with none, is a
+            // plain paragraph.
+            let probe = content.length > 0 ? content.location : (line.location != NSNotFound ? line.location : text.length)
             let marked = { (key: NSAttributedString.Key) in probe < text.length && text.attribute(key, at: probe, effectiveRange: nil) != nil }
             var kind = StoreNoteBlockKind.paragraph
             if marked(.openLogosNoteHeading) {
