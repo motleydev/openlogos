@@ -126,13 +126,13 @@ heading and notice; SBLGNT `Psalms is not in SBLGNT`) · `mac-read-not-in-editio
 licence line). `scripts/b078-mac-shots.sh` retakes them (`-OPENLOGOS_TYPE` types a passage
 after the columns lay out; `-OPENLOGOS_SCROLL 1:-160` scrolls column 1 as the reader would).
 
-## Lanes (committed tree dc17a62)
+## Lanes (committed tree f09183f)
 
 | Command | Result |
 |---|---|
-| `nix develop .#core -c just ci` | exit 0. `Summary [   7.125s] 330 tests run: 330 passed, 0 skipped` |
+| `nix develop .#core -c just ci` | exit 0. `Summary [   6.964s] 330 tests run: 330 passed, 0 skipped` |
 | `nix develop .#apple -c just test-reader mac` | exit 0. `Executed 68 tests, with 0 failures (0 unexpected)` |
-| `nix develop .#apple -c just test-swift` | exit 0. `Executed 10 tests, with 0 failures (0 unexpected)`; `conformance cases: 1717 passed, 0 failed` |
+| `nix develop .#apple -c just test-swift` | exit 0. `Executed 10 tests, with 0 failures (0 unexpected)`; `conformance cases: 1733 passed, 0 failed` |
 
 Nothing under `crates/` changed on this branch: `git diff --stat b078-core-reading..HEAD -- crates` is empty.
 
