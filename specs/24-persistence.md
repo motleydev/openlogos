@@ -140,8 +140,8 @@ snapshot form for that).
   change** (`storeConstants().save_debounce_ms`), and at once when the app quits or the page
   is hidden: Mac on `applicationWillTerminate` and when the window closes; web on
   `visibilitychange` to `hidden` and on `pagehide`. A save writes `exportStore()` as is.
-- `exportStore()` costs about a millisecond at ten workspaces of twelve tabs with 200 notes,
-  1,000 highlights and 200 strokes (`just bench-shell`), so a save never costs a frame; the
+- `exportStore()` is held to one frame (≤ 16 ms) at ten workspaces of twelve tabs with 200
+  notes, 1,000 highlights and 200 strokes (`just bench-shell` row), so a save never costs a frame; the
   write itself is the host's and runs off the main thread where the platform allows.
 - A note editor saves into the core (`putNote`) as its text settles (on input, debounced by
   the editor at most 300 ms, and on blur), so the store's debounce sees it.
