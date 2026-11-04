@@ -139,8 +139,11 @@ def check_user_store(store):
         for sp in h['spans']:
             if sp['end']<=sp['start']: raise ValueError('An empty or backward span in '+h['id'])
     for k in store['ink']:
-        if k['stroke']['id']!=k['id']: raise ValueError('A stroke under another id: '+k['id'])
-        if len(k['stroke']['points'])<2: raise ValueError('A stroke with fewer than two points: '+k['id'])
+        n=len(k['t'])
+        if len(k['xy'])!=2*n: raise ValueError('Ink coordinates are not two per point: '+k['id'])
+        for col in ('pressure','altitude','azimuth'):
+            if col in k and len(k[col])!=n: raise ValueError('Ink '+col+' is not one per point: '+k['id'])
+        if any(d<0 for d in k['t'][1:]): raise ValueError('Ink time runs backwards: '+k['id'])
 def check_session(record, workspaces):
     # B070: a session record orders workspace records and names the active one.
     ids=[w['id'] for w in workspaces]
@@ -814,8 +817,10 @@ def main():
     expect_rejected(lambda:validate('user-store',bad),'host markup in a stored note')
     bad=copy.deepcopy(golden); del bad['ink'][0]['segment_id']
     expect_rejected(lambda:validate('user-store',bad),'ink without its verse')
-    bad=copy.deepcopy(golden); bad['ink'][0]['stroke']['id']='other'
-    expect_rejected(lambda:check_user_store(bad),'stroke under another id')
+    bad=copy.deepcopy(golden); bad['ink'][0]['xy'].pop()
+    expect_rejected(lambda:check_user_store(bad),'ink coordinates not two per point')
+    bad=copy.deepcopy(golden); bad['ink'][0]['points']=[{'x':0,'y':0}]
+    expect_rejected(lambda:validate('user-store',bad),'ink points as objects in the store')
     bad=copy.deepcopy(golden); bad['highlights'][1]['id']=bad['highlights'][0]['id']
     expect_rejected(lambda:check_user_store(bad),'repeated highlight id')
     bad=copy.deepcopy(golden); bad['highlights'][0]['spans'][0]['end']=bad['highlights'][0]['spans'][0]['start']

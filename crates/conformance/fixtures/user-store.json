@@ -218,8 +218,8 @@
           "opacity": 1.0,
           "points": [
             {
-              "x": 12.0,
-              "y": -3.5,
+              "x": 12.04,
+              "y": -3.46,
               "pressure": null,
               "elapsed_ms": 0.0
             },
@@ -227,12 +227,12 @@
               "x": 40.5,
               "y": 2.0,
               "pressure": 0.5,
-              "elapsed_ms": 16.0
+              "elapsed_ms": 16.4
             },
             {
               "x": 88.0,
               "y": 6.25,
-              "pressure": 0.62,
+              "pressure": 0.623,
               "elapsed_ms": 33.0
             }
           ]
@@ -413,74 +413,52 @@
       ],
       "ink": [
         {
+          "brush_version": "pf-1.2.3/pen-1",
+          "color": "#1F6FEB",
           "id": "k5",
+          "opacity": 1.0,
+          "pressure": [
+            null,
+            50,
+            12
+          ],
           "resource_id": "bsb",
           "segment_id": "John.3.17",
-          "stroke": {
-            "brush_version": "pf-1.2.3/pen-1",
-            "color": "#1F6FEB",
-            "id": "k5",
-            "opacity": 1.0,
-            "points": [
-              {
-                "altitude": null,
-                "azimuth": null,
-                "elapsed_ms": 0.0,
-                "pressure": null,
-                "x": 12.0,
-                "y": -3.5
-              },
-              {
-                "altitude": null,
-                "azimuth": null,
-                "elapsed_ms": 16.0,
-                "pressure": 0.5,
-                "x": 40.5,
-                "y": 2.0
-              },
-              {
-                "altitude": null,
-                "azimuth": null,
-                "elapsed_ms": 33.0,
-                "pressure": 0.62,
-                "x": 88.0,
-                "y": 6.25
-              }
-            ],
-            "tool": "pen",
-            "width": 4.0
-          }
+          "t": [
+            0,
+            16,
+            17
+          ],
+          "tool": "pen",
+          "width": 4.0,
+          "xy": [
+            120,
+            -35,
+            285,
+            55,
+            475,
+            43
+          ]
         },
         {
+          "brush_version": "pf-1.2.3/highlighter-1",
+          "color": "#F5D90A",
           "id": "k6",
+          "opacity": 0.35,
           "resource_id": "wlc",
           "segment_id": "Gen.1.2",
-          "stroke": {
-            "brush_version": "pf-1.2.3/highlighter-1",
-            "color": "#F5D90A",
-            "id": "k6",
-            "opacity": 0.35,
-            "points": [
-              {
-                "altitude": null,
-                "azimuth": null,
-                "elapsed_ms": 0.0,
-                "pressure": null,
-                "x": 300.0,
-                "y": 8.0
-              },
-              {
-                "altitude": null,
-                "azimuth": null,
-                "elapsed_ms": 40.0,
-                "pressure": null,
-                "x": 120.0,
-                "y": 8.5
-              }
-            ],
-            "tool": "highlighter",
-            "width": 12.0
-          }
+          "t": [
+            0,
+            40
+          ],
+          "tool": "highlighter",
+          "width": 12.0,
+          "xy": [
+            3000,
+            80,
+            -1800,
+            5
+          ]
         }
       ],
       "next_serial": 6,
@@ -1220,22 +1198,37 @@
             "id": "k4",
             "resource_id": "bsb",
             "segment_id": "John.3.16",
-            "stroke": {
-              "id": "",
-              "tool": "pen",
-              "brush_version": "pf-1.2.3/pen-1",
-              "width": 4.0,
-              "color": "#000000",
-              "opacity": 1.0,
-              "points": [
-                {
-                  "x": 0.0,
-                  "y": 0.0,
-                  "pressure": null,
-                  "elapsed_ms": 0.0
-                }
-              ]
-            }
+            "tool": "pen",
+            "brush_version": "pf-1.2.3/pen-1",
+            "width": 4.0,
+            "color": "#000000",
+            "opacity": 1.0,
+            "xy": [
+              0,
+              0
+            ],
+            "t": [
+              0
+            ]
+          },
+          {
+            "id": "k5",
+            "resource_id": "bsb",
+            "segment_id": "John.3.16",
+            "tool": "pen",
+            "brush_version": "pf-1.2.3/pen-1",
+            "width": 4.0,
+            "color": "#000000",
+            "opacity": 1.0,
+            "xy": [
+              0,
+              0,
+              10,
+              10
+            ],
+            "t": [
+              0
+            ]
           }
         ]
       },
@@ -1254,7 +1247,8 @@
           "note:n2",
           "highlight:h1",
           "highlight:h2",
-          "ink:k4"
+          "ink:k4",
+          "ink:k5"
         ],
         "save_due": true,
         "session": {

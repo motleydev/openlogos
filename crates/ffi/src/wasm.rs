@@ -861,7 +861,7 @@ impl ShellHandle {
     /// writes when `changeCount` moved.
     #[wasm_bindgen(js_name = exportStore)]
     #[must_use]
-    pub fn export_store(&self) -> String {
+    pub fn export_store(&mut self) -> String {
         self.shell.export_store_json()
     }
 

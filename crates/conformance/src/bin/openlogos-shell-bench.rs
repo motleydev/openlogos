@@ -490,6 +490,9 @@ fn store_bench(rounds: usize) -> (Vec<Row>, usize) {
     }
 
     let mut save = Vec::new();
+    let mut save_cold = Vec::new();
+    let mut save_ink = Vec::new();
+    let mut save_note = Vec::new();
     let mut restore = Vec::new();
     let mut new = Vec::new();
     let mut rename = Vec::new();
@@ -501,7 +504,32 @@ fn store_bench(rounds: usize) -> (Vec<Row>, usize) {
     let mut size = 0;
     for round in 0..rounds {
         let mut json = String::new();
+        shell.store_cache = Default::default();
+        time(&mut save_cold, || json = shell.export_store_json());
+        // A scroll, then the save the debounce runs: the notes, highlights and ink are cached.
+        let scrolled = Invocation::with(
+            "tab.record_scroll",
+            CommandArgs {
+                tab_id: Some(shell.session.active().active_tab().id.clone()),
+                segment_id: Some(format!("John.3.{}", 1 + round % 30)),
+                scalar: Some(0),
+                ..CommandArgs::default()
+            },
+        );
+        shell.apply(&scrolled, &context).expect("record_scroll");
         time(&mut save, || json = shell.export_store_json());
+        // A stroke drawn (the ink part is rewritten), then erased again.
+        let mut mark = shell.annotations.ink[round % 200].clone();
+        mark.id = String::new();
+        let id = shell.add_ink(mark).expect("ink");
+        time(&mut save_ink, || json = shell.export_store_json());
+        shell.remove_ink(&id).expect("erase");
+        let _ = shell.export_store_json();
+        // A note edited (the notes part is rewritten).
+        let mut note = shell.annotations.notes["note-7"].clone();
+        note.blocks[0].spans[0].text = format!("Study 7, round {round}");
+        shell.put_note(note).expect("note");
+        time(&mut save_note, || json = shell.export_store_json());
         size = json.len();
         let mut fresh = Shell::new(session()).expect("valid");
         time(&mut restore, || {
@@ -586,12 +614,48 @@ fn store_bench(rounds: usize) -> (Vec<Row>, usize) {
             });
         }
     }
+    let parts = shell.export_store();
+    for (name, bytes) in [
+        (
+            "session and workspaces",
+            serde_json::to_string(&(&parts.session, &parts.workspaces)).map_or(0, |j| j.len()),
+        ),
+        (
+            "notes",
+            serde_json::to_string(&parts.notes).map_or(0, |j| j.len()),
+        ),
+        (
+            "highlights",
+            serde_json::to_string(&parts.highlights).map_or(0, |j| j.len()),
+        ),
+        (
+            "ink",
+            serde_json::to_string(&parts.ink).map_or(0, |j| j.len()),
+        ),
+    ] {
+        println!("User store part {name}: {bytes} bytes");
+    }
     (
         vec![
             row(
-                "save: export the user store (10 × 12 tabs, 200 notes, 1,000 highlights, 200 strokes)",
-                16.0,
+                "save after a scroll: export the user store (10 × 12 tabs, 200 notes, 1,000 highlights, 200 strokes; annotation parts cached)",
+                4.0,
                 &mut save,
+            ),
+            row(
+                "save after a stroke is drawn (the ink part rewritten)",
+                4.0,
+                &mut save_ink,
+            ),
+            row(
+                "save after a note edit (the notes part rewritten)",
+                4.0,
+                &mut save_note,
+            ),
+            row(
+                "save with nothing cached (every part written; a restore does this once)",
+                16.0,
+                &mut save_cold,
             ),
             row(
                 "restore: import that store into a fresh shell (core share)",

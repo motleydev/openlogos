@@ -192,7 +192,7 @@
       ]
     },
     "ink": {
-      "description": "A stroke pinned to the verse it was drawn at: points in the reading column's coordinates, y measured from the top of segment_id and x from the text's leading edge, so the stroke moves with its verse.",
+      "description": "A stroke pinned to the verse it was drawn at (specs/24 §2.3), written compactly: the stroke's paint flat, its points as columns of fixed-point integers, each delta-encoded (the first value as is, then the change from the value before; a sensor column skips its nulls). xy interleaves x and y in tenths of a point, y measured from the top of segment_id and x from the text's leading edge, so the stroke moves with its verse; t is milliseconds since the first point (deltas never negative: time never runs backwards); pressure, altitude and azimuth are hundredths (of the 0..1 range and of a radian), present only when some point reported them, null where one did not. Every column has one value per point (xy two).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -207,15 +207,83 @@
           "type": "string",
           "minLength": 1
         },
-        "stroke": {
-          "$ref": "urn:open-bible-blueprint:ink-document#/properties/strokes/items"
+        "tool": {
+          "enum": [
+            "pen",
+            "highlighter"
+          ]
+        },
+        "brush_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "color": {
+          "type": "string",
+          "minLength": 1
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "xy": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 4
+        },
+        "t": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2
+        },
+        "pressure": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "altitude": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "azimuth": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
         }
       },
       "required": [
         "id",
         "resource_id",
         "segment_id",
-        "stroke"
+        "tool",
+        "brush_version",
+        "width",
+        "color",
+        "opacity",
+        "xy",
+        "t"
       ]
     }
   }

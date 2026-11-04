@@ -2664,6 +2664,10 @@ pub struct Shell {
     /// (B074, specs/24 §4).
     #[serde(default)]
     pub changes: u64,
+    /// The store's cached part JSON ([`crate::store::StoreCache`]); change notes, highlights
+    /// and ink through the `Shell` methods so it stays true.
+    #[serde(skip)]
+    pub store_cache: crate::store::StoreCache,
 }
 
 /// Back visits a tab keeps; the oldest is dropped beyond this.
@@ -2683,6 +2687,7 @@ impl Shell {
             revision: 0,
             annotations: crate::store::Annotations::default(),
             changes: 0,
+            store_cache: crate::store::StoreCache::default(),
         })
     }
 

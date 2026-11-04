@@ -286,6 +286,232 @@ impl InkMark {
     }
 }
 
+/// Ink coordinates are kept to a tenth of a point, sensor values (pressure, altitude,
+/// azimuth) to a hundredth and time to a millisecond: finer than a stylus resolves on screen,
+/// and what keeps a stroke small in the store (specs/24 §2.3). [`Shell::add_ink`] rounds a
+/// stroke on the way in, so the shell holds exactly what a restore gives back.
+const XY_SCALE: f64 = 10.0;
+const SENSOR_SCALE: f64 = 100.0;
+
+fn fixed(value: f64, scale: f64) -> i64 {
+    (value * scale).round() as i64
+}
+
+fn unfixed(value: i64, scale: f64) -> f64 {
+    value as f64 / scale
+}
+
+/// Rounds a stroke's points to the stored precision.
+fn quantize(stroke: &mut openlogos_ink::Stroke) {
+    for p in &mut stroke.points {
+        p.x = unfixed(fixed(p.x, XY_SCALE), XY_SCALE);
+        p.y = unfixed(fixed(p.y, XY_SCALE), XY_SCALE);
+        p.elapsed_ms = unfixed(fixed(p.elapsed_ms, 1.0), 1.0);
+        for v in [&mut p.pressure, &mut p.altitude, &mut p.azimuth] {
+            *v = v.map(|v| unfixed(fixed(v, SENSOR_SCALE), SENSOR_SCALE));
+        }
+    }
+}
+
+/// An ink stroke as the store writes it: the mark's fields and the stroke's paint flat, the
+/// points as columns of fixed-point integers, each column delta-encoded (the first value as
+/// is, then the change from the value before; a sensor column skips its `null`s). `xy` is
+/// tenths of a point, interleaved (`x0, y0, dx1, dy1, …`); `t` milliseconds; `pressure`,
+/// `altitude` and `azimuth` hundredths, present only when some point reported them. Small
+/// numbers make a stroke about a sixth of the size of point objects and quick to write.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StoredInk {
+    /// The mark's id, also the stroke's.
+    pub id: String,
+    /// The edition.
+    pub resource_id: String,
+    /// The verse the stroke is pinned to.
+    pub segment_id: String,
+    /// `pen` or `highlighter`.
+    pub tool: openlogos_ink::Tool,
+    /// The brush and its version.
+    pub brush_version: String,
+    /// Base width in points, as drawn.
+    pub width: f64,
+    /// `#RRGGBB`.
+    pub color: String,
+    /// Opacity `0..=1`.
+    pub opacity: f64,
+    /// `x0, y0, dx1, dy1, …` in tenths of a point, `y` from the verse's top.
+    pub xy: Vec<i64>,
+    /// Milliseconds since the first point, delta-encoded, one per point.
+    pub t: Vec<i64>,
+    /// Pressure in hundredths, one per point; absent when no point reported one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pressure: Option<Vec<Option<i64>>>,
+    /// Stylus altitude in hundredths of a radian; absent when none reported.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub altitude: Option<Vec<Option<i64>>>,
+    /// Stylus azimuth in hundredths of a radian; absent when none reported.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub azimuth: Option<Vec<Option<i64>>>,
+}
+
+/// Delta-encodes a column: the first value, then each change from the one before.
+fn deltas(values: impl Iterator<Item = i64>) -> Vec<i64> {
+    let mut last = 0;
+    values
+        .map(|v| {
+            let d = v - last;
+            last = v;
+            d
+        })
+        .collect()
+}
+
+/// Undoes [`deltas`].
+fn undeltas(values: &[i64]) -> Vec<i64> {
+    let mut last = 0;
+    values
+        .iter()
+        .map(|d| {
+            last += d;
+            last
+        })
+        .collect()
+}
+
+/// [`deltas`] over a column with gaps: a `null` stays `null` and is skipped.
+fn sparse_deltas(values: impl Iterator<Item = Option<i64>>) -> Vec<Option<i64>> {
+    let mut last = 0;
+    values
+        .map(|v| {
+            v.map(|v| {
+                let d = v - last;
+                last = v;
+                d
+            })
+        })
+        .collect()
+}
+
+/// Undoes [`sparse_deltas`].
+fn sparse_undeltas(values: &[Option<i64>]) -> Vec<Option<i64>> {
+    let mut last = 0;
+    values
+        .iter()
+        .map(|d| {
+            d.map(|d| {
+                last += d;
+                last
+            })
+        })
+        .collect()
+}
+
+impl From<&InkMark> for StoredInk {
+    fn from(k: &InkMark) -> StoredInk {
+        let s = &k.stroke;
+        let column = |get: fn(&openlogos_ink::InkPoint) -> Option<f64>| {
+            s.points.iter().any(|p| get(p).is_some()).then(|| {
+                sparse_deltas(
+                    s.points
+                        .iter()
+                        .map(|p| get(p).map(|v| fixed(v, SENSOR_SCALE))),
+                )
+            })
+        };
+        StoredInk {
+            id: k.id.clone(),
+            resource_id: k.resource_id.clone(),
+            segment_id: k.segment_id.clone(),
+            tool: s.tool,
+            brush_version: s.brush_version.clone(),
+            width: s.width,
+            color: s.color.clone(),
+            opacity: s.opacity,
+            xy: deltas(s.points.iter().map(|p| fixed(p.x, XY_SCALE)))
+                .into_iter()
+                .zip(deltas(s.points.iter().map(|p| fixed(p.y, XY_SCALE))))
+                .flat_map(|(x, y)| [x, y])
+                .collect(),
+            t: deltas(s.points.iter().map(|p| fixed(p.elapsed_ms, 1.0))),
+            pressure: column(|p| p.pressure),
+            altitude: column(|p| p.altitude),
+            azimuth: column(|p| p.azimuth),
+        }
+    }
+}
+
+impl TryFrom<StoredInk> for InkMark {
+    type Error = String;
+
+    fn try_from(k: StoredInk) -> Result<InkMark, String> {
+        let n = k.t.len();
+        if k.xy.len() != 2 * n {
+            return Err(format!("{} coordinates for {n} points", k.xy.len()));
+        }
+        for (name, column) in [
+            ("pressure", &k.pressure),
+            ("altitude", &k.altitude),
+            ("azimuth", &k.azimuth),
+        ] {
+            if column.as_ref().is_some_and(|c| c.len() != n) {
+                return Err(format!("{name} does not have one value per point"));
+            }
+        }
+        let xs = undeltas(&k.xy.iter().step_by(2).copied().collect::<Vec<_>>());
+        let ys = undeltas(&k.xy.iter().skip(1).step_by(2).copied().collect::<Vec<_>>());
+        let ts = undeltas(&k.t);
+        let column = |c: &Option<Vec<Option<i64>>>| c.as_deref().map(sparse_undeltas);
+        let (pressure, altitude, azimuth) =
+            (column(&k.pressure), column(&k.altitude), column(&k.azimuth));
+        let at = |column: &Option<Vec<Option<i64>>>, i: usize| {
+            column
+                .as_ref()
+                .and_then(|c| c[i])
+                .map(|v| unfixed(v, SENSOR_SCALE))
+        };
+        let points = (0..n)
+            .map(|i| openlogos_ink::InkPoint {
+                x: unfixed(xs[i], XY_SCALE),
+                y: unfixed(ys[i], XY_SCALE),
+                pressure: at(&pressure, i),
+                elapsed_ms: unfixed(ts[i], 1.0),
+                altitude: at(&altitude, i),
+                azimuth: at(&azimuth, i),
+            })
+            .collect();
+        Ok(InkMark {
+            stroke: openlogos_ink::Stroke {
+                id: k.id.clone(),
+                tool: k.tool,
+                brush_version: k.brush_version,
+                width: k.width,
+                color: k.color,
+                opacity: k.opacity,
+                points,
+            },
+            id: k.id,
+            resource_id: k.resource_id,
+            segment_id: k.segment_id,
+        })
+    }
+}
+
+/// The written JSON of the annotation parts, kept until the part changes, so a save after a
+/// scroll re-serializes only the session (B074). Never compared or persisted.
+#[derive(Debug, Clone, Default)]
+pub struct StoreCache {
+    notes: Option<String>,
+    highlights: Option<String>,
+    ink: Option<String>,
+    /// Each stroke's JSON by id: a stroke never changes once drawn, so adding or erasing one
+    /// rewrites only the join.
+    strokes: BTreeMap<String, String>,
+}
+
+impl PartialEq for StoreCache {
+    fn eq(&self, _: &StoreCache) -> bool {
+        true
+    }
+}
+
 /// Whether `segment_id` (`John.3.16`, `Ps.3.0`, `Num.26.3-4`) is in `chapter_key` (`John.3`).
 #[must_use]
 pub fn segment_in_chapter(segment_id: &str, chapter_key: &str) -> bool {
@@ -467,25 +693,10 @@ pub struct UserStore {
     pub notes: Vec<Note>,
     /// Highlights, oldest first.
     pub highlights: Vec<Highlight>,
-    /// Ink, oldest first.
-    pub ink: Vec<InkMark>,
+    /// Ink, oldest first, in the stored form.
+    pub ink: Vec<StoredInk>,
     /// The next serial for highlight and ink ids.
     pub next_serial: u64,
-}
-
-/// [`UserStore`] borrowed from a shell, so a save serializes without copying the session.
-#[derive(Serialize)]
-struct UserStoreRef<'a> {
-    format: &'static str,
-    schema_version: &'static str,
-    fixture_only: bool,
-    core_api_version: &'static str,
-    session: SessionRecordRef<'a>,
-    workspaces: &'a [Workspace],
-    notes: Vec<&'a Note>,
-    highlights: &'a [Highlight],
-    ink: &'a [InkMark],
-    next_serial: u64,
 }
 
 #[derive(Serialize)]
@@ -599,38 +810,89 @@ impl Shell {
             workspaces,
             notes: self.annotations.notes.values().cloned().collect(),
             highlights: self.annotations.highlights.clone(),
-            ink: self.annotations.ink.clone(),
+            ink: self.annotations.ink.iter().map(StoredInk::from).collect(),
             next_serial: self.annotations.next_serial,
         }
     }
 
     /// The user store as JSON, what a host writes: [`Shell::export_store`] without copying
-    /// the session first.
-    #[must_use]
-    pub fn export_store_json(&self) -> String {
+    /// the session, compact, with the notes, highlights and ink taken from their cached JSON
+    /// when they have not changed since the last save (so a save after a scroll writes only
+    /// the session anew).
+    pub fn export_store_json(&mut self) -> String {
+        self.fill_store_cache();
+        let cache = &self.store_cache;
+        let (notes, highlights, ink) = (
+            cache.notes.as_deref().unwrap_or("[]"),
+            cache.highlights.as_deref().unwrap_or("[]"),
+            cache.ink.as_deref().unwrap_or("[]"),
+        );
         let s = &self.session;
-        let doc = UserStoreRef {
-            format: STORE_FORMAT,
-            schema_version: STORE_SCHEMA_VERSION,
+        let record = SessionRecordRef {
+            schema_version: &s.schema_version,
             fixture_only: s.fixture_only,
-            core_api_version: openlogos_core::API_VERSION,
-            session: SessionRecordRef {
-                schema_version: &s.schema_version,
-                fixture_only: s.fixture_only,
-                workspace_ids: s.workspaces.iter().map(|w| w.id.as_str()).collect(),
-                active_workspace_id: &s.active_workspace_id,
-                tool: s.tool,
-                next_serial: s.next_serial,
-                reading: &s.reading,
-                ink: &s.ink,
-            },
-            workspaces: &s.workspaces,
-            notes: self.annotations.notes.values().collect(),
-            highlights: &self.annotations.highlights,
-            ink: &self.annotations.ink,
-            next_serial: self.annotations.next_serial,
+            workspace_ids: s.workspaces.iter().map(|w| w.id.as_str()).collect(),
+            active_workspace_id: &s.active_workspace_id,
+            tool: s.tool,
+            next_serial: s.next_serial,
+            reading: &s.reading,
+            ink: &s.ink,
         };
-        serde_json::to_string(&doc).expect("a store serializes")
+        let session = serde_json::to_string(&record).expect("a session serializes");
+        let workspaces = serde_json::to_string(&s.workspaces).expect("workspaces serialize");
+        let mut out = String::with_capacity(
+            200 + session.len() + workspaces.len() + notes.len() + highlights.len() + ink.len(),
+        );
+        out.push_str("{\"format\":\"");
+        out.push_str(STORE_FORMAT);
+        out.push_str("\",\"schema_version\":\"");
+        out.push_str(STORE_SCHEMA_VERSION);
+        out.push_str("\",\"fixture_only\":");
+        out.push_str(if s.fixture_only { "true" } else { "false" });
+        out.push_str(",\"core_api_version\":\"");
+        out.push_str(openlogos_core::API_VERSION);
+        out.push_str("\",\"session\":");
+        out.push_str(&session);
+        out.push_str(",\"workspaces\":");
+        out.push_str(&workspaces);
+        out.push_str(",\"notes\":");
+        out.push_str(notes);
+        out.push_str(",\"highlights\":");
+        out.push_str(highlights);
+        out.push_str(",\"ink\":");
+        out.push_str(ink);
+        out.push_str(",\"next_serial\":");
+        out.push_str(&self.annotations.next_serial.to_string());
+        out.push('}');
+        out
+    }
+
+    /// Writes the JSON of every annotation part that changed since it was last written.
+    fn fill_store_cache(&mut self) {
+        let annotations = &self.annotations;
+        let cache = &mut self.store_cache;
+        cache.notes.get_or_insert_with(|| {
+            serde_json::to_string(&annotations.notes.values().collect::<Vec<_>>())
+                .expect("notes serialize")
+        });
+        cache.highlights.get_or_insert_with(|| {
+            serde_json::to_string(&annotations.highlights).expect("highlights serialize")
+        });
+        if cache.ink.is_none() {
+            let strokes = &mut cache.strokes;
+            strokes.retain(|id, _| annotations.ink.iter().any(|k| &k.id == id));
+            let mut out = String::from("[");
+            for (i, mark) in annotations.ink.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push_str(strokes.entry(mark.id.clone()).or_insert_with(|| {
+                    serde_json::to_string(&StoredInk::from(mark)).expect("ink serializes")
+                }));
+            }
+            out.push(']');
+            cache.ink = Some(out);
+        }
     }
 
     /// Restores a saved store (specs/24 §5). A document that is empty, not JSON, not a store
@@ -710,13 +972,10 @@ impl Shell {
         }
         for item in take_array(&mut value, "ink") {
             let id = id_of(&item);
-            let checked = serde_json::from_value::<InkMark>(item)
+            let checked = serde_json::from_value::<StoredInk>(item)
                 .map_err(|e| e.to_string())
-                .and_then(|mut k| {
-                    // The stroke carries its mark's id (a hand-edited file may leave it out).
-                    k.stroke.id.clone_from(&k.id);
-                    k.check().map(|()| k).map_err(|e| e.to_string())
-                });
+                .and_then(InkMark::try_from)
+                .and_then(|k| k.check().map(|()| k).map_err(|e| e.to_string()));
             match checked {
                 Ok(k) if k.id.is_empty() || annotations.ink.iter().any(|o| o.id == k.id) => {
                     issues.push(StoreIssue {
@@ -743,6 +1002,10 @@ impl Shell {
             self.session = session;
         }
         self.annotations = annotations;
+        // Written once here, inside the restore's budget, so the saves that follow rewrite
+        // only what changed.
+        self.store_cache = StoreCache::default();
+        self.fill_store_cache();
         self.undo_stack.clear();
         self.redo_stack.clear();
         self.revision += 1;
@@ -774,6 +1037,7 @@ impl Shell {
         note.check()?;
         if self.annotations.notes.get(&note.id) != Some(&note) {
             self.annotations.notes.insert(note.id.clone(), note);
+            self.store_cache.notes = None;
             self.changes += 1;
         }
         Ok(())
@@ -785,6 +1049,7 @@ impl Shell {
             .notes
             .remove(id)
             .ok_or_else(|| StoreError::NotFound { id: id.to_owned() })?;
+        self.store_cache.notes = None;
         self.changes += 1;
         Ok(())
     }
@@ -812,6 +1077,7 @@ impl Shell {
         highlight.id = self.annotations.mint("h");
         let id = highlight.id.clone();
         self.annotations.highlights.push(highlight);
+        self.store_cache.highlights = None;
         self.changes += 1;
         Ok(id)
     }
@@ -825,6 +1091,7 @@ impl Shell {
             .position(|h| h.id == id)
             .ok_or_else(|| StoreError::NotFound { id: id.to_owned() })?;
         self.annotations.highlights.remove(index);
+        self.store_cache.highlights = None;
         self.changes += 1;
         Ok(())
     }
@@ -845,8 +1112,10 @@ impl Shell {
         let id = self.annotations.mint("k");
         mark.id.clone_from(&id);
         mark.stroke.id.clone_from(&id);
+        quantize(&mut mark.stroke);
         mark.check()?;
         self.annotations.ink.push(mark);
+        self.store_cache.ink = None;
         self.changes += 1;
         Ok(id)
     }
@@ -860,6 +1129,7 @@ impl Shell {
             .position(|k| k.id == id)
             .ok_or_else(|| StoreError::NotFound { id: id.to_owned() })?;
         self.annotations.ink.remove(index);
+        self.store_cache.ink = None;
         self.changes += 1;
         Ok(())
     }
@@ -977,6 +1247,48 @@ mod tests {
         assert_eq!(b.highlights_in("bsb", "John.3").len(), 1);
         assert!(b.highlights_in("bsb", "John.31").is_empty());
         assert_eq!(b.ink_in("bsb", "John.3")[0].stroke.id, "k2");
+    }
+
+    #[test]
+    fn ink_is_stored_as_rounded_delta_columns_and_read_back_exactly() {
+        let mut s = shell();
+        let mut raw = stroke();
+        raw.points.push(openlogos_ink::InkPoint {
+            x: 12.34,
+            y: 7.06,
+            pressure: None,
+            elapsed_ms: 20.6,
+            altitude: Some(1.234),
+            azimuth: None,
+        });
+        raw.points.push(openlogos_ink::InkPoint {
+            x: -4.0,
+            y: 7.0,
+            pressure: Some(0.555),
+            elapsed_ms: 31.0,
+            altitude: None,
+            azimuth: None,
+        });
+        s.add_ink(InkMark {
+            id: String::new(),
+            resource_id: "bsb".into(),
+            segment_id: "John.3.16".into(),
+            stroke: raw,
+        })
+        .unwrap();
+        let stored = StoredInk::from(&s.annotations.ink[0]);
+        assert_eq!(stored.xy, vec![100, -25, 200, 65, -177, 31, -163, -1]);
+        assert_eq!(stored.t, vec![0, 16, 5, 10]);
+        assert_eq!(stored.pressure, Some(vec![None, Some(40), None, Some(16)]));
+        assert_eq!(stored.altitude, Some(vec![None, None, Some(123), None]));
+        assert_eq!(stored.azimuth, None);
+        let back = InkMark::try_from(stored).unwrap();
+        assert_eq!(back, s.annotations.ink[0]);
+        assert_eq!(back.stroke.points[2].x, 12.3);
+        let json = s.export_store_json();
+        let mut t = shell();
+        t.import_store_json(&json).unwrap();
+        assert_eq!(t.annotations, s.annotations);
     }
 
     #[test]
