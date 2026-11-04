@@ -30,6 +30,14 @@
 //! `tab.record_scroll` moving the active tab verse by verse with its group and a follower
 //! mapped from `eng` to `org`. Budget: a chapter opens in ≤ 100 ms end to end (specs/22 §7);
 //! the core's share should stay far below 5 ms.
+//!
+//! B074 adds the user store and the workspace commands at the acceptance size: the bench
+//! session (ten workspaces × twelve tabs, every tab scrolled and with history) plus 200
+//! notes of five blocks, 1,000 highlights and 200 ink strokes of 120 points. Rows: the save
+//! (`Shell::export_store_json`, budget one frame), the restore (`Shell::import_store_json`
+//! into a fresh shell, the core's share of the ≤ 100 ms restore), workspace new, rename,
+//! duplicate, close and switch, a tab dragged into another column (`tab.move`, undo record
+//! included), and the highlights and ink a host asks for when a chapter renders.
 
 use std::time::{Duration, Instant};
 
@@ -338,6 +346,290 @@ fn reading_bench(rounds: usize, json: Option<&str>) -> (Vec<Row>, Row) {
     )
 }
 
+/// B074 rows: save and restore of the user store at the acceptance size, the workspace
+/// commands, a tab drag, and the per-chapter annotation queries. Returns the rows and the
+/// store's size in bytes.
+fn store_bench(rounds: usize) -> (Vec<Row>, usize) {
+    use openlogos_workspaces::ScrollAnchor;
+    use openlogos_workspaces::store::{
+        Highlight, InkMark, Note, NoteBlock, NoteBlockKind, NoteSpan, SegmentSpan,
+    };
+
+    let context = CommandContext::default();
+    let mut shell = Shell::new(session()).expect("valid");
+    // Every tab scrolled, with a few visits of history, as a session after a day of study.
+    for w in 0..shell.session.workspaces.len() {
+        for c in 0..3 {
+            for t in 0..4 {
+                let tab = &mut shell.session.workspaces[w].columns[c].tabs[t];
+                let reference = tab.reference.clone().expect("bench tabs have passages");
+                tab.scroll_anchor = Some(ScrollAnchor {
+                    segment_id: reference,
+                    scalar: 12,
+                });
+            }
+        }
+    }
+    for step in 0..6 {
+        let go = Invocation::with(
+            "nav.navigate",
+            CommandArgs {
+                reference: Some(format!("John.{}.{}", 1 + step, 1 + step)),
+                ..CommandArgs::default()
+            },
+        );
+        for _ in 0..10 {
+            shell.apply(&go, &context).expect("navigate");
+            shell
+                .apply(&Invocation::new("workspace.next"), &context)
+                .expect("next");
+        }
+    }
+    let words = "grace mercy covenant promise faith hope love light life truth";
+    for n in 0..200 {
+        let span = |text: String| NoteSpan {
+            text,
+            ..NoteSpan::default()
+        };
+        shell
+            .put_note(Note {
+                id: format!("note-{n}"),
+                blocks: vec![
+                    NoteBlock {
+                        kind: NoteBlockKind::Heading,
+                        spans: vec![span(format!("Study {n}"))],
+                    },
+                    NoteBlock {
+                        kind: NoteBlockKind::Paragraph,
+                        spans: vec![
+                            span(words.repeat(3)),
+                            NoteSpan {
+                                text: "Jn 3:16".to_owned(),
+                                link: Some("John.3.16".to_owned()),
+                                ..NoteSpan::default()
+                            },
+                            NoteSpan {
+                                text: words.to_owned(),
+                                italic: true,
+                                ..NoteSpan::default()
+                            },
+                        ],
+                    },
+                    NoteBlock {
+                        kind: NoteBlockKind::ListItem,
+                        spans: vec![span(words.to_owned())],
+                    },
+                    NoteBlock {
+                        kind: NoteBlockKind::ListItem,
+                        spans: vec![span(words.to_owned())],
+                    },
+                    NoteBlock {
+                        kind: NoteBlockKind::Quote,
+                        spans: vec![span(words.repeat(2))],
+                    },
+                ],
+            })
+            .expect("note");
+    }
+    for n in 0..1000usize {
+        let book = BOOKS[n % 20];
+        let chapter = 1 + n % 7;
+        let verse = 1 + n % 25;
+        let mut spans = vec![SegmentSpan {
+            segment_id: format!("{book}.{chapter}.{verse}"),
+            start: (n % 40) as u32,
+            end: 40 + (n % 60) as u32,
+        }];
+        if n % 4 == 0 {
+            spans.push(SegmentSpan {
+                segment_id: format!("{book}.{chapter}.{}", verse + 1),
+                start: 0,
+                end: 30,
+            });
+        }
+        shell
+            .add_highlight(
+                Highlight {
+                    id: String::new(),
+                    resource_id: EDITIONS[n % 3].to_owned(),
+                    content_revision: "0".to_owned(),
+                    spans,
+                    color: ["#F5D90A", "#4CC38A"][n % 2].to_owned(),
+                },
+                None,
+            )
+            .expect("highlight");
+    }
+    for n in 0..200usize {
+        let points = (0..120)
+            .map(|i| openlogos_ink::InkPoint {
+                x: 20.0 + i as f64 * 2.5,
+                y: -8.0 + (i as f64 / 7.0).sin() * 6.0,
+                pressure: Some(0.3 + (i % 10) as f64 / 20.0),
+                elapsed_ms: i as f64 * 8.3,
+                altitude: Some(1.1),
+                azimuth: Some(0.6),
+            })
+            .collect();
+        shell
+            .add_ink(InkMark {
+                id: String::new(),
+                resource_id: EDITIONS[n % 3].to_owned(),
+                segment_id: format!("{}.{}.{}", BOOKS[n % 20], 1 + n % 7, 1 + n % 25),
+                stroke: openlogos_ink::Stroke {
+                    id: String::new(),
+                    tool: openlogos_ink::Tool::Pen,
+                    brush_version: "pf-1.2.3/pen-1".to_owned(),
+                    width: 4.0,
+                    color: "#1F6FEB".to_owned(),
+                    opacity: 1.0,
+                    points,
+                },
+            })
+            .expect("ink");
+    }
+
+    let mut save = Vec::new();
+    let mut restore = Vec::new();
+    let mut new = Vec::new();
+    let mut rename = Vec::new();
+    let mut duplicate = Vec::new();
+    let mut close = Vec::new();
+    let mut switch = Vec::new();
+    let mut drag = Vec::new();
+    let mut chapter = Vec::new();
+    let mut size = 0;
+    for round in 0..rounds {
+        let mut json = String::new();
+        time(&mut save, || json = shell.export_store_json());
+        size = json.len();
+        let mut fresh = Shell::new(session()).expect("valid");
+        time(&mut restore, || {
+            let report = fresh.import_store_json(&json).expect("restores");
+            assert!(report.issues.is_empty());
+        });
+        let renamed = Invocation::with(
+            "workspace.rename",
+            CommandArgs {
+                text: Some(format!("Renamed {round}")),
+                ..CommandArgs::default()
+            },
+        );
+        let created = Invocation::with(
+            "workspace.new",
+            CommandArgs {
+                text: Some("Greek".to_owned()),
+                ..CommandArgs::default()
+            },
+        );
+        time(&mut new, || {
+            shell.apply(&created, &context).expect("new");
+        });
+        time(&mut rename, || {
+            shell.apply(&renamed, &context).expect("rename");
+        });
+        time(&mut close, || {
+            shell
+                .apply(&Invocation::new("workspace.close"), &context)
+                .expect("close");
+        });
+        time(&mut duplicate, || {
+            shell
+                .apply(&Invocation::new("workspace.duplicate"), &context)
+                .expect("duplicate");
+        });
+        time(&mut close, || {
+            shell
+                .apply(&Invocation::new("workspace.close"), &context)
+                .expect("close");
+        });
+        for n in 0..10 {
+            let target = Invocation::with(
+                "workspace.switch",
+                CommandArgs {
+                    workspace_id: Some(format!("w{}", (round + n * 3) % 10)),
+                    ..CommandArgs::default()
+                },
+            );
+            if shell.enabled(&target, &context).is_ok() {
+                time(&mut switch, || {
+                    shell.apply(&target, &context).expect("switch");
+                });
+            }
+        }
+        for _ in 0..2 {
+            let ws = shell.session.active();
+            let from = ws.active_index();
+            let tab_id = ws.columns[from].tabs[1].id.clone();
+            let dragged = Invocation::with(
+                "tab.move",
+                CommandArgs {
+                    tab_id: Some(tab_id),
+                    column: Some(((from + 1) % 3 + 1) as u32),
+                    index: Some(1),
+                    ..CommandArgs::default()
+                },
+            );
+            time(&mut drag, || {
+                shell.apply(&dragged, &context).expect("tab.move");
+            });
+            shell.undo().expect("undo the drag");
+        }
+        for n in 0..7 {
+            let (resource, key) = (
+                EDITIONS[n % 3],
+                format!("{}.{}", BOOKS[(round + n) % 20], 1 + n),
+            );
+            time(&mut chapter, || {
+                std::hint::black_box(shell.highlights_in(resource, &key));
+                std::hint::black_box(shell.ink_in(resource, &key));
+            });
+        }
+    }
+    (
+        vec![
+            row(
+                "save: export the user store (10 × 12 tabs, 200 notes, 1,000 highlights, 200 strokes)",
+                16.0,
+                &mut save,
+            ),
+            row(
+                "restore: import that store into a fresh shell (core share)",
+                100.0,
+                &mut restore,
+            ),
+            row(
+                "workspace new (workspace.new, at that size)",
+                100.0,
+                &mut new,
+            ),
+            row("workspace rename (workspace.rename)", 100.0, &mut rename),
+            row(
+                "workspace duplicate (workspace.duplicate, 12 tabs with history)",
+                100.0,
+                &mut duplicate,
+            ),
+            row("workspace close (workspace.close)", 100.0, &mut close),
+            row(
+                "workspace switch (workspace.switch, 10 × 12 with annotations)",
+                100.0,
+                &mut switch,
+            ),
+            row(
+                "tab drag into another column (tab.move, with undo record)",
+                16.0,
+                &mut drag,
+            ),
+            row(
+                "highlights and ink of one chapter (highlights_in + ink_in)",
+                1.0,
+                &mut chapter,
+            ),
+        ],
+        size,
+    )
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let flag = |name: &str| {
@@ -523,6 +815,7 @@ fn main() {
     }
 
     let (reading_rows, scroll) = reading_bench(rounds, flag("--json").as_deref());
+    let (store_rows, store_bytes) = store_bench(rounds);
     let mut rows = vec![
         row(
             "palette keystroke: passage, commands, tabs (index kept)",
@@ -580,11 +873,13 @@ fn main() {
     ];
     rows.extend(reading_rows);
     rows.push(scroll);
+    rows.extend(store_rows);
 
     println!(
         "Session: {} workspaces, {tabs} tabs; {rounds} rounds.\n",
         shell.session.workspaces.len()
     );
+    println!("User store at the B074 size: {store_bytes} bytes.\n");
     println!(
         "| interaction | specs/22 §7 budget | samples | p50 µs | p95 µs | max µs |\n|---|---:|---:|---:|---:|---:|"
     );
