@@ -63,6 +63,9 @@ Tab                                (specs/21's pane)
   migrates losslessly, each visible pane becoming a column with one tab and the tab-order panes
   becoming tabs of the last column. The session file stores workspace order and the active
   workspace; each workspace stays its own record so one can be shared or exported alone.
+  What a host saves is the user store of specs/24-persistence.md (B074): the session record
+  and its workspace records in one document with the notes, highlights and ink, saved 1 s
+  after the last change and on quit, restored at launch with every tab's scroll anchor.
 
 ## 3. The command palette
 
@@ -337,6 +340,9 @@ when the device is available. p95 over at least 200 samples unless stated.
 | Cold launch to the restored workspace's text | ≤ 1 s |
 | Tool change | next frame |
 | Context menu shown after a right-click | next frame (≤ 16 ms) |
+| Save the user store (core share, ten workspaces of twelve tabs, 200 notes, 1,000 highlights, 200 strokes; specs/24) | ≤ 16 ms |
+| Restore at launch, file read to the active workspace's first painted text (specs/24 §5) | ≤ 100 ms |
+| Tab drag into another column, workspace new / rename / duplicate / close | next frame / ≤ 100 ms |
 
 Hidden tabs and workspaces keep their model state but release their rendered text; the
 budgets above include re-rendering a released tab.
