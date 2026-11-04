@@ -27,7 +27,7 @@
 // tab's passage quietly (`tab.record_scroll`) and carries linked tabs along; labels change in
 // place and the column is not rebuilt for it.
 import init, * as core from "../core-host/pkg/openlogos_ffi.js";
-import { selectionAnchors, anchorRange } from "../reader/surface.js";
+import { selectionAnchors } from "../reader/surface.js";
 import { BRUSHES, HIGHLIGHTER_WIDTH_FACTOR, TouchArbiter, compositeAt, strokeOutline, distanceToSegment } from "../ink/layer.js";
 import { fixtureTextSource } from "./text-source.js";
 import { seedSession, benchSession } from "./seed.js";
@@ -129,7 +129,7 @@ const host = {
   // B074 (specs/24): the core holds the notes, highlights and ink; the host keeps what it last
   // fetched for each rendered block (keyed by a version bumped on every change) and the eraser's
   // count for the tests.
-  hlVersion: 0, inkVersion: 0, erased: new Map(),
+  hlVersion: 0, hlCache: new Map(), inkCache: new Map(), erased: new Map(),
   palette: { expanded: null, rows: [], index: -1, result: null, returnTo: null },
   menu: null, log: [], colourRules: new Set(), labels: new Map(),
   // B076: what has focus for the core's context (`tab`, `notes_dock`; `empty` never arises, a
@@ -960,7 +960,7 @@ function highlightSelection(swatch = host.session.ink.swatch) {
     toast(error.kind === "placeholder_text" ? PLACEHOLDER_REASON : error.message || String(error));
     return;
   }
-  host.hlVersion += 1;
+  highlightsChanged(highlight.resource_id, highlight.spans);
   changed();
   document.getSelection().removeAllRanges();
 }
@@ -999,33 +999,71 @@ function highlightName(hex) {
   return name;
 }
 
-/** B074: the core's highlights of a rendered block (`highlightsIn`, oldest first), fetched
- *  again only after a highlight changed. */
-function blockHighlights(view, b) {
-  if (b.hlVersion !== host.hlVersion) {
-    b.hlVersion = host.hlVersion;
-    b.highlights = host.handle.highlightsIn(view.tab.content_id, b.key);
-  }
-  return b.highlights;
+/** After a highlight changed: its chapters are fetched again (all when none is named) and
+ *  every block works out its paint again. */
+function highlightsChanged(resource = null, spans = null) {
+  if (resource && spans) for (const x of spans) host.hlCache.delete(`${resource}|${chapterOfSegment(x.segment_id)}`);
+  else host.hlCache.clear();
+  host.hlVersion += 1;
 }
 
+/** UTF-16 index of a Unicode scalar offset in `text`. */
+function utf16At(text, scalar) {
+  let i = 0;
+  for (let n = 0; n < scalar && i < text.length; n++) i += text.codePointAt(i) > 0xffff ? 2 : 1;
+  return i;
+}
+
+/** B074: what a rendered block paints, `[highlight name, Range]` in the core's order (oldest
+ *  first, `highlightsIn`); worked out once per block and again only after a highlight changed
+ *  (a block's text never changes while it is rendered). A span of another chapter is painted
+ *  by that chapter's block. */
+function blockHighlights(view, b) {
+  if (b.hlVersion === host.hlVersion) return b.hlRanges;
+  b.hlVersion = host.hlVersion;
+  b.hlRanges = [];
+  const key = `${view.tab.content_id}|${b.key}`;
+  let marks = host.hlCache.get(key);
+  if (!marks) { marks = host.handle.highlightsIn(view.tab.content_id, b.key); host.hlCache.set(key, marks); }
+  if (!marks.length) return b.hlRanges;
+  if (!b.textNodes) {
+    b.textNodes = new Map();
+    for (const v of b.verses.querySelectorAll("[data-segment]")) {
+      const t = v.querySelector(".t");
+      if (t && t.firstChild) b.textNodes.set(v.dataset.segment, t.firstChild);
+    }
+  }
+  for (const h of marks) {
+    const name = highlightName(h.color);
+    for (const span of h.spans) {
+      const node = b.textNodes.get(span.segment_id);
+      if (!node) continue;
+      const r = document.createRange();
+      r.setStart(node, Math.min(node.length, utf16At(node.data, span.start)));
+      r.setEnd(node, Math.min(node.length, utf16At(node.data, span.end)));
+      b.hlRanges.push([name, r]);
+    }
+  }
+  return b.hlRanges;
+}
+
+/** The highlights of every rendered block, set again only when the blocks on screen or the
+ *  highlights changed. */
 function paintHighlights() {
   if (!("highlights" in CSS)) return;
-  const bySwatch = new Map(SWATCH_ORDER.map((s) => [`ol-${s}`, []]));
+  const blocks = [];
   for (const view of host.views.values()) {
     if (!view.stream || !view.section.isConnected) continue;
-    // Spans, not DOM: a block loaded again repaints its highlights (B078); a span of another
-    // chapter is painted by that chapter's block.
-    for (const b of view.stream.blocks) {
-      for (const h of blockHighlights(view, b)) {
-        const name = highlightName(h.color);
-        if (!bySwatch.has(name)) bySwatch.set(name, []);
-        for (const span of h.spans) {
-          if (!b.paragraph.segments.some((x) => x.segment_id === span.segment_id)) continue;
-          const anchor = { edition_id: h.resource_id, content_revision: h.content_revision, segment_id: span.segment_id, range: { start: span.start, end: span.end }, tokens: [], quote: null };
-          try { bySwatch.get(name).push(anchorRange(core, b.paragraph, b.verses, anchor)); } catch { /* a span past this revision's text */ }
-        }
-      }
+    for (const b of view.stream.blocks) blocks.push([view, b]);
+  }
+  const last = host.painted;
+  if (last && last.version === host.hlVersion && last.blocks.length === blocks.length && last.blocks.every((x, i) => x[1] === blocks[i][1])) return;
+  host.painted = { version: host.hlVersion, blocks };
+  const bySwatch = new Map(SWATCH_ORDER.map((s) => [`ol-${s}`, []]));
+  for (const [view, b] of blocks) {
+    for (const [name, range] of blockHighlights(view, b)) {
+      if (!bySwatch.has(name)) bySwatch.set(name, []);
+      bySwatch.get(name).push(range);
     }
   }
   for (const [name, ranges] of bySwatch) CSS.highlights.set(name, new Highlight(...ranges));
@@ -1347,14 +1385,15 @@ function linkPassage(args) {
 // in a right-to-left text, measured leftward). A block's strokes come from `inkIn` and are drawn
 // at the verse's top, so they move with it and are hidden while it is not rendered.
 
-/** The core's strokes of a rendered block, fetched again only after the ink changed. */
-function blockInk(view, b) {
-  if (b.inkVersion !== host.inkVersion) {
-    b.inkVersion = host.inkVersion;
-    b.ink = host.handle.inkIn(view.tab.content_id, b.key);
-  }
-  return b.ink;
+/** The core's strokes of an edition's chapter (`inkIn`), fetched once and again only after a
+ *  stroke of that chapter changed; every column showing the chapter shares them. */
+function chapterInk(resource, chapterKey) {
+  const key = `${resource}|${chapterKey}`;
+  let marks = host.inkCache.get(key);
+  if (!marks) { marks = host.handle.inkIn(resource, chapterKey); host.inkCache.set(key, marks); }
+  return marks;
 }
+const blockInk = (view, b) => chapterInk(view.tab.content_id, b.key);
 
 /** Whether any rendered block of the view holds a stroke. */
 function viewHasInk(view) {
@@ -1394,7 +1433,20 @@ function placeBand(view, force = false) {
   if (!force && top != null && visible >= top && visible + h <= top + h * 3) return;
   view.bandTop = Math.max(0, visible - h);
   view.canvas.style.top = `${view.bandTop}px`;
-  repaintInk(view);
+  scheduleInk(view);
+}
+
+/** Repaints a view's ink before the next frame is painted, once however often it was asked
+ *  for in this frame (a workspace switch moves a band, sizes a canvas and loads blocks). */
+const inkDue = new Set();
+function scheduleInk(view) {
+  if (!inkDue.size) requestAnimationFrame(flushInk);
+  inkDue.add(view);
+}
+function flushInk() {
+  const views = [...inkDue];
+  inkDue.clear();
+  for (const v of views) if (v.canvas && v.section.isConnected) repaintInk(v);
 }
 
 /** Page y of a verse's top. */
@@ -1436,10 +1488,19 @@ function pageStrokes(view) {
       const top = verseTop(view, mark.segment_id);
       if (top == null) continue;
       const stroke = mark.stroke;
-      out.push({ ...stroke, id: mark.id, points: stroke.points.map((pt) => ({ ...pt, x: frame.edge + frame.sign * pt.x, y: top + pt.y })) });
+      out.push({ ...stroke, id: mark.id, segment_id: mark.segment_id, points: stroke.points.map((pt) => ({ ...pt, x: frame.edge + frame.sign * pt.x, y: top + pt.y })) });
     }
   }
   return out;
+}
+
+/** A stored stroke's outline in its own coordinates (from its verse's top and the text's
+ *  edge), worked out once per stroke: a stroke never changes, only where it is drawn. */
+const outlines = new Map();
+function outlineOf(mark) {
+  let o = outlines.get(mark.id);
+  if (!o) { o = strokeOutline(core, mark.stroke); outlines.set(mark.id, o); }
+  return o;
 }
 
 function repaintInk(view, live = null) {
@@ -1448,17 +1509,26 @@ function repaintInk(view, live = null) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, view.canvas.width, view.canvas.height);
   if (!view.canvas.width) return;
-  const strokes = pageStrokes(view);
-  if (live) strokes.push(live);
   const band = view.bandTop || 0, bottom = band + view.canvas.height / dpr;
-  for (const stroke of strokes) {
-    if (stroke.points.length < 2) continue;
-    // Only what reaches into the band.
-    let lo = Infinity, hi = -Infinity;
-    for (const pt of stroke.points) { if (pt.y < lo) lo = pt.y; if (pt.y > hi) hi = pt.y; }
-    if (hi + stroke.width < band || lo - stroke.width > bottom) continue;
+  if (view.stream) {
+    const frame = inkFrame(view);
+    for (const b of view.stream.blocks) {
+      for (const mark of blockInk(view, b)) {
+        const top = verseTop(view, mark.segment_id);
+        if (top == null) continue;
+        // Only what reaches into the band.
+        let lo = Infinity, hi = -Infinity;
+        for (const pt of mark.stroke.points) { if (pt.y < lo) lo = pt.y; if (pt.y > hi) hi = pt.y; }
+        if (top + hi + mark.stroke.width < band || top + lo - mark.stroke.width > bottom) continue;
+        // x from the leading edge (mirrored in a right-to-left text), y from the verse's top.
+        ctx.setTransform(frame.sign, 0, 0, 1, frame.edge * dpr, (top - band) * dpr);
+        compositeAt(ctx, mark.stroke, outlineOf(mark), dpr);
+      }
+    }
+  }
+  if (live && live.points && live.points.length >= 2) {
     ctx.setTransform(1, 0, 0, 1, 0, -band * dpr);
-    compositeAt(ctx, stroke, strokeOutline(core, stroke), dpr);
+    compositeAt(ctx, live, strokeOutline(core, live), dpr);
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -1473,10 +1543,12 @@ function hexColour(colour) {
   return /^#[0-9a-f]{6}$/i.test(v) ? v.toUpperCase() : "#000000";
 }
 
-/** Every stream showing an edition repaints its ink (strokes belong to the edition). */
-function inkChanged() {
-  host.inkVersion += 1;
-  for (const v of host.views.values()) if (v.stream && v.section.isConnected) { sizeCanvas(v); repaintInk(v); }
+/** Every stream showing an edition repaints its ink (strokes belong to the edition); the
+ *  chapter that changed is fetched again (all of them when none is named). */
+function inkChanged(resource = null, segmentId = null) {
+  if (resource && segmentId) host.inkCache.delete(`${resource}|${chapterOfSegment(segmentId)}`);
+  else host.inkCache.clear();
+  for (const v of host.views.values()) if (v.stream && v.section.isConnected) { sizeCanvas(v); scheduleInk(v); }
   changed();
 }
 
@@ -1496,7 +1568,7 @@ function attachInk(view) {
         if (distanceToSegment(p, s.points[j - 1], s.points[j]) <= s.width / 2 + 4) {
           try { host.handle.removeInk(s.id); } catch { return; }
           host.erased.set(view.tab.content_id, (host.erased.get(view.tab.content_id) || 0) + 1);
-          inkChanged();
+          inkChanged(view.tab.content_id, s.segment_id);
           return;
         }
       }
@@ -1539,7 +1611,7 @@ function attachInk(view) {
         stroke.points = stroke.points.map((pt) => ({ ...pt, x: (pt.x - f.edge) * f.sign, y: pt.y - pin.top }));
         try {
           host.handle.addInk({ resource_id: view.tab.content_id, segment_id: pin.segment_id, stroke });
-          inkChanged();
+          inkChanged(view.tab.content_id, pin.segment_id);
           return;
         } catch (error) {
           toast(error.message || String(error));
@@ -2633,8 +2705,8 @@ export function buildAcceptance() {
   const verses = [["bsb", "John.3.16"], ["bsb", "John.3.17"], ["sblgnt", "John.3.16"], ["sblgnt", "John.3.17"], ["wlc", "Gen.1.1"], ["wlc", "Gen.1.2"]].map(([r, id]) => {
     const block = host.reading.chapterContent(r, chapterOfSegment(id));
     const verse = block.verses.find((v) => v.segment_id === id);
-    return { r, id, revision: block.content_revision, length: [...verse.text].length };
-  });
+    return { r, id, revision: block.content_revision, length: [...verse.text].length, placeholder: verse.placeholder };
+  }).filter((v) => !v.placeholder);
   const colours = SWATCH_ORDER.map((k) => TOKENS.swatches[k][0]);
   for (let i = 0; i < 1000; i++) {
     const v = verses[i % verses.length];
@@ -2648,7 +2720,7 @@ export function buildAcceptance() {
     const points = Array.from({ length: 120 }, (_, k) => ({ x: x0 + k * 2.5, y: y0 + Math.sin(k / 8) * 6, pressure: 0.3 + 0.5 * rnd(), elapsed_ms: k * 8 }));
     host.handle.addInk({ resource_id: r, segment_id: id, stroke: { id: "bench", tool: i % 2 ? "highlighter" : "pen", brush_version: i % 2 ? BRUSHES.highlighter.version : BRUSHES.pen.version, width: 4, color: i % 2 ? "#F5D90A" : "#2F5BD3", opacity: i % 2 ? 0.35 : 1, points } });
   }
-  host.hlVersion += 1;
+  highlightsChanged();
   inkChanged();
   render();
   return host.handle.exportStore().length;
@@ -2679,6 +2751,7 @@ export async function storeBench({ samples = 200 } = {}) {
     added.push(host.handle.addInk({ resource_id: "bsb", segment_id: "John.3.20", stroke: { id: "b", tool: "pen", brush_version: BRUSHES.pen.version, width: 4, color: "#2F5BD3", opacity: 1, points: Array.from({ length: 120 }, (_, k) => ({ x: k * 2 + i, y: k % 7, pressure: 0.5, elapsed_ms: k * 8 })) } }));
   });
   for (const id of added) host.handle.removeInk(id);
+  inkChanged("bsb", "John.3.20");
   await exportAfter("B074 exportStore after a note edit (putNote)", (i) => host.handle.putNote({ id: "bench:note:1", blocks: [{ kind: "paragraph", spans: [{ text: `Edit ${i}` }] }] }));
   // The whole save as the page does it: export on the main thread, then the IndexedDB put.
   const sync = [], committed = [];
