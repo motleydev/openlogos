@@ -35,7 +35,7 @@ shot() { # name store args…
   printf '%s  %s KB\n' "$out" "$(( $(stat -f %z "$out") / 1024 ))"
 }
 
-fresh() { rm -rf "$work/$1"; mkdir -p "$work/$1"; echo "$work/$1"; }
+fresh() { rm -rf "${work:?}/${1:?}"; mkdir -p "$work/$1"; echo "$work/$1"; }
 
 case "${1:-shots}" in
   shots)
