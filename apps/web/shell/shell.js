@@ -14,8 +14,10 @@
 // either; the host maps its icon names to SVG and performs the note and selection actions.
 //
 // Host view state, outside the session (docs/evidence/B072-web.md, B076-web.md): the tool well's position
-// and collapse, a column-rule drag until it ends in `column.resize`, and highlights and ink
-// strokes (in memory until the annotation store, B074), and the notes as edited (B074 too).
+// and collapse, a column-rule drag until it ends in `column.resize`, a tab drag until it ends
+// in `tab.move`. Notes, highlights and ink are the core's (B074, specs/24): the page converts
+// at the edge, and saves the core's user store to IndexedDB (store.js) and restores it at
+// launch.
 //
 // Rendering is per column: a column's DOM is rebuilt only when its tabs or shown tab change or
 // its tab is navigated; focus, tool and theme changes touch classes and attributes only, so

@@ -2,7 +2,7 @@
 // columns (1 = BSB John 3:16 with a second tab WLC Gen 1:1, 2 = SBLGNT John 3:16 in group 1,
 // 3 = the study note pinned as a tab) and workspace "Hebrew" with one column (WLC Gen 1:1).
 // The reading theme starts on the tokens' default (light) rather than the core's "system", as
-// the Mac app's seed does; everything else is the core's default. Nothing is persisted yet (B074). The bench
+// the Mac app's seed does; everything else is the core's default. A saved store (B074) is restored over it. The bench
 // session is specs/22 §7's ten workspaces of three columns × four tabs.
 const NOTE = "fixture:note:1";
 
