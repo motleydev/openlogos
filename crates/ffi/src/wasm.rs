@@ -31,6 +31,9 @@ use openlogos_workspaces::palette::{
     PaletteContext, PaletteIndex, TextProvider, palette_query_indexed,
 };
 use openlogos_workspaces::shell::{Session, SessionRecord, ShellError, Workspace};
+use openlogos_workspaces::store::{
+    Highlight, InkMark, Note, SAVE_DEBOUNCE_MS, STORE_FORMAT, STORE_SCHEMA_VERSION,
+};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -133,7 +136,7 @@ export interface InkStroke { id: string; tool: InkTool; brush_version: string; w
 export interface InkViewportTransform { scale: number; translate_x: number; translate_y: number }
 /** The portable ink record, field names as the schema. */
 /** B070 workspace shell (specs/22): a tab is specs/21's pane; column numbers are positions. */
-export interface ShellTab { id: string; kind: "reading" | "notes" | "research" | "lexicon"; content_id: string; content_revision: string; reference: string | null; scroll_anchor?: { segment_id: string; scalar: number }; link_group: string | null; pinned: boolean; history?: { back: unknown[]; current: unknown | null; forward: unknown[] }; lexicon_word?: string; highlight_range?: string }
+export interface ShellTab { id: string; kind: "reading" | "notes" | "research" | "lexicon"; content_id: string; content_revision: string; reference: string | null; scroll_anchor?: { segment_id: string; scalar: number }; link_group: string | null; pinned: boolean; history?: { back: unknown[]; current: unknown | null; forward: unknown[] }; lexicon_word?: string; lexicon_language?: string; highlight_range?: string }
 export interface ShellColumn { id: string; tabs: ShellTab[]; shown_tab_id: string; width_fraction: number }
 export interface ShellWorkspace { schema_version: "2.0"; fixture_only: boolean; id: string; title: string; columns: ShellColumn[]; active_column_id: string; notes_dock: { note_id: string | null; open: boolean }; layout_profiles?: Record<string, { visible_column_ids: string[]; widths?: Record<string, number>; notes_dock_open: boolean }>; next_serial: number }
 export type ShellTool = "select" | "highlight" | "pen" | "highlighter_pen" | "eraser" | "collect" | "word_study" | "type";
@@ -144,7 +147,7 @@ export interface ShellReading { text_size_step: number; line_spacing: number; th
 export interface ShellInk { width: number; swatch: string; alternate_swatch: string }
 export interface ShellSession { schema_version: "1.0"; fixture_only: boolean; workspaces: ShellWorkspace[]; active_workspace_id: string; tool: ShellTool; next_serial: number; reading: ShellReading; ink: ShellInk }
 export interface ShellSessionRecord { schema_version: "1.0"; fixture_only: boolean; workspace_ids: string[]; active_workspace_id: string; tool: ShellTool; next_serial: number; reading?: ShellReading; ink?: ShellInk }
-export interface ShellCommandArgs { column?: number; new_column?: boolean; text?: string; reference?: string; workspace_id?: string; tab_id?: string; group?: string; number?: number; segment_id?: string; scalar?: number; scope?: "edition" | "all" | "workspace" | "chapter"; resource_id?: string }
+export interface ShellCommandArgs { column?: number; new_column?: boolean; text?: string; reference?: string; workspace_id?: string; tab_id?: string; group?: string; number?: number; segment_id?: string; scalar?: number; scope?: "edition" | "all" | "workspace" | "chapter"; resource_id?: string; /** B074: the slot `tab.move` drops a tab into, 0-based. */ index?: number }
 /** The core's pane minimums and measure caps, in points. */
 export interface LayoutConstants { pane_minimum_standard_pt: number; pane_minimum_accessibility_pt: number; measure_cap_standard_pt: number; measure_cap_accessibility_pt: number }
 export interface ShellInvocation { command_id: string; args?: ShellCommandArgs }
@@ -152,7 +155,7 @@ export interface ShellInvocation { command_id: string; args?: ShellCommandArgs }
 export type ShellFocus = "tab" | "notes_dock" | "empty";
 export interface ShellCommandContext { has_selection?: boolean; focus?: ShellFocus }
 export type ShellPlatform = "web" | "mac" | "ipad";
-export interface ShellCommandSpec { id: string; title: string; aliases: string[]; keywords: string[]; scope: "session" | "workspace" | "column" | "tab" | "selection"; argument: "none" | "column_number" | "text" | "reference" | "workspace" | "tab" | "link_group" | "number" | "column_width" | "scroll"; shortcuts: { web: string[]; mac: string[]; ipad: string[] }; bare_key: boolean; undoable: boolean; handled_by_core: boolean; quiet: boolean }
+export interface ShellCommandSpec { id: string; title: string; aliases: string[]; keywords: string[]; scope: "session" | "workspace" | "column" | "tab" | "selection"; argument: "none" | "column_number" | "text" | "reference" | "workspace" | "tab" | "link_group" | "number" | "column_width" | "scroll" | "tab_move"; shortcuts: { web: string[]; mac: string[]; ipad: string[] }; bare_key: boolean; undoable: boolean; handled_by_core: boolean; quiet: boolean }
 /** `disabled` is null when the command can run; otherwise `{ kind, ... }`. */
 export interface ShellCommandState { spec: ShellCommandSpec; disabled: { kind: string } | null; disabled_text: string | null }
 export interface ShellOutcome { command_id: string; handled: boolean; recorded: boolean; effects: { followed_tab_ids: string[]; positions: ShellTabPosition[] }; revision: number }
@@ -163,7 +166,7 @@ export interface ShellPaletteContext { has_selection?: boolean; platform?: Shell
 export interface ShellPaletteItem { section: ShellPaletteSection; title: string; subtitle: string | null; score: number; invocation: ShellInvocation; disabled: { kind: string } | null; disabled_text: string | null; shortcut: string | null }
 export interface ShellPaletteResult { query: { mode: "all" | "commands" | "tabs" | "text" | "passage"; text: string; target: { kind: "column"; number: number } | { kind: "new" } | null }; groups: { section: ShellPaletteSection; items: ShellPaletteItem[]; total: number }[]; notice: string | null }
 /** B070: what a host renders; labels come from the core (`formatShort`), never the host. */
-export interface ShellTabView { id: string; kind: string; content_id: string; content_revision: string; reference: string | null; resource_title: string; reference_label: string | null; chapter_label: string | null; scroll_segment_id: string | null; scroll_scalar: number | null; link_mode: "pinned" | "follows" | "group"; link_group: string | null; can_go_back: boolean; can_go_forward: boolean; lexicon_word: string | null; highlight_range: string | null }
+export interface ShellTabView { id: string; kind: string; content_id: string; content_revision: string; reference: string | null; resource_title: string; reference_label: string | null; chapter_label: string | null; scroll_segment_id: string | null; scroll_scalar: number | null; link_mode: "pinned" | "follows" | "group"; link_group: string | null; can_go_back: boolean; can_go_forward: boolean; lexicon_word: string | null; lexicon_language: string | null; highlight_range: string | null }
 export interface ShellColumnView { id: string; number: number; tabs: ShellTabView[]; shown_tab_id: string; width_fraction: number }
 export interface ShellWorkspaceView { id: string; title: string; columns: ShellColumnView[]; active_column_number: number; notes_dock_note_id: string | null; notes_dock_open: boolean }
 export interface ShellSessionView { workspaces: ShellWorkspaceView[]; active_workspace_id: string; tool: ShellTool; effective_tool: ShellTool; tool_context: ShellToolContext; revision: number; undo_title: string | null; redo_title: string | null; reading: ShellReading; ink: ShellInk }
@@ -195,6 +198,20 @@ export interface ReadingVerse { segment_id: string; number: number; last_number:
 export interface ReadingChapter { resource_id: string; content_revision: string; chapter_key: string; book: string; chapter: number; heading: { book_title: string | null; chapter_label: string; short_label: string }; verses: ReadingVerse[]; prev: string | null; next: string | null; placeholder: boolean }
 /** Where a pack chapter's bytes are: fetch `path` (with `Range: bytes=offset-(offset+length-1)` when `offset` is set), then `supplyChunk`. */
 export interface ReadingChunk { resource_id: string; chapter_key: string; path: string; offset: number | null; length: number; sha256: string }
+/** B074 user store (specs/24): the one document a host saves (`exportStore`, a string to write as is) and restores (`importStore`). */
+export interface StoreNoteSpan { text: string; bold?: boolean; italic?: boolean; /** A passage link, OSIS. */ link?: string }
+export interface StoreNoteBlock { kind: "paragraph" | "heading" | "list_item" | "quote"; spans: StoreNoteSpan[] }
+/** A note in the stored form; the id is the notes tab's `content_id`. */
+export interface StoreNote { id: string; blocks: StoreNoteBlock[] }
+export interface StoreSegmentSpan { segment_id: string; start: number; end: number }
+/** Scalar-value spans of one edition revision and a `#RRGGBB` colour; `id` is minted by `addHighlight`. */
+export interface StoreHighlight { id?: string; resource_id: string; content_revision: string; spans: StoreSegmentSpan[]; color: string }
+/** A stroke pinned to a verse: points with `y` from the verse's top, `x` from the text's leading edge; `id` is minted by `addInk`. */
+export interface StoreInkMark { id?: string; resource_id: string; segment_id: string; stroke: InkStroke }
+export interface StoreIssue { part: "session" | "note" | "highlight" | "ink"; id: string | null; detail: string }
+/** `issues` non-empty: keep a backup of the file that was read. */
+export interface StoreRestoreReport { schema_version: string; session_restored: boolean; workspaces: number; tabs: number; notes: number; highlights: number; ink: number; issues: StoreIssue[] }
+export interface StoreConstants { format: string; schema_version: string; save_debounce_ms: number }
 export interface InkDocument { schema_version: "1.0" | "1.1"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
 "#;
 
@@ -840,6 +857,110 @@ impl ShellHandle {
         to_js(&outcome)
     }
 
+    /// B074: the user store as JSON text (schemas/user-store.schema.json), what the page
+    /// writes when `changeCount` moved.
+    #[wasm_bindgen(js_name = exportStore)]
+    #[must_use]
+    pub fn export_store(&self) -> String {
+        self.shell.export_store_json()
+    }
+
+    /// B074: restores a saved store. Throws (`kind` `empty`, `not_json`, `not_a_store`,
+    /// `unsupported_version`) and leaves the shell as it was when the document is refused
+    /// whole; otherwise `issues` names any part set aside.
+    #[wasm_bindgen(js_name = importStore, unchecked_return_type = "StoreRestoreReport")]
+    pub fn import_store(&mut self, json: &str) -> Result<JsValue, JsValue> {
+        let report = self.shell.import_store_json(json).map_err(throw)?;
+        to_js(&report)
+    }
+
+    /// B074: bumped by every change a save would write, quiet ones included.
+    #[wasm_bindgen(js_name = changeCount)]
+    #[must_use]
+    pub fn change_count(&self) -> f64 {
+        self.shell.changes as f64
+    }
+
+    /// B074: every note, by id.
+    #[wasm_bindgen(unchecked_return_type = "StoreNote[]")]
+    pub fn notes(&self) -> Result<JsValue, JsValue> {
+        to_js(&self.shell.annotations.notes.values().collect::<Vec<_>>())
+    }
+
+    /// B074: one note, or null.
+    #[wasm_bindgen(unchecked_return_type = "StoreNote | null")]
+    pub fn note(&self, id: &str) -> Result<JsValue, JsValue> {
+        to_js(&self.shell.note(id))
+    }
+
+    /// B074: saves a note, replacing the one with its id.
+    #[wasm_bindgen(js_name = putNote)]
+    pub fn put_note(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "StoreNote")] note: JsValue,
+    ) -> Result<(), JsValue> {
+        let note: Note = from_js("note", note)?;
+        self.shell.put_note(note).map_err(throw)
+    }
+
+    /// B074: deletes a note.
+    #[wasm_bindgen(js_name = deleteNote)]
+    pub fn delete_note(&mut self, id: &str) -> Result<(), JsValue> {
+        self.shell.delete_note(id).map_err(throw)
+    }
+
+    /// B074: adds a highlight and returns its id; a span on placeholder text in `reading`
+    /// throws `placeholder_text` (the page always has its `ReadingHandle`; wasm-bindgen
+    /// takes no optional borrowed handle).
+    #[wasm_bindgen(js_name = addHighlight)]
+    pub fn add_highlight(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "StoreHighlight")] highlight: JsValue,
+        reading: &ReadingHandle,
+    ) -> Result<String, JsValue> {
+        let highlight: Highlight = from_js("highlight", highlight)?;
+        let check = |resource: &str, segment: &str| {
+            reading.library.segment_is_placeholder(resource, segment) == Some(true)
+        };
+        self.shell
+            .add_highlight(highlight, Some(&check))
+            .map_err(throw)
+    }
+
+    /// B074: removes a highlight.
+    #[wasm_bindgen(js_name = removeHighlight)]
+    pub fn remove_highlight(&mut self, id: &str) -> Result<(), JsValue> {
+        self.shell.remove_highlight(id).map_err(throw)
+    }
+
+    /// B074: the highlights of an edition with a span in a chapter (`John.3`).
+    #[wasm_bindgen(js_name = highlightsIn, unchecked_return_type = "StoreHighlight[]")]
+    pub fn highlights_in(&self, resource_id: &str, chapter_key: &str) -> Result<JsValue, JsValue> {
+        to_js(&self.shell.highlights_in(resource_id, chapter_key))
+    }
+
+    /// B074: adds an ink stroke pinned to a verse and returns its id.
+    #[wasm_bindgen(js_name = addInk)]
+    pub fn add_ink(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "StoreInkMark")] mark: JsValue,
+    ) -> Result<String, JsValue> {
+        let mark: InkMark = from_js("mark", mark)?;
+        self.shell.add_ink(mark).map_err(throw)
+    }
+
+    /// B074: removes an ink stroke.
+    #[wasm_bindgen(js_name = removeInk)]
+    pub fn remove_ink(&mut self, id: &str) -> Result<(), JsValue> {
+        self.shell.remove_ink(id).map_err(throw)
+    }
+
+    /// B074: the strokes of an edition pinned to verses of a chapter.
+    #[wasm_bindgen(js_name = inkIn, unchecked_return_type = "StoreInkMark[]")]
+    pub fn ink_in(&self, resource_id: &str, chapter_key: &str) -> Result<JsValue, JsValue> {
+        to_js(&self.shell.ink_in(resource_id, chapter_key))
+    }
+
     /// The palette's answer for the field's text.
     #[wasm_bindgen(js_name = paletteQuery, unchecked_return_type = "ShellPaletteResult")]
     pub fn palette_query(
@@ -908,6 +1029,16 @@ pub fn migrate_workspace(
 ) -> Result<JsValue, JsValue> {
     let value: serde_json::Value = from_js("document", document)?;
     to_js(&migrate_workspace_to_2(value).map_err(throw)?)
+}
+
+/// B074: the store's format, version and the save debounce.
+#[wasm_bindgen(js_name = storeConstants, unchecked_return_type = "StoreConstants")]
+pub fn store_constants() -> Result<JsValue, JsValue> {
+    to_js(&serde_json::json!({
+        "format": STORE_FORMAT,
+        "schema_version": STORE_SCHEMA_VERSION,
+        "save_debounce_ms": SAVE_DEBOUNCE_MS,
+    }))
 }
 
 /// The core's pane minimums and measure caps, so the web shell does not mirror them.

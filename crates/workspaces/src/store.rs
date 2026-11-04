@@ -503,7 +503,10 @@ struct SessionRecordRef<'a> {
 /// Migration steps between store minor versions, applied in order to a document that names
 /// `from`. None yet: 1.0 is the first store. A future 1.x that renames or moves a field adds
 /// its step here; a new field needs none (serde defaults).
-const STORE_STEPS: &[(&str, &str, fn(Value) -> Value)] = &[];
+/// One step: the version it reads, the version it writes and the rewrite.
+type StoreStep = (&'static str, &'static str, fn(Value) -> Value);
+
+const STORE_STEPS: &[StoreStep] = &[];
 
 /// Brings a store document to the version this core reads: checks the format and major
 /// version and runs [`STORE_STEPS`]. The forward-version hook of specs/24 §3.

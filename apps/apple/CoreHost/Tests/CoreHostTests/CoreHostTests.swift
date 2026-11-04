@@ -277,6 +277,55 @@ final class CoreHostTests: XCTestCase {
         XCTAssertEqual(shell.session().workspaces[0].columns[1].tabs[0].highlightRange, "Joel.3.1-Joel.3.2")
     }
 
+    // B074: the user store through the UniFFI handle: a worked session with a note, a
+    // highlight (one refused on placeholder text) and a stroke, saved and restored.
+    func testUserStoreSavesAndRestoresTheSessionAndAnnotations() throws {
+        let reading = ReadingHandle.placeholder()
+        let shell = ShellHandle.fixture()
+        XCTAssertEqual(storeConstants().saveDebounceMs, 1000)
+        _ = try shell.apply(commandId: "tab.move", args: ShellCommandArgs(column: 2, tabId: "t2", index: 0), hasSelection: false)
+        _ = try shell.apply(commandId: "tab.record_scroll",
+                            args: ShellCommandArgs(tabId: "t3", segmentId: "John.3.17", scalar: 4), hasSelection: false)
+        try shell.putNote(note: StoreNote(id: "fixture:note:1", blocks: [
+            StoreNoteBlock(kind: .heading, spans: [
+                StoreNoteSpan(text: "See "),
+                StoreNoteSpan(text: "Jn 3:16", link: "John.3.16"),
+            ]),
+        ]))
+        func highlight(_ segment: String) -> StoreHighlight {
+            StoreHighlight(resourceId: "bsb", contentRevision: "bsb-2024",
+                           spans: [StoreSegmentSpan(segmentId: segment, start: 0, end: 4)], color: "#F5D90A")
+        }
+        XCTAssertThrowsError(try shell.addHighlight(highlight: highlight("John.3.2"), reading: reading)) { error in
+            guard case StoreCallError.Refused(let kind, _) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(kind, "placeholder_text")
+        }
+        XCTAssertEqual(try shell.addHighlight(highlight: highlight("John.3.16"), reading: reading), "h1")
+        let stroke = InkStroke(id: "", tool: .pen, brushVersion: "pf-1.2.3/pen-1", width: 4, color: "#000000", opacity: 1,
+                               points: [InkPoint(x: 0, y: -2, pressure: nil, elapsedMs: 0, altitude: nil, azimuth: nil),
+                                        InkPoint(x: 8, y: 3, pressure: 0.4, elapsedMs: 10, altitude: nil, azimuth: nil)])
+        XCTAssertEqual(try shell.addInk(mark: StoreInkMark(resourceId: "bsb", segmentId: "John.3.16", stroke: stroke)), "k2")
+        XCTAssertEqual(shell.changeCount(), 5)
+        let saved = shell.exportStore()
+
+        let restored = ShellHandle.fixture()
+        let report = try restored.importStore(json: saved)
+        XCTAssertTrue(report.sessionRestored)
+        XCTAssertEqual([report.notes, report.highlights, report.ink], [1, 1, 1])
+        XCTAssertTrue(report.issues.isEmpty)
+        XCTAssertEqual(restored.exportStore(), saved)
+        let column = restored.session().workspaces[0].columns[1]
+        XCTAssertEqual(column.tabs.map(\.id), ["t2", "t3"])
+        XCTAssertEqual(column.tabs[1].scrollSegmentId, "John.3.17")
+        XCTAssertEqual(restored.note(id: "fixture:note:1")?.blocks[0].spans[1].link, "John.3.16")
+        XCTAssertEqual(restored.highlightsIn(resourceId: "bsb", chapterKey: "John.3").map(\.id), ["h1"])
+        XCTAssertEqual(restored.inkIn(resourceId: "bsb", chapterKey: "John.3")[0].stroke.points.count, 2)
+        XCTAssertThrowsError(try restored.importStore(json: "{")) { error in
+            guard case StoreCallError.Refused(let kind, _) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(kind, "not_json")
+        }
+    }
+
     // MARK: - Fixture decoding
 
     struct Span: Decodable { let start: UInt32; let end: UInt32 }
