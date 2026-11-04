@@ -911,10 +911,24 @@ final class ReadingStream: NSObject {
     /// The highlights painted again (one was added).
     func repaintMarks() { paintHighlight() }
 
-    /// The text's left edge on the ink canvas: stored strokes measure `x` from it.
+    /// The text's leading edge on the ink canvas (the right edge for a right-to-left
+    /// edition): stored strokes measure `x` from it, growing into the text.
     var inkLeading: CGFloat {
         guard let textView = surface.textView else { return padding }
-        return textView.textContainerOrigin.x + (textView.textContainer?.lineFragmentPadding ?? 0)
+        let inset = textView.textContainer?.lineFragmentPadding ?? 0
+        if edition.isRightToLeft {
+            return textView.textContainerOrigin.x + (textView.textContainer?.size.width ?? textView.bounds.width) - inset
+        }
+        return textView.textContainerOrigin.x + inset
+    }
+
+    /// A canvas `x` as the store keeps it, and back (the same map both ways).
+    func inkStoredX(_ x: Double) -> Double {
+        edition.isRightToLeft ? Double(inkLeading) - x : x - Double(inkLeading)
+    }
+
+    func inkCanvasX(_ stored: Double) -> Double {
+        edition.isRightToLeft ? Double(inkLeading) - stored : stored + Double(inkLeading)
     }
 
     /// The stored highlights, then the typed verses from `verse_start` to `verse_end` in

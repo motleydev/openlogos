@@ -204,6 +204,7 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: backups[0]), damaged, "the bytes as they were")
         XCTAssertTrue(backups[0].lastPathComponent.hasPrefix("user-store.backup-"))
         XCTAssertEqual(model.session.workspaces.map(\.title), ["Study", "Hebrew"], "the seed session")
+        XCTAssertNil(file.read(), "moved aside: the next launch does not say it again")
         // The app works, and the next save replaces the damaged file.
         XCTAssertTrue(model.run("column.new"))
         model.persistence?.saveNow()
@@ -220,6 +221,7 @@ final class StoreTests: XCTestCase {
         let model = ShellModel(store: file)
         XCTAssertEqual(model.restored?.refused, "unsupported_version")
         XCTAssertEqual(model.lastNotice, "Your saved workspace was written by a newer version of OpenLogos; a copy was kept.")
+        XCTAssertNil(file.read(), "moved aside")
         // A readable store with a bad highlight and a dangling active workspace.
         newer = seed.handle.exportStore()
             .replacingOccurrences(of: "\"active_workspace_id\":\"w1\"", with: "\"active_workspace_id\":\"nowhere\"")
@@ -227,11 +229,11 @@ final class StoreTests: XCTestCase {
         try Data(newer.utf8).write(to: file.url)
         let partial = ShellModel(store: file)
         XCTAssertEqual(partial.restored?.report?.sessionRestored, false)
-        XCTAssertEqual(partial.lastNotice, "Your workspaces were reset; 2 highlights could not be restored")
+        XCTAssertEqual(partial.lastNotice, "Your workspaces were reset; 2 highlights could not be restored; a copy was kept.")
         XCTAssertTrue(try XCTUnwrap(partial.persistence).isDirty, "the repaired store is saved")
         XCTAssertEqual(file.backups().count, 2)
         XCTAssertEqual(ShellPersistence.notice(for: [StoreIssue(part: "note", id: "n1", detail: ""), StoreIssue(part: "ink", id: "k1", detail: "")]),
-                       "1 note could not be restored; 1 ink stroke could not be restored")
+                       "1 note could not be restored; 1 ink stroke could not be restored; a copy was kept.")
     }
 
     func testBackupsKeepTheNewestFive() throws {

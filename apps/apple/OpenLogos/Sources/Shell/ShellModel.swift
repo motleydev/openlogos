@@ -982,14 +982,14 @@ final class ShellModel: ObservableObject {
     // MARK: Ink in the core (B074)
 
     /// A finished stroke on a reading stream goes to the core, pinned to the verse under its
-    /// first point: `x` from the text's left edge, `y` from that verse's top. The sheet keeps it
+    /// first point: `x` from the text's leading edge (mirrored for right-to-left), `y` from
+    /// that verse's top. The sheet keeps it
     /// under the core's id, pinned to that verse as B078 pins a stroke.
     private func storeInk(_ stroke: InkStroke, tabID: String, sheet: InkSheet) -> (InkStroke, InkSheet.Anchor)? {
         guard let stream = stream(for: tabID), let first = stroke.points.first,
               let anchor = stream.inkAnchor(atCanvasY: CGFloat(first.y)) else { return nil }
-        let leading = Double(stream.inkLeading)
         var pinned = stroke
-        pinned.points = stroke.points.map { var p = $0; p.x -= leading; p.y -= Double(anchor.y); return p }
+        pinned.points = stroke.points.map { var p = $0; p.x = stream.inkStoredX(p.x); p.y -= Double(anchor.y); return p }
         let id: String
         do {
             id = try handle.addInk(mark: StoreInkMark(resourceId: stream.resourceID, segmentId: anchor.segment, stroke: pinned))
@@ -1049,13 +1049,12 @@ final class ShellModel: ObservableObject {
         guard !chapters.isEmpty else { return }
         synced.chapters.formUnion(chapters)
         inkSynced[key] = synced
-        let leading = Double(stream.inkLeading)
         var strokes: [(InkStroke, InkSheet.Anchor)] = []
         for chapter in chapters {
             for mark in handle.inkIn(resourceId: stream.resourceID, chapterKey: chapter) {
                 var stroke = mark.stroke
                 stroke.id = mark.id
-                stroke.points = stroke.points.map { var p = $0; p.x += leading; return p }
+                stroke.points = stroke.points.map { var p = $0; p.x = stream.inkCanvasX(p.x); return p }
                 strokes.append((stroke, InkSheet.Anchor(segment: mark.segmentId, y: 0)))
             }
         }

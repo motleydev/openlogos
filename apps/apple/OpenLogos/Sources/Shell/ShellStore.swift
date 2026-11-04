@@ -95,6 +95,14 @@ final class UserStoreFile: @unchecked Sendable {
         return target
     }
 
+    /// A refused file: backed up and removed, so the next launch does not say it again.
+    @discardableResult
+    func moveAside(_ data: Data) -> URL? {
+        guard let backup = backup(data) else { return nil }
+        try? FileManager.default.removeItem(at: url)
+        return backup
+    }
+
     /// The backups, newest first (the stamps sort as times).
     func backups() -> [URL] {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
@@ -143,7 +151,7 @@ final class ShellPersistence {
     private var observers: [NSObjectProtocol] = []
     let debounce: TimeInterval
 
-    static let failureNotice = "Your work could not be saved; OpenLogos will keep trying."
+    static let failureNotice = "Your changes could not be saved; the last saved copy is kept."
     static let failuresBeforeNotice = 3
 
     /// `lastSaved`: the count before the restore (a restore that set something aside moved
@@ -262,11 +270,11 @@ final class ShellPersistence {
             }
         } catch StoreCallError.Refused(let kind, _) {
             result.refused = kind
-            result.backup = file.backup(data)
+            result.backup = file.moveAside(data)
             result.notice = notice(refused: kind)
         } catch {
             result.refused = "unknown"
-            result.backup = file.backup(data)
+            result.backup = file.moveAside(data)
             result.notice = notice(refused: "unknown")
         }
         result.importMs = (CACurrentMediaTime() - t1) * 1000
@@ -280,8 +288,8 @@ final class ShellPersistence {
             : "Your saved workspace could not be read; a copy was kept."
     }
 
-    /// `Your workspaces were reset; 2 highlights could not be restored`: what was set aside,
-    /// session first, then notes, highlights and ink.
+    /// `Your workspaces were reset; 2 highlights could not be restored; a copy was kept.`: what
+    /// was set aside, session first, then notes, highlights and ink.
     static func notice(for issues: [StoreIssue]) -> String? {
         var parts: [String] = []
         if issues.contains(where: { $0.part == "session" }) { parts.append("Your workspaces were reset") }
@@ -289,7 +297,7 @@ final class ShellPersistence {
             let n = issues.filter { $0.part == part }.count
             if n > 0 { parts.append("\(n) \(n == 1 ? one : many) could not be restored") }
         }
-        return parts.isEmpty ? nil : parts.joined(separator: "; ")
+        return parts.isEmpty ? nil : (parts + ["a copy was kept."]).joined(separator: "; ")
     }
 
     // MARK: File read to first painted text (specs/24 §5)
