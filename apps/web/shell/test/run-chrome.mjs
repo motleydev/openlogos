@@ -27,6 +27,8 @@ const wellShotsDir = option("--well-shots", null); // B076: the contextual well'
 const menuShotsDir = option("--menu-shots", null); // B077: the context menu's states
 const readShotsDir = option("--read-shots", null); // B078: continuous reading
 const headed = args.includes("--headed");
+const storeBenchOn = args.includes("--store-bench"); // B074: restore launches and save/workspace rows alone
+const launches = Number(option("--launches", "30"));
 const benchOn = args.includes("--bench");
 const samples = Number(option("--samples", "200"));
 const benchJson = option("--bench-json", null);
@@ -1575,6 +1577,40 @@ const CASES = {
   },
 };
 
+// MARK: B074 speed: restore over launches, then saves and workspace commands at the acceptance size
+
+async function storeBenchRun() {
+  const query = `?theme=light&autotest=1&session=bench&store=${uniqueStore("accept")}`;
+  await load(query);
+  const bytes = await js("return window.openlogosShell.buildAcceptance()");
+  await jsAsync("const done = arguments[arguments.length - 1]; window.openlogosShell.saveNow().then(done)");
+  const rows = [];
+  const samples_ = { read: [], imported: [], rendered: [], painted: [] };
+  for (let i = 0; i < launches; i++) {
+    await load(query);
+    await jsAsync("const done = arguments[arguments.length - 1]; requestAnimationFrame(() => requestAnimationFrame(() => done()))");
+    const r = await js("return window.openlogosShell.host.restore");
+    if (!r || !r.found || r.refused || (r.report && r.report.issues.length)) { failures += 1; console.log(JSON.stringify({ bench: "store", error: "restore", restore: r })); continue; }
+    samples_.read.push(r.read_ms);
+    samples_.imported.push(r.read_ms + r.import_ms);
+    samples_.rendered.push(r.rendered_ms);
+    samples_.painted.push(r.first_paint_ms);
+  }
+  const st = (v) => { const a = [...v].sort((x, y) => x - y); const q = (p) => a[Math.min(a.length - 1, Math.floor(p * a.length))]; return { n: a.length, p50: +q(0.5).toFixed(3), p95: +q(0.95).toFixed(3), max: +a[a.length - 1].toFixed(3) }; };
+  const report = await js("return window.openlogosShell.host.restore.report");
+  rows.push({ name: `B074 restore: IndexedDB read (${bytes} bytes)`, work_ms: st(samples_.read) });
+  rows.push({ name: "B074 restore: read + importStore", work_ms: st(samples_.imported) });
+  rows.push({ name: "B074 restore: read → active workspace rendered (laid out)", work_ms: st(samples_.rendered) });
+  rows.push({ name: "B074 restore: read → first painted text (next frame)", work_ms: st(samples_.painted), report });
+  if (samples_.painted.length < Math.min(20, launches)) failures += 1;
+  const more = await jsAsync("const done = arguments[arguments.length - 1]; window.openlogosShell.storeBench({ samples: arguments[0] }).then(done, (e) => done({ error: String(e) }))", samples);
+  if (more.error) { failures += 1; console.log(JSON.stringify({ bench: "store", error: more.error })); return { rows }; }
+  rows.push(...more.rows);
+  for (const row of rows) console.log(JSON.stringify({ bench: "store", ...row }));
+  summary.push(`B074 store bench: ${launches} launches, ${samples} samples per row`);
+  return { bytes, workspaces: more.workspaces, rows };
+}
+
 // MARK: screenshots
 
 // The ten the evidence keeps (≤ 20 PNGs per task across both hosts); the rest go to
@@ -1866,8 +1902,13 @@ try {
       console.log(JSON.stringify({ bench: label, name: "B077 trusted right-click → context menu drawn", ...menu }));
       if (menu.n < samples) failures += 1;
     }
+    result.store = await storeBenchRun();
     if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, ...result }, null, 2)); console.log(`bench json ${benchJson}`); }
     summary.push(`bench: ${headed ? "headed" : "headless"} Chrome, ${samples} samples per interaction`);
+  }
+  if (!benchOn && storeBenchOn) {
+    const out = await storeBenchRun();
+    if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, store: out }, null, 2)); console.log(`bench json ${benchJson}`); }
   }
   if (shotsDir) await screenshots();
   if (wellShotsDir) await wellScreenshots();
