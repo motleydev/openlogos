@@ -99,9 +99,21 @@ chapterKey)`, oldest first (later ones paint over earlier ones). Removing is by 
 
 ```json
 { "id": "k5", "resource_id": "bsb", "segment_id": "John.3.17",
-  "stroke": { "id": "k5", "tool": "pen", "brush_version": "pf-1.2.3/pen-1", "width": 4.0, "color": "#1F6FEB", "opacity": 1.0,
-              "points": [ { "x": 12.0, "y": -3.5, "pressure": null, "elapsed_ms": 0.0, "altitude": null, "azimuth": null }, "…" ] } }
+  "tool": "pen", "brush_version": "pf-1.2.3/pen-1", "width": 4.0, "color": "#1F6FEB", "opacity": 1.0,
+  "xy": [120, -35, 285, 55, 475, 43], "t": [0, 16, 17], "pressure": [null, 50, 12] }
 ```
+
+In the API a stroke is the ink-document stroke with point objects (`StoreInkMark.stroke`,
+schemas/ink-document.schema.json, crates/ink). **In the file it is written compactly**: the
+paint flat beside the mark, and the points as columns of fixed-point integers, each
+delta-encoded (the first value as is, then the change from the value before; a sensor column
+skips its `null`s). `xy` interleaves x and y in tenths of a point; `t` is milliseconds since
+the first point; `pressure`, `altitude` and `azimuth` are hundredths and are present only
+when some point reported them. The example decodes to (12.0, −3.5, no pressure, 0 ms),
+(40.5, 2.0, 0.50, 16 ms), (88.0, 6.3, 0.62, 33 ms). `addInk` rounds a stroke to this
+precision on the way in (a tenth of a point is below what a stylus resolves on screen), so
+the shell holds exactly what a restore gives back. The form is a fifth of point objects'
+size: 200 strokes of 120 points with every sensor are 371 KB instead of about 2.4 MB.
 
 The stroke is the ink-document stroke (schemas/ink-document.schema.json, crates/ink). It is
 **pinned to the verse it was drawn at** (B078's host anchor, now stored): `segment_id` is
@@ -140,9 +152,15 @@ snapshot form for that).
   change** (`storeConstants().save_debounce_ms`), and at once when the app quits or the page
   is hidden: Mac on `applicationWillTerminate` and when the window closes; web on
   `visibilitychange` to `hidden` and on `pagehide`. A save writes `exportStore()` as is.
-- `exportStore()` is held to one frame (≤ 16 ms) at ten workspaces of twelve tabs with 200
-  notes, 1,000 highlights and 200 strokes (`just bench-shell` row), so a save never costs a frame; the
-  write itself is the host's and runs off the main thread where the platform allows.
+- `exportStore()` writes compact JSON (no whitespace). The notes, the highlights and each
+  stroke keep their written JSON until they change, and a restore writes them once, so a save
+  rewrites only the session and what changed since the last save. At ten workspaces of
+  twelve tabs with 200 notes, 1,000 highlights and 200 strokes the store is 766 KB and a save
+  costs p95 0.41 ms after a scroll, 0.55 ms after a stroke and 0.98 ms after a note edit
+  (`just bench-shell`); writing every part (only when nothing was restored) is about 5 ms.
+- **Hosts call `exportStore()` on the main thread** (the Mac shell's main actor, the page's
+  main thread) and hand the string to a background writer; no snapshot of the session is
+  needed. Only the file or IndexedDB write runs off the main thread.
 - A note editor saves into the core (`putNote`) as its text settles (on input, debounced by
   the editor at most 300 ms, and on blur), so the store's debounce sees it.
 
