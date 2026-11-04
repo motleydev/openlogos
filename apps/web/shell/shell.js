@@ -1260,6 +1260,8 @@ function noteEditor(noteId, label) {
   el.setAttribute("role", "textbox");
   el.setAttribute("aria-multiline", "true");
   el.setAttribute("aria-label", `Note: ${label}`);
+  // An edit another editor has not handed to the core yet goes first, so this one shows it.
+  flushNotes();
   loadNote(el, noteId);
   el.addEventListener("input", () => noteChanged(el));
   el.addEventListener("blur", () => flushNote(el));
