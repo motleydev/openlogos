@@ -123,6 +123,24 @@ def check_workspace2(ws):
         if not set(profile['visible_column_ids'])<=set(columns): raise ValueError('Profile '+cls+' names an unknown column')
         widths=profile.get('widths',{})
         if not set(widths)<=set(profile['visible_column_ids']): raise ValueError('Profile '+cls+' sizes a column it does not show')
+def check_user_store(store):
+    # B074: the user store (specs/24). The session record orders exactly its workspaces; ids of
+    # notes, highlights and ink are unique; minted ids stay below next_serial; a stroke carries its
+    # mark's id; spans run forwards; highlight colours are upper case.
+    check_session(store['session'],store['workspaces'])
+    notes=[n['id'] for n in store['notes']]
+    if len(set(notes))!=len(notes): raise ValueError('Two notes share an id')
+    marks=[h['id'] for h in store['highlights']]+[k['id'] for k in store['ink']]
+    if len(set(marks))!=len(marks): raise ValueError('Two highlights or strokes share an id')
+    for m in marks:
+        n=re.fullmatch(r'[hk]([0-9]+)',m)
+        if n and int(n.group(1))>store['next_serial']: raise ValueError('An id above next_serial: '+m)
+    for h in store['highlights']:
+        for sp in h['spans']:
+            if sp['end']<=sp['start']: raise ValueError('An empty or backward span in '+h['id'])
+    for k in store['ink']:
+        if k['stroke']['id']!=k['id']: raise ValueError('A stroke under another id: '+k['id'])
+        if len(k['stroke']['points'])<2: raise ValueError('A stroke with fewer than two points: '+k['id'])
 def check_session(record, workspaces):
     # B070: a session record orders workspace records and names the active one.
     ids=[w['id'] for w in workspaces]
@@ -135,7 +153,7 @@ def check_session(record, workspaces):
 CREDENTIAL_WORDS={'password','passwd','passphrase','secret','secrets','apikey','credential','credentials','bearer','cookie','cookies','oauth','jwt','privatekey','clientsecret','accesskey'}
 CREDENTIAL_PAIRS={('api','key'),('private','key'),('client','secret'),('access','key'),('secret','key'),('signing','key'),('session','key')}
 TOKEN_ALLOW={'token_ids','tokens','token_count','token'}
-PORTABLE_SCHEMAS=['workspace','workspace-2','session','note-binding','reading-snapshot','research-thread']
+PORTABLE_SCHEMAS=['workspace','workspace-2','session','user-store','note-binding','reading-snapshot','research-thread']
 def key_words(key):
     return [w.lower() for w in re.findall(r'[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+|[A-Z]+', key)]
 def is_credential_key(key):
@@ -345,7 +363,7 @@ def check_report(report):
 
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands','tool_well','context_menu','reading'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands','tool_well','context_menu','reading','user_store'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -443,6 +461,7 @@ def main():
         ('text-pack','crates/conformance/fixtures/packs/sblgnt/manifest.json'),
         ('text-pack','crates/conformance/fixtures/packs/wlc/manifest.json'),
         ('session','examples/session.json'),
+        ('user-store','examples/user-store.json'),
         ('workspace','examples/archive/workspace-1.1.json'),
         ('workspace','examples/archive/workspace-1.0.json'),
         ('reading-snapshot','examples/reading-snapshot.json'),
@@ -779,6 +798,33 @@ def main():
     for w in well['session']['workspaces']: validate('workspace-2',w); check_workspace2(w)
     check_session(record,well['session']['workspaces'])
     assert {t['kind'] for w in well['session']['workspaces'] for c in w['columns'] for t in c['tabs']}=={'reading','notes','lexicon','research'}, 'Tool well fixture has a tab of every kind'
+    user_store=load('crates/conformance/fixtures/user-store.json')
+    assert user_store['kind']=='user_store'
+    golden=user_store['round_trip']['store']
+    validate('user-store',golden); check_user_store(golden); check_no_credentials(golden,'user store')
+    assert load('examples/user-store.json')==golden, 'The user store example is the fixture round trip'
+    assert {c['expect'].get('error') for c in user_store['restores']}>={None,'empty','not_json','not_a_store','unsupported_version'}, 'User store fixture restores and refuses'
+    bad=copy.deepcopy(golden); bad['highlights'][0]['color']='#f5d90a'
+    expect_rejected(lambda:validate('user-store',bad),'lower-case highlight colour')
+    bad=copy.deepcopy(golden); bad['schema_version']='2.0'
+    expect_rejected(lambda:validate('user-store',bad),'user store of another major')
+    bad=copy.deepcopy(golden); bad['notes'][0]['blocks'][0]['kind']='html'
+    expect_rejected(lambda:validate('user-store',bad),'note block of an unknown kind')
+    bad=copy.deepcopy(golden); bad['notes'][0]['blocks'][0]['html']='<b>x</b>'
+    expect_rejected(lambda:validate('user-store',bad),'host markup in a stored note')
+    bad=copy.deepcopy(golden); del bad['ink'][0]['segment_id']
+    expect_rejected(lambda:validate('user-store',bad),'ink without its verse')
+    bad=copy.deepcopy(golden); bad['ink'][0]['stroke']['id']='other'
+    expect_rejected(lambda:check_user_store(bad),'stroke under another id')
+    bad=copy.deepcopy(golden); bad['highlights'][1]['id']=bad['highlights'][0]['id']
+    expect_rejected(lambda:check_user_store(bad),'repeated highlight id')
+    bad=copy.deepcopy(golden); bad['highlights'][0]['spans'][0]['end']=bad['highlights'][0]['spans'][0]['start']
+    expect_rejected(lambda:check_user_store(bad),'empty highlight span')
+    bad=copy.deepcopy(golden); bad['session']['workspace_ids'].reverse()
+    expect_rejected(lambda:check_user_store(bad),'session out of order with its workspaces')
+    bad=copy.deepcopy(golden); bad['notes'][0]['api_key']='fixture-forbidden'
+    expect_rejected(lambda:validate('user-store',bad),'api key on a stored note (schema)')
+    expect_rejected(lambda:check_no_credentials(bad,'user store'),'api key on a stored note (check)')
     menu=load('crates/conformance/fixtures/context-menu.json')
     assert menu['kind']=='context_menu'
     record={'schema_version':menu['session']['schema_version'],'fixture_only':menu['session']['fixture_only'],'workspace_ids':[w['id'] for w in menu['session']['workspaces']],'active_workspace_id':menu['session']['active_workspace_id'],'tool':menu['session']['tool'],'next_serial':menu['session']['next_serial']}
