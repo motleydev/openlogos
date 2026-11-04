@@ -2769,6 +2769,209 @@
           "disabled_text": "Needs a word to look up"
         }
       ]
+    },
+    {
+      "name": "a bare book name opens the book",
+      "query": "Genesis",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Genesis",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Gen.1"
+          },
+          "disabled": null,
+          "subtitle": "Open in the active tab"
+        },
+        {
+          "section": "tabs",
+          "title": "Genesis",
+          "command": "workspace.switch"
+        }
+      ],
+      "totals": {
+        "passage": 1,
+        "tabs": 2
+      }
+    },
+    {
+      "name": "a book abbreviation",
+      "query": "Gen",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Genesis",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Gen.1"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "a numbered book",
+      "query": "1 Jn",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "1 John",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "1John.1"
+          },
+          "disabled": null
+        }
+      ],
+      "totals": {
+        "passage": 1,
+        "tabs": 1
+      }
+    },
+    {
+      "name": "a book with a short name",
+      "query": "Song",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Song of Songs",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Song.1"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "a book ranks before commands",
+      "query": "Acts",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Acts",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Acts.1"
+          },
+          "disabled": null
+        }
+      ]
+    },
+    {
+      "name": "a book in passage mode",
+      "query": ":Genesis",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Genesis",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Gen.1"
+          },
+          "disabled": null
+        }
+      ],
+      "count": 1,
+      "notice": null
+    },
+    {
+      "name": "a prefix offers the books it starts",
+      "query": "Jo",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Joshua",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Josh.1"
+          },
+          "disabled": null
+        },
+        {
+          "section": "passage",
+          "title": "Job",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Job.1"
+          },
+          "disabled": null
+        },
+        {
+          "section": "passage",
+          "title": "Joel",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Joel.1"
+          },
+          "disabled": null
+        },
+        {
+          "section": "passage",
+          "title": "Jonah",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Jonah.1"
+          },
+          "disabled": null
+        },
+        {
+          "section": "passage",
+          "title": "John",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "John.1"
+          },
+          "disabled": null
+        }
+      ],
+      "totals": {
+        "commands": 1,
+        "passage": 5,
+        "tabs": 4
+      }
+    },
+    {
+      "name": "a book in column 2",
+      "query": "Genesis @2",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Genesis",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Gen.1",
+            "column": 2
+          },
+          "disabled": null,
+          "subtitle": "Open in column 2"
+        }
+      ]
+    },
+    {
+      "name": "a one-chapter book in a new column",
+      "query": "Jude @new",
+      "expect": [
+        {
+          "section": "passage",
+          "title": "Jude",
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Jude.1",
+            "new_column": true
+          },
+          "disabled": null,
+          "subtitle": "Open in a new column"
+        }
+      ]
+    },
+    {
+      "name": "a name that is no book keeps the notice",
+      "query": ":Hezek",
+      "expect": [],
+      "count": 0,
+      "notice": "unknown book `Hezek`"
     }
   ],
   "migrations": [

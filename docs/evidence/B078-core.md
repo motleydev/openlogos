@@ -566,3 +566,24 @@ header, a Psalm title, a book heading and the placeholder notice.
 - A chapter cache inside `FilePack` (reads from disk are 0.4–0.6 ms; not needed yet).
 - An `lxx` scheme in the canon table (the Psalm 9/10 fixture table still answers `mapVerse`).
 - Host UI (the web and Mac B078 parts).
+
+## Follow-up: books in the palette (lead request, 2026-11-03)
+
+`paletteQuery("Genesis")` gave only Tabs, `":Genesis"` nothing and `"Acts"` only Commands.
+Now a bare book name or abbreviation (`palette::book_matches`: anything
+`AliasTable::english().lookup` resolves, such as `Genesis`, `Gen`, `1 Jn`, `Song`, `Acts`,
+`Jude`) is a Passage row titled with the book (`BookId::title`, moved into core from
+`text::reading`) at score 1000, dispatching `nav.navigate {reference: "Gen.1"}`. A prefix of two
+or more letters offers up to five books (`Jo` → Joshua, Job, Joel, Jonah, John). ` @N` and
+` @new` apply, and in `:` mode the parse error notice is dropped when a book matches.
+
+Decision: the row navigates to `Book.1` rather than the bare book id. Opening it lands on the
+same first verse, and the tab label, identity row and linked-tab mapping work from the start;
+a bare `Gen` would leave the tab without labels until the first scroll.
+
+Ten palette cases were added to `shell-commands` (16 checks). No existing case changed: none
+of the existing palette queries in any fixture is a bare book name or prefix (checked by
+running `book_matches` over every query). Lanes at `edae739`, all exit 0: ci `330 tests run:
+330 passed, 0 skipped` with validate PASS; test-swift `Executed 10 tests, with 0 failures`;
+test-kotlin 10 PASSED, `BUILD SUCCESSFUL`; test-web `tests 10, pass 10, fail 0`; test-wasm `9
+passed`; conformance `1733 passed, 0 failed (api 0.1.3)`.
