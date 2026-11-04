@@ -217,9 +217,10 @@ extension ShellModel {
         guard let tab = activeTab, let surface = surface(for: tab.id), let layout = surface.layout, !text.isEmpty else { return }
         let string = layout.display.string as NSString
         var ranges: [NSRange] = []
-        // B078: in a continuous window, the chapter the menu was opened in (else the one in view).
-        let chapter = (reference ?? tab.reference).map(ShellReference.chapter(of:))
-        let block = layout.blocks.first { $0.chapterKey == chapter } ?? layout.blocks.first { $0.chapterKey == streamTopChapter(tab.id) }
+        // B078: in a continuous window, the chapter of the word the menu was opened on; with no
+        // word (the palette, the keyboard) the chapter on the reading line.
+        let chapter = reference.map(ShellReference.chapter(of:)) ?? streamTopChapter(tab.id) ?? tab.reference.map(ShellReference.chapter(of:))
+        let block = layout.blocks.first { $0.chapterKey == chapter }
         let scope = block?.range ?? NSRange(location: 0, length: string.length)
         var search = scope
         while true {

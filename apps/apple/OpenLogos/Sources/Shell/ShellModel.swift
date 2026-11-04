@@ -355,25 +355,8 @@ final class ShellModel: ObservableObject {
     /// Called on every keystroke; no debounce (specs/22 §7: 16 ms).
     func query() {
         queriedText = paletteText
-        palette.result = scoped(withBookRow(handle.paletteQuery(text: paletteText, context: paletteContext)))
+        palette.result = scoped(handle.paletteQuery(text: paletteText, context: paletteContext))
         paletteSelection = min(paletteSelection, max(0, paletteRows.count - 1))
-    }
-
-    /// B078: a whole book typed (`Genesis`) is a passage too: the core's palette has no row
-    /// for it yet, so the host adds one when the reading stream locates it as a book (it opens
-    /// at the book's first chapter).
-    func withBookRow(_ result: ShellPaletteResult) -> ShellPaletteResult {
-        let text = paletteText.trimmingCharacters(in: .whitespaces)
-        guard result.mode == "all" || result.mode.isEmpty || result.mode == "passage", !text.isEmpty, text.first?.isLetter == true || text.first?.isNumber == true,
-              !result.groups.contains(where: { $0.section == .passage }),
-              let location = try? reading.locate(resourceId: activeTab?.kind == "reading" ? activeTab!.contentId : "bsb", input: text),
-              location.granularity == "book" else { return result }
-        let row = ShellPaletteItem(section: .passage, title: ShellReference.human(location.chapterKey), subtitle: "The whole book, from its first chapter",
-                                   score: 1000, commandId: "nav.navigate", args: ShellCommandArgs(reference: location.chapterKey),
-                                   disabledKind: nil, disabledReason: nil, shortcut: nil)
-        var result = result
-        result.groups.insert(ShellPaletteGroup(section: .passage, items: [row], total: 1), at: 0)
-        return result
     }
 
     func paletteTextChanged() {
@@ -515,14 +498,14 @@ final class ShellModel: ObservableObject {
     /// tab's passage and its linked tabs (quiet: no undo, no history). Followers scroll now,
     /// and the tab labels and identity rows follow (`liveLabels`); the session is refreshed
     /// when scrolling settles, so a scroll does not re-render the shell for every verse.
-    func recordScroll(tabID: String, segmentID: String) {
+    func recordScroll(tabID: String, segmentID: String, scalar: UInt32 = 0) {
         let ws = activeWorkspace
         let t0 = CACurrentMediaTime()
         defer {
             if followSamples.count < 4096 { followSamples.append((CACurrentMediaTime() - t0) * 1000) }
         }
         guard let outcome = try? handle.apply(commandId: "tab.record_scroll",
-                                              args: ShellCommandArgs(workspaceId: ws.id, tabId: tabID, segmentId: segmentID, scalar: 0),
+                                              args: ShellCommandArgs(workspaceId: ws.id, tabId: tabID, segmentId: segmentID, scalar: scalar),
                                               hasSelection: false),
               !outcome.positions.isEmpty else { return }
         apply(positions: outcome)
@@ -612,9 +595,9 @@ final class ShellModel: ObservableObject {
     /// studied or sent on.
     static let placeholderBlocked: Set<String> = [
         "selection.highlight", "selection.collect", "selection.note", "selection.study", "selection.highlight_in",
-        "copy.passage", "tab.open_lexicon",
+        "copy.passage", "tab.open_lexicon", "search.lemma",
     ]
-    static let placeholderReason = "Placeholder text can't be quoted or collected"
+    static let placeholderReason = "Placeholder text can’t be quoted or collected"
 
     /// Whether the selection (or the word a menu was opened on) touches placeholder text.
     var selectionIsPlaceholder: Bool {

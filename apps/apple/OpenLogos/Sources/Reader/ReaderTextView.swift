@@ -68,6 +68,9 @@ struct ReaderMark: Equatable {
     /// B078: the same ranges as segment spans; when set, the surface paints these in whatever
     /// window it shows, so a highlight stays on its verse while chapters load and unload.
     var spans: [SegmentSpan] = []
+    /// B078: drawn as a 2 pt underline in this colour instead of a background (the typed
+    /// verses' mark, B072's `.target`).
+    var underline: PlatformColor?
 }
 
 /// B078: how a continuous window's text storage changes (ChapterLayout.swift): replaced, or
@@ -432,6 +435,10 @@ final class ReaderSurface: NSObject {
         storage.beginEditing()
         for mark in marks {
             for range in mark.spans.isEmpty ? mark.ranges : layout.displayRanges(of: mark.spans) where range.location + range.length <= storage.length {
+                if let underline = mark.underline {
+                    storage.addAttributes([.underlineStyle: NSUnderlineStyle.thick.rawValue, .underlineColor: underline], range: range)
+                    continue
+                }
                 storage.addAttribute(.backgroundColor, value: mark.color, range: range)
             }
         }

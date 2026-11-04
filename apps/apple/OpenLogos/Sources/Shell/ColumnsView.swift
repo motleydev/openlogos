@@ -383,7 +383,7 @@ struct TabBody: View {
                 } else if tab.kind == "lexicon" {
                     LexiconView(model: model, tab: tab)
                 } else if let reason = model.readingError(for: tab) {
-                    NotInEditionView(model: model, resource: model.textSource.resource(tab.contentId), reference: tab.reference, reason: reason)
+                    NotInEditionView(model: model, resource: model.textSource.resource(tab.contentId), tab: tab, reason: reason)
                 } else if continuous {
                     #if os(macOS)
                     ContinuousReaderView(model: model, tab: tab, column: column, horizontalPadding: padding)
@@ -437,20 +437,23 @@ struct TabBody: View {
 struct NotInEditionView: View {
     @ObservedObject var model: ShellModel
     let resource: ResourceInfo
-    let reference: String?
+    let tab: ShellTab
     let reason: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: ShellTokens.Spacing.s) {
-            Label("Not in this edition", systemImage: "book.closed")
+            Label("\(resource.name) · \(ShellReference.humanOsis(tab.reference))", systemImage: "book.closed")
                 .font(ShellTokens.chromeFont.weight(.semibold))
-            Text(reason)
-                .font(ShellTokens.chromeFont)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("\(resource.name) has no text for \(ShellReference.humanOsis(reference)). Type another passage, or open it in another edition.")
+            Text(reason.hasSuffix(".") ? reason : reason + ".")
                 .font(ShellTokens.chromeFont)
                 .foregroundStyle(model.theme.chromeColor)
                 .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: ShellTokens.Spacing.s) {
+                Button("Choose another…") { model.focusPalette() }
+                Button("Close tab") { model.closeTab(tab.id) }
+            }
+            .controlSize(.small)
+            .padding(.top, ShellTokens.Spacing.xs)
         }
         .padding(ShellTokens.Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

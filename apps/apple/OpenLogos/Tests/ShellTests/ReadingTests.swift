@@ -77,6 +77,8 @@ final class ReadingTests: XCTestCase {
             XCTAssertLessThanOrEqual(stream.blocks.count, ReadingStream.hardMaxBlocks, "only a window of chapters", file: file, line: line)
         }
         XCTAssertLessThanOrEqual(worst, 2, "the text never jumps under the eye (worst \(worst) pt)", file: file, line: line)
+        // Reports go at most once per frame: the last one goes on the next frame.
+        spin(0.05)
         return steps
     }
 
@@ -90,20 +92,24 @@ final class ReadingTests: XCTestCase {
         type("Jn 3:16", model)
         let stream = try XCTUnwrap(model.stream(for: "t1"))
         XCTAssertEqual(stream.topSegment, "John.3.16")
-        XCTAssertEqual(try XCTUnwrap(screenY(stream, "John.3.16")), ReadingStream.topMargin, accuracy: 1, "the verse's first line at the top")
+        XCTAssertEqual(try XCTUnwrap(screenY(stream, "John.3.16")), ReadingStream.topMargin, accuracy: 1, "the verse's first line on the reading line")
         XCTAssertTrue(stream.blocks.map(\.chapterKey).contains("John.2") && stream.blocks.map(\.chapterKey).contains("John.4"), "the chapters around it")
         XCTAssertEqual(stream.container?.header.text, "Jn 3 · BSB")
         XCTAssertEqual(shownTab(model, column: 1)?.highlightRange, "John.3.16")
         XCTAssertTrue(stream.isFlashing, "flashed once")
-        let mark = try XCTUnwrap(stream.surface.overlay.first)
         let layout = try XCTUnwrap(stream.surface.layout)
-        XCTAssertEqual(mark.ranges, [layout.verseRanges["John.3.16"]!])
-        spin(1.1)
+        let flash = try XCTUnwrap(stream.surface.overlay.first { $0.id == "flash" })
+        XCTAssertEqual(flash.ranges, [layout.verseRanges["John.3.16"]!])
+        XCTAssertGreaterThan(flash.color.alphaComponent, 0)
+        XCTAssertLessThanOrEqual(flash.color.alphaComponent, ReadingStream.flashPeak + 0.001)
+        spin(ReadingStream.flashSeconds + 0.2)
         XCTAssertFalse(stream.isFlashing)
-        let quiet = try XCTUnwrap(stream.surface.overlay.first?.color.alphaComponent)
-        XCTAssertEqual(quiet, ReadingStream.quietMark, accuracy: 0.01, "then a quiet mark")
-        let painted = stream.surface.storage?.attribute(.backgroundColor, at: layout.verseRanges["John.3.16"]!.location + 4, effectiveRange: nil)
-        XCTAssertNotNil(painted, "the mark is painted")
+        XCTAssertNil(stream.surface.overlay.first { $0.id == "flash" }, "the flash fades out")
+        let mark = try XCTUnwrap(stream.surface.overlay.first { $0.id == "typed" })
+        XCTAssertNotNil(mark.underline, "then B072's underline mark")
+        let text = layout.runMap.displayRange(fromCore: NSRange(location: layout.segmentOffsets["John.3.16"]!, length: 4))
+        XCTAssertNotNil(stream.surface.storage?.attribute(.underlineStyle, at: text.location + 1, effectiveRange: nil), "the mark is painted")
+        XCTAssertNil(stream.surface.storage?.attribute(.backgroundColor, at: text.location + 1, effectiveRange: nil), "no background once the flash is over")
         // The linked SBLGNT column went to the same verse, marked too.
         let greek = try XCTUnwrap(model.stream(for: "t3"))
         XCTAssertEqual(greek.topSegment, "John.3.16")
@@ -122,7 +128,8 @@ final class ReadingTests: XCTestCase {
         type("John 3:16-18", model)
         XCTAssertEqual(shownTab(model, column: 1)?.highlightRange, "John.3.16-John.3.18")
         let layout = try XCTUnwrap(stream.surface.layout)
-        XCTAssertEqual(stream.surface.overlay.first?.ranges, [layout.displayRange(from: "John.3.16", to: "John.3.18")!], "the three verses marked")
+        XCTAssertEqual(stream.surface.overlay.first { $0.id == "typed" }?.ranges.count, 3, "the three verses marked")
+        XCTAssertEqual(stream.surface.overlay.first { $0.id == "flash" }?.ranges, [layout.displayRange(from: "John.3.16", to: "John.3.18")!], "and flashed together")
 
         type("Jude 3", model)
         XCTAssertEqual(stream.topSegment, "Jude.1.3")
@@ -240,8 +247,9 @@ final class ReadingTests: XCTestCase {
         _ = scroll(bsb, by: 40, limit: 120) { self.at($0, "John.3", atLeast: 12) }
         let top = try XCTUnwrap(bsb.topSegment)
         XCTAssertEqual(greek.topSegment, top, "the SBLGNT column is at the same verse")
-        XCTAssertEqual(try XCTUnwrap(screenY(greek, top)), ReadingStream.topMargin, accuracy: 1, "at the top, as typed passages are")
+        XCTAssertEqual(try XCTUnwrap(screenY(greek, top)), ReadingStream.topMargin, accuracy: 1, "on the reading line, as typed passages are")
         XCTAssertGreaterThan(model.recordedScrolls, reports)
+        spin(0.3)
         reports = model.recordedScrolls
         spin(0.3)
         XCTAssertEqual(model.recordedScrolls, reports, "the follower's scroll is not reported back")

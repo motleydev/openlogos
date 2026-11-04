@@ -72,6 +72,7 @@ struct ContinuousReaderView: NSViewRepresentable {
         stream.theme = model.theme
         stream.attribution = { chapter in model.attribution(for: chapter) }
         stream.onTopSegment = { segment in model.recordScroll(tabID: tabID, segmentID: segment) }
+        stream.onSettleReport = { segment, scalar in model.recordScroll(tabID: tabID, segmentID: segment, scalar: scalar) }
         stream.onSettle = { model.scrollSettled() }
         stream.setTypography(model.typography, padding: horizontalPadding)
         surface.setMarks(model.readerMarks(tabID))
@@ -163,14 +164,17 @@ final class ReadingHeaderView: NSView {
 final class ReadingScheduler: NSObject {
     static let shared = ReadingScheduler()
     private var work: [(key: String, run: () -> Bool)] = []
+    private var firsts: [(key: String, run: () -> Bool)] = []
     private var link: CADisplayLink?
     /// How long each item took, and what it was (the measurement reads them).
     var durations: [Double] = []
     var kinds: [String] = []
 
-    func enqueue(_ key: String, _ run: @escaping () -> Bool) {
-        guard !work.contains(where: { $0.key == key }) else { return }
-        work.append((key, run))
+    /// `first`: small work that must not wait behind loads (a scroll report); every such item
+    /// runs on the next frame, before the one regular item.
+    func enqueue(_ key: String, first: Bool = false, _ run: @escaping () -> Bool) {
+        guard !work.contains(where: { $0.key == key }), !firsts.contains(where: { $0.key == key }) else { return }
+        if first { firsts.append((key, run)) } else { work.append((key, run)) }
         guard link == nil else { return }
         if let view = NSApp.windows.first(where: { $0.isVisible })?.contentView {
             link = view.displayLink(target: self, selector: #selector(tick(_:)))
@@ -180,9 +184,12 @@ final class ReadingScheduler: NSObject {
         }
     }
 
-    var isIdle: Bool { work.isEmpty }
+    var isIdle: Bool { work.isEmpty && firsts.isEmpty }
 
     @objc private func tick(_ link: CADisplayLink) {
+        let urgent = firsts
+        firsts = []
+        urgent.forEach { _ = $0.run() }
         guard !work.isEmpty else {
             link.invalidate()
             self.link = nil
@@ -200,6 +207,9 @@ final class ReadingScheduler: NSObject {
 
     /// Runs everything now (no window to time frames by).
     func drain() {
+        let urgent = firsts
+        firsts = []
+        urgent.forEach { _ = $0.run() }
         var rounds = 0
         while !work.isEmpty, rounds < 64 {
             let next = work.removeFirst()
@@ -235,15 +245,39 @@ final class ReadingStream: NSObject {
     var theme: ShellTokens.Theme = ShellTokens.light
     var attribution: (ReadingChapter) -> String? = { _ in nil }
     var onTopSegment: (String) -> Void = { _ in }
+    var onSettleReport: (String, UInt32) -> Void = { _, _ in }
+    private var lastReport: CFTimeInterval = 0
+
+    /// Reports the verse on the reading line, at most once per frame (a second change in the
+    /// same frame is reported on the next one, read again then).
+    private func report() {
+        let now = CACurrentMediaTime()
+        guard now - lastReport >= 1.0 / 90 else {
+            ReadingScheduler.shared.enqueue("report-\(ObjectIdentifier(self).hashValue)", first: true) { [weak self] in
+                guard let self, self.programmatic == 0, let top = self.topSegment, top != self.reportedTop else { return false }
+                self.lastReport = CACurrentMediaTime()
+                self.reportedTop = top
+                self.onTopSegment(top)
+                return false
+            }
+            return
+        }
+        guard let top = topSegment else { return }
+        lastReport = now
+        reportedTop = top
+        onTopSegment(top)
+    }
     var onSettle: () -> Void = {}
 
     /// This many blocks when the reader stops: the one in view and two each side. While the
     /// text moves, releases wait (an edit above the reader costs TextKit 2 a relayout of all
     /// the text down to the view, a dropped frame or two), up to `hardMaxBlocks`.
     static let maxBlocks = 5
-    static let hardMaxBlocks = 12
-    /// The typed verse's first line sits this far below the top of the text.
-    static let topMargin: CGFloat = 8
+    static let hardMaxBlocks = 9
+    /// The reading line, this far below the sticky header: a typed verse's first line is put
+    /// there, a follower's verse too, and the verse there is the tab's position (a sliver of
+    /// the verse before shows above it).
+    static let topMargin: CGFloat = 24
 
     private var typography: ReaderTypography = .current()
     private var padding: CGFloat = 24
@@ -413,12 +447,8 @@ final class ReadingStream: NSObject {
             blocks.append(block)
             relayout(.append)
         }
-        // A chapter's first verse (or a Psalm's title) opens with the chapter's heading in view.
-        let block = layout.blocks.first { $0.chapterKey == ShellReference.chapter(of: target) }
-        let opensChapter = block.map { b in layout.segmentOrder.first { (layout.verseRanges[$0]?.location ?? -1) >= NSMaxRange(b.headingRange) } == target } ?? false
-        if opensChapter, let key = block?.chapterKey, let top = top(ofBlock: key) {
-            setOrigin(top - Self.topMargin)
-        } else if let top = top(of: target) {
+        _ = layout
+        if let top = top(of: target) {
             setOrigin(top - Self.topMargin)
         }
         recordTop(target)
@@ -629,17 +659,20 @@ final class ReadingStream: NSObject {
         updateHeader()
         if let top {
             let changed = top != previous
-            if changed, programmatic == 0 {
-                reportedTop = top
-                onTopSegment(top)
-            }
+            if changed, programmatic == 0 { report() }
         }
         if programmatic == 0 {
             settleTimer?.invalidate()
             settleTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: false) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    self?.releaseFar()
-                    self?.onSettle()
+                    guard let self else { return }
+                    self.releaseFar()
+                    // The settle report: the verse on the reading line and how far into it.
+                    if let position = self.probe() {
+                        self.reportedTop = position.segment
+                        self.onSettleReport(position.segment, position.scalar)
+                    }
+                    self.onSettle()
                 }
             }
         }
@@ -738,27 +771,52 @@ final class ReadingStream: NSObject {
     /// The segment whose line is at the top of the visible text: the first line whose bottom
     /// is below the probe (a gap between paragraphs counts as the line after it), read from
     /// TextKit 2's line fragments.
-    func probeTopSegment() -> String? {
+    func probeTopSegment() -> String? { probe()?.segment }
+
+    /// The position on the reading line.
+    func probe() -> (segment: String, scalar: UInt32)? {
         guard let scroll = container?.scrollView else { return nil }
-        return segment(atTextY: scroll.contentView.bounds.minY + Self.topMargin + 4)
+        return position(atTextY: scroll.contentView.bounds.minY + Self.topMargin + 4)
     }
 
     /// The segment whose line is at a height of the text view (or the next line below a gap).
-    func segment(atTextY textY: CGFloat) -> String? {
+    func segment(atTextY textY: CGFloat) -> String? { position(atTextY: textY)?.segment }
+
+    /// The position on the row at a height (the next row below a gap): the verse that begins on
+    /// that row, else the verse running through it with the Unicode scalar offset of the row's
+    /// first character in its text. Short verses share rows, so "the verse at the row's start"
+    /// would give the tail of the verse before; with this rule a follower put at a verse reads
+    /// that verse back.
+    func position(atTextY textY: CGFloat) -> (segment: String, scalar: UInt32)? {
         guard let textView = surface.textView, let layout = surface.layout, layout.display.length > 0,
               let manager = textView.textLayoutManager, let content = manager.textContentManager else { return nil }
         let y = textY - textView.textContainerOrigin.y
-        var offset: Int?
+        var row: NSRange?
         let start = manager.textLayoutFragment(for: CGPoint(x: 0, y: max(0, y)))?.rangeInElement.location ?? manager.documentRange.location
         manager.enumerateTextLayoutFragments(from: start, options: []) { fragment in
             let frame = fragment.layoutFragmentFrame
             guard frame.maxY > y else { return true }
             let base = content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location)
-            let line = fragment.textLineFragments.first { $0.typographicBounds.maxY + frame.minY > y } ?? fragment.textLineFragments.last
-            offset = base + (line?.characterRange.location ?? 0)
+            if let line = fragment.textLineFragments.first(where: { $0.typographicBounds.maxY + frame.minY > y }) ?? fragment.textLineFragments.last {
+                row = NSRange(location: base + line.characterRange.location, length: line.characterRange.length)
+            }
             return false
         }
-        return layout.segment(at: offset ?? layout.display.length - 1)
+        guard let row else { return layout.segment(at: layout.display.length - 1).map { ($0, 0) } }
+        // A heading row: the block's first verse.
+        if layout.display.attribute(.openLogosHeading, at: min(row.location, layout.display.length - 1), effectiveRange: nil) != nil {
+            return layout.segment(at: row.location).map { ($0, 0) }
+        }
+        if let begins = layout.segmentOrder.first(where: { id in
+            guard let range = layout.verseRanges[id] else { return false }
+            return range.location >= row.location && range.location < NSMaxRange(row)
+        }) {
+            return (begins, 0)
+        }
+        guard let through = layout.segment(at: row.location), let offset = layout.segmentOffsets[through], let text = layout.segmentTexts[through] else { return nil }
+        let into = max(0, layout.runMap.coreOffset(fromDisplay: row.location) - offset)
+        let prefix = (text as NSString).substring(to: min(into, (text as NSString).length))
+        return (through, UInt32(prefix.unicodeScalars.count))
     }
 
     // MARK: Ink on verses
@@ -809,21 +867,27 @@ final class ReadingStream: NSObject {
         let start = startIndex ?? 0, end = endIndex ?? order.count - 1
         guard start <= end, let range = layout.displayRange(from: order[start], to: order[end]) else { return [] }
         let accent = PlatformColor(hex: theme.accent)
-        return [ReaderMark(id: "typed", ranges: [range], color: accent.withAlphaComponent(max(Self.quietMark, flashLevel)))]
+        // The mark: B072's underline on each verse's text; the flash: the accent behind them all.
+        let verses = order[start...end].compactMap { id in layout.segmentOffsets[id].map { NSRange(location: $0, length: ((layout.segmentTexts[id] ?? "") as NSString).length) } }
+            .map(layout.runMap.displayRange(fromCore:))
+        var marks = [ReaderMark(id: "typed", ranges: verses, color: accent, underline: accent.withAlphaComponent(Self.markAlpha))]
+        if flashLevel > 0 { marks.insert(ReaderMark(id: "flash", ranges: [range], color: accent.withAlphaComponent(flashLevel)), at: 0) }
+        return marks
     }
 
     /// Each window edit's parts (layout from blocks, storage edit and paint, TextKit 2 layout)
     /// and its kind, for the measurement.
     static var timings: [(Double, Double, Double, String)] = []
-    static let quietMark: CGFloat = 0.12
-    static let flashPeak: CGFloat = 0.35
+    static let markAlpha: CGFloat = 0.6
+    static let flashPeak: CGFloat = 0.3
+    static let flashSeconds = 1.2
 
     private func paintHighlight() {
         guard let layout = surface.layout else { return }
         surface.setOverlay(overlayMarks(in: layout))
     }
 
-    /// The typed verses at the accent's 35 %, easing to the quiet 12 % over 0.9 s.
+    /// The typed verses behind the accent at 30 %, fading out over 1.2 s, once.
     func flash() {
         flashTimer?.invalidate()
         flashLevel = Self.flashPeak
@@ -832,9 +896,9 @@ final class ReadingStream: NSObject {
         flashTimer = Timer.scheduledTimer(withTimeInterval: 0.075, repeats: true) { [weak self] timer in
             MainActor.assumeIsolated {
                 guard let self else { return timer.invalidate() }
-                let t = min(1, (CACurrentMediaTime() - start) / 0.9)
+                let t = min(1, (CACurrentMediaTime() - start) / Self.flashSeconds)
                 let eased = 1 - pow(1 - t, 2)
-                self.flashLevel = Self.flashPeak - (Self.flashPeak - Self.quietMark) * CGFloat(eased)
+                self.flashLevel = Self.flashPeak * CGFloat(1 - eased)
                 if t >= 1 {
                     self.flashLevel = 0
                     timer.invalidate()
