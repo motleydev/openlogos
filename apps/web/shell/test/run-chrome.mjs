@@ -26,6 +26,7 @@ const extraDir = option("--extra-shots", null); // shots beyond the ten kept in 
 const wellShotsDir = option("--well-shots", null); // B076: the contextual well's states
 const menuShotsDir = option("--menu-shots", null); // B077: the context menu's states
 const readShotsDir = option("--read-shots", null); // B078: continuous reading
+const storeShotsDir = option("--store-shots", null); // B074: the user store
 const headed = args.includes("--headed");
 const storeBenchOn = args.includes("--store-bench"); // B074: restore launches and save/workspace rows alone
 const launches = Number(option("--launches", "30"));
@@ -1788,6 +1789,79 @@ async function menuScreenshots() {
 }
 
 /** B078: continuous reading, the same states as the Mac (docs/evidence/B078). */
+/** B074: the same state before a quit and after the relaunch, the damaged-store notice, a tab
+ *  drag in flight and undone, and the palette's rows from every workspace. */
+async function storeScreenshots() {
+  await mkdir(storeShotsDir, { recursive: true });
+  const shot = async (name) => {
+    const file = join(storeShotsDir, `${name}.png`);
+    await writeFile(file, Buffer.from(await wd("GET", `${S}/screenshot`), "base64"));
+    console.log(`screenshot ${file}`);
+  };
+  await setWindow(1440, 900);
+  const query = `?theme=light&autotest=1&store=${uniqueStore("shots")}`;
+  await load(query);
+  await type("h");
+  const pts = await phrasePoints(1, "eternal life");
+  await drag(pts[0], pts[1]);
+  await sleep(80);
+  await type("p");
+  // Under "condemn the world", John 3:17's second line.
+  const at = await js("const el = document.querySelector('#columns > .column[data-number=\"1\"] [data-segment=\"John.3.17\"]'); const r = [...el.getClientRects()][1]; return [r.left + 250, r.bottom - 2];");
+  await drag(at, [at[0] + 210, at[1] + 4], 12);
+  await type("v");
+  await click(...(await centre('#columns > .column[data-number="3"] .note-editor')));
+  await js("const e = document.querySelector('#columns > .column[data-number=\"3\"] .note-editor'); const r = document.createRange(); r.selectNodeContents(e); r.collapse(false); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r);");
+  await chord("Enter");
+  await chord("Meta", "b");
+  await type("Grace");
+  await chord("Meta", "b");
+  await type(" in ");
+  await click(...(await centre('#well button[data-command="note.link_passage"]')));
+  await type("jn 3:17");
+  await chord("Enter");
+  await js("window.openlogosShell.run({ command_id: 'column.focus', args: { column: 1 } }); window.openlogosShell.run({ command_id: 'workspace.new' })");
+  await navigate("Acts.2.4");
+  await js("window.openlogosShell.run({ command_id: 'workspace.switch', args: { workspace_id: 'w1' } }); window.openlogosShell.run({ command_id: 'column.focus', args: { column: 1 } }); document.activeElement.blur(); document.getSelection().removeAllRanges()");
+  await type("h");
+  await js("window.openlogosShell.host.lastToast = null; document.getElementById('toast').classList.remove('show')");
+  await sleep(300);
+  await shot("web-store-before-quit");
+  await load(query);
+  await sleep(300);
+  await shot("web-store-after-relaunch");
+  // The palette finds tabs of every workspace.
+  await chord("Meta", "k");
+  await type("@a");
+  await sleep(120);
+  await shot("web-store-palette-workspaces");
+  await chord("Escape");
+  await js("document.getElementById('palette-field').value = ''");
+  // A tab drag in flight (the drop slot drawn), then dropped and undone.
+  const tabs = await js("return [...document.querySelectorAll('#columns > .column .tabstrip')].map((s) => [...s.querySelectorAll('.tab')].map((t) => { const r = t.getBoundingClientRect(); return [r.left, r.right, r.top + r.height / 2]; }))");
+  const from = [(tabs[0][1][0] + tabs[0][1][1]) / 2, tabs[0][1][2]];
+  const to = [tabs[1][0][1] + 24, tabs[1][0][2]];
+  const moves = [];
+  for (let i = 1; i <= 10; i++) moves.push({ type: "pointerMove", duration: 16, x: Math.round(from[0] + ((to[0] - from[0]) * i) / 10), y: Math.round(from[1] + ((to[1] - from[1]) * i) / 10) });
+  await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerMove", duration: 0, x: Math.round(from[0]), y: Math.round(from[1]) }, { type: "pointerDown", button: 0 }, ...moves] }] });
+  await sleep(80);
+  await shot("web-store-drag-in-flight");
+  await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerUp", button: 0 }] }] });
+  await wd("DELETE", `${S}/actions`);
+  await sleep(80);
+  await chord("Meta", "z");
+  await sleep(80);
+  await js("window.openlogosShell.host.lastToast = null");
+  await shot("web-store-drag-undone");
+  // A damaged store: the notice on a fresh session.
+  const name = uniqueStore("shots-damaged");
+  await load(`?theme=light&autotest=1&store=${name}`);
+  await idbPut(`openlogos-${name}`, "current", '{"format":"openlogos-user-store","schema_version":"1.0","sess');
+  await load(`?theme=light&autotest=1&store=${name}`);
+  await sleep(250);
+  await shot("web-store-damaged-notice");
+}
+
 async function readScreenshots() {
   await mkdir(readShotsDir, { recursive: true });
   const shot = async (name, element = null) => {
@@ -1914,6 +1988,7 @@ try {
   if (wellShotsDir) await wellScreenshots();
   if (menuShotsDir) await menuScreenshots();
   if (readShotsDir) await readScreenshots();
+  if (storeShotsDir) await storeScreenshots();
 } catch (error) {
   console.error(String(error));
   failures = failures || 1;
