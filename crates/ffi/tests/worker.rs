@@ -305,6 +305,85 @@ fn reading_handle_streams_chapters_and_the_shell_follows_scrolling() {
     assert_eq!(outcome["recorded"], false);
 }
 
+/// B074: a session worked on, a note, a highlight (one refused on placeholder text) and a
+/// stroke saved as the user store and restored into a fresh shell; a broken file throws.
+#[wasm_bindgen_test]
+fn shell_handle_saves_and_restores_the_user_store() {
+    let reading = openlogos_ffi::wasm::ReadingHandle::placeholder();
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    let parse = |text: &str| js_sys::JSON::parse(text).unwrap();
+    shell
+        .apply(
+            parse(
+                r#"{"command_id": "tab.move", "args": {"tab_id": "t2", "column": 2, "index": 0}}"#,
+            ),
+            JsValue::UNDEFINED,
+        )
+        .unwrap();
+    shell
+        .apply(
+            parse(r#"{"command_id": "tab.record_scroll", "args": {"tab_id": "t3", "segment_id": "John.3.17", "scalar": 4}}"#),
+            JsValue::UNDEFINED,
+        )
+        .unwrap();
+    shell
+        .put_note(parse(
+            r#"{"id": "fixture:note:1", "blocks": [{"kind": "heading", "spans": [{"text": "See "}, {"text": "Jn 3:16", "link": "John.3.16"}]}]}"#,
+        ))
+        .unwrap();
+    let refused = shell
+        .add_highlight(
+            parse(r##"{"resource_id": "bsb", "content_revision": "bsb-2024", "spans": [{"segment_id": "John.3.2", "start": 0, "end": 4}], "color": "#F5D90A"}"##),
+            &reading,
+        )
+        .unwrap_err();
+    assert_eq!(
+        property(&refused, "kind").as_string().as_deref(),
+        Some("placeholder_text")
+    );
+    let id = shell
+        .add_highlight(
+            parse(r##"{"resource_id": "bsb", "content_revision": "bsb-2024", "spans": [{"segment_id": "John.3.16", "start": 0, "end": 4}], "color": "#f5d90a"}"##),
+            &reading,
+        )
+        .unwrap();
+    assert_eq!(id, "h1");
+    let ink = shell
+        .add_ink(parse(
+            r##"{"resource_id": "bsb", "segment_id": "John.3.16", "stroke": {"id": "", "tool": "pen", "brush_version": "pf-1.2.3/pen-1", "width": 4, "color": "#000000", "opacity": 1, "points": [{"x": 0, "y": 0, "pressure": null, "elapsed_ms": 0}, {"x": 9, "y": 3, "pressure": 0.5, "elapsed_ms": 12}]}}"##,
+        ))
+        .unwrap();
+    assert_eq!(ink, "k2");
+    assert_eq!(shell.change_count(), 5.0);
+    let saved = shell.export_store();
+
+    let mut restored = openlogos_ffi::wasm::ShellHandle::fixture();
+    let report: serde_json::Value =
+        serde_wasm_bindgen::from_value(restored.import_store(&saved).unwrap()).unwrap();
+    assert_eq!(report["issues"], serde_json::json!([]));
+    assert_eq!(
+        (&report["notes"], &report["highlights"], &report["ink"]),
+        (
+            &serde_json::json!(1),
+            &serde_json::json!(1),
+            &serde_json::json!(1)
+        )
+    );
+    assert_eq!(restored.export_store(), saved);
+    let view: serde_json::Value = serde_wasm_bindgen::from_value(restored.view().unwrap()).unwrap();
+    let column = &view["workspaces"][0]["columns"][1];
+    assert_eq!(column["tabs"][0]["id"], "t2");
+    assert_eq!(column["tabs"][1]["scroll_segment_id"], "John.3.17");
+    let highlights: serde_json::Value =
+        serde_wasm_bindgen::from_value(restored.highlights_in("bsb", "John.3").unwrap()).unwrap();
+    assert_eq!(highlights[0]["color"], "#F5D90A");
+    let broken = restored.import_store("{\"format\": ").unwrap_err();
+    assert_eq!(
+        property(&broken, "kind").as_string().as_deref(),
+        Some("not_json")
+    );
+}
+
 /// B064: with `--features retrieval`, SQLite with FTS5 and the `openlogos` tokenizer run
 /// inside the worker's module and answer an unaccented query against accented text.
 #[cfg(feature = "retrieval")]

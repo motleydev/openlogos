@@ -723,6 +723,7 @@ name = "openlogos-conformance"
 version = "0.1.0"
 dependencies = [
  "openlogos-core",
+ "openlogos-ink",
  "openlogos-notes",
  "openlogos-retrieval",
  "openlogos-text",
@@ -851,6 +852,7 @@ name = "openlogos-workspaces"
 version = "0.1.0"
 dependencies = [
  "openlogos-core",
+ "openlogos-ink",
  "serde",
  "serde_json",
  "thiserror",

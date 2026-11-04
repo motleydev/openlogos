@@ -32,6 +32,7 @@ pub mod locators;
 pub mod menu;
 pub mod reading;
 pub mod shell;
+pub mod store;
 pub mod well;
 
 pub use contracts::{
@@ -58,6 +59,11 @@ pub use reading::{
     fixture_resource_schemes, reading_library,
 };
 
+pub use store::{
+    PlaceholderCase, RestoreCase, RestoreExpectation, RoundTrip, SessionExpectation, StoreStep,
+    UserStoreFixture, fixture_shell, placeholder_check,
+};
+
 pub use layout::{ExpectedLayout, LayoutCase, PaneState, WorkspaceLayoutFixture};
 
 pub use identity::{
@@ -72,7 +78,7 @@ pub use locators::{
 };
 
 /// Every fixture file, by id, as compiled in.
-pub const FIXTURE_FILES: [(&str, &str); 20] = [
+pub const FIXTURE_FILES: [(&str, &str); 21] = [
     (
         "hebrew-cantillation-genesis-1",
         include_str!("../fixtures/hebrew-cantillation-genesis-1.json"),
@@ -150,6 +156,7 @@ pub const FIXTURE_FILES: [(&str, &str); 20] = [
         "continuous-reading",
         include_str!("../fixtures/continuous-reading.json"),
     ),
+    ("user-store", include_str!("../fixtures/user-store.json")),
 ];
 
 /// All fixtures as one JSON array, for hosts that want to read or display them.
@@ -196,6 +203,8 @@ pub fn fixtures_json() -> &'static str {
         include_str!("../fixtures/context-menu.json"),
         ",",
         include_str!("../fixtures/continuous-reading.json"),
+        ",",
+        include_str!("../fixtures/user-store.json"),
         "]"
     )
 }
@@ -569,6 +578,8 @@ pub enum Fixture {
     /// Continuous reading: locate, chapters, the canon table, packs and the shell following
     /// the reading position (B078).
     Reading(Box<ReadingFixture>),
+    /// The user store: save, restore, migration, damage and the placeholder rule (B074).
+    UserStore(Box<UserStoreFixture>),
 }
 
 impl Fixture {
@@ -591,6 +602,7 @@ impl Fixture {
             Fixture::ToolWell(f) => &f.id,
             Fixture::ContextMenu(f) => &f.id,
             Fixture::Reading(f) => &f.id,
+            Fixture::UserStore(f) => &f.id,
         }
     }
 }
@@ -711,6 +723,7 @@ pub fn run_all() -> ConformanceReport {
             Ok(Fixture::ToolWell(fixture)) => well::run_tool_well(&fixture, &mut recorder),
             Ok(Fixture::ContextMenu(fixture)) => menu::run_context_menu(&fixture, &mut recorder),
             Ok(Fixture::Reading(fixture)) => reading::run_reading(&fixture, &mut recorder),
+            Ok(Fixture::UserStore(fixture)) => store::run_user_store(&fixture, &mut recorder),
             Err(error) => recorder.fail(
                 "fixture parses",
                 "a fixture of a known kind",

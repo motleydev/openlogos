@@ -241,3 +241,41 @@ test("B078: continuous reading streams chapters, packs load chunk by chunk, and 
   const tabs = shell.view().workspaces[0].columns.map((c) => c.tabs[0]);
   assert.deepEqual([tabs[0].highlight_range, tabs[1].highlight_range], ["Joel.2.28-Joel.2.29", "Joel.3.1-Joel.3.2"]);
 });
+
+test("B074: the user store saves a worked session with notes, highlights and ink and restores it", () => {
+  const reading = core.ReadingHandle.placeholder();
+  const shell = core.ShellHandle.fixture();
+  assert.equal(core.storeConstants().save_debounce_ms, 1000);
+  shell.apply({ command_id: "tab.move", args: { tab_id: "t2", column: 2, index: 0 } });
+  shell.apply({ command_id: "tab.record_scroll", args: { tab_id: "t3", segment_id: "John.3.17", scalar: 4 } });
+  shell.apply({ command_id: "tool.highlight" });
+  shell.putNote({ id: "fixture:note:1", blocks: [{ kind: "paragraph", spans: [{ text: "See " }, { text: "Jn 3:16", link: "John.3.16" }] }] });
+  assert.throws(
+    () => shell.addHighlight({ resource_id: "bsb", content_revision: "bsb-2024", spans: [{ segment_id: "John.3.2", start: 0, end: 4 }], color: "#F5D90A" }, reading),
+    (e) => e.kind === "placeholder_text",
+  );
+  const h = shell.addHighlight({ resource_id: "bsb", content_revision: "bsb-2024", spans: [{ segment_id: "John.3.16", start: 4, end: 7 }], color: "#4cc38a" }, reading);
+  const stroke = { id: "", tool: "pen", brush_version: "pf-1.2.3/pen-1", width: 4, color: "#000000", opacity: 1, points: [{ x: 0, y: -2, pressure: null, elapsed_ms: 0 }, { x: 8, y: 3, pressure: 0.4, elapsed_ms: 10 }] };
+  const k = shell.addInk({ resource_id: "bsb", segment_id: "John.3.16", stroke });
+  assert.deepEqual([h, k], ["h1", "k2"]);
+  const before = shell.changeCount();
+  const saved = shell.exportStore();
+  assert.equal(JSON.parse(saved).format, "openlogos-user-store");
+
+  const restored = core.ShellHandle.fixture();
+  const report = restored.importStore(saved);
+  assert.deepEqual([report.session_restored, report.notes, report.highlights, report.ink, report.issues.length], [true, 1, 1, 1, 0]);
+  assert.equal(restored.exportStore(), saved);
+  const view = restored.view();
+  assert.equal(view.tool, "highlight");
+  assert.deepEqual(view.workspaces[0].columns[1].tabs.map((t) => t.id), ["t2", "t3"]);
+  assert.equal(view.workspaces[0].columns[1].tabs[1].scroll_segment_id, "John.3.17");
+  assert.equal(restored.note("fixture:note:1").blocks[0].spans[1].link, "John.3.16");
+  assert.equal(restored.highlightsIn("bsb", "John.3")[0].color, "#4CC38A");
+  assert.equal(restored.inkIn("bsb", "John.3")[0].stroke.id, "k2");
+  restored.removeInk("k2");
+  assert.equal(restored.inkIn("bsb", "John.3").length, 0);
+  assert.ok(shell.changeCount() === before);
+  assert.throws(() => restored.importStore(""), (e) => e.kind === "empty");
+  assert.throws(() => restored.importStore('{"format": "openlogos-user-store", "schema_version": "2.0"}'), (e) => e.kind === "unsupported_version");
+});

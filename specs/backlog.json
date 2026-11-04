@@ -1627,15 +1627,18 @@
       "owner_role": "client-engineer",
       "title": "Parallel workspaces, cross-workspace search and session restore",
       "depends_on": [
-        "B072"
+        "B072",
+        "B078"
       ],
       "acceptance": [
         "Create, rename, duplicate, close and switch workspaces on web and Mac within the 100 ms budget with ten workspaces of twelve tabs",
         "Palette finds tabs and workspaces across all workspaces and switches to them",
-        "Session restore after quit reproduces every workspace, column, tab, scroll anchor and active tool; tab drag between columns and column resize are undoable"
+        "Session restore after quit reproduces every workspace, column, tab, scroll anchor (the B078 stream position) and active tool; tab drag between columns and column resize are undoable",
+        "Notes, highlights and ink persist in one versioned user store defined by the core (schemas/user-store.schema.json, specs/24): export and import through UniFFI and wasm-bindgen with a change counter for debounced saves, migration from older stores, typed errors and a kept backup for damaged files, no highlight on placeholder text, conformance cases run by all hosts, and save and restore measured"
       ],
       "spec_paths": [
         "specs/22-workspace-shell.md",
+        "specs/24-persistence.md",
         "specs/12-workspace-ux.md"
       ],
       "initial_status": "blocked",

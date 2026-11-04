@@ -77,6 +77,11 @@ pub enum ArgumentShape {
     /// A tab, `tab_id` (with an optional `workspace_id`), and where it is scrolled to,
     /// `segment_id` and `scalar`.
     Scroll,
+    /// A tab dragged to a place (B074): `tab_id` (default the active tab, with an optional
+    /// `workspace_id`), the column it lands in, `column`, and its slot there, `index`
+    /// (default the end); or `new_column`, a new column at number `column` (default right
+    /// after the tab's own column).
+    TabMove,
 }
 
 /// The platforms whose default shortcuts the registry records.
@@ -185,6 +190,10 @@ pub struct CommandArgs {
     /// or a copied passage reads (B077).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resource_id: Option<String>,
+    /// A position in a column's tab list, 0-based: the slot `tab.move` drops a tab into,
+    /// counted in the column as it is before the move (B074).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub index: Option<u32>,
 }
 
 /// Where `search.text` looks (B077): the edition given (`resource_id`, else the active
@@ -1268,6 +1277,19 @@ const DEFS: &[Def] = &[
         false,
     )
     .names(&["unlink passage"], &["note", "reference"]),
+    // B074: what a tab drag between or within columns ends in.
+    def(
+        "tab.move",
+        "Move tab to position",
+        S::Tab,
+        A::TabMove,
+        true,
+        true,
+    )
+    .names(
+        &["drag tab", "reorder tab"],
+        &["drop", "position", "rearrange"],
+    ),
 ];
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -1345,6 +1367,80 @@ fn target_workspace<'a>(
             }),
         None => Ok(session.active()),
     }
+}
+
+/// Where `tab.move` puts its tab: the workspace, the tab's column and position, and the
+/// target (a column index and slot, or a new column's index). Refuses a move that changes
+/// nothing.
+fn tab_move_check<'a>(
+    session: &'a Session,
+    args: &CommandArgs,
+) -> Result<(&'a Workspace, TabMove), DisabledReason> {
+    let ws = target_workspace(session, args)?;
+    let tab_id = match &args.tab_id {
+        Some(id) => id.clone(),
+        None => ws.active_tab().id.clone(),
+    };
+    let (from, _) = ws
+        .find_tab(&tab_id)
+        .ok_or_else(|| DisabledReason::NoSuchTab {
+            tab_id: tab_id.clone(),
+        })?;
+    let position = ws.columns[from]
+        .tabs
+        .iter()
+        .position(|t| t.id == tab_id)
+        .expect("found above");
+    if args.new_column {
+        if ws.columns[from].tabs.len() < 2 {
+            return Err(DisabledReason::OneTab);
+        }
+        let at = match args.column {
+            Some(number) if number == 0 || number as usize > ws.columns.len() + 1 => {
+                return Err(DisabledReason::NoSuchColumn { number });
+            }
+            Some(number) => number as usize - 1,
+            None => from + 1,
+        };
+        return Ok((
+            ws,
+            TabMove {
+                tab_id,
+                from,
+                position,
+                to: at,
+                slot: None,
+            },
+        ));
+    }
+    let to = column_number(ws, args)? - 1;
+    let len = ws.columns[to].tabs.len();
+    let slot = args.index.map_or(len, |i| (i as usize).min(len));
+    if to == from && (slot == position || slot == position + 1) {
+        return Err(DisabledReason::AlreadyInColumn {
+            number: to as u32 + 1,
+        });
+    }
+    Ok((
+        ws,
+        TabMove {
+            tab_id,
+            from,
+            position,
+            to,
+            slot: Some(slot),
+        },
+    ))
+}
+
+/// A checked `tab.move`.
+struct TabMove {
+    tab_id: String,
+    from: usize,
+    position: usize,
+    to: usize,
+    /// The slot in the target column before the move; `None` for a new column at `to`.
+    slot: Option<usize>,
 }
 
 fn column_number(workspace: &Workspace, args: &CommandArgs) -> Result<usize, DisabledReason> {
@@ -1491,6 +1587,7 @@ pub fn enabled(
             }
             Ok(())
         }
+        "tab.move" => tab_move_check(session, args).map(|_| ()),
         "tab.close" if ws.columns.len() == 1 && column.tabs.len() == 1 => {
             Err(DisabledReason::LastTab)
         }
@@ -2193,6 +2290,37 @@ fn apply_in_place(
             target.shown_tab_id = tab_id;
             ws.active_column_id = target_id;
         }
+        "tab.move" => {
+            let (ws, plan) = tab_move_check(s, args).expect("enabled");
+            let workspace_id = ws.id.clone();
+            let ws = s
+                .workspaces
+                .iter_mut()
+                .find(|w| w.id == workspace_id)
+                .expect("enabled");
+            let target_id = ws.columns[plan.to.min(ws.columns.len() - 1)].id.clone();
+            let (tab, _) = take_tab(ws, plan.from, &plan.tab_id);
+            match plan.slot {
+                None => insert_column(ws, plan.to.min(ws.columns.len()), tab),
+                Some(slot) => {
+                    // Within its own column the slots after the tab shift down by one.
+                    let slot = if plan.to == plan.from && slot > plan.position {
+                        slot - 1
+                    } else {
+                        slot
+                    };
+                    let target = ws
+                        .columns
+                        .iter_mut()
+                        .find(|c| c.id == target_id)
+                        .expect("the target column survives");
+                    let at = slot.min(target.tabs.len());
+                    target.tabs.insert(at, tab);
+                    target.shown_tab_id = plan.tab_id;
+                    ws.active_column_id = target_id;
+                }
+            }
+        }
         "tab.duplicate_to_column" => {
             let ws = s.active_mut();
             let number = column_number(ws, args).expect("enabled");
@@ -2310,6 +2438,9 @@ fn apply_in_place(
         }
         "tab.open_lexicon" => {
             let word = non_empty(&args.text).expect("enabled").to_owned();
+            let language = s
+                .resource_language(&s.active().active_tab().content_id)
+                .map(str::to_owned);
             let ws = s.active_mut();
             let reference = non_empty(&args.reference)
                 .map(str::to_owned)
@@ -2335,6 +2466,7 @@ fn apply_in_place(
                 (Some(index), Some(tab_id)) => {
                     let tab = tab_mut(ws, &tab_id);
                     tab.lexicon_word = Some(word);
+                    tab.lexicon_language = language;
                     tab.reference = reference;
                     tab.scroll_anchor = None;
                     tab.link_group = None;
@@ -2360,6 +2492,7 @@ fn apply_in_place(
                         pinned: true,
                         history: Default::default(),
                         lexicon_word: Some(word),
+                        lexicon_language: language,
                         highlight_range: None,
                     };
                     match target {
@@ -2426,6 +2559,7 @@ fn apply_in_place(
                         pinned: source.pinned,
                         history: Default::default(),
                         lexicon_word: None,
+                        lexicon_language: None,
                         highlight_range: None,
                     };
                     match target {
@@ -2521,6 +2655,19 @@ pub struct Shell {
     pub redo_stack: Vec<UndoRecord>,
     /// Bumped by every change to the session; a host keys caches on it.
     pub revision: u64,
+    /// Notes, highlights and ink (B074, [`crate::store`]): what the user store keeps beside
+    /// the session.
+    #[serde(default)]
+    pub annotations: crate::store::Annotations,
+    /// Bumped by every change the user store would save, quiet ones included (a scroll
+    /// anchor, a note edit): a host saves when it differs from the count it last saved at
+    /// (B074, specs/24 §4).
+    #[serde(default)]
+    pub changes: u64,
+    /// The store's cached part JSON ([`crate::store::StoreCache`]); change notes, highlights
+    /// and ink through the `Shell` methods so it stays true.
+    #[serde(skip)]
+    pub store_cache: crate::store::StoreCache,
 }
 
 /// Back visits a tab keeps; the oldest is dropped beyond this.
@@ -2538,6 +2685,9 @@ impl Shell {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             revision: 0,
+            annotations: crate::store::Annotations::default(),
+            changes: 0,
+            store_cache: crate::store::StoreCache::default(),
         })
     }
 
@@ -2601,6 +2751,7 @@ impl Shell {
         let quiet = command(&invocation.command_id).is_some_and(|c| c.quiet)
             && effects.positions.is_empty();
         let recorded = undo.is_some();
+        self.changes += 1;
         if let Some(record) = undo {
             self.undo_stack.push(record);
             if self.undo_stack.len() > UNDO_DEPTH {
@@ -2666,6 +2817,7 @@ impl Shell {
         };
         record.before.restore(&mut self.session);
         self.revision += 1;
+        self.changes += 1;
         inverse
     }
 
@@ -2745,6 +2897,10 @@ pub(crate) mod tests {
             ArgumentShape::ColumnWidth => {
                 args.column = Some(2);
                 args.number = Some(0.5);
+            }
+            ArgumentShape::TabMove => {
+                args.column = Some(2);
+                args.index = Some(0);
             }
             ArgumentShape::Scroll => {
                 args.tab_id = Some("t3".into());

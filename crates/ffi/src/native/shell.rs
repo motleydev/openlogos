@@ -136,6 +136,8 @@ pub struct ShellTab {
     pub can_go_forward: bool,
     /// The word a Lexicon tab looks up (B076, `tab.open_lexicon`).
     pub lexicon_word: Option<String>,
+    /// The language a Lexicon tab studies, a BCP 47 tag (B074).
+    pub lexicon_language: Option<String>,
     /// The verses the last navigation named, OSIS, to mark until the next one (B078).
     pub highlight_range: Option<String>,
 }
@@ -294,6 +296,9 @@ pub struct ShellCommandArgs {
     /// An edition id: what `tab.open_edition` opens, what a search or copy reads (B077).
     #[uniffi(default = None)]
     pub resource_id: Option<String>,
+    /// A slot in a column's tab list, 0-based: where `tab.move` drops a tab (B074).
+    #[uniffi(default = None)]
+    pub index: Option<u32>,
 }
 
 impl From<ShellCommandArgs> for CommandArgs {
@@ -311,6 +316,7 @@ impl From<ShellCommandArgs> for CommandArgs {
             scalar: a.scalar,
             scope: a.scope,
             resource_id: a.resource_id,
+            index: a.index,
         }
     }
 }
@@ -330,6 +336,7 @@ impl From<CommandArgs> for ShellCommandArgs {
             scalar: a.scalar,
             scope: a.scope,
             resource_id: a.resource_id,
+            index: a.index,
         }
     }
 }
@@ -982,6 +989,7 @@ fn view(shell: &Shell) -> ShellSession {
         can_go_back: t.can_go_back,
         can_go_forward: t.can_go_forward,
         lexicon_word: t.lexicon_word,
+        lexicon_language: t.lexicon_language,
         highlight_range: t.highlight_range,
     };
     ShellSession {
@@ -1027,8 +1035,8 @@ fn view(shell: &Shell) -> ShellSession {
     }
 }
 
-struct State {
-    shell: Shell,
+pub(crate) struct State {
+    pub(crate) shell: Shell,
     index: Option<(u64, PaletteIndex)>,
     text: Option<FixtureTextProvider>,
 }
@@ -1051,7 +1059,7 @@ impl ShellHandle {
         }))
     }
 
-    fn lock(&self) -> std::sync::MutexGuard<'_, State> {
+    pub(crate) fn lock(&self) -> std::sync::MutexGuard<'_, State> {
         // A panic inside a call poisons nothing a later call could misread: every mutation
         // replaces the session whole.
         self.state
