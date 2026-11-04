@@ -184,6 +184,11 @@
           "type": "string",
           "minLength": 1
         },
+        "lexicon_language": {
+          "description": "The language a lexicon tab studies, as the BCP 47 tag of the edition the word was clicked in (B074: grc, hbo); absent on other tabs and when that edition had no language.",
+          "type": "string",
+          "minLength": 1
+        },
         "highlight_range": {
           "description": "The verses the last navigation named, as an OSIS verse or range (B078, specs/23): the host marks them until the next navigation; absent after a chapter or book was opened.",
           "type": "string",

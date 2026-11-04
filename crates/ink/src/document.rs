@@ -255,7 +255,10 @@ impl InkDocument {
 }
 
 impl Stroke {
-    fn validate(&self) -> Result<(), InkError> {
+    /// Checks one stroke as [`InkDocument::validate`] checks each of its strokes: non-empty
+    /// id, brush and colour, a positive width, opacity and sensor values in range, at least
+    /// two points and time that never runs backwards.
+    pub fn validate(&self) -> Result<(), InkError> {
         let out_of_range = |field: &str, value: f64| InkError::OutOfRange {
             id: self.id.clone(),
             field: field.to_owned(),

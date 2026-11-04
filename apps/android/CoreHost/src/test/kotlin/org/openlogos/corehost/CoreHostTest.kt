@@ -7,6 +7,18 @@ package org.openlogos.corehost
 
 import org.json.JSONArray
 import org.json.JSONObject
+import org.openlogos.core.InkPoint
+import org.openlogos.core.InkStroke
+import org.openlogos.core.InkTool
+import org.openlogos.core.StoreCallException
+import org.openlogos.core.StoreHighlight
+import org.openlogos.core.StoreInkMark
+import org.openlogos.core.StoreNote
+import org.openlogos.core.StoreNoteBlock
+import org.openlogos.core.StoreNoteBlockKind
+import org.openlogos.core.StoreNoteSpan
+import org.openlogos.core.StoreSegmentSpan
+import org.openlogos.core.storeConstants
 import org.openlogos.core.Paragraph
 import org.openlogos.core.ReadingCallException
 import org.openlogos.core.ReadingHandle
@@ -53,7 +65,7 @@ import kotlin.test.assertTrue
 class CoreHostTest {
     @Test
     fun apiVersionMatchesTheCore() {
-        assertEquals("0.1.3", apiVersion())
+        assertEquals("0.1.4", apiVersion())
         assertEquals(apiVersion(), runConformance().apiVersion)
     }
 
@@ -266,6 +278,52 @@ class CoreHostTest {
             shell.contextMenu(ShellContextTarget.Column(9u), none)
         }
         assertTrue(refused.detail.contains("There is no column 9"))
+    }
+
+    // B074: the user store through the UniFFI handle: a worked session with a note, a
+    // highlight (one refused on placeholder text) and a stroke, saved and restored.
+    @Test
+    fun userStoreSavesAndRestoresTheSessionAndAnnotations() {
+        val reading = ReadingHandle.placeholder()
+        val shell = ShellHandle.fixture()
+        assertEquals(1000u, storeConstants().saveDebounceMs)
+        shell.apply("tab.move", ShellCommandArgs(column = 2u, tabId = "t2", index = 0u), false)
+        shell.apply("tab.record_scroll", ShellCommandArgs(tabId = "t3", segmentId = "John.3.17", scalar = 4u), false)
+        shell.putNote(StoreNote("fixture:note:1", listOf(
+            StoreNoteBlock(StoreNoteBlockKind.HEADING, listOf(StoreNoteSpan(text = "See "), StoreNoteSpan(text = "Jn 3:16", link = "John.3.16"))),
+        )))
+        fun highlight(segment: String) = StoreHighlight(
+            resourceId = "bsb", contentRevision = "bsb-2024",
+            spans = listOf(StoreSegmentSpan(segment, 0u, 4u)), color = "#F5D90A",
+        )
+        val refused = assertFailsWith<StoreCallException.Refused> { shell.addHighlight(highlight("John.3.2"), reading) }
+        assertEquals("placeholder_text", refused.kind)
+        assertEquals("h1", shell.addHighlight(highlight("John.3.16"), reading))
+        val stroke = InkStroke(
+            id = "", tool = InkTool.PEN, brushVersion = "pf-1.2.3/pen-1", width = 4.0, color = "#000000", opacity = 1.0,
+            points = listOf(
+                InkPoint(x = 0.0, y = -2.0, pressure = null, elapsedMs = 0.0, altitude = null, azimuth = null),
+                InkPoint(x = 8.0, y = 3.0, pressure = 0.4, elapsedMs = 10.0, altitude = null, azimuth = null),
+            ),
+        )
+        assertEquals("k2", shell.addInk(StoreInkMark(resourceId = "bsb", segmentId = "John.3.16", stroke = stroke)))
+        assertEquals(5uL, shell.changeCount())
+        val saved = shell.exportStore()
+
+        val restored = ShellHandle.fixture()
+        val report = restored.importStore(saved)
+        assertTrue(report.sessionRestored)
+        assertEquals(listOf(1u, 1u, 1u), listOf(report.notes, report.highlights, report.ink))
+        assertTrue(report.issues.isEmpty())
+        assertEquals(saved, restored.exportStore())
+        val column = restored.session().workspaces[0].columns[1]
+        assertEquals(listOf("t2", "t3"), column.tabs.map { it.id })
+        assertEquals("John.3.17", column.tabs[1].scrollSegmentId)
+        assertEquals("John.3.16", restored.note("fixture:note:1")?.blocks?.get(0)?.spans?.get(1)?.link)
+        assertEquals(listOf("h1"), restored.highlightsIn("bsb", "John.3").map { it.id })
+        assertEquals(2, restored.inkIn("bsb", "John.3")[0].stroke.points.size)
+        val broken = assertFailsWith<StoreCallException.Refused> { restored.importStore("{") }
+        assertEquals("not_json", broken.kind)
     }
 
     // B078: continuous reading through the UniFFI handles, and the shell following a scroll.
