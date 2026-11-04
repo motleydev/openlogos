@@ -148,6 +148,32 @@ final class ReadingTests: XCTestCase {
         XCTAssertEqual(stream.container?.header.text, "Gen 1 · BSB")
     }
 
+    func testAnEditionsLastVerseCanReachTheReadingLine() throws {
+        let model = ShellModel()
+        let window = host(model)
+        defer { window.close() }
+        spin()
+        type("Rev 22:21", model)
+        let stream = try XCTUnwrap(model.stream(for: "t1"))
+        XCTAssertNil(stream.blocks.last?.next, "Revelation 22 ends the edition")
+        XCTAssertGreaterThan(stream.endRoom, 0, "room below the last chapter")
+        XCTAssertEqual(stream.topSegment, "Rev.22.21")
+        XCTAssertEqual(try XCTUnwrap(screenY(stream, "Rev.22.21")), ReadingStream.topMargin, accuracy: 1, "the last verse on the reading line")
+        // WLC ends at Malachi 3 (Hebrew numbering).
+        model.run("tab.next")
+        spin(0.2)
+        type("Mal 3:24", model)
+        let hebrew = try XCTUnwrap(model.stream(for: try XCTUnwrap(shownTab(model, column: 1)).id))
+        XCTAssertEqual(hebrew.resourceID, "wlc")
+        XCTAssertEqual(hebrew.topSegment, "Mal.3.24")
+        XCTAssertEqual(try XCTUnwrap(screenY(hebrew, "Mal.3.24")), ReadingStream.topMargin, accuracy: 1)
+        // Mid-edition there is no room: the next chapter is below.
+        model.run("tab.next")
+        spin(0.2)
+        type("John 3:16", model)
+        XCTAssertEqual(model.stream(for: "t1")?.endRoom, 0)
+    }
+
     func testAPassageNotInTheEditionShowsTheNotInEditionState() throws {
         let model = ShellModel()
         let window = host(model)

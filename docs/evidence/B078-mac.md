@@ -85,7 +85,7 @@ at every chapter).
 
 ## Tests
 
-`just test-reader mac`: 68 cases in OpenLogosMacTests (58 from B077, one changed, and 10 new
+`just test-reader mac`: 69 cases in OpenLogosMacTests (58 from B077, two changed, and 11 new
 in `Tests/ShellTests/ReadingTests.swift`):
 `testATypedPassageOpensItsChapterWithTheVerseAtTheTopFlashedAndMarked` (palette `Jn 3:16`, verse
 on the 24 pt reading line, the chapters around it, header, highlight_range, the flash at most
@@ -153,6 +153,10 @@ Lockstep with web, as the lead ruled (2026-11-04):
 - **Placeholder**: muted verses, the per-block notice, `Placeholder text can’t be quoted or
   collected`.
 - **Whole books** come from the core's palette rows (2e53c87); revision 1's host row is gone.
+- **Room below an edition's last chapter**: 80 % of the view, as on the web, so Revelation
+  22:21 and WLC Malachi 3:24 reach the reading line; on the Mac a little more when the last
+  verse needs it (a one-line last verse needs the view less the reading line and that line,
+  about 92 % at 1440 × 900). `testAnEditionsLastVerseCanReachTheReadingLine`.
 
 The Mac's own choices: releases wait for the reader to stop where the cap allows (an edit
 above the reader costs TextKit 2 a relayout down to the view); a block below is laid out in a
@@ -166,7 +170,5 @@ only); no nearest-verse hint.
 
 - The ink anchor is not persisted (the ink document has no field for it; strokes are host
   memory until B074 anyway).
-- No extra room below an edition's last chapter: Revelation 22:21 and WLC Malachi 3:24 cannot
-  reach the reading line (web adds 80 % of the viewport below the stream).
 - iPad: the continuous surface is Mac-only (`#if os(macOS)`); the iPad shell keeps B072's
   fixture surface. Not built for iOS in this run (no simulator lanes were in scope).

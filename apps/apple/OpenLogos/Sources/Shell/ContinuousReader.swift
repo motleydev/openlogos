@@ -503,6 +503,7 @@ final class ReadingStream: NSObject {
         // added below is laid out as it scrolls into view.
         if case .insert(0, let length) = edit { ensureExact(through: length) } else { ensureExact() }
         if case .insert(let at, _) = edit, at > 0 { tailNeedsLayout = true }
+        applyEndRoom()
         // The text view takes its height from what is laid out (and estimated) now.
         surface.textView?.textLayoutManager?.textViewportLayoutController.layoutViewport()
         if Self.timings.count > 4096 { Self.timings.removeFirst(2048) }
@@ -563,6 +564,40 @@ final class ReadingStream: NSObject {
 
     var documentHeight: CGFloat { surface.textView?.frame.height ?? 0 }
 
+    /// Room below an edition's last chapter (80 % of the view, as on the web, or more when the
+    /// last verse needs it), so the last verse can reach the reading line; none while more
+    /// chapters follow.
+    var endRoom: CGFloat {
+        guard let last = blocks.last, last.next == nil, let scroll = container?.scrollView else { return 0 }
+        let height = scroll.contentView.bounds.height
+        var room = height * Self.endRoomShare
+        if let id = surface.layout?.segmentOrder.last, let range = surface.layout?.verseRanges[id],
+           let box = surface.rect(for: NSRange(location: range.location, length: 1)) {
+            room = max(room, height - Self.topMargin - (textHeight - box.minY))
+        }
+        return room.rounded(.up)
+    }
+    static let endRoomShare: CGFloat = 0.8
+
+    /// The room as the text view's minimum height past its text.
+    private var appliedRoom: CGFloat = 0
+
+    /// The height of the text alone (TextKit 2's usage, with the container's insets).
+    private var textHeight: CGFloat {
+        guard let textView = surface.textView, let manager = textView.textLayoutManager else { return documentHeight }
+        return manager.usageBoundsForTextContainer.maxY + textView.textContainerInset.height * 2
+    }
+
+    private func applyEndRoom() {
+        guard let textView = surface.textView else { return }
+        let text = textHeight
+        let room = endRoom
+        guard room != appliedRoom || (room > 0 && abs(textView.minSize.height - (text + room)) > 0.5) else { return }
+        appliedRoom = room
+        textView.minSize = NSSize(width: 0, height: room > 0 ? text + room : 0)
+        textView.setFrameSize(NSSize(width: textView.frame.width, height: text + room))
+    }
+
     /// The top of a segment's first line, in the text view's coordinates.
     func top(of segment: String) -> CGFloat? {
         guard let range = surface.layout?.verseRanges[segment] else { return nil }
@@ -582,6 +617,7 @@ final class ReadingStream: NSObject {
         if y + scroll.contentView.bounds.height > documentHeight {
             surface.textView?.textLayoutManager?.textViewportLayoutController.layoutViewport()
         }
+        applyEndRoom()
         let maxY = max(0, documentHeight - scroll.contentView.bounds.height)
         programmatic += 1
         scroll.contentView.setBoundsOrigin(NSPoint(x: 0, y: max(0, min(maxY, y))))
@@ -933,6 +969,7 @@ final class ReadingStream: NSObject {
     func scrollAsReader(by delta: CGFloat) {
         guard let scroll = container?.scrollView else { return }
         let clip = scroll.contentView
+        applyEndRoom()
         let maxY = max(0, documentHeight - clip.bounds.height)
         clip.setBoundsOrigin(NSPoint(x: 0, y: max(0, min(maxY, clip.bounds.minY + delta))))
         scroll.reflectScrolledClipView(clip)
