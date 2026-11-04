@@ -72,9 +72,25 @@ import json, sys
 rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
 def pct(values, p):
     v = sorted(values); return v[min(len(v) - 1, round((len(v) - 1) * p))]
-for key in ("read_ms", "import_ms", "laid_out_ms", "first_frame_ms"):
+for key in ("read_ms", "import_ms", "highlights_ms", "ink_ms", "relayout_ms", "relayouts", "laid_out_ms", "first_frame_ms"):
     values = [r[key] for r in rows]
     print(f"{key}: n={len(values)} p50={pct(values, .5):.2f} p95={pct(values, .95):.2f} max={max(values):.2f}")
+EOF
+    # The same launches with no file: what a launch costs without a restore.
+    empty="$(fresh empty)"
+    rm -f "$work/restore-empty.jsonl"
+    for _ in $(seq 1 20); do
+      run "$app" -OPENLOGOS_STORE "$empty" -OPENLOGOS_RESTORE_MEASURE "$work/restore-empty.jsonl"
+      rm -f "$empty"/user-store.json
+    done
+    python3 - "$work/restore-empty.jsonl" <<'EOF'
+import json, sys
+rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+def pct(values, p):
+    v = sorted(values); return v[min(len(v) - 1, round((len(v) - 1) * p))]
+for key in ("highlights_ms", "ink_ms", "relayout_ms", "relayouts", "laid_out_ms", "first_frame_ms"):
+    values = [r[key] for r in rows]
+    print(f"no file, {key}: n={len(values)} p50={pct(values, .5):.2f} p95={pct(values, .95):.2f} max={max(values):.2f}")
 EOF
     cp "$work/acceptance-store.json" "$store/user-store.json"
     rm -f "$work/store-measure.json"

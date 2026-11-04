@@ -71,7 +71,7 @@ final class InkCanvasEngine {
                 return l
             }()
             if layer.path == nil || pathCache[stroke.id] == nil {
-                let path = Self.path(for: stroke)
+                let path = Self.sharedPath(for: stroke)
                 pathCache[stroke.id] = path
                 layer.path = path
             }
@@ -114,6 +114,26 @@ final class InkCanvasEngine {
         } else {
             layer.isHidden = true
         }
+    }
+
+    /// B074: outlines kept across canvases (a workspace switch or duplicate builds new ones
+    /// over the same stored strokes), by the stroke's id and what its outline depends on.
+    private static var shared: [String: CGPath] = [:]
+    private static var sharedOrder: [String] = []
+    static let sharedCap = 2048
+
+    static func sharedPath(for stroke: InkStroke) -> CGPath {
+        let first = stroke.points.first, last = stroke.points.last
+        let key = "\(stroke.id)|\(stroke.brushVersion)|\(stroke.width)|\(stroke.points.count)|\(first?.x ?? 0),\(first?.y ?? 0)|\(last?.x ?? 0),\(last?.y ?? 0)"
+        if let path = shared[key] { return path }
+        let path = path(for: stroke)
+        shared[key] = path
+        sharedOrder.append(key)
+        if sharedOrder.count > sharedCap {
+            for old in sharedOrder.prefix(sharedOrder.count - sharedCap) { shared[old] = nil }
+            sharedOrder.removeFirst(sharedOrder.count - sharedCap)
+        }
+        return path
     }
 
     static func path(for stroke: InkStroke) -> CGPath {

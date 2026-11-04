@@ -131,7 +131,8 @@ final class ShellModel: ObservableObject {
             let before = handle.changeCount()
             restored = ShellPersistence.restore(handle, from: store)
             #if os(macOS)
-            if let restored, restored.bytes > 0 {
+            // File read → first painted text (with no file: the launch's own share).
+            if let restored {
                 ShellPersistence.paintProbe = (restored.started, handle.session().activeWorkspaceId)
             }
             #endif
@@ -501,12 +502,13 @@ final class ShellModel: ObservableObject {
         if let sheet = inkSheets[stream.tabID] { pin(sheet, to: stream) }
         // B074: the core's highlights and ink on its window, now and whenever it changes.
         stream.storedMarks = { [weak self] resource, layout in self?.storedMarks(resourceID: resource, layout: layout) ?? [] }
+        // The ink follows a frame later (ReadingScheduler): text first, then its strokes.
         stream.onWindowChanged = { [weak self, weak stream] in
             guard let self, let stream else { return }
-            self.syncStoredInk(stream)
+            self.scheduleInkSync(stream)
         }
         stream.repaintMarks()
-        syncStoredInk(stream)
+        scheduleInkSync(stream)
     }
 
     /// The tab's ink moves with its verses: strokes are pinned to the verse under them.
@@ -834,6 +836,10 @@ final class ShellModel: ObservableObject {
     /// The core's highlights on the chapters a window shows, as marks (oldest first, so later
     /// ones paint over earlier ones).
     func storedMarks(resourceID: String, layout: ReaderLayout) -> [ReaderMark] {
+        #if os(macOS)
+        let t0 = CACurrentMediaTime()
+        defer { ShellPersistence.cost("highlights", since: t0) }
+        #endif
         var seen: Set<String> = []
         var marks: [ReaderMark] = []
         for block in layout.blocks {
@@ -992,6 +998,7 @@ final class ShellModel: ObservableObject {
             return nil
         }
         storeChanged()
+        inkGeneration += 1
         var kept = stroke
         kept.id = id
         DispatchQueue.main.async { [weak self] in self?.syncStoredInk(resourceID: stream.resourceID, except: tabID) }
@@ -1002,12 +1009,17 @@ final class ShellModel: ObservableObject {
     private func eraseInk(_ id: String, tabID: String) {
         guard let stream = stream(for: tabID), (try? handle.removeInk(id: id)) != nil else { return }
         erasedInk.insert(id)
+        inkGeneration += 1
         storeChanged()
         syncStoredInk(resourceID: stream.resourceID, except: tabID)
     }
 
     /// Strokes the eraser took this session (other tabs of the edition drop them too).
     private var erasedInk: Set<String> = []
+    /// Bumped by every stroke added or erased: each stream then takes all its chapters again;
+    /// otherwise a window change asks the core only for the chapters it has not seen.
+    private var inkGeneration = 0
+    private var inkSynced: [String: (generation: Int, chapters: Set<String>)] = [:]
 
     /// Every shown stream of the edition takes the core's strokes again.
     private func syncStoredInk(resourceID: String, except tabID: String? = nil) {
@@ -1016,13 +1028,31 @@ final class ShellModel: ObservableObject {
         }
     }
 
+    private func scheduleInkSync(_ stream: ReadingStream) {
+        ShellPersistence.whenTextIsOnScreen { [weak self, weak stream] in
+            guard let stream else { return }
+            ReadingScheduler.shared.enqueue("ink-\(ObjectIdentifier(stream).hashValue)") { [weak self, weak stream] in
+                if let self, let stream { self.syncStoredInk(stream) }
+                return false
+            }
+        }
+    }
+
     /// A stream's window changed: its sheet shows the core's strokes on the chapters in it.
     func syncStoredInk(_ stream: ReadingStream) {
         guard streams[stream.tabID]?.stream === stream, let layout = stream.surface.layout else { return }
+        let t0 = CACurrentMediaTime()
+        defer { ShellPersistence.cost("ink", since: t0) }
+        let key = "\(stream.workspaceID)|\(stream.tabID)|\(stream.resourceID)"
+        var synced = inkSynced[key].flatMap { $0.generation == inkGeneration ? $0 : nil } ?? (generation: inkGeneration, chapters: [])
+        let chapters = layout.blocks.map(\.chapterKey).filter { !synced.chapters.contains($0) }
+        guard !chapters.isEmpty else { return }
+        synced.chapters.formUnion(chapters)
+        inkSynced[key] = synced
         let leading = Double(stream.inkLeading)
         var strokes: [(InkStroke, InkSheet.Anchor)] = []
-        for block in layout.blocks {
-            for mark in handle.inkIn(resourceId: stream.resourceID, chapterKey: block.chapterKey) {
+        for chapter in chapters {
+            for mark in handle.inkIn(resourceId: stream.resourceID, chapterKey: chapter) {
                 var stroke = mark.stroke
                 stroke.id = mark.id
                 stroke.points = stroke.points.map { var p = $0; p.x += leading; return p }

@@ -299,6 +299,20 @@ final class ShellPersistence {
     static var paintProbe: (started: CFTimeInterval, workspace: String)?
     /// File read → text laid out in the view, and → the next display frame (ms).
     static var firstPaint: (laidOut: Double, frame: Double)?
+    /// Main-thread time spent before the first frame, by part (the restore measurement's
+    /// breakdown): the core's highlights as marks, the core's ink on the sheets.
+    static var launchCosts: [String: Double] = [:]
+    /// Work held until the restored text's first frame is on screen (the ink): text first.
+    private static var afterFirstFrame: [() -> Void] = []
+    static func whenTextIsOnScreen(_ work: @escaping () -> Void) {
+        if paintProbe == nil && frameDone == nil { return work() }
+        afterFirstFrame.append(work)
+    }
+
+    static func cost(_ part: String, since t0: CFTimeInterval) {
+        guard firstPaint == nil else { return }
+        launchCosts[part, default: 0] += (CACurrentMediaTime() - t0) * 1000
+    }
     private static var frameLink: CADisplayLink?
     private static var frameDone: ((CFTimeInterval) -> Void)?
 
@@ -322,6 +336,9 @@ final class ShellPersistence {
                 ShellPersistence.frameLink = nil
                 ShellPersistence.frameDone?(now)
                 ShellPersistence.frameDone = nil
+                let held = ShellPersistence.afterFirstFrame
+                ShellPersistence.afterFirstFrame = []
+                held.forEach { $0() }
             }
         }
     }

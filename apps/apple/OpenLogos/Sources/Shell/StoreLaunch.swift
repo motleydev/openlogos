@@ -42,6 +42,8 @@ enum StoreLaunch {
                 "bytes": restored?.bytes ?? 0, "read_ms": restored?.readMs ?? 0, "import_ms": restored?.importMs ?? 0,
                 "laid_out_ms": ShellPersistence.firstPaint?.laidOut ?? -1, "first_frame_ms": ShellPersistence.firstPaint?.frame ?? -1,
                 "workspaces": model.session.workspaces.count, "notice": restored?.notice ?? "",
+                "highlights_ms": ShellPersistence.launchCosts["highlights"] ?? 0, "ink_ms": ShellPersistence.launchCosts["ink"] ?? 0,
+                "relayout_ms": ReadingStream.timings.reduce(0) { $0 + ($1.0 + $1.1 + $1.2) * 1000 }, "relayouts": ReadingStream.timings.count,
             ]
             if let data = try? JSONSerialization.data(withJSONObject: line, options: [.sortedKeys]) {
                 append(data + Data("\n".utf8), to: path)
@@ -274,26 +276,36 @@ extension ShellMeasure {
         await saves("a note edit") { i in
             try? model.handle.putNote(note: StoreNote(id: "note:0", blocks: [StoreNoteBlock(kind: .paragraph, spans: [StoreNoteSpan(text: "Edit \(i)")])]))
         }
-        // The workspace commands, each drawn on screen.
+        // The workspace commands, each drawn on screen, at the store's size (what one sample
+        // adds, the next one's preparation takes away).
         let ids = model.session.workspaces.map(\.id)
-        stats.append(await measure("workspace new (at the store's size)", budget: 100, count: 200) { _ in
+        let home = ShellCommandArgs(workspaceId: ids[0])
+        stats.append(await measure("workspace new (at the store's size)", budget: 100, count: 200, prepare: { i in
+            if i > 0 { model.run("workspace.close") }
+            model.run("workspace.switch", args: home)
+        }) { _ in
             model.run("workspace.new")
         })
+        model.run("workspace.close")
+        model.run("workspace.switch", args: home)
         stats.append(await measure("workspace rename", budget: 100, count: 200) { i in
             model.run("workspace.rename", args: ShellCommandArgs(text: "Renamed \(i)"))
         })
-        stats.append(await measure("workspace close", budget: 100, count: 200) { _ in
+        stats.append(await measure("workspace close", budget: 100, count: 200, prepare: { _ in
+            model.run("workspace.switch", args: home)
+            model.run("workspace.new")
+        }) { _ in
             model.run("workspace.close")
         })
-        stats.append(await measure("workspace duplicate", budget: 100, count: 200, prepare: { i in
+        stats.append(await measure("workspace duplicate (12 tabs)", budget: 100, count: 200, prepare: { i in
             if i > 0 { model.run("workspace.close") }
-            model.run("workspace.switch", args: ShellCommandArgs(workspaceId: ids[0]))
+            model.run("workspace.switch", args: home)
         }) { _ in
             model.run("workspace.duplicate")
         })
         model.run("workspace.close")
         stats.append(await measure("workspace switch (10 × 12 with the store's annotations)", budget: 100, count: 200) { i in
-            model.run("workspace.switch", args: ShellCommandArgs(workspaceId: ids[i % ids.count]))
+            model.run("workspace.switch", args: ShellCommandArgs(workspaceId: ids[(i + 1) % ids.count]))
         })
         model.run("workspace.switch", args: ShellCommandArgs(workspaceId: ids[0]))
         Self.flush()
