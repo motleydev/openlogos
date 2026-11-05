@@ -19,6 +19,7 @@ pub mod reference;
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
 pub mod shell;
+pub mod store;
 pub mod versification;
 
 pub use anchor::{
@@ -44,6 +45,11 @@ pub use shell::{
     ShellPaletteResult, ShellPaletteSection, ShellPlatform, ShellReading, ShellRecords,
     ShellSession, ShellShortcuts, ShellTab, ShellTabPosition, ShellWorkspace, layout_constants,
     migrate_workspace_json, shell_registry,
+};
+pub use store::{
+    StoreCallError, StoreConstants, StoreHighlight, StoreInkMark, StoreIssue, StoreNote,
+    StoreNoteBlock, StoreNoteBlockKind, StoreNoteSpan, StoreRestoreReport, StoreSegmentSpan,
+    store_constants,
 };
 pub use versification::{
     MappingResult, MappingStatus, VerseMapRow, VerseMapRowKind, VersificationError,

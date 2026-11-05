@@ -668,6 +668,21 @@ impl ReadingLibrary {
         })
     }
 
+    /// Whether a segment of an edition is generated placeholder text (B074: no highlight is
+    /// stored on placeholder text, specs/23 §5). `None` when the edition, its chapter or the
+    /// segment is not known here (or a browser has not supplied the chunk yet).
+    #[must_use]
+    pub fn segment_is_placeholder(&self, resource_id: &str, segment_id: &str) -> Option<bool> {
+        let mut parts = segment_id.splitn(3, '.');
+        let key = format!("{}.{}", parts.next()?, parts.next()?);
+        let block = self.chapter_content(resource_id, &key).ok()?;
+        block
+            .verses
+            .iter()
+            .find(|v| v.segment_id == segment_id)
+            .map(|v| v.placeholder)
+    }
+
     /// Where a file pack's chapter chunk is, so a browser can fetch it before
     /// [`ReadingLibrary::chapter_content`]; `None` for a generated pack.
     pub fn chunk_for(

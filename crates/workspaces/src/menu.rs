@@ -1283,7 +1283,9 @@ mod tests {
         // Every command the menu may name is in the registry, appended after B076's.
         let ids: Vec<&str> = registry().iter().map(|c| c.id.as_str()).collect();
         let first = ids.iter().position(|id| *id == "search.text").unwrap();
-        assert_eq!(ids.last(), Some(&"note.remove_link"));
+        // B077's last, then B074's drag.
+        let last = ids.iter().position(|id| *id == "note.remove_link").unwrap();
+        assert_eq!(&ids[last + 1..], ["tab.move"]);
         assert_eq!(ids[first - 1], "tab.open_lexicon");
     }
 

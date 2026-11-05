@@ -37,6 +37,7 @@ pub mod navigation;
 pub mod palette;
 pub mod reading;
 pub mod shell;
+pub mod store;
 pub mod view;
 pub mod well;
 

@@ -1,0 +1,1687 @@
+{
+  "id": "user-store",
+  "kind": "user_store",
+  "description": "The user store of specs/24-persistence.md (B074): the shell-commands session worked on (a scroll into the next verse that carries its linked tab, a Greek word looked up, the pen chosen, a tab dragged into another column, column 1 resized, the text size raised, a workspace added) with notes in the stored block form, highlights over fixture verses (one refused on placeholder text) and ink pinned to verses; exported, the exact document; restored into a fresh shell, the same session, stream positions, tool and annotations, and the same bytes saved again. Then restores: a store from before B074's tab fields with the session's optional settings absent, a 1.0 workspace inside a store (migrated), a newer minor with unknown fields, a bad session beside good and bad notes, highlights and ink (set aside and reported, the shell's own session kept), a repeated note id, and documents that are not stores (empty, truncated, an array, another format, no version, a newer major), each refused whole with a typed error and the shell untouched. Last, the placeholder rule over the placeholder reading library: no highlight on placeholder text in any edition; fixture verses and unknown editions take one.",
+  "license": "CC0 (structure and expectations; synthetic notes, colours and strokes). No Bible text is stored: highlights are scalar offsets, notes quote nothing.",
+  "source": "specs/24-persistence.md (B074); the session of crates/conformance/fixtures/shell-commands.json; placeholder rules of specs/23 §5 over crates/conformance/src/reading.rs's library; ink strokes in the stroke form of schemas/ink-document.schema.json.",
+  "round_trip": {
+    "steps": [
+      {
+        "command": "tab.record_scroll",
+        "args": {
+          "tab_id": "t1",
+          "segment_id": "John.3.17",
+          "scalar": 9
+        }
+      },
+      {
+        "command": "column.focus",
+        "args": {
+          "column": 2
+        }
+      },
+      {
+        "command": "tab.open_lexicon",
+        "args": {
+          "text": "ἀγάπη"
+        }
+      },
+      {
+        "command": "tool.pen"
+      },
+      {
+        "command": "tab.move",
+        "args": {
+          "tab_id": "t2",
+          "column": 2,
+          "index": 1
+        }
+      },
+      {
+        "command": "column.resize",
+        "args": {
+          "column": 1,
+          "number": 0.3
+        }
+      },
+      {
+        "command": "view.text_size_up"
+      },
+      {
+        "command": "workspace.new",
+        "args": {
+          "text": "Greek"
+        }
+      },
+      {
+        "command": "workspace.switch",
+        "args": {
+          "workspace_id": "w1"
+        }
+      }
+    ],
+    "notes": [
+      {
+        "id": "fixture:note:1",
+        "blocks": [
+          {
+            "kind": "heading",
+            "spans": [
+              {
+                "text": "New birth "
+              },
+              {
+                "text": "Jn 3:3",
+                "link": "John.3.3"
+              }
+            ]
+          },
+          {
+            "kind": "paragraph",
+            "spans": [
+              {
+                "text": "Not by "
+              },
+              {
+                "text": "works",
+                "italic": true
+              },
+              {
+                "text": " but "
+              },
+              {
+                "text": "from above",
+                "bold": true
+              },
+              {
+                "text": "."
+              }
+            ]
+          },
+          {
+            "kind": "list_item",
+            "spans": [
+              {
+                "text": "Compare "
+              },
+              {
+                "text": "Jn 1:12–13",
+                "link": "John.1.12-John.1.13"
+              }
+            ]
+          },
+          {
+            "kind": "quote",
+            "spans": [
+              {
+                "text": "A fixture quote, not Scripture."
+              }
+            ]
+          },
+          {
+            "kind": "paragraph",
+            "spans": []
+          }
+        ]
+      },
+      {
+        "id": "n2",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "spans": [
+              {
+                "text": "Second note"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "highlights": [
+      {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.16",
+            "start": 20,
+            "end": 44
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.16",
+            "start": 100,
+            "end": 137
+          },
+          {
+            "segment_id": "John.3.17",
+            "start": 0,
+            "end": 12
+          }
+        ],
+        "color": "#4cc38a"
+      },
+      {
+        "resource_id": "sblgnt",
+        "content_revision": "sblgnt-2010",
+        "spans": [
+          {
+            "segment_id": "John.3.16",
+            "start": 0,
+            "end": 5
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      {
+        "resource_id": "wlc",
+        "content_revision": "oshb-wlc-4.20",
+        "spans": [
+          {
+            "segment_id": "Gen.1.1",
+            "start": 0,
+            "end": 3
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.1",
+            "start": 0,
+            "end": 10
+          }
+        ],
+        "color": "#F5D90A"
+      }
+    ],
+    "ink": [
+      {
+        "resource_id": "bsb",
+        "segment_id": "John.3.17",
+        "stroke": {
+          "id": "",
+          "tool": "pen",
+          "brush_version": "pf-1.2.3/pen-1",
+          "width": 4.0,
+          "color": "#1F6FEB",
+          "opacity": 1.0,
+          "points": [
+            {
+              "x": 12.04,
+              "y": -3.46,
+              "pressure": null,
+              "elapsed_ms": 0.0
+            },
+            {
+              "x": 40.5,
+              "y": 2.0,
+              "pressure": 0.5,
+              "elapsed_ms": 16.4
+            },
+            {
+              "x": 88.0,
+              "y": 6.25,
+              "pressure": 0.623,
+              "elapsed_ms": 33.0
+            }
+          ]
+        }
+      },
+      {
+        "resource_id": "wlc",
+        "segment_id": "Gen.1.2",
+        "stroke": {
+          "id": "",
+          "tool": "highlighter",
+          "brush_version": "pf-1.2.3/highlighter-1",
+          "width": 12.0,
+          "color": "#F5D90A",
+          "opacity": 0.35,
+          "points": [
+            {
+              "x": 300.0,
+              "y": 8.0,
+              "pressure": null,
+              "elapsed_ms": 0.0
+            },
+            {
+              "x": 120.0,
+              "y": 8.5,
+              "pressure": null,
+              "elapsed_ms": 40.0
+            }
+          ]
+        }
+      }
+    ],
+    "ids": [
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "placeholder_text",
+      "k5",
+      "k6"
+    ],
+    "session": {
+      "active": {
+        "workspace": "w1",
+        "column": 2,
+        "tab": "t2"
+      },
+      "workspaces": [
+        "w1: John study",
+        "w3: Greek",
+        "w2: Genesis"
+      ],
+      "tool": "pen",
+      "reading": {
+        "text_size_step": 1,
+        "line_spacing": 1.5,
+        "theme": "system"
+      },
+      "widths_permille": [
+        300,
+        467,
+        233
+      ],
+      "lexicon_languages": {
+        "t1": null,
+        "t2": null,
+        "t3": null,
+        "t4": "grc"
+      },
+      "anchors": {
+        "t1": "John.3.17@9",
+        "t3": "John.3.17@0",
+        "t2": null,
+        "t4": null
+      },
+      "references": {
+        "t1": "John.3.17",
+        "t3": "John.3.17",
+        "t2": "Rom.8.28",
+        "t4": "John.3.17"
+      }
+    },
+    "queries": {
+      "bsb John.3": [
+        [
+          "h1",
+          "h2"
+        ],
+        [
+          "k5"
+        ]
+      ],
+      "sblgnt John.3": [
+        [
+          "h3"
+        ],
+        []
+      ],
+      "wlc Gen.1": [
+        [
+          "h4"
+        ],
+        [
+          "k6"
+        ]
+      ],
+      "bsb John.4": [
+        [],
+        []
+      ],
+      "bsb John.31": [
+        [],
+        []
+      ]
+    },
+    "store": {
+      "core_api_version": "0.1.4",
+      "fixture_only": true,
+      "format": "openlogos-user-store",
+      "highlights": [
+        {
+          "color": "#F5D90A",
+          "content_revision": "bsb-2024",
+          "id": "h1",
+          "resource_id": "bsb",
+          "spans": [
+            {
+              "end": 44,
+              "segment_id": "John.3.16",
+              "start": 20
+            }
+          ]
+        },
+        {
+          "color": "#4CC38A",
+          "content_revision": "bsb-2024",
+          "id": "h2",
+          "resource_id": "bsb",
+          "spans": [
+            {
+              "end": 137,
+              "segment_id": "John.3.16",
+              "start": 100
+            },
+            {
+              "end": 12,
+              "segment_id": "John.3.17",
+              "start": 0
+            }
+          ]
+        },
+        {
+          "color": "#F5D90A",
+          "content_revision": "sblgnt-2010",
+          "id": "h3",
+          "resource_id": "sblgnt",
+          "spans": [
+            {
+              "end": 5,
+              "segment_id": "John.3.16",
+              "start": 0
+            }
+          ]
+        },
+        {
+          "color": "#F5D90A",
+          "content_revision": "oshb-wlc-4.20",
+          "id": "h4",
+          "resource_id": "wlc",
+          "spans": [
+            {
+              "end": 3,
+              "segment_id": "Gen.1.1",
+              "start": 0
+            }
+          ]
+        }
+      ],
+      "ink": [
+        {
+          "brush_version": "pf-1.2.3/pen-1",
+          "color": "#1F6FEB",
+          "id": "k5",
+          "opacity": 1.0,
+          "pressure": [
+            null,
+            50,
+            12
+          ],
+          "resource_id": "bsb",
+          "segment_id": "John.3.17",
+          "t": [
+            0,
+            16,
+            17
+          ],
+          "tool": "pen",
+          "width": 4.0,
+          "xy": [
+            120,
+            -35,
+            285,
+            55,
+            475,
+            43
+          ]
+        },
+        {
+          "brush_version": "pf-1.2.3/highlighter-1",
+          "color": "#F5D90A",
+          "id": "k6",
+          "opacity": 0.35,
+          "resource_id": "wlc",
+          "segment_id": "Gen.1.2",
+          "t": [
+            0,
+            40
+          ],
+          "tool": "highlighter",
+          "width": 12.0,
+          "xy": [
+            3000,
+            80,
+            -1800,
+            5
+          ]
+        }
+      ],
+      "next_serial": 6,
+      "notes": [
+        {
+          "blocks": [
+            {
+              "kind": "heading",
+              "spans": [
+                {
+                  "text": "New birth "
+                },
+                {
+                  "link": "John.3.3",
+                  "text": "Jn 3:3"
+                }
+              ]
+            },
+            {
+              "kind": "paragraph",
+              "spans": [
+                {
+                  "text": "Not by "
+                },
+                {
+                  "italic": true,
+                  "text": "works"
+                },
+                {
+                  "text": " but "
+                },
+                {
+                  "bold": true,
+                  "text": "from above"
+                },
+                {
+                  "text": "."
+                }
+              ]
+            },
+            {
+              "kind": "list_item",
+              "spans": [
+                {
+                  "text": "Compare "
+                },
+                {
+                  "link": "John.1.12-John.1.13",
+                  "text": "Jn 1:12–13"
+                }
+              ]
+            },
+            {
+              "kind": "quote",
+              "spans": [
+                {
+                  "text": "A fixture quote, not Scripture."
+                }
+              ]
+            },
+            {
+              "kind": "paragraph",
+              "spans": []
+            }
+          ],
+          "id": "fixture:note:1"
+        },
+        {
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "spans": [
+                {
+                  "text": "Second note"
+                }
+              ]
+            }
+          ],
+          "id": "n2"
+        }
+      ],
+      "schema_version": "1.0",
+      "session": {
+        "active_workspace_id": "w1",
+        "fixture_only": true,
+        "ink": {
+          "alternate_swatch": "#4CC38A",
+          "swatch": "#F5D90A",
+          "width": 4.0
+        },
+        "next_serial": 4,
+        "reading": {
+          "line_spacing": 1.5,
+          "text_size_step": 1,
+          "theme": "system"
+        },
+        "schema_version": "1.0",
+        "tool": "pen",
+        "workspace_ids": [
+          "w1",
+          "w3",
+          "w2"
+        ]
+      },
+      "workspaces": [
+        {
+          "active_column_id": "c2",
+          "columns": [
+            {
+              "id": "c1",
+              "shown_tab_id": "t1",
+              "tabs": [
+                {
+                  "content_id": "bsb",
+                  "content_revision": "0",
+                  "id": "t1",
+                  "kind": "reading",
+                  "link_group": "1",
+                  "pinned": false,
+                  "reference": "John.3.17",
+                  "scroll_anchor": {
+                    "scalar": 9,
+                    "segment_id": "John.3.17"
+                  }
+                }
+              ],
+              "width_fraction": 0.3
+            },
+            {
+              "id": "c2",
+              "shown_tab_id": "t2",
+              "tabs": [
+                {
+                  "content_id": "sblgnt",
+                  "content_revision": "0",
+                  "id": "t3",
+                  "kind": "reading",
+                  "link_group": "1",
+                  "pinned": false,
+                  "reference": "John.3.17",
+                  "scroll_anchor": {
+                    "scalar": 0,
+                    "segment_id": "John.3.17"
+                  }
+                },
+                {
+                  "content_id": "bsb",
+                  "content_revision": "0",
+                  "id": "t2",
+                  "kind": "reading",
+                  "link_group": null,
+                  "pinned": true,
+                  "reference": "Rom.8.28"
+                }
+              ],
+              "width_fraction": 0.46666666666666656
+            },
+            {
+              "id": "c3",
+              "shown_tab_id": "t4",
+              "tabs": [
+                {
+                  "content_id": "fixture:lexicon-1",
+                  "content_revision": "0",
+                  "id": "t4",
+                  "kind": "lexicon",
+                  "lexicon_language": "grc",
+                  "lexicon_word": "ἀγάπη",
+                  "link_group": null,
+                  "pinned": true,
+                  "reference": "John.3.17"
+                }
+              ],
+              "width_fraction": 0.23333333333333328
+            }
+          ],
+          "fixture_only": true,
+          "id": "w1",
+          "next_serial": 10,
+          "notes_dock": {
+            "note_id": "fixture:note:1",
+            "open": false
+          },
+          "schema_version": "2.0",
+          "title": "John study"
+        },
+        {
+          "active_column_id": "c2",
+          "columns": [
+            {
+              "id": "c2",
+              "shown_tab_id": "t1",
+              "tabs": [
+                {
+                  "content_id": "bsb",
+                  "content_revision": "0",
+                  "id": "t1",
+                  "kind": "reading",
+                  "link_group": null,
+                  "pinned": true,
+                  "reference": "Rom.8.28"
+                }
+              ],
+              "width_fraction": 1.0
+            }
+          ],
+          "fixture_only": true,
+          "id": "w3",
+          "next_serial": 3,
+          "notes_dock": {
+            "note_id": null,
+            "open": false
+          },
+          "schema_version": "2.0",
+          "title": "Greek"
+        },
+        {
+          "active_column_id": "c1",
+          "columns": [
+            {
+              "id": "c1",
+              "shown_tab_id": "t1",
+              "tabs": [
+                {
+                  "content_id": "wlc",
+                  "content_revision": "0",
+                  "id": "t1",
+                  "kind": "reading",
+                  "link_group": null,
+                  "pinned": true,
+                  "reference": "Gen.1.1"
+                }
+              ],
+              "width_fraction": 1.0
+            }
+          ],
+          "fixture_only": true,
+          "id": "w2",
+          "next_serial": 10,
+          "notes_dock": {
+            "note_id": null,
+            "open": false
+          },
+          "schema_version": "2.0",
+          "title": "Genesis"
+        }
+      ]
+    }
+  },
+  "restores": [
+    {
+      "name": "a store from before B074's fields",
+      "document": {
+        "format": "openlogos-user-store",
+        "schema_version": "1.0",
+        "fixture_only": true,
+        "core_api_version": "0.1.4",
+        "session": {
+          "schema_version": "1.0",
+          "fixture_only": true,
+          "workspace_ids": [
+            "w1"
+          ],
+          "active_workspace_id": "w1",
+          "next_serial": 3
+        },
+        "workspaces": [
+          {
+            "schema_version": "2.0",
+            "fixture_only": true,
+            "id": "w1",
+            "title": "John study",
+            "columns": [
+              {
+                "id": "c1",
+                "tabs": [
+                  {
+                    "id": "t1",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  },
+                  {
+                    "id": "t2",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "Rom.8.28",
+                    "link_group": null,
+                    "pinned": true
+                  }
+                ],
+                "shown_tab_id": "t1",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c2",
+                "tabs": [
+                  {
+                    "id": "t3",
+                    "kind": "reading",
+                    "content_id": "sblgnt",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t3",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c3",
+                "tabs": [
+                  {
+                    "id": "t4",
+                    "kind": "lexicon",
+                    "content_id": "fixture:lexicon-1",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": null,
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t4",
+                "width_fraction": 0.2
+              }
+            ],
+            "active_column_id": "c1",
+            "notes_dock": {
+              "note_id": "fixture:note:1",
+              "open": false
+            },
+            "next_serial": 10
+          }
+        ]
+      },
+      "expect": {
+        "error": null,
+        "schema_version": "1.0",
+        "session_restored": true,
+        "counts": [
+          1,
+          4,
+          0,
+          0,
+          0
+        ],
+        "issues": [],
+        "save_due": false,
+        "session": {
+          "active": {
+            "workspace": "w1",
+            "column": 1,
+            "tab": "t1"
+          },
+          "workspaces": [
+            "w1: John study"
+          ],
+          "tool": "select",
+          "reading": {
+            "text_size_step": 0,
+            "line_spacing": 1.5,
+            "theme": "system"
+          },
+          "lexicon_languages": {
+            "t1": null,
+            "t2": null,
+            "t3": null,
+            "t4": null
+          }
+        }
+      }
+    },
+    {
+      "name": "a 1.0 workspace inside a store is migrated",
+      "document": {
+        "format": "openlogos-user-store",
+        "schema_version": "1.0",
+        "fixture_only": true,
+        "core_api_version": "0.1.4",
+        "session": {
+          "schema_version": "1.0",
+          "fixture_only": true,
+          "workspace_ids": [
+            "fixture:workspace:1"
+          ],
+          "active_workspace_id": "fixture:workspace:1",
+          "tool": "eraser",
+          "next_serial": 1
+        },
+        "workspaces": [
+          {
+            "schema_version": "1.0",
+            "fixture_only": true,
+            "id": "fixture:workspace:1",
+            "title": "Three texts plus optional notes dock",
+            "panes": [
+              {
+                "id": "p1",
+                "kind": "reading",
+                "content_id": "fixture:edition-1",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "link_group": "A",
+                "pinned": false,
+                "width_fraction": 0.3333333333333333
+              },
+              {
+                "id": "p2",
+                "kind": "reading",
+                "content_id": "fixture:edition-2",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "link_group": "A",
+                "pinned": false,
+                "width_fraction": 0.3333333333333333
+              },
+              {
+                "id": "p3",
+                "kind": "reading",
+                "content_id": "fixture:edition-3",
+                "content_revision": "0",
+                "reference": "fixture:passage:1",
+                "link_group": null,
+                "pinned": true,
+                "width_fraction": 0.3333333333333333
+              }
+            ],
+            "notes_dock_id": "fixture:note:1",
+            "active_pane_id": "p1"
+          }
+        ]
+      },
+      "expect": {
+        "error": null,
+        "session_restored": true,
+        "counts": [
+          1,
+          3,
+          0,
+          0,
+          0
+        ],
+        "issues": [],
+        "session": {
+          "active": {
+            "workspace": "fixture:workspace:1",
+            "column": 1,
+            "tab": "p1"
+          },
+          "tool": "eraser",
+          "widths_permille": [
+            333,
+            333,
+            333
+          ]
+        }
+      }
+    },
+    {
+      "name": "a newer minor with fields this core does not know",
+      "document": {
+        "format": "openlogos-user-store",
+        "schema_version": "1.7",
+        "fixture_only": true,
+        "core_api_version": "0.1.4",
+        "session": {
+          "schema_version": "1.0",
+          "fixture_only": true,
+          "workspace_ids": [
+            "w1"
+          ],
+          "active_workspace_id": "w1",
+          "next_serial": 3
+        },
+        "workspaces": [
+          {
+            "schema_version": "2.0",
+            "fixture_only": true,
+            "id": "w1",
+            "title": "John study",
+            "columns": [
+              {
+                "id": "c1",
+                "tabs": [
+                  {
+                    "id": "t1",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  },
+                  {
+                    "id": "t2",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "Rom.8.28",
+                    "link_group": null,
+                    "pinned": true
+                  }
+                ],
+                "shown_tab_id": "t1",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c2",
+                "tabs": [
+                  {
+                    "id": "t3",
+                    "kind": "reading",
+                    "content_id": "sblgnt",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t3",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c3",
+                "tabs": [
+                  {
+                    "id": "t4",
+                    "kind": "lexicon",
+                    "content_id": "fixture:lexicon-1",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": null,
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t4",
+                "width_fraction": 0.2
+              }
+            ],
+            "active_column_id": "c1",
+            "notes_dock": {
+              "note_id": "fixture:note:1",
+              "open": false
+            },
+            "next_serial": 10
+          }
+        ],
+        "bookmarks": [
+          {
+            "id": "b1"
+          }
+        ],
+        "next_serial": 4,
+        "notes": [
+          {
+            "id": "n1",
+            "blocks": [
+              {
+                "kind": "paragraph",
+                "spans": [
+                  {
+                    "text": "kept"
+                  }
+                ]
+              }
+            ],
+            "pinned": true
+          }
+        ]
+      },
+      "expect": {
+        "error": null,
+        "schema_version": "1.7",
+        "session_restored": true,
+        "counts": [
+          1,
+          4,
+          1,
+          0,
+          0
+        ],
+        "issues": []
+      }
+    },
+    {
+      "name": "a bad session is set aside and the good notes kept",
+      "document": {
+        "format": "openlogos-user-store",
+        "schema_version": "1.0",
+        "fixture_only": true,
+        "core_api_version": "0.1.4",
+        "session": {
+          "schema_version": "1.0",
+          "fixture_only": true,
+          "workspace_ids": [
+            "w1"
+          ],
+          "active_workspace_id": "nowhere",
+          "next_serial": 3
+        },
+        "workspaces": [
+          {
+            "schema_version": "2.0",
+            "fixture_only": true,
+            "id": "w1",
+            "title": "John study",
+            "columns": [
+              {
+                "id": "c1",
+                "tabs": [
+                  {
+                    "id": "t1",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  },
+                  {
+                    "id": "t2",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "Rom.8.28",
+                    "link_group": null,
+                    "pinned": true
+                  }
+                ],
+                "shown_tab_id": "t1",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c2",
+                "tabs": [
+                  {
+                    "id": "t3",
+                    "kind": "reading",
+                    "content_id": "sblgnt",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t3",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c3",
+                "tabs": [
+                  {
+                    "id": "t4",
+                    "kind": "lexicon",
+                    "content_id": "fixture:lexicon-1",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": null,
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t4",
+                "width_fraction": 0.2
+              }
+            ],
+            "active_column_id": "c1",
+            "notes_dock": {
+              "note_id": "fixture:note:1",
+              "open": false
+            },
+            "next_serial": 10
+          }
+        ],
+        "next_serial": 9,
+        "notes": [
+          {
+            "id": "n1",
+            "blocks": []
+          },
+          {
+            "id": "n2",
+            "blocks": [
+              {
+                "kind": "paragraph",
+                "spans": [
+                  {
+                    "text": "x",
+                    "link": "not a passage"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "highlights": [
+          {
+            "id": "h1",
+            "resource_id": "bsb",
+            "content_revision": "bsb-2024",
+            "spans": [],
+            "color": "#F5D90A"
+          },
+          {
+            "id": "h2",
+            "resource_id": "bsb",
+            "content_revision": "bsb-2024",
+            "spans": [
+              {
+                "segment_id": "John.3.16",
+                "start": 0,
+                "end": 4
+              }
+            ],
+            "color": "yellow"
+          },
+          {
+            "id": "h3",
+            "resource_id": "bsb",
+            "content_revision": "bsb-2024",
+            "spans": [
+              {
+                "segment_id": "John.3.16",
+                "start": 0,
+                "end": 4
+              }
+            ],
+            "color": "#F5D90A"
+          }
+        ],
+        "ink": [
+          {
+            "id": "k4",
+            "resource_id": "bsb",
+            "segment_id": "John.3.16",
+            "tool": "pen",
+            "brush_version": "pf-1.2.3/pen-1",
+            "width": 4.0,
+            "color": "#000000",
+            "opacity": 1.0,
+            "xy": [
+              0,
+              0
+            ],
+            "t": [
+              0
+            ]
+          },
+          {
+            "id": "k5",
+            "resource_id": "bsb",
+            "segment_id": "John.3.16",
+            "tool": "pen",
+            "brush_version": "pf-1.2.3/pen-1",
+            "width": 4.0,
+            "color": "#000000",
+            "opacity": 1.0,
+            "xy": [
+              0,
+              0,
+              10,
+              10
+            ],
+            "t": [
+              0
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "error": null,
+        "session_restored": false,
+        "counts": [
+          2,
+          5,
+          1,
+          1,
+          0
+        ],
+        "issues": [
+          "session",
+          "note:n2",
+          "highlight:h1",
+          "highlight:h2",
+          "ink:k4",
+          "ink:k5"
+        ],
+        "save_due": true,
+        "session": {
+          "active": {
+            "workspace": "w1",
+            "column": 1,
+            "tab": "t1"
+          },
+          "workspaces": [
+            "w1: John study",
+            "w2: Genesis"
+          ]
+        }
+      }
+    },
+    {
+      "name": "a repeated note id",
+      "document": {
+        "format": "openlogos-user-store",
+        "schema_version": "1.0",
+        "fixture_only": true,
+        "core_api_version": "0.1.4",
+        "session": {
+          "schema_version": "1.0",
+          "fixture_only": true,
+          "workspace_ids": [
+            "w1"
+          ],
+          "active_workspace_id": "w1",
+          "next_serial": 3
+        },
+        "workspaces": [
+          {
+            "schema_version": "2.0",
+            "fixture_only": true,
+            "id": "w1",
+            "title": "John study",
+            "columns": [
+              {
+                "id": "c1",
+                "tabs": [
+                  {
+                    "id": "t1",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  },
+                  {
+                    "id": "t2",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "Rom.8.28",
+                    "link_group": null,
+                    "pinned": true
+                  }
+                ],
+                "shown_tab_id": "t1",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c2",
+                "tabs": [
+                  {
+                    "id": "t3",
+                    "kind": "reading",
+                    "content_id": "sblgnt",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t3",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c3",
+                "tabs": [
+                  {
+                    "id": "t4",
+                    "kind": "lexicon",
+                    "content_id": "fixture:lexicon-1",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": null,
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t4",
+                "width_fraction": 0.2
+              }
+            ],
+            "active_column_id": "c1",
+            "notes_dock": {
+              "note_id": "fixture:note:1",
+              "open": false
+            },
+            "next_serial": 10
+          }
+        ],
+        "notes": [
+          {
+            "id": "n1",
+            "blocks": []
+          },
+          {
+            "id": "n1",
+            "blocks": []
+          }
+        ]
+      },
+      "expect": {
+        "error": null,
+        "counts": [
+          1,
+          4,
+          1,
+          0,
+          0
+        ],
+        "issues": [
+          "note:n1"
+        ]
+      }
+    },
+    {
+      "name": "no file yet",
+      "input": "",
+      "expect": {
+        "error": "empty"
+      }
+    },
+    {
+      "name": "a truncated file",
+      "input": "{\"format\": \"openlogos-user-store\", \"schema_version\": \"1.0\", \"session\": {",
+      "expect": {
+        "error": "not_json"
+      }
+    },
+    {
+      "name": "an array",
+      "document": [
+        1,
+        2,
+        3
+      ],
+      "expect": {
+        "error": "not_a_store"
+      }
+    },
+    {
+      "name": "another format",
+      "document": {
+        "format": "openlogos-text-pack",
+        "schema_version": "1.0"
+      },
+      "expect": {
+        "error": "not_a_store"
+      }
+    },
+    {
+      "name": "no version",
+      "document": {
+        "format": "openlogos-user-store"
+      },
+      "expect": {
+        "error": "not_a_store"
+      }
+    },
+    {
+      "name": "a newer major",
+      "document": {
+        "format": "openlogos-user-store",
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "core_api_version": "0.1.4",
+        "session": {
+          "schema_version": "1.0",
+          "fixture_only": true,
+          "workspace_ids": [
+            "w1"
+          ],
+          "active_workspace_id": "w1",
+          "next_serial": 3
+        },
+        "workspaces": [
+          {
+            "schema_version": "2.0",
+            "fixture_only": true,
+            "id": "w1",
+            "title": "John study",
+            "columns": [
+              {
+                "id": "c1",
+                "tabs": [
+                  {
+                    "id": "t1",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  },
+                  {
+                    "id": "t2",
+                    "kind": "reading",
+                    "content_id": "bsb",
+                    "content_revision": "0",
+                    "reference": "Rom.8.28",
+                    "link_group": null,
+                    "pinned": true
+                  }
+                ],
+                "shown_tab_id": "t1",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c2",
+                "tabs": [
+                  {
+                    "id": "t3",
+                    "kind": "reading",
+                    "content_id": "sblgnt",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": "1",
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t3",
+                "width_fraction": 0.4
+              },
+              {
+                "id": "c3",
+                "tabs": [
+                  {
+                    "id": "t4",
+                    "kind": "lexicon",
+                    "content_id": "fixture:lexicon-1",
+                    "content_revision": "0",
+                    "reference": "John.3.16",
+                    "link_group": null,
+                    "pinned": false
+                  }
+                ],
+                "shown_tab_id": "t4",
+                "width_fraction": 0.2
+              }
+            ],
+            "active_column_id": "c1",
+            "notes_dock": {
+              "note_id": "fixture:note:1",
+              "open": false
+            },
+            "next_serial": 10
+          }
+        ]
+      },
+      "expect": {
+        "error": "unsupported_version"
+      }
+    }
+  ],
+  "placeholders": [
+    {
+      "name": "BSB John 3:1 is placeholder text",
+      "highlight": {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.1",
+            "start": 0,
+            "end": 10
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": "placeholder_text"
+    },
+    {
+      "name": "BSB John 3:16 is a fixture verse",
+      "highlight": {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.16",
+            "start": 0,
+            "end": 10
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": null
+    },
+    {
+      "name": "a selection from a fixture verse into a placeholder",
+      "highlight": {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.17",
+            "start": 50,
+            "end": 60
+          },
+          {
+            "segment_id": "John.3.18",
+            "start": 0,
+            "end": 8
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": "placeholder_text"
+    },
+    {
+      "name": "SBLGNT John 3:16 is a fixture verse",
+      "highlight": {
+        "resource_id": "sblgnt",
+        "content_revision": "sblgnt-2010",
+        "spans": [
+          {
+            "segment_id": "John.3.16",
+            "start": 0,
+            "end": 5
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": null
+    },
+    {
+      "name": "SBLGNT John 3:15 is placeholder text",
+      "highlight": {
+        "resource_id": "sblgnt",
+        "content_revision": "sblgnt-2010",
+        "spans": [
+          {
+            "segment_id": "John.3.15",
+            "start": 0,
+            "end": 5
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": "placeholder_text"
+    },
+    {
+      "name": "WLC Genesis 1:2 is a fixture verse",
+      "highlight": {
+        "resource_id": "wlc",
+        "content_revision": "oshb-wlc-4.20",
+        "spans": [
+          {
+            "segment_id": "Gen.1.2",
+            "start": 0,
+            "end": 5
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": null
+    },
+    {
+      "name": "WLC Genesis 1:3 is placeholder text",
+      "highlight": {
+        "resource_id": "wlc",
+        "content_revision": "oshb-wlc-4.20",
+        "spans": [
+          {
+            "segment_id": "Gen.1.3",
+            "start": 0,
+            "end": 5
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": "placeholder_text"
+    },
+    {
+      "name": "an edition the library does not have",
+      "highlight": {
+        "resource_id": "kjv",
+        "content_revision": "0",
+        "spans": [
+          {
+            "segment_id": "John.3.1",
+            "start": 0,
+            "end": 5
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": null
+    },
+    {
+      "name": "a colour that is not #RRGGBB",
+      "highlight": {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.16",
+            "start": 0,
+            "end": 5
+          }
+        ],
+        "color": "gold"
+      },
+      "error": "invalid_highlight"
+    },
+    {
+      "name": "an empty span",
+      "highlight": {
+        "resource_id": "bsb",
+        "content_revision": "bsb-2024",
+        "spans": [
+          {
+            "segment_id": "John.3.16",
+            "start": 5,
+            "end": 5
+          }
+        ],
+        "color": "#F5D90A"
+      },
+      "error": "invalid_highlight"
+    }
+  ]
+}

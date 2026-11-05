@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:user-store",
+  "title": "User store",
+  "description": "The one document a host saves so nothing is lost on quit (B074, specs/24-persistence.md): the session record (schemas/session.schema.json) and its workspaces at 2.0 (schemas/workspace-2.schema.json), with every tab's passage, scroll anchor, history and lexicon language, column widths, tool and reading settings; the notes in the stored block form; highlights as segment spans in scalar values with a colour; and ink strokes pinned to the verse they were drawn at. Written and read by crates/workspaces (store.rs); hosts only write the file. A reader accepts any 1.x (a later minor only adds fields) and refuses another major.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "openlogos-user-store"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "fixture_only": {
+      "type": "boolean"
+    },
+    "core_api_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "session": {
+      "$ref": "urn:open-bible-blueprint:session"
+    },
+    "workspaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "urn:open-bible-blueprint:workspace-2"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/note"
+      }
+    },
+    "highlights": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/highlight"
+      }
+    },
+    "ink": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ink"
+      }
+    },
+    "next_serial": {
+      "description": "The next serial for highlight and ink ids (h1, k2); ids are never reused within a store.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "format",
+    "schema_version",
+    "fixture_only",
+    "core_api_version",
+    "session",
+    "workspaces",
+    "notes",
+    "highlights",
+    "ink",
+    "next_serial"
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"
+    },
+    "note": {
+      "description": "A note: its id (the content_id of the notes tabs and the dock that show it) and its blocks. Hosts convert to and from their editors (HTML on the web, attributed strings on the Mac); the stored form is this, never host markup.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "paragraph",
+                  "heading",
+                  "list_item",
+                  "quote"
+                ]
+              },
+              "spans": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "bold": {
+                      "type": "boolean"
+                    },
+                    "italic": {
+                      "type": "boolean"
+                    },
+                    "link": {
+                      "description": "A passage link: the OSIS reference the span opens.",
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "spans"
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "blocks"
+      ]
+    },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "segment_id",
+        "start",
+        "end"
+      ]
+    },
+    "highlight": {
+      "description": "A highlight over one edition revision: scalar-value spans of its segments, in text order, and a #RRGGBB colour. No quoted text is stored. Never on placeholder text (specs/23 §5).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "resource_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spans": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/span"
+          }
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-F]{6}$"
+        }
+      },
+      "required": [
+        "id",
+        "resource_id",
+        "content_revision",
+        "spans",
+        "color"
+      ]
+    },
+    "ink": {
+      "description": "A stroke pinned to the verse it was drawn at (specs/24 §2.3), written compactly: the stroke's paint flat, its points as columns of fixed-point integers, each delta-encoded (the first value as is, then the change from the value before; a sensor column skips its nulls). xy interleaves x and y in tenths of a point, y measured from the top of segment_id and x from the text's leading edge, so the stroke moves with its verse; t is milliseconds since the first point (deltas never negative: time never runs backwards); pressure, altitude and azimuth are hundredths (of the 0..1 range and of a radian), present only when some point reported them, null where one did not. Every column has one value per point (xy two).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "resource_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "segment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "enum": [
+            "pen",
+            "highlighter"
+          ]
+        },
+        "brush_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "color": {
+          "type": "string",
+          "minLength": 1
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "xy": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 4
+        },
+        "t": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2
+        },
+        "pressure": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "altitude": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "azimuth": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "resource_id",
+        "segment_id",
+        "tool",
+        "brush_version",
+        "width",
+        "color",
+        "opacity",
+        "xy",
+        "t"
+      ]
+    }
+  }
+}
