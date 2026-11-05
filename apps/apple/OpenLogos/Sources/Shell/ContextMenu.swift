@@ -32,6 +32,8 @@ struct FindState: Equatable {
     let label: String
     let ranges: [NSRange]
     var index: Int
+    /// B078: the matches as segment spans, so they stay put while the window changes.
+    var spans: [[SegmentSpan]] = []
 }
 
 /// What a menu was opened on that a host command acts on later (the note link to remove).
@@ -61,7 +63,17 @@ extension ShellModel {
     /// The core's menu for a target, or nil (a toast says why) for a target that is gone.
     func contextMenu(for target: ShellContextTarget) -> ShellContextMenu? {
         do {
-            return try handle.contextMenu(target: target, context: commandContext)
+            var menu = try handle.contextMenu(target: target, context: commandContext)
+            // B078: placeholder text is never quoted, collected or studied (specs/23 §5).
+            if selectionIsPlaceholder, menu.targetKind == "word" || menu.targetKind == "selection" {
+                for s in menu.sections.indices {
+                    for i in menu.sections[s].items.indices where Self.placeholderBlocked.contains(menu.sections[s].items[i].commandId) {
+                        menu.sections[s].items[i].disabledText = Self.placeholderReason
+                        menu.sections[s].items[i].submenu = []
+                    }
+                }
+            }
+            return menu
         } catch ShellCommandError.InvalidDocument(let detail) {
             show(toast: detail)
         } catch {
@@ -145,6 +157,9 @@ extension ShellModel {
     func passageText(resourceID: String?, reference: String?) -> String {
         guard let resourceID, let reference else { return "" }
         let ends = reference.split(separator: "-", maxSplits: 1).map(String.init)
+        if hasStream(activeTab?.id ?? ""), let read = readingText(resourceID: resourceID, from: ends[0], to: ends.last ?? ends[0]) {
+            return read.text
+        }
         guard let verses = textSource.text(resourceID: resourceID, reference: ends[0])?.content.verses,
               let first = verses.firstIndex(where: { $0.id == ends[0] }) else { return "" }
         let last = ends.count == 2 ? verses.firstIndex(where: { $0.id == ends[1] }) ?? first : first
@@ -202,24 +217,44 @@ extension ShellModel {
         guard let tab = activeTab, let surface = surface(for: tab.id), let layout = surface.layout, !text.isEmpty else { return }
         let string = layout.display.string as NSString
         var ranges: [NSRange] = []
-        var search = NSRange(location: 0, length: string.length)
+        // B078: in a continuous window, the chapter of the word the menu was opened on; with no
+        // word (the palette, the keyboard) the chapter on the reading line.
+        let chapter = reference.map(ShellReference.chapter(of:)) ?? streamTopChapter(tab.id) ?? tab.reference.map(ShellReference.chapter(of:))
+        let block = layout.blocks.first { $0.chapterKey == chapter }
+        let scope = block?.range ?? NSRange(location: 0, length: string.length)
+        var search = scope
         while true {
             let found = string.range(of: text, options: [.caseInsensitive], range: search)
             guard found.location != NSNotFound else { break }
             ranges.append(found)
-            search = NSRange(location: NSMaxRange(found), length: string.length - NSMaxRange(found))
+            search = NSRange(location: NSMaxRange(found), length: NSMaxRange(scope) - NSMaxRange(found))
         }
-        let label = ShellReference.humanOsis(reference ?? tab.reference.map(ShellReference.chapter(of:)))
-        find = FindState(tabID: tab.id, text: text, label: label, ranges: ranges, index: 0)
+        let label = ShellReference.humanOsis(block?.chapterKey ?? reference ?? tab.reference.map(ShellReference.chapter(of:)))
+        find = FindState(tabID: tab.id, text: text, label: label, ranges: ranges, index: 0,
+                         spans: layout.blocks.isEmpty ? [] : ranges.map(layout.spans(ofDisplay:)))
         if let first = ranges.first { surface.reveal(display: first) }
         show(toast: ranges.isEmpty ? "No matches for “\(text)” in \(label)" : "\(ranges.count) \(ranges.count == 1 ? "match" : "matches") in \(label)")
+    }
+
+    /// The chapter at the top of a stream.
+    private func streamTopChapter(_ tabID: String) -> String? {
+        #if os(macOS)
+        return stream(for: tabID)?.topBlock?.chapterKey
+        #else
+        return nil
+        #endif
     }
 
     func findNext(_ delta: Int) {
         guard var state = find, !state.ranges.isEmpty else { return }
         state.index = (state.index + delta + state.ranges.count) % state.ranges.count
         find = state
-        surface(for: state.tabID)?.reveal(display: state.ranges[state.index])
+        let surface = surface(for: state.tabID)
+        if let spans = state.spans[safe: state.index], let range = surface?.layout?.displayRanges(of: spans).first {
+            surface?.reveal(display: range)
+        } else {
+            surface?.reveal(display: state.ranges[state.index])
+        }
         show(toast: "\(state.index + 1) of \(state.ranges.count) in \(state.label)")
     }
 
@@ -233,7 +268,7 @@ extension ShellModel {
         guard let find, find.tabID == tabID else { return own }
         let accent = PlatformColor(hex: theme.accent)
         return own + find.ranges.enumerated().map { index, range in
-            ReaderMark(id: "find-\(index)", ranges: [range], color: accent.withAlphaComponent(index == find.index ? 0.45 : 0.2))
+            ReaderMark(id: "find-\(index)", ranges: [range], color: accent.withAlphaComponent(index == find.index ? 0.45 : 0.2), spans: find.spans[safe: index] ?? [])
         }
     }
 

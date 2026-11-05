@@ -18,6 +18,10 @@
 //   -OPENLOGOS_MENU_SUBMENU Highlight   walks the open menu with ↓ and opens that row's submenu (→)
 //   -OPENLOGOS_MENU_CHOOSE "in this edition"  chooses the first row whose label contains it, instead of
 //                                       showing the menu
+//   -OPENLOGOS_TYPE "John 3:16"         B078: types a passage in the palette and runs its first row,
+//                                       after the columns have laid out (so the flash is on screen)
+//   -OPENLOGOS_SCROLL "1:900"           B078: scrolls column 1's reading stream by 900 pt, as the
+//                                       reader would (40 pt steps, each reported); negative is up
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
 //                                       (no screen-recording permission needed)
@@ -58,6 +62,28 @@ enum ShellLaunch {
         }
         // Let the columns lay out before anything reads the surfaces.
         try? await Task.sleep(nanoseconds: 600_000_000)
+        if let text = defaults.string(forKey: "OPENLOGOS_TYPE") {
+            model.focusPalette()
+            model.paletteText = text
+            model.paletteTextChanged()
+            model.runSelectedRow()
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        #if os(macOS)
+        for spec in (defaults.string(forKey: "OPENLOGOS_SCROLL") ?? "").split(separator: ",") {
+            let parts = spec.split(separator: ":").map(String.init)
+            guard parts.count == 2, let number = UInt32(parts[0]), var remaining = Double(parts[1]),
+                  let column = model.activeWorkspace.columns.first(where: { $0.number == number }),
+                  let stream = model.stream(for: column.shownTabId) else { continue }
+            while abs(remaining) > 0.5 {
+                let step = remaining > 0 ? min(40, remaining) : max(-40, remaining)
+                stream.scrollAsReader(by: step)
+                remaining -= step
+                try? await Task.sleep(nanoseconds: 8_000_000)
+            }
+            try? await Task.sleep(nanoseconds: 300_000_000)
+        }
+        #endif
         if defaults.bool(forKey: "OPENLOGOS_SHELL_DEMO") {
             demo(model)
         }

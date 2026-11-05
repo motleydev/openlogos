@@ -50,6 +50,9 @@ final class InkCanvasEngine {
 
     func syncLayers() {
         guard let sheet else { return }
+        sheet.engine = self
+        if clipTop != sheet.clipTop { clipTop = sheet.clipTop }
+        sheet.anchorStrokes()
         let wanted = sheet.liveStrokes
         let ids = Set(wanted.map(\.id))
         for (id, layer) in strokeLayers where !ids.contains(id) {
@@ -74,11 +77,43 @@ final class InkCanvasEngine {
             }
             layer.fillColor = Self.cgColor(stroke.color)
             layer.opacity = Float(stroke.opacity)
+            place(layer, stroke.id, sheet)
             // z-order follows the document: re-insert below the live layer in order.
             layer.removeFromSuperlayer()
             container.insertSublayer(layer, below: liveLayer)
         }
         CATransaction.commit()
+    }
+
+    /// B078: moves the strokes with the verses they were drawn on (layer transforms only).
+    func syncOffsets() {
+        guard let sheet else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for (id, layer) in strokeLayers { place(layer, id, sheet) }
+        CATransaction.commit()
+    }
+
+    /// The text above this y (the sticky header) is not drawn over by pinned strokes.
+    var clipTop: CGFloat = 0 {
+        didSet { layoutMask() }
+    }
+
+    func layoutMask() {
+        guard clipTop > 0 else { container.mask = nil; return }
+        let mask = container.mask ?? CALayer()
+        mask.backgroundColor = CGColor(gray: 0, alpha: 1)
+        mask.frame = CGRect(x: 0, y: clipTop, width: size.width, height: max(0, size.height - clipTop))
+        container.mask = mask
+    }
+
+    private func place(_ layer: CAShapeLayer, _ id: String, _ sheet: InkSheet) {
+        if let dy = sheet.displacement(of: id) {
+            layer.isHidden = false
+            layer.setAffineTransform(CGAffineTransform(translationX: 0, y: dy))
+        } else {
+            layer.isHidden = true
+        }
     }
 
     static func path(for stroke: InkStroke) -> CGPath {
@@ -381,6 +416,7 @@ final class InkCanvasNSView: NSView {
         super.layout()
         engine.container.frame = bounds
         engine.size = bounds.size
+        engine.layoutMask()
         engine.scale = window?.backingScaleFactor ?? 2
         if displayLink == nil {
             let link = displayLink(target: self, selector: #selector(tick(_:)))

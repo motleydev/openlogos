@@ -228,13 +228,16 @@ final class ContextMenuTests: XCTestCase {
         spin()
         model.run("nav.navigate", args: ShellCommandArgs(column: 2, reference: "John.3.17"))
         let menu = try self.menu(try rightClick("loved", in: "t1", model), in: "t1", model)
+        // B078: revealing the word scrolled t1, and its group (column 2) followed.
+        model.refresh()
+        let before = model.activeWorkspace.columns[1].tabs.first?.reference
         try choose("Compare in SBLGNT", in: menu)
         let column2 = model.activeWorkspace.columns[1]
         let shown = try XCTUnwrap(column2.tabs.first { $0.id == column2.shownTabId })
         XCTAssertEqual([shown.contentId, shown.reference], ["sblgnt", "John.3.16"], "column 2 shows SBLGNT at the word's verse")
         XCTAssertEqual(model.activeWorkspace.activeColumnNumber, 1, "focus stays on the source")
         model.run("edit.undo")
-        XCTAssertEqual(model.activeWorkspace.columns[1].tabs.first?.reference, "John.3.17", "undone")
+        XCTAssertEqual(model.activeWorkspace.columns[1].tabs.first?.reference, before, "undone")
 
         // From the Greek in column 2: BSB opens beside it, in column 3.
         model.run("nav.navigate", args: ShellCommandArgs(column: 2, reference: "John.3.16"))

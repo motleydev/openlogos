@@ -124,7 +124,7 @@ struct TabStrip: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 0) {
                         ForEach(column.tabs, id: \.id) { tab in
-                            TabLabel(model: model, column: column, tab: tab, shown: tab.id == column.shownTabId)
+                            TabLabel(model: model, live: model.liveLabels, column: column, tab: tab, shown: tab.id == column.shownTabId)
                         }
                     }
                     // B077: the strip's empty area is inside the scroll view, so its catcher is too.
@@ -166,13 +166,15 @@ struct BackgroundMenu: View {
 
 struct TabLabel: View {
     @ObservedObject var model: ShellModel
+    /// B078: the labels a scroll moved, ahead of the session (refreshed when scrolling stops).
+    @ObservedObject var live: ReadingLabels
     let column: ShellColumn
     let tab: ShellTab
     let shown: Bool
     @State private var hovering = false
 
     var body: some View {
-        let label = TabTitle.label(tab)
+        let label = TabTitle.label(tab, live: live.byTab[tab.id])
         HStack(spacing: ShellTokens.Spacing.xs) {
             Text(label)
                 .font(.system(size: ShellTokens.tabLabelSize, weight: shown ? .semibold : .regular))
@@ -217,8 +219,8 @@ struct TabLabel: View {
 enum TabTitle {
     /// `BSB Jn 3`, from the core's tab view (registered short name and the chapter's short
     /// form); a tab with no passage shows its resource alone.
-    static func label(_ tab: ShellTab) -> String {
-        tab.chapterLabel.map { "\(tab.resourceTitle) \($0)" } ?? tab.resourceTitle
+    static func label(_ tab: ShellTab, live: ReadingLabels.Live? = nil) -> String {
+        (live?.chapterLabel ?? tab.chapterLabel).map { "\(tab.resourceTitle) \($0)" } ?? tab.resourceTitle
     }
 
     /// `Group 1`, `Pinned`, `Follows`.
@@ -239,8 +241,20 @@ struct IdentityRow: View {
     let isActive: Bool
 
     var body: some View {
+        IdentityRowContent(model: model, live: model.liveLabels, column: column, isActive: isActive)
+    }
+}
+
+private struct IdentityRowContent: View {
+    @ObservedObject var model: ShellModel
+    @ObservedObject var live: ReadingLabels
+    let column: ShellColumn
+    let isActive: Bool
+
+    var body: some View {
         let tab = column.tabs.first { $0.id == column.shownTabId }
         let resource = tab.map { model.textSource.resource($0.contentId) }
+        let reference = tab.flatMap { live.byTab[$0.id]?.reference } ?? tab?.reference
         HStack(spacing: ShellTokens.Spacing.s) {
             ColumnBadge(number: column.number, active: isActive, theme: model.theme)
             Text(resource?.name ?? "")
@@ -248,7 +262,7 @@ struct IdentityRow: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .layoutPriority(0)
-            Text(ShellReference.human(tab?.reference))
+            Text(ShellReference.humanOsis(reference))
                 .font(ShellTokens.chromeFont)
                 .foregroundStyle(model.theme.chromeColor)
                 .lineLimit(1)
@@ -268,7 +282,7 @@ struct IdentityRow: View {
         .frame(height: ShellTokens.identityRowHeight)
         .shellContextMenu("column-\(column.number)", { .column(column: column.number) }, model: model)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Column \(column.number), \(resource?.name ?? ""), \(ShellReference.human(tab?.reference)), \(tab.map(TabTitle.linkState) ?? "")\(isActive ? ", active" : "")")
+        .accessibilityLabel("Column \(column.number), \(resource?.name ?? ""), \(ShellReference.humanOsis(reference)), \(tab.map(TabTitle.linkState) ?? "")\(isActive ? ", active" : "")")
         .accessibilityIdentifier("shell-identity-\(column.number)")
     }
 }
@@ -354,8 +368,11 @@ struct TabBody: View {
             ZStack {
                 #if os(macOS)
                 let isNote = tab.kind == "notes"
+                // B078: a reading tab is its edition's stream of chapters.
+                let continuous = tab.kind == "reading" && tab.reference != nil
                 #else
                 let isNote = false
+                let continuous = false
                 #endif
                 if isNote {
                     #if os(macOS)
@@ -365,6 +382,14 @@ struct TabBody: View {
                     #endif
                 } else if tab.kind == "lexicon" {
                     LexiconView(model: model, tab: tab)
+                } else if let reason = model.readingError(for: tab) {
+                    NotInEditionView(model: model, resource: model.textSource.resource(tab.contentId), tab: tab, reason: reason)
+                } else if continuous {
+                    #if os(macOS)
+                    ContinuousReaderView(model: model, tab: tab, column: column, horizontalPadding: padding)
+                        .id("\(tab.id)|\(tab.contentId)")
+                        .accessibilityLabel("\(model.textSource.resource(tab.contentId).name), \(ShellReference.human(tab.reference))")
+                    #endif
                 } else if let text = model.text(for: tab) {
                     ReaderTextView(
                         paneID: tab.id,
@@ -404,6 +429,36 @@ struct TabBody: View {
             .padding(.leading, leadingInset)
         }
         .background(BackgroundMenu(model: model, key: "background-\(column.number)", column: column.number))
+    }
+}
+
+/// specs/21's not-in-this-edition state (B078): the tab keeps its passage and says, in the
+/// core's words, why its edition has no text for it; never another edition's text.
+struct NotInEditionView: View {
+    @ObservedObject var model: ShellModel
+    let resource: ResourceInfo
+    let tab: ShellTab
+    let reason: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ShellTokens.Spacing.s) {
+            Label("\(resource.name) · \(ShellReference.humanOsis(tab.reference))", systemImage: "book.closed")
+                .font(ShellTokens.chromeFont.weight(.semibold))
+            Text(reason.hasSuffix(".") ? reason : reason + ".")
+                .font(ShellTokens.chromeFont)
+                .foregroundStyle(model.theme.chromeColor)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: ShellTokens.Spacing.s) {
+                Button("Choose another…") { model.focusPalette() }
+                Button("Close tab") { model.closeTab(tab.id) }
+            }
+            .controlSize(.small)
+            .padding(.top, ShellTokens.Spacing.xs)
+        }
+        .padding(ShellTokens.Spacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("shell-not-in-edition")
     }
 }
 

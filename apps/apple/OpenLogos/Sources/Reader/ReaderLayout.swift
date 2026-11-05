@@ -158,9 +158,14 @@ struct ReaderTypography {
         )
     }
 
-    private static func serif(size: CGFloat) -> PlatformFont {
-        let base = PlatformFont.systemFont(ofSize: size)
-        guard let descriptor = base.fontDescriptor.withDesign(.serif) else { return base }
+    static func serif(size: CGFloat, weight: PlatformFont.Weight = .regular, italic: Bool = false) -> PlatformFont {
+        let base = PlatformFont.systemFont(ofSize: size, weight: weight)
+        guard var descriptor = base.fontDescriptor.withDesign(.serif) else { return base }
+        #if canImport(UIKit)
+        if italic { descriptor = descriptor.withSymbolicTraits(descriptor.symbolicTraits.union(.traitItalic)) ?? descriptor }
+        #else
+        if italic { descriptor = descriptor.withSymbolicTraits(descriptor.symbolicTraits.union(.italic)) }
+        #endif
         #if canImport(UIKit)
         return PlatformFont(descriptor: descriptor, size: size)
         #else
@@ -212,6 +217,13 @@ struct ReaderLayout {
     let segmentTexts: [String: String]
     /// Display ranges of the verse markers in order, with the segment each introduces.
     let markers: [(segmentId: String, range: NSRange)]
+    /// B078: the chapter blocks of a continuous reading window, in display order (empty for
+    /// one passage), the segments in document order, each verse's display range (marker and
+    /// text) and the segments that are placeholder text.
+    var blocks: [ReaderBlockSpan] = []
+    var segmentOrder: [String] = []
+    var verseRanges: [String: NSRange] = [:]
+    var placeholderSegments: Set<String> = []
 
     init(content: ReaderContent, typography: ReaderTypography = .current()) {
         self.content = content
