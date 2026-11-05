@@ -1493,12 +1493,14 @@
       "acceptance": [
         "BSB, SBLGNT and WLC/OSHB from the NAS artifacts packed by the B064 engine into a local preview pack outside the repository, with chapter text and FTS5 search, manifest hashes checked against the approved rights records",
         "Text-search query time over the three editions measured against the 50 ms budget of specs/22 §7 on web (wasm) and Mac",
-        "No corpus bytes committed; the pack builds from one command and is documented"
+        "No corpus bytes committed; the pack builds from one command and is documented",
+        "Chapter text written in the B078 text pack format (specs/23 §4, schemas/text-pack.schema.json) with PackWriter, one pack per edition, so the reading surface installs it in place of the placeholder editions without host changes"
       ],
       "spec_paths": [
         "specs/22-workspace-shell.md",
         "specs/19-search-and-retrieval.md",
-        "specs/10-sources.md"
+        "specs/10-sources.md",
+        "specs/23-continuous-reading.md"
       ],
       "initial_status": "blocked",
       "human_gate": false
@@ -1566,6 +1568,31 @@
       "spec_paths": [
         "specs/22-workspace-shell.md",
         "specs/16-design-guide.md",
+        "specs/21-reading-interactions.md"
+      ],
+      "initial_status": "blocked",
+      "human_gate": false
+    },
+    {
+      "id": "B078",
+      "phase": "P1",
+      "owner_role": "client-engineer",
+      "title": "Continuous reading: a typed passage opens Scripture in context, one scroll from Genesis to Revelation",
+      "depends_on": [
+        "B076",
+        "B077",
+        "B064"
+      ],
+      "acceptance": [
+        "Canon and versification table in the core (chapters and verses per book in the English eng and Hebrew org schemes, the eng-org rows), generated from a documented public structural table with its source pinned; a reading stream per edition with locate (ranges, chapters, books, errors), chapter neighbours across books and chapter content, exposed through UniFFI and wasm-bindgen with conformance cases run by all hosts",
+        "A TextPack interface with a generated placeholder edition (clearly marked placeholder text in each edition's script, fixture verses overlaid) and a documented chapter-chunked file pack format with per-chunk SHA-256, readable from disk natively and by fetch in a browser, with fixture packs and a reader; B071 writes the format",
+        "The tab's reference follows the verse at the top of the viewport without history entries; linked and following tabs follow through versification with their mapped references in the apply result; a navigation keeps the typed verses marked until the next one",
+        "Web shell and Mac app read continuously across chapters and books (virtualized chapter blocks, prepend without a jump, sticky chapter header, flash of the typed verses, linked scroll), with screenshots",
+        "locate, chapter content and neighbours measured in the core against the specs/22 §7 open-chapter budget"
+      ],
+      "spec_paths": [
+        "specs/23-continuous-reading.md",
+        "specs/22-workspace-shell.md",
         "specs/21-reading-interactions.md"
       ],
       "initial_status": "blocked",

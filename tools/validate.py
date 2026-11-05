@@ -345,7 +345,7 @@ def check_report(report):
 
 def check_fixtures():
     # Conformance fixtures: id equals file name, kind known, description and license present.
-    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands','tool_well','context_menu'}
+    kinds={'text','versification','references','reanchor','lineage','alignment','work_citations','section_maps','workspace_layout','workspace_migration','note_authority','sync-merge','shell_commands','tool_well','context_menu','reading'}
     count=0
     for path in sorted((R/'crates/conformance/fixtures').glob('*.json')):
         f=load('crates/conformance/fixtures/'+path.name)
@@ -401,6 +401,28 @@ def check_sources_pins(sources):
             if rec.get('source_id')!=s['id']: raise ValueError(f'{s["id"]}: pinned rights record {rp} names another source')
             if rec['acquisition']['commit']!=pin['commit'] and pin['commit'] is not None:
                 raise ValueError(f'{s["id"]}: pin commit disagrees with {rp}')
+# B078: a text pack's manifest binds every chapter chunk by SHA-256, in reading order.
+def check_text_pack(directory):
+    manifest=load(directory+'/manifest.json')
+    seen=set()
+    for book in manifest['books']:
+        if book['book'] in seen: raise ValueError(f'{directory}: {book["book"]} listed twice')
+        seen.add(book['book'])
+        last=0
+        for c in book['chapters']:
+            if c['chapter']<=last or c['first_verse']>c['last_verse']: raise ValueError(f'{directory}: {book["book"]}.{c["chapter"]} out of order')
+            last=c['chapter']
+            safe_path(c['path'])
+            data=(R/directory/c['path']).read_bytes()
+            start=c.get('offset',0)
+            chunk=data[start:start+c['length']] if 'offset' in c else data
+            if len(chunk)!=c['length'] or hashlib.sha256(chunk).hexdigest()!=c['sha256']:
+                raise ValueError(f'{directory}: {c["path"]} does not match its length and hash')
+            parsed=json.loads(chunk)
+            if parsed['chapter_key']!=f'{book["book"]}.{c["chapter"]}' or parsed['resource_id']!=manifest['resource_id']:
+                raise ValueError(f'{directory}: {c["path"]} holds another chapter')
+    return manifest
+
 def check_fixture_sources(fixture, label):
     text=' '.join(str(fixture.get(k,'')) for k in ('license','source','description'))
     for term in FIXTURE_TEXT_DENY:
@@ -417,6 +439,9 @@ def main():
         ('rights-record','examples/archive/rights-record-1.0.json'),
         ('research-provider-policy','specs/research-provider-policy.json'),
         ('workspace-2','examples/workspace.json'),
+        ('text-pack','crates/conformance/fixtures/packs/bsb/manifest.json'),
+        ('text-pack','crates/conformance/fixtures/packs/sblgnt/manifest.json'),
+        ('text-pack','crates/conformance/fixtures/packs/wlc/manifest.json'),
         ('session','examples/session.json'),
         ('workspace','examples/archive/workspace-1.1.json'),
         ('workspace','examples/archive/workspace-1.0.json'),
@@ -598,6 +623,12 @@ def main():
     anchor=load('examples/anchor.json')
     assert anchor['range']['start']<=anchor['range']['end'] and anchor['quote']['exact']=='loved the world'
     fixtures=check_fixtures()
+    for pack in ('bsb','sblgnt','wlc'):
+        check_text_pack('crates/conformance/fixtures/packs/'+pack)
+    pack=copy.deepcopy(load('crates/conformance/fixtures/packs/bsb/manifest.json')); pack['books'][0]['chapters'][0]['path']='../outside.json'
+    expect_rejected(lambda:validate('text-pack',pack),'text pack chunk path outside the pack')
+    pack=copy.deepcopy(load('crates/conformance/fixtures/packs/bsb/manifest.json')); pack['format_version']='2.0'
+    expect_rejected(lambda:validate('text-pack',pack),'text pack of another major version')
     old_manifest=copy.deepcopy(load('examples/archive/package-manifest-1.0.json')); old_manifest['core_api_version']=core_api_version()
     expect_rejected(lambda:validate('package-manifest',old_manifest),'1.0 manifest with 1.1 fields')
     new_manifest=copy.deepcopy(manifest); del new_manifest['edition_revisions']

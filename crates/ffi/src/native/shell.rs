@@ -15,6 +15,10 @@
 //! right-clicked) returns a [`ShellContextMenu`]: the focus change to apply first, the context
 //! to dispatch rows under, and the sections. A submenu is one level deep
 //! ([`ShellContextMenuSubitem`]), as the core builds it.
+//!
+//! B078 adds continuous reading: `set_resource_schemes`, `ShellOutcome.positions`
+//! ([`ShellTabPosition`]: every tab a navigation or a scroll moved, followers with their
+//! mapped references) and `ShellTab.highlight_range`.
 
 use std::sync::{Arc, Mutex};
 
@@ -29,6 +33,7 @@ use openlogos_workspaces::palette::{
     ColumnTarget, PaletteContext, PaletteIndex, PaletteItem, PaletteMode, PaletteSection,
     TextProvider, palette_query_indexed,
 };
+use openlogos_workspaces::reading::TabPosition;
 use openlogos_workspaces::shell::{Session, SessionRecord};
 use openlogos_workspaces::view::TabView;
 use openlogos_workspaces::well::ToolWell;
@@ -131,6 +136,8 @@ pub struct ShellTab {
     pub can_go_forward: bool,
     /// The word a Lexicon tab looks up (B076, `tab.open_lexicon`).
     pub lexicon_word: Option<String>,
+    /// The verses the last navigation named, OSIS, to mark until the next one (B078).
+    pub highlight_range: Option<String>,
 }
 
 /// One column; `number` is its position, 1-based.
@@ -400,10 +407,55 @@ pub struct ShellOutcome {
     pub handled: bool,
     /// Whether it went on the undo stack.
     pub recorded: bool,
-    /// Tabs that followed a navigation, to remap through the host's reference mapping.
+    /// Tabs that followed a navigation.
     pub followed_tab_ids: Vec<String>,
+    /// Tabs whose passage moved, driver first (B078): relabel each, scroll each follower.
+    pub positions: Vec<ShellTabPosition>,
     /// The revision after it.
     pub revision: u64,
+}
+
+/// Where a tab is after a command moved it (`reading::TabPosition`, B078).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ShellTabPosition {
+    /// The workspace.
+    pub workspace_id: String,
+    /// The tab.
+    pub tab_id: String,
+    /// Whether it drove the move (`false`: it followed).
+    pub driver: bool,
+    /// Whether the move came from scrolling: relabel in place, scroll a follower without
+    /// rebuilding it.
+    pub scrolled: bool,
+    /// Its reference now.
+    pub reference: String,
+    /// The segment to bring to the top, if the reference names a verse.
+    pub segment_id: Option<String>,
+    /// The identity row's label (`Jn 3:16`).
+    pub reference_label: Option<String>,
+    /// The tab strip's label (`Jn 3`).
+    pub chapter_label: Option<String>,
+    /// The verses marked on it.
+    pub highlight_range: Option<String>,
+    /// `same`, `unregistered`, `exact`, `partial`, `nearest` or `unmapped`.
+    pub mapping: String,
+}
+
+impl From<TabPosition> for ShellTabPosition {
+    fn from(p: TabPosition) -> Self {
+        ShellTabPosition {
+            mapping: name_of(&p.mapping),
+            workspace_id: p.workspace_id,
+            tab_id: p.tab_id,
+            driver: p.driver,
+            scrolled: p.scrolled,
+            reference: p.reference,
+            segment_id: p.segment_id,
+            reference_label: p.reference_label,
+            chapter_label: p.chapter_label,
+            highlight_range: p.highlight_range,
+        }
+    }
 }
 
 impl From<Outcome> for ShellOutcome {
@@ -413,6 +465,7 @@ impl From<Outcome> for ShellOutcome {
             handled: o.handled,
             recorded: o.recorded,
             followed_tab_ids: o.effects.followed_tab_ids,
+            positions: o.effects.positions.into_iter().map(Into::into).collect(),
             revision: o.revision,
         }
     }
@@ -929,6 +982,7 @@ fn view(shell: &Shell) -> ShellSession {
         can_go_back: t.can_go_back,
         can_go_forward: t.can_go_forward,
         lexicon_word: t.lexicon_word,
+        highlight_range: t.highlight_range,
     };
     ShellSession {
         workspaces: v
@@ -1069,6 +1123,15 @@ impl ShellHandle {
         self.lock()
             .shell
             .set_resource_languages(languages.into_iter().collect());
+    }
+
+    /// Registers resource versification schemes (`bsb` → `eng`, `wlc` → `org`; B078): linked
+    /// tabs follow through them, and `positions` carries each follower's mapped reference.
+    /// `ReadingHandle.schemes()` gives the map for the installed editions.
+    pub fn set_resource_schemes(&self, schemes: std::collections::HashMap<String, String>) {
+        self.lock()
+            .shell
+            .set_resource_schemes(schemes.into_iter().collect());
     }
 
     /// The tool well for what has focus: its context, the stored and effective tool, and

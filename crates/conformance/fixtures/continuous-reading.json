@@ -1,0 +1,1792 @@
+{
+  "id": "continuous-reading",
+  "kind": "reading",
+  "description": "Continuous reading (B078, specs/23): locating typed passages (verse ranges, ranges across chapters, whole chapters, titled Psalms, whole books, one-chapter books, Hebrew chapter numbering, and the errors for verses, chapters and books an edition does not have), chapter neighbours across book and testament boundaries, chapter blocks of the placeholder editions with their headings, placeholder flags, Psalm superscriptions, poetry and the text fixtures overlaid, segment references, the canon table's English/Hebrew numbering (and, automatically, agreement with the joel-malachi and psalm-9-10 fixtures), the shell following the reading position (record_scroll moves the tab's passage and its linked tabs through versification without history, navigation marks the typed verses and maps followers), and the text pack reader over the three fixture packs under fixtures/packs, including a browser's fetch-and-supply path and a tampered chunk.",
+  "license": "CC0 (structure, placeholder text and expectations). Verse text comes from the text fixtures and keeps their licences: BSB public domain (CC0), SBLGNT CC BY 4.0, WLC public domain with OSHB markup CC BY 4.0. The canon table is derived from S51 (CC BY-SA 4.0).",
+  "source": "Canon structure: S51 Copenhagen Alliance versification mappings (Paratext eng and org) at 519af776ab65d89a51e37f750779250f940459ef, generated into crates/core/src/canon/data.rs by tools/gen_canon.py. Placeholder rules: specs/23-continuous-reading.md. Pack files: crates/conformance/src/reading.rs fixture_packs.",
+  "resource_schemes": {
+    "bsb": "eng",
+    "sblgnt": "org",
+    "wlc": "org"
+  },
+  "session": {
+    "schema_version": "1.0",
+    "fixture_only": true,
+    "workspaces": [
+      {
+        "schema_version": "2.0",
+        "fixture_only": true,
+        "id": "w1",
+        "title": "Reading",
+        "columns": [
+          {
+            "id": "c1",
+            "tabs": [
+              {
+                "id": "t1",
+                "kind": "reading",
+                "content_id": "bsb",
+                "content_revision": "0",
+                "reference": "Joel.2.28",
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t1",
+            "width_fraction": 0.25
+          },
+          {
+            "id": "c2",
+            "tabs": [
+              {
+                "id": "t2",
+                "kind": "reading",
+                "content_id": "wlc",
+                "content_revision": "0",
+                "reference": "Joel.3.1",
+                "link_group": "1",
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t2",
+            "width_fraction": 0.25
+          },
+          {
+            "id": "c3",
+            "tabs": [
+              {
+                "id": "t3",
+                "kind": "reading",
+                "content_id": "sblgnt",
+                "content_revision": "0",
+                "reference": "Matt.1.1",
+                "link_group": null,
+                "pinned": false
+              }
+            ],
+            "shown_tab_id": "t3",
+            "width_fraction": 0.25
+          },
+          {
+            "id": "c4",
+            "tabs": [
+              {
+                "id": "t4",
+                "kind": "reading",
+                "content_id": "bsb",
+                "content_revision": "0",
+                "reference": "Rom.8.28",
+                "link_group": null,
+                "pinned": true
+              }
+            ],
+            "shown_tab_id": "t4",
+            "width_fraction": 0.25
+          }
+        ],
+        "active_column_id": "c1",
+        "notes_dock": {
+          "note_id": null,
+          "open": false
+        },
+        "next_serial": 10
+      }
+    ],
+    "active_workspace_id": "w1",
+    "tool": "select",
+    "next_serial": 2
+  },
+  "locate": [
+    {
+      "name": "a verse range",
+      "resource_id": "bsb",
+      "input": "John 3:16-18",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "John.3",
+        "segment_id": "John.3.16",
+        "reference": "John.3.16-John.3.18",
+        "verse_start": "John.3.16",
+        "verse_end": "John.3.18",
+        "highlight_range": "John.3.16-John.3.18",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "one verse in OSIS",
+      "resource_id": "bsb",
+      "input": "John.3.16",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "John.3",
+        "segment_id": "John.3.16",
+        "reference": "John.3.16",
+        "verse_start": "John.3.16",
+        "verse_end": "John.3.16",
+        "highlight_range": "John.3.16",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "a range across chapters",
+      "resource_id": "bsb",
+      "input": "Jn 3:36–4:2",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "John.3",
+        "segment_id": "John.3.36",
+        "reference": "John.3.36-John.4.2",
+        "verse_start": "John.3.36",
+        "verse_end": "John.4.2",
+        "highlight_range": "John.3.36-John.4.2",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "the first of several ranges",
+      "resource_id": "bsb",
+      "input": "Rom 8:28, 31",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Rom.8",
+        "segment_id": "Rom.8.28",
+        "reference": "Rom.8.28",
+        "verse_start": "Rom.8.28",
+        "verse_end": "Rom.8.28",
+        "highlight_range": "Rom.8.28",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "a whole chapter",
+      "resource_id": "bsb",
+      "input": "Ps 23",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Ps.23",
+        "segment_id": "Ps.23.1",
+        "reference": "Ps.23",
+        "verse_start": "Ps.23.1",
+        "verse_end": "Ps.23.6",
+        "highlight_range": null,
+        "granularity": "chapter"
+      }
+    },
+    {
+      "name": "a titled psalm opens at its title",
+      "resource_id": "bsb",
+      "input": "Psalm 3",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Ps.3",
+        "segment_id": "Ps.3.0",
+        "reference": "Ps.3",
+        "verse_start": "Ps.3.0",
+        "verse_end": "Ps.3.8",
+        "highlight_range": null,
+        "granularity": "chapter"
+      }
+    },
+    {
+      "name": "a psalm title verse",
+      "resource_id": "bsb",
+      "input": "Ps 3:0",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Ps.3",
+        "segment_id": "Ps.3.0",
+        "reference": "Ps.3.0",
+        "verse_start": "Ps.3.0",
+        "verse_end": "Ps.3.0",
+        "highlight_range": "Ps.3.0",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "a chapter range opens its first chapter",
+      "resource_id": "bsb",
+      "input": "Gen 1-3",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Gen.1",
+        "segment_id": "Gen.1.1",
+        "reference": "Gen.1-Gen.3",
+        "verse_start": "Gen.1.1",
+        "verse_end": "Gen.3.24",
+        "highlight_range": null,
+        "granularity": "chapter"
+      }
+    },
+    {
+      "name": "a whole book opens at its first verse",
+      "resource_id": "bsb",
+      "input": "Revelation",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Rev.1",
+        "segment_id": "Rev.1.1",
+        "reference": "Rev",
+        "verse_start": "Rev.1.1",
+        "verse_end": "Rev.1.20",
+        "highlight_range": null,
+        "granularity": "book"
+      }
+    },
+    {
+      "name": "a book by abbreviation",
+      "resource_id": "sblgnt",
+      "input": "Mk",
+      "expect": {
+        "resource_id": "sblgnt",
+        "chapter_key": "Mark.1",
+        "segment_id": "Mark.1.1",
+        "reference": "Mark",
+        "verse_start": "Mark.1.1",
+        "verse_end": "Mark.1.45",
+        "highlight_range": null,
+        "granularity": "book"
+      }
+    },
+    {
+      "name": "a one-chapter book by verse",
+      "resource_id": "bsb",
+      "input": "Jude 3",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Jude.1",
+        "segment_id": "Jude.1.3",
+        "reference": "Jude.1.3",
+        "verse_start": "Jude.1.3",
+        "verse_end": "Jude.1.3",
+        "highlight_range": "Jude.1.3",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "Hebrew numbering in the WLC",
+      "resource_id": "wlc",
+      "input": "Joel 3:1",
+      "expect": {
+        "resource_id": "wlc",
+        "chapter_key": "Joel.3",
+        "segment_id": "Joel.3.1",
+        "reference": "Joel.3.1",
+        "verse_start": "Joel.3.1",
+        "verse_end": "Joel.3.1",
+        "highlight_range": "Joel.3.1",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "the fourth chapter of Joel in Hebrew",
+      "resource_id": "wlc",
+      "input": "Joel 4:21",
+      "expect": {
+        "resource_id": "wlc",
+        "chapter_key": "Joel.4",
+        "segment_id": "Joel.4.21",
+        "reference": "Joel.4.21",
+        "verse_start": "Joel.4.21",
+        "verse_end": "Joel.4.21",
+        "highlight_range": "Joel.4.21",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "English Joel 3 in the BSB",
+      "resource_id": "bsb",
+      "input": "Joel 3",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "Joel.3",
+        "segment_id": "Joel.3.1",
+        "reference": "Joel.3",
+        "verse_start": "Joel.3.1",
+        "verse_end": "Joel.3.21",
+        "highlight_range": null,
+        "granularity": "chapter"
+      }
+    },
+    {
+      "name": "Malachi has no fourth chapter in Hebrew",
+      "resource_id": "wlc",
+      "input": "Mal 4:1",
+      "error": {
+        "kind": "chapter_out_of_range",
+        "text": "Malachi has no chapter 4"
+      }
+    },
+    {
+      "name": "a verse past the end",
+      "resource_id": "bsb",
+      "input": "John 3:37",
+      "error": {
+        "kind": "verse_out_of_range",
+        "text": "John 3 has no verse 37"
+      }
+    },
+    {
+      "name": "a range ending past the end",
+      "resource_id": "bsb",
+      "input": "John 3:35-40",
+      "error": {
+        "kind": "verse_out_of_range",
+        "text": "John 3 has no verse 40"
+      }
+    },
+    {
+      "name": "a chapter past the end",
+      "resource_id": "bsb",
+      "input": "John 22",
+      "error": {
+        "kind": "chapter_out_of_range",
+        "text": "John has no chapter 22"
+      }
+    },
+    {
+      "name": "a Psalm title the original numbers as verse 1",
+      "resource_id": "wlc",
+      "input": "Ps 3:0",
+      "error": {
+        "kind": "verse_out_of_range",
+        "text": "Psalm 3 has no verse 0"
+      }
+    },
+    {
+      "name": "a New Testament book in the WLC",
+      "resource_id": "wlc",
+      "input": "John 3:16",
+      "error": {
+        "kind": "book_not_in_edition",
+        "text": "John is not in WLC"
+      }
+    },
+    {
+      "name": "an Old Testament book in the SBLGNT",
+      "resource_id": "sblgnt",
+      "input": "Gen 1:1",
+      "error": {
+        "kind": "book_not_in_edition",
+        "text": "Genesis is not in SBLGNT"
+      }
+    },
+    {
+      "name": "not a passage",
+      "resource_id": "bsb",
+      "input": "Hezekiah 4",
+      "error": {
+        "kind": "invalid_reference",
+        "text": "“Hezekiah 4” is not a passage"
+      }
+    },
+    {
+      "name": "an edition that is not installed",
+      "resource_id": "kjv",
+      "input": "John 3:16",
+      "error": {
+        "kind": "unknown_resource",
+        "text": "No edition kjv is installed"
+      }
+    },
+    {
+      "name": "a pack verse",
+      "resource_id": "bsb",
+      "input": "John 3:17",
+      "library": "packs",
+      "expect": {
+        "resource_id": "bsb",
+        "chapter_key": "John.3",
+        "segment_id": "John.3.17",
+        "reference": "John.3.17",
+        "verse_start": "John.3.17",
+        "verse_end": "John.3.17",
+        "highlight_range": "John.3.17",
+        "granularity": "verse"
+      }
+    },
+    {
+      "name": "a verse a pack excerpt lacks",
+      "resource_id": "bsb",
+      "input": "John 3:15",
+      "library": "packs",
+      "error": {
+        "kind": "verse_out_of_range",
+        "text": "John 3 has no verse 15"
+      }
+    },
+    {
+      "name": "a chapter a pack excerpt lacks",
+      "resource_id": "wlc",
+      "input": "Gen 2:1",
+      "library": "packs",
+      "error": {
+        "kind": "chapter_out_of_range",
+        "text": "Genesis has no chapter 2"
+      }
+    }
+  ],
+  "neighbors": [
+    {
+      "name": "Genesis 1 opens the Bible",
+      "resource_id": "bsb",
+      "chapter_key": "Gen.1",
+      "expect": {
+        "chapter_key": "Gen.1",
+        "prev": null,
+        "next": "Gen.2"
+      }
+    },
+    {
+      "name": "Genesis runs into Exodus",
+      "resource_id": "bsb",
+      "chapter_key": "Gen.50",
+      "expect": {
+        "chapter_key": "Gen.50",
+        "prev": "Gen.49",
+        "next": "Exod.1"
+      }
+    },
+    {
+      "name": "Malachi runs into Matthew",
+      "resource_id": "bsb",
+      "chapter_key": "Mal.4",
+      "expect": {
+        "chapter_key": "Mal.4",
+        "prev": "Mal.3",
+        "next": "Matt.1"
+      }
+    },
+    {
+      "name": "Matthew follows Malachi",
+      "resource_id": "bsb",
+      "chapter_key": "Matt.1",
+      "expect": {
+        "chapter_key": "Matt.1",
+        "prev": "Mal.4",
+        "next": "Matt.2"
+      }
+    },
+    {
+      "name": "a one-chapter book between two others",
+      "resource_id": "bsb",
+      "chapter_key": "Obad.1",
+      "expect": {
+        "chapter_key": "Obad.1",
+        "prev": "Amos.9",
+        "next": "Jonah.1"
+      }
+    },
+    {
+      "name": "Psalms runs into Proverbs",
+      "resource_id": "bsb",
+      "chapter_key": "Ps.150",
+      "expect": {
+        "chapter_key": "Ps.150",
+        "prev": "Ps.149",
+        "next": "Prov.1"
+      }
+    },
+    {
+      "name": "Revelation ends the Bible",
+      "resource_id": "bsb",
+      "chapter_key": "Rev.22",
+      "expect": {
+        "chapter_key": "Rev.22",
+        "prev": "Rev.21",
+        "next": null
+      }
+    },
+    {
+      "name": "the WLC ends at Malachi 3",
+      "resource_id": "wlc",
+      "chapter_key": "Mal.3",
+      "expect": {
+        "chapter_key": "Mal.3",
+        "prev": "Mal.2",
+        "next": null
+      }
+    },
+    {
+      "name": "Hebrew Joel has a fourth chapter",
+      "resource_id": "wlc",
+      "chapter_key": "Joel.3",
+      "expect": {
+        "chapter_key": "Joel.3",
+        "prev": "Joel.2",
+        "next": "Joel.4"
+      }
+    },
+    {
+      "name": "the SBLGNT opens at Matthew 1",
+      "resource_id": "sblgnt",
+      "chapter_key": "Matt.1",
+      "expect": {
+        "chapter_key": "Matt.1",
+        "prev": null,
+        "next": "Matt.2"
+      }
+    },
+    {
+      "name": "a chapter the edition does not have",
+      "resource_id": "wlc",
+      "chapter_key": "Mal.4",
+      "error": {
+        "kind": "unknown_chapter",
+        "text": "Mal.4 is not a chapter of wlc"
+      }
+    },
+    {
+      "name": "a book is not a chapter key",
+      "resource_id": "bsb",
+      "chapter_key": "John",
+      "error": {
+        "kind": "unknown_chapter",
+        "text": "John is not a chapter of bsb"
+      }
+    },
+    {
+      "name": "a pack with one chapter has no neighbours",
+      "resource_id": "bsb",
+      "chapter_key": "John.3",
+      "library": "packs",
+      "expect": {
+        "chapter_key": "John.3",
+        "prev": null,
+        "next": null
+      }
+    }
+  ],
+  "chapters": [
+    {
+      "name": "BSB John 3 overlays the fixture verses",
+      "resource_id": "bsb",
+      "chapter_key": "John.3",
+      "expect": {
+        "heading": {
+          "book_title": null,
+          "chapter_label": "Chapter 3",
+          "short_label": "Jn 3"
+        },
+        "verse_count": 36,
+        "placeholder": true,
+        "placeholder_count": 34,
+        "prev": "John.2",
+        "next": "John.4",
+        "verses": [
+          {
+            "segment_id": "John.3.15",
+            "label": "15",
+            "text": "Placeholder verse — John 3:15",
+            "placeholder": true,
+            "token_count": 0
+          },
+          {
+            "segment_id": "John.3.16",
+            "label": "16",
+            "placeholder": false,
+            "token_count": 27
+          },
+          {
+            "segment_id": "John.3.17",
+            "placeholder": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "Genesis 1 carries the book title",
+      "resource_id": "bsb",
+      "chapter_key": "Gen.1",
+      "expect": {
+        "heading": {
+          "book_title": "Genesis",
+          "chapter_label": "Chapter 1",
+          "short_label": "Gen 1"
+        },
+        "verse_count": 31,
+        "prev": "",
+        "next": "Gen.2",
+        "verses": [
+          {
+            "segment_id": "Gen.1.1",
+            "paragraph_start": true,
+            "poetry": false
+          },
+          {
+            "segment_id": "Gen.1.2",
+            "paragraph_start": false
+          },
+          {
+            "segment_id": "Gen.1.6",
+            "paragraph_start": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "an English Psalm title is verse 0",
+      "resource_id": "bsb",
+      "chapter_key": "Ps.3",
+      "expect": {
+        "heading": {
+          "book_title": null,
+          "chapter_label": "Psalm 3",
+          "short_label": "Ps 3"
+        },
+        "verse_count": 9,
+        "verses": [
+          {
+            "segment_id": "Ps.3.0",
+            "label": "",
+            "superscription": true,
+            "poetry": false,
+            "paragraph_start": true,
+            "text": "Placeholder title — Psalm 3"
+          },
+          {
+            "segment_id": "Ps.3.1",
+            "label": "1",
+            "superscription": false,
+            "poetry": true,
+            "paragraph_start": true
+          },
+          {
+            "segment_id": "Ps.3.2",
+            "poetry": true,
+            "paragraph_start": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "a Hebrew Psalm title is verse 1",
+      "resource_id": "wlc",
+      "chapter_key": "Ps.3",
+      "expect": {
+        "verse_count": 9,
+        "verses": [
+          {
+            "segment_id": "Ps.3.1",
+            "superscription": true,
+            "text": "טקסט ממלא מקום — 3:1"
+          },
+          {
+            "segment_id": "Ps.3.2",
+            "superscription": false,
+            "poetry": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "a two-verse Hebrew title",
+      "resource_id": "wlc",
+      "chapter_key": "Ps.51",
+      "expect": {
+        "verse_count": 21,
+        "verses": [
+          {
+            "segment_id": "Ps.51.1",
+            "superscription": true
+          },
+          {
+            "segment_id": "Ps.51.2",
+            "superscription": true
+          },
+          {
+            "segment_id": "Ps.51.3",
+            "superscription": false,
+            "poetry": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "WLC Genesis 1 overlays the fixture verses",
+      "resource_id": "wlc",
+      "chapter_key": "Gen.1",
+      "expect": {
+        "heading": {
+          "book_title": "Genesis",
+          "chapter_label": "Chapter 1",
+          "short_label": "Gen 1"
+        },
+        "verse_count": 31,
+        "placeholder_count": 29,
+        "verses": [
+          {
+            "segment_id": "Gen.1.1",
+            "placeholder": false,
+            "token_count": 7
+          },
+          {
+            "segment_id": "Gen.1.3",
+            "placeholder": true,
+            "text": "טקסט ממלא מקום — 1:3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SBLGNT John 3 in Greek placeholders",
+      "resource_id": "sblgnt",
+      "chapter_key": "John.3",
+      "expect": {
+        "verse_count": 36,
+        "placeholder_count": 35,
+        "verses": [
+          {
+            "segment_id": "John.3.16",
+            "placeholder": false
+          },
+          {
+            "segment_id": "John.3.17",
+            "placeholder": true,
+            "text": "Κείμενο κράτησης θέσης — 3:17"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Hebrew Joel 4",
+      "resource_id": "wlc",
+      "chapter_key": "Joel.4",
+      "expect": {
+        "heading": {
+          "book_title": null,
+          "chapter_label": "Chapter 4",
+          "short_label": "Joel 4"
+        },
+        "verse_count": 21,
+        "next": "Amos.1"
+      }
+    },
+    {
+      "name": "a one-chapter book",
+      "resource_id": "bsb",
+      "chapter_key": "Jude.1",
+      "expect": {
+        "heading": {
+          "book_title": "Jude",
+          "chapter_label": "Jude",
+          "short_label": "Jude"
+        },
+        "verse_count": 25,
+        "prev": "3John.1",
+        "next": "Rev.1",
+        "verses": [
+          {
+            "segment_id": "Jude.1.3",
+            "text": "Placeholder verse — Jude 3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Malachi 4 ends the Old Testament",
+      "resource_id": "bsb",
+      "chapter_key": "Mal.4",
+      "expect": {
+        "verse_count": 6,
+        "next": "Matt.1"
+      }
+    },
+    {
+      "name": "a chapter past the end",
+      "resource_id": "bsb",
+      "chapter_key": "John.22",
+      "error": {
+        "kind": "unknown_chapter",
+        "text": "John.22 is not a chapter of bsb"
+      }
+    },
+    {
+      "name": "a pack chapter is the fixture text",
+      "resource_id": "bsb",
+      "chapter_key": "John.3",
+      "library": "packs",
+      "expect": {
+        "heading": {
+          "book_title": "John",
+          "chapter_label": "Chapter 3",
+          "short_label": "Jn 3"
+        },
+        "verse_count": 2,
+        "placeholder": false,
+        "prev": "",
+        "next": "",
+        "verses": [
+          {
+            "segment_id": "John.3.16",
+            "label": "16",
+            "placeholder": false,
+            "token_count": 27,
+            "paragraph_start": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "a bundled pack chapter",
+      "resource_id": "wlc",
+      "chapter_key": "Gen.1",
+      "library": "packs",
+      "expect": {
+        "verse_count": 2,
+        "placeholder": false,
+        "verses": [
+          {
+            "segment_id": "Gen.1.2",
+            "token_count": 14
+          }
+        ]
+      }
+    }
+  ],
+  "segment_references": [
+    {
+      "segment_id": "John.3.16",
+      "reference": "John.3.16"
+    },
+    {
+      "segment_id": "Num.26.3-4",
+      "reference": "Num.26.3"
+    },
+    {
+      "segment_id": "Num.26.5a",
+      "reference": "Num.26.5"
+    },
+    {
+      "segment_id": "Ps.3.0",
+      "reference": "Ps.3.0"
+    },
+    {
+      "segment_id": "fixture:note:1",
+      "reference": null
+    },
+    {
+      "segment_id": "John.3",
+      "reference": null
+    }
+  ],
+  "canon": [
+    {
+      "name": "English Joel 2:28 is Hebrew 3:1",
+      "reference": "Joel.2.28",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Joel.3.1"
+      ]
+    },
+    {
+      "name": "Hebrew Joel 4:1 is English 3:1",
+      "reference": "Joel.4.1",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Joel.3.1"
+      ]
+    },
+    {
+      "name": "English Malachi 4:1 is Hebrew 3:19",
+      "reference": "Mal.4.1",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Mal.3.19"
+      ]
+    },
+    {
+      "name": "Hebrew Malachi 3:24 is English 4:6",
+      "reference": "Mal.3.24",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Mal.4.6"
+      ]
+    },
+    {
+      "name": "an English Psalm title is Hebrew verse 1",
+      "reference": "Ps.3.0",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Ps.3.1"
+      ]
+    },
+    {
+      "name": "English Psalm 3:1 is Hebrew 3:2",
+      "reference": "Ps.3.1",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Ps.3.2"
+      ]
+    },
+    {
+      "name": "the English title of Psalm 51 is Hebrew verse 2",
+      "reference": "Ps.51.0",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Ps.51.2"
+      ]
+    },
+    {
+      "name": "the first verse of a two-verse Hebrew title has no English verse",
+      "reference": "Ps.51.1",
+      "from": "org",
+      "to": "eng",
+      "status": "unmapped",
+      "targets": []
+    },
+    {
+      "name": "English Psalm 13:5 is part of Hebrew 13:6",
+      "reference": "Ps.13.5",
+      "from": "eng",
+      "to": "org",
+      "status": "partial",
+      "targets": [
+        "Ps.13.6"
+      ]
+    },
+    {
+      "name": "Hebrew Psalm 13:6 is English 13:5 and 13:6",
+      "reference": "Ps.13.6",
+      "from": "org",
+      "to": "eng",
+      "status": "exact",
+      "targets": [
+        "Ps.13.5",
+        "Ps.13.6"
+      ]
+    },
+    {
+      "name": "Genesis 31:55 opens Hebrew Genesis 32",
+      "reference": "Gen.31.55",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Gen.32.1"
+      ]
+    },
+    {
+      "name": "Isaiah 9:1 is Hebrew 8:23",
+      "reference": "Isa.9.1",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Isa.8.23"
+      ]
+    },
+    {
+      "name": "most verses keep their number",
+      "reference": "John.3.16",
+      "from": "eng",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "John.3.16"
+      ]
+    },
+    {
+      "name": "English Acts 19:41 has no verse in the original",
+      "reference": "Acts.19.41",
+      "from": "eng",
+      "to": "org",
+      "status": "unmapped",
+      "targets": []
+    },
+    {
+      "name": "a verse past the chapter",
+      "reference": "Gen.1.32",
+      "from": "eng",
+      "to": "org",
+      "status": "unmapped",
+      "targets": []
+    },
+    {
+      "name": "a chapter is not mapped",
+      "reference": "Joel.3",
+      "from": "eng",
+      "to": "org",
+      "status": "unmapped",
+      "targets": []
+    },
+    {
+      "name": "a scheme the table does not know",
+      "reference": "Gen.1.1",
+      "from": "eng",
+      "to": "lxx",
+      "status": "unmapped",
+      "targets": []
+    },
+    {
+      "name": "within one scheme",
+      "reference": "Joel.4.1",
+      "from": "org",
+      "to": "org",
+      "status": "exact",
+      "targets": [
+        "Joel.4.1"
+      ]
+    }
+  ],
+  "shapes": [
+    {
+      "scheme": "eng",
+      "book": "Joel",
+      "chapters": 3,
+      "verses": [
+        [
+          2,
+          1,
+          32
+        ],
+        [
+          3,
+          1,
+          21
+        ]
+      ]
+    },
+    {
+      "scheme": "org",
+      "book": "Joel",
+      "chapters": 4,
+      "verses": [
+        [
+          2,
+          1,
+          27
+        ],
+        [
+          3,
+          1,
+          5
+        ],
+        [
+          4,
+          1,
+          21
+        ]
+      ]
+    },
+    {
+      "scheme": "eng",
+      "book": "Mal",
+      "chapters": 4,
+      "verses": [
+        [
+          3,
+          1,
+          18
+        ],
+        [
+          4,
+          1,
+          6
+        ]
+      ]
+    },
+    {
+      "scheme": "org",
+      "book": "Mal",
+      "chapters": 3,
+      "verses": [
+        [
+          3,
+          1,
+          24
+        ]
+      ]
+    },
+    {
+      "scheme": "eng",
+      "book": "Ps",
+      "chapters": 150,
+      "verses": [
+        [
+          3,
+          0,
+          8
+        ],
+        [
+          23,
+          1,
+          6
+        ],
+        [
+          119,
+          1,
+          176
+        ]
+      ]
+    },
+    {
+      "scheme": "org",
+      "book": "Ps",
+      "chapters": 150,
+      "verses": [
+        [
+          3,
+          1,
+          9
+        ],
+        [
+          51,
+          1,
+          21
+        ]
+      ]
+    },
+    {
+      "scheme": "eng",
+      "book": "Gen",
+      "chapters": 50,
+      "verses": [
+        [
+          1,
+          1,
+          31
+        ],
+        [
+          32,
+          1,
+          32
+        ]
+      ]
+    },
+    {
+      "scheme": "org",
+      "book": "Gen",
+      "chapters": 50,
+      "verses": [
+        [
+          32,
+          1,
+          33
+        ]
+      ]
+    },
+    {
+      "scheme": "eng",
+      "book": "Rev",
+      "chapters": 22,
+      "verses": [
+        [
+          22,
+          1,
+          21
+        ]
+      ]
+    },
+    {
+      "scheme": "eng",
+      "book": "3John",
+      "chapters": 1,
+      "verses": [
+        [
+          1,
+          1,
+          15
+        ]
+      ]
+    }
+  ],
+  "packs": {
+    "manifest_sha256": {
+      "bsb": "60eb101895c9f3e2a35fca6c83b4bfeb460ee55510db8bcb72d9c05181f37653",
+      "sblgnt": "e97e810b31b2b1590aaae32e54252e921b645e84f4f3e6b602ec14daad684100",
+      "wlc": "d6614dbfc3e5582a6c8edf46c4d1c7242d8fd05ba6d5407f1bb6f55167580071"
+    },
+    "chunks": [
+      {
+        "name": "a chapter file",
+        "resource_id": "bsb",
+        "chapter_key": "John.3",
+        "chunk": {
+          "resource_id": "bsb",
+          "chapter_key": "John.3",
+          "path": "chapters/John/3.json",
+          "offset": null,
+          "length": 2837,
+          "sha256": "86843fa454ad3c3c8ad87826d851299bf5e68f7acaa252bedcd261e6e7eb366d"
+        },
+        "tampered": {
+          "kind": "hash_mismatch",
+          "text": "chapters/John/3.json does not match its hash"
+        }
+      },
+      {
+        "name": "a range of the bundle",
+        "resource_id": "wlc",
+        "chapter_key": "Gen.1",
+        "chunk": {
+          "resource_id": "wlc",
+          "chapter_key": "Gen.1",
+          "path": "chapters.bin",
+          "offset": 0,
+          "length": 1728,
+          "sha256": "3c96df62864b932fa4d1826d23a6babccbe4bcc556a047c9a4ae560ddf6468ca"
+        },
+        "tampered": {
+          "kind": "hash_mismatch",
+          "text": "chapters.bin does not match its hash"
+        }
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "name": "scrolling into the next verse moves the tab, its group and the active tab's followers",
+      "steps": [
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t1",
+            "segment_id": "Joel.2.29",
+            "scalar": 0
+          },
+          "expect": {
+            "moved": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "revision_bumped": true,
+            "recorded": false,
+            "positions": [
+              {
+                "workspace_id": "w1",
+                "tab_id": "t1",
+                "driver": true,
+                "scrolled": true,
+                "reference": "Joel.2.29",
+                "segment_id": "Joel.2.29",
+                "reference_label": "Joel 2:29",
+                "chapter_label": "Joel 2",
+                "highlight_range": null,
+                "mapping": "same"
+              },
+              {
+                "workspace_id": "w1",
+                "tab_id": "t2",
+                "driver": false,
+                "scrolled": true,
+                "reference": "Joel.3.2",
+                "segment_id": "Joel.3.2",
+                "reference_label": "Joel 3:2",
+                "chapter_label": "Joel 3",
+                "highlight_range": null,
+                "mapping": "exact"
+              },
+              {
+                "workspace_id": "w1",
+                "tab_id": "t3",
+                "driver": false,
+                "scrolled": true,
+                "reference": "Joel.3.2",
+                "segment_id": "Joel.3.2",
+                "reference_label": "Joel 3:2",
+                "chapter_label": "Joel 3",
+                "highlight_range": null,
+                "mapping": "exact"
+              }
+            ],
+            "tabs": {
+              "t1": {
+                "reference": "Joel.2.29",
+                "highlight_range": null,
+                "scroll_segment_id": "Joel.2.29",
+                "back": 0,
+                "reference_label": "Joel 2:29",
+                "chapter_label": "Joel 2"
+              },
+              "t2": {
+                "reference": "Joel.3.2",
+                "highlight_range": null,
+                "scroll_segment_id": "Joel.3.2",
+                "back": 0,
+                "reference_label": "Joel 3:2",
+                "chapter_label": "Joel 3"
+              },
+              "t3": {
+                "reference": "Joel.3.2",
+                "highlight_range": null,
+                "scroll_segment_id": "Joel.3.2",
+                "back": 0,
+                "reference_label": "Joel 3:2",
+                "chapter_label": "Joel 3"
+              },
+              "t4": {
+                "reference": "Rom.8.28",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 0,
+                "reference_label": "Rom 8:28",
+                "chapter_label": "Rom 8"
+              }
+            }
+          }
+        },
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t2",
+            "segment_id": "Joel.3.2",
+            "scalar": 0
+          },
+          "expect": {
+            "moved": [],
+            "revision_bumped": false
+          }
+        },
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t1",
+            "segment_id": "Joel.2.29",
+            "scalar": 14
+          },
+          "expect": {
+            "moved": [],
+            "revision_bumped": false,
+            "tabs": {
+              "t1": {
+                "reference": "Joel.2.29",
+                "highlight_range": null,
+                "scroll_segment_id": "Joel.2.29",
+                "back": 0,
+                "reference_label": "Joel 2:29",
+                "chapter_label": "Joel 2"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a navigation marks its verses and maps its followers",
+      "steps": [
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Mal.4.5-Mal.4.6"
+          },
+          "expect": {
+            "moved": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "recorded": true,
+            "positions": [
+              {
+                "workspace_id": "w1",
+                "tab_id": "t1",
+                "driver": true,
+                "scrolled": false,
+                "reference": "Mal.4.5-Mal.4.6",
+                "segment_id": "Mal.4.5",
+                "reference_label": "Mal 4:5–6",
+                "chapter_label": "Mal 4",
+                "highlight_range": "Mal.4.5-Mal.4.6",
+                "mapping": "same"
+              },
+              {
+                "workspace_id": "w1",
+                "tab_id": "t2",
+                "driver": false,
+                "scrolled": false,
+                "reference": "Mal.3.23-Mal.3.24",
+                "segment_id": "Mal.3.23",
+                "reference_label": "Mal 3:23–24",
+                "chapter_label": "Mal 3",
+                "highlight_range": "Mal.3.23-Mal.3.24",
+                "mapping": "exact"
+              },
+              {
+                "workspace_id": "w1",
+                "tab_id": "t3",
+                "driver": false,
+                "scrolled": false,
+                "reference": "Mal.3.23-Mal.3.24",
+                "segment_id": "Mal.3.23",
+                "reference_label": "Mal 3:23–24",
+                "chapter_label": "Mal 3",
+                "highlight_range": "Mal.3.23-Mal.3.24",
+                "mapping": "exact"
+              }
+            ],
+            "tabs": {
+              "t1": {
+                "reference": "Mal.4.5-Mal.4.6",
+                "highlight_range": "Mal.4.5-Mal.4.6",
+                "scroll_segment_id": null,
+                "back": 1,
+                "reference_label": "Mal 4:5–6",
+                "chapter_label": "Mal 4"
+              },
+              "t2": {
+                "reference": "Mal.3.23-Mal.3.24",
+                "highlight_range": "Mal.3.23-Mal.3.24",
+                "scroll_segment_id": null,
+                "back": 1,
+                "reference_label": "Mal 3:23–24",
+                "chapter_label": "Mal 3"
+              }
+            }
+          }
+        },
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t1",
+            "segment_id": "Mal.4.6",
+            "scalar": 0
+          },
+          "expect": {
+            "moved": [],
+            "tabs": {
+              "t1": {
+                "reference": "Mal.4.5-Mal.4.6",
+                "highlight_range": "Mal.4.5-Mal.4.6",
+                "scroll_segment_id": "Mal.4.6",
+                "back": 1,
+                "reference_label": "Mal 4:5–6",
+                "chapter_label": "Mal 4"
+              }
+            }
+          }
+        },
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t1",
+            "segment_id": "Matt.1.1",
+            "scalar": 0
+          },
+          "expect": {
+            "moved": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "tabs": {
+              "t1": {
+                "reference": "Matt.1.1",
+                "highlight_range": "Mal.4.5-Mal.4.6",
+                "scroll_segment_id": "Matt.1.1",
+                "back": 1,
+                "reference_label": "Mt 1:1",
+                "chapter_label": "Mt 1"
+              }
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Ps.23"
+          },
+          "expect": {
+            "tabs": {
+              "t1": {
+                "reference": "Ps.23",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 2,
+                "reference_label": "Ps 23",
+                "chapter_label": "Ps 23"
+              },
+              "t2": {
+                "reference": "Ps.23",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 2,
+                "reference_label": "Ps 23",
+                "chapter_label": "Ps 23"
+              }
+            }
+          }
+        },
+        {
+          "command": "nav.back",
+          "expect": {
+            "moved": [
+              "t1"
+            ],
+            "recorded": true,
+            "tabs": {
+              "t1": {
+                "reference": "Matt.1.1",
+                "highlight_range": null,
+                "scroll_segment_id": "Matt.1.1",
+                "back": 1,
+                "reference_label": "Mt 1:1",
+                "chapter_label": "Mt 1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a chapter maps by its first verse",
+      "steps": [
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Joel.3"
+          },
+          "expect": {
+            "tabs": {
+              "t2": {
+                "reference": "Joel.4",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 1,
+                "reference_label": "Joel 4",
+                "chapter_label": "Joel 4"
+              },
+              "t3": {
+                "reference": "Joel.4",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 1,
+                "reference_label": "Joel 4",
+                "chapter_label": "Joel 4"
+              }
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Mal.4"
+          },
+          "expect": {
+            "tabs": {
+              "t2": {
+                "reference": "Mal.3.19",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 2,
+                "reference_label": "Mal 3:19",
+                "chapter_label": "Mal 3"
+              }
+            }
+          }
+        },
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Ps.3"
+          },
+          "expect": {
+            "tabs": {
+              "t2": {
+                "reference": "Ps.3",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 3,
+                "reference_label": "Ps 3",
+                "chapter_label": "Ps 3"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a tab that is not active drives its group only",
+      "steps": [
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t2",
+            "segment_id": "Joel.4.1",
+            "scalar": 0
+          },
+          "expect": {
+            "moved": [
+              "t2",
+              "t1"
+            ],
+            "tabs": {
+              "t1": {
+                "reference": "Joel.3.1",
+                "highlight_range": null,
+                "scroll_segment_id": "Joel.3.1",
+                "back": 0,
+                "reference_label": "Joel 3:1",
+                "chapter_label": "Joel 3"
+              },
+              "t3": {
+                "reference": "Matt.1.1",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 0,
+                "reference_label": "Mt 1:1",
+                "chapter_label": "Mt 1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a pinned tab scrolls alone",
+      "steps": [
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t4",
+            "segment_id": "Rom.8.29",
+            "scalar": 0
+          },
+          "expect": {
+            "moved": [
+              "t4"
+            ],
+            "tabs": {
+              "t1": {
+                "reference": "Joel.2.28",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 0,
+                "reference_label": "Joel 2:28",
+                "chapter_label": "Joel 2"
+              },
+              "t4": {
+                "reference": "Rom.8.29",
+                "highlight_range": null,
+                "scroll_segment_id": "Rom.8.29",
+                "back": 0,
+                "reference_label": "Rom 8:29",
+                "chapter_label": "Rom 8"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a verse the original lacks lands on the nearest one",
+      "steps": [
+        {
+          "command": "nav.navigate",
+          "args": {
+            "reference": "Acts.19.41"
+          },
+          "expect": {
+            "positions": [
+              {
+                "workspace_id": "w1",
+                "tab_id": "t1",
+                "driver": true,
+                "scrolled": false,
+                "reference": "Acts.19.41",
+                "segment_id": "Acts.19.41",
+                "reference_label": "Acts 19:41",
+                "chapter_label": "Acts 19",
+                "highlight_range": "Acts.19.41",
+                "mapping": "same"
+              },
+              {
+                "workspace_id": "w1",
+                "tab_id": "t2",
+                "driver": false,
+                "scrolled": false,
+                "reference": "Acts.19.40",
+                "segment_id": "Acts.19.40",
+                "reference_label": "Acts 19:40",
+                "chapter_label": "Acts 19",
+                "highlight_range": "Acts.19.40",
+                "mapping": "nearest"
+              },
+              {
+                "workspace_id": "w1",
+                "tab_id": "t3",
+                "driver": false,
+                "scrolled": false,
+                "reference": "Acts.19.40",
+                "segment_id": "Acts.19.40",
+                "reference_label": "Acts 19:40",
+                "chapter_label": "Acts 19",
+                "highlight_range": "Acts.19.40",
+                "mapping": "nearest"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "the host's reference wins over the segment's",
+      "steps": [
+        {
+          "command": "tab.record_scroll",
+          "args": {
+            "tab_id": "t1",
+            "segment_id": "Joel.2.30",
+            "scalar": 0,
+            "reference": "Joel.2.31"
+          },
+          "expect": {
+            "moved": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "tabs": {
+              "t1": {
+                "reference": "Joel.2.31",
+                "highlight_range": null,
+                "scroll_segment_id": "Joel.2.30",
+                "back": 0,
+                "reference_label": "Joel 2:31",
+                "chapter_label": "Joel 2"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "comparing opens the edition's own numbering",
+      "steps": [
+        {
+          "command": "tab.open_edition",
+          "args": {
+            "resource_id": "sblgnt"
+          },
+          "expect": {
+            "recorded": true,
+            "tabs": {
+              "t10": {
+                "reference": "Joel.3.1",
+                "highlight_range": null,
+                "scroll_segment_id": null,
+                "back": 0,
+                "reference_label": "Joel 3:1",
+                "chapter_label": "Joel 3"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

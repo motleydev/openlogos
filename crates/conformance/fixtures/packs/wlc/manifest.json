@@ -1,0 +1,33 @@
+{
+  "format": "openlogos-text-pack",
+  "format_version": "1.0",
+  "resource_id": "wlc",
+  "content_revision": "oshb-wlc-4.20",
+  "title": "WLC",
+  "name": "Westminster Leningrad Codex",
+  "language": "hbo",
+  "direction": "rtl",
+  "scheme": "org",
+  "book_order": "protestant",
+  "license": "Text: public domain (Westminster Leningrad Codex). OSHB markup: CC BY 4.0, https://github.com/openscriptures/morphhb",
+  "source": "https://raw.githubusercontent.com/openscriptures/morphhb/master/wlc/Gen.xml, verses Gen.1.1 and Gen.1.2",
+  "fixture_only": true,
+  "complete": false,
+  "books": [
+    {
+      "book": "Gen",
+      "title": "Genesis",
+      "chapters": [
+        {
+          "chapter": 1,
+          "first_verse": 1,
+          "last_verse": 2,
+          "path": "chapters.bin",
+          "offset": 0,
+          "length": 1728,
+          "sha256": "3c96df62864b932fa4d1826d23a6babccbe4bcc556a047c9a4ae560ddf6468ca"
+        }
+      ]
+    }
+  ]
+}

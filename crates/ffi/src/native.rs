@@ -14,6 +14,7 @@ uniffi::setup_scaffolding!();
 pub mod anchor;
 pub mod conformance;
 pub mod ink;
+pub mod reading;
 pub mod reference;
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
@@ -29,6 +30,10 @@ pub use ink::{
     InkDocument, InkError, InkOutlineOptions, InkPoint, InkStroke, InkTaper, InkTool,
     InkViewportTransform, ink_document_json, ink_outline,
 };
+pub use reading::{
+    ReadingCallError, ReadingChapter, ReadingChunk, ReadingEdition, ReadingHandle, ReadingHeading,
+    ReadingLocation, ReadingNeighbors, ReadingToken, ReadingVerse, reference_for_segment,
+};
 pub use reference::{
     Reference, ReferenceError, ReferenceRange, ReferenceSet, ReviewFlag, format_human, format_osis,
     format_short, parse_reference,
@@ -37,11 +42,12 @@ pub use shell::{
     ShellColumn, ShellCommandArgs, ShellCommandError, ShellCommandInfo, ShellHandle, ShellInk,
     ShellLayoutConstants, ShellOutcome, ShellPaletteContext, ShellPaletteGroup, ShellPaletteItem,
     ShellPaletteResult, ShellPaletteSection, ShellPlatform, ShellReading, ShellRecords,
-    ShellSession, ShellShortcuts, ShellTab, ShellWorkspace, layout_constants,
+    ShellSession, ShellShortcuts, ShellTab, ShellTabPosition, ShellWorkspace, layout_constants,
     migrate_workspace_json, shell_registry,
 };
 pub use versification::{
-    MappingResult, MappingStatus, VerseMapRow, VerseMapRowKind, VersificationError, map_verse,
+    MappingResult, MappingStatus, VerseMapRow, VerseMapRowKind, VersificationError,
+    canon_map_verse, map_verse,
 };
 
 /// The core API version the bindings were generated against: [`openlogos_core::API_VERSION`].

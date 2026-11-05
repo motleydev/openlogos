@@ -1,0 +1,32 @@
+{
+  "format": "openlogos-text-pack",
+  "format_version": "1.0",
+  "resource_id": "bsb",
+  "content_revision": "bsb-2024",
+  "title": "BSB",
+  "name": "Berean Standard Bible",
+  "language": "en",
+  "direction": "ltr",
+  "scheme": "eng",
+  "book_order": "protestant",
+  "license": "Berean Standard Bible: public domain (CC0), https://berean.bible/",
+  "source": "https://bible.helloao.org/api/BSB/JHN/3.json, verses 16 and 17",
+  "fixture_only": true,
+  "complete": false,
+  "books": [
+    {
+      "book": "John",
+      "title": "John",
+      "chapters": [
+        {
+          "chapter": 3,
+          "first_verse": 16,
+          "last_verse": 17,
+          "path": "chapters/John/3.json",
+          "length": 2837,
+          "sha256": "86843fa454ad3c3c8ad87826d851299bf5e68f7acaa252bedcd261e6e7eb366d"
+        }
+      ]
+    }
+  ]
+}

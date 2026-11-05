@@ -133,7 +133,7 @@ export interface InkStroke { id: string; tool: InkTool; brush_version: string; w
 export interface InkViewportTransform { scale: number; translate_x: number; translate_y: number }
 /** The portable ink record, field names as the schema. */
 /** B070 workspace shell (specs/22): a tab is specs/21's pane; column numbers are positions. */
-export interface ShellTab { id: string; kind: "reading" | "notes" | "research" | "lexicon"; content_id: string; content_revision: string; reference: string | null; scroll_anchor?: { segment_id: string; scalar: number }; link_group: string | null; pinned: boolean; history?: { back: unknown[]; current: unknown | null; forward: unknown[] }; lexicon_word?: string }
+export interface ShellTab { id: string; kind: "reading" | "notes" | "research" | "lexicon"; content_id: string; content_revision: string; reference: string | null; scroll_anchor?: { segment_id: string; scalar: number }; link_group: string | null; pinned: boolean; history?: { back: unknown[]; current: unknown | null; forward: unknown[] }; lexicon_word?: string; highlight_range?: string }
 export interface ShellColumn { id: string; tabs: ShellTab[]; shown_tab_id: string; width_fraction: number }
 export interface ShellWorkspace { schema_version: "2.0"; fixture_only: boolean; id: string; title: string; columns: ShellColumn[]; active_column_id: string; notes_dock: { note_id: string | null; open: boolean }; layout_profiles?: Record<string, { visible_column_ids: string[]; widths?: Record<string, number>; notes_dock_open: boolean }>; next_serial: number }
 export type ShellTool = "select" | "highlight" | "pen" | "highlighter_pen" | "eraser" | "collect" | "word_study" | "type";
@@ -155,13 +155,15 @@ export type ShellPlatform = "web" | "mac" | "ipad";
 export interface ShellCommandSpec { id: string; title: string; aliases: string[]; keywords: string[]; scope: "session" | "workspace" | "column" | "tab" | "selection"; argument: "none" | "column_number" | "text" | "reference" | "workspace" | "tab" | "link_group" | "number" | "column_width" | "scroll"; shortcuts: { web: string[]; mac: string[]; ipad: string[] }; bare_key: boolean; undoable: boolean; handled_by_core: boolean; quiet: boolean }
 /** `disabled` is null when the command can run; otherwise `{ kind, ... }`. */
 export interface ShellCommandState { spec: ShellCommandSpec; disabled: { kind: string } | null; disabled_text: string | null }
-export interface ShellOutcome { command_id: string; handled: boolean; recorded: boolean; effects: { followed_tab_ids: string[] }; revision: number }
+export interface ShellOutcome { command_id: string; handled: boolean; recorded: boolean; effects: { followed_tab_ids: string[]; positions: ShellTabPosition[] }; revision: number }
+/** B078: a tab a navigation or scroll moved, driver first; followers carry their mapped reference. `scrolled`: relabel in place and scroll without rebuilding. */
+export interface ShellTabPosition { workspace_id: string; tab_id: string; driver: boolean; scrolled: boolean; reference: string; segment_id: string | null; reference_label: string | null; chapter_label: string | null; highlight_range: string | null; mapping: "same" | "unregistered" | "exact" | "partial" | "nearest" | "unmapped" }
 export type ShellPaletteSection = "passage" | "commands" | "tabs" | "text";
 export interface ShellPaletteContext { has_selection?: boolean; platform?: ShellPlatform; expanded?: ShellPaletteSection | null; focus?: ShellFocus }
 export interface ShellPaletteItem { section: ShellPaletteSection; title: string; subtitle: string | null; score: number; invocation: ShellInvocation; disabled: { kind: string } | null; disabled_text: string | null; shortcut: string | null }
 export interface ShellPaletteResult { query: { mode: "all" | "commands" | "tabs" | "text" | "passage"; text: string; target: { kind: "column"; number: number } | { kind: "new" } | null }; groups: { section: ShellPaletteSection; items: ShellPaletteItem[]; total: number }[]; notice: string | null }
 /** B070: what a host renders; labels come from the core (`formatShort`), never the host. */
-export interface ShellTabView { id: string; kind: string; content_id: string; content_revision: string; reference: string | null; resource_title: string; reference_label: string | null; chapter_label: string | null; scroll_segment_id: string | null; scroll_scalar: number | null; link_mode: "pinned" | "follows" | "group"; link_group: string | null; can_go_back: boolean; can_go_forward: boolean; lexicon_word: string | null }
+export interface ShellTabView { id: string; kind: string; content_id: string; content_revision: string; reference: string | null; resource_title: string; reference_label: string | null; chapter_label: string | null; scroll_segment_id: string | null; scroll_scalar: number | null; link_mode: "pinned" | "follows" | "group"; link_group: string | null; can_go_back: boolean; can_go_forward: boolean; lexicon_word: string | null; highlight_range: string | null }
 export interface ShellColumnView { id: string; number: number; tabs: ShellTabView[]; shown_tab_id: string; width_fraction: number }
 export interface ShellWorkspaceView { id: string; title: string; columns: ShellColumnView[]; active_column_number: number; notes_dock_note_id: string | null; notes_dock_open: boolean }
 export interface ShellSessionView { workspaces: ShellWorkspaceView[]; active_workspace_id: string; tool: ShellTool; effective_tool: ShellTool; tool_context: ShellToolContext; revision: number; undo_title: string | null; redo_title: string | null; reading: ShellReading; ink: ShellInk }
@@ -185,6 +187,14 @@ export type ShellContextTargetKind = ShellContextTarget["kind"];
 export interface ShellContextMenuItem { command_id: string; args: ShellCommandArgs; label: string; key: string | null; icon: string; active: boolean; value: string | null; disabled_text: string | null; submenu?: ShellContextMenuItem[] }
 export interface ShellContextMenuSection { label: string | null; items: ShellContextMenuItem[] }
 export interface ShellContextMenu { target_kind: ShellContextTargetKind; title: string | null; focus: ShellInvocation | null; context: { has_selection: boolean; focus: ShellFocus }; sections: ShellContextMenuSection[] }
+/** B078 continuous reading (specs/23). */
+export interface ReadingEdition { resource_id: string; content_revision: string; title: string; name: string; language: string; direction: "ltr" | "rtl"; scheme: string; book_order: "protestant" | "tanakh_bhs"; placeholder: boolean }
+export interface ReadingLocation { resource_id: string; chapter_key: string; segment_id: string; reference: string; verse_start: string; verse_end: string; highlight_range: string | null; granularity: "verse" | "chapter" | "book" }
+export interface ReadingNeighbors { chapter_key: string; prev: string | null; next: string | null }
+export interface ReadingVerse { segment_id: string; number: number; last_number: number; label: string; text: string; paragraph_start: boolean; poetry: boolean; superscription: boolean; placeholder: boolean; tokens: { id: string; start: number; end: number }[] }
+export interface ReadingChapter { resource_id: string; content_revision: string; chapter_key: string; book: string; chapter: number; heading: { book_title: string | null; chapter_label: string; short_label: string }; verses: ReadingVerse[]; prev: string | null; next: string | null; placeholder: boolean }
+/** Where a pack chapter's bytes are: fetch `path` (with `Range: bytes=offset-(offset+length-1)` when `offset` is set), then `supplyChunk`. */
+export interface ReadingChunk { resource_id: string; chapter_key: string; path: string; offset: number | null; length: number; sha256: string }
 export interface InkDocument { schema_version: "1.0" | "1.1"; fixture_only: boolean; id: string; snapshot_id: string; coordinate_space_id: string; strokes: InkStroke[]; deleted_stroke_ids: string[]; viewport_transform: InkViewportTransform }
 "#;
 
@@ -359,6 +369,158 @@ pub fn map_verse(reference: &str, from_scheme: &str, to_scheme: &str) -> Result<
         &SchemeId::new(to_scheme),
     );
     to_js(&result)
+}
+
+/// B078: maps one verse between `eng` and `org` through the canon table (English and
+/// Hebrew numbering for the whole Bible, Psalm titles as `eng` verse 0).
+#[wasm_bindgen(js_name = canonMapVerse, unchecked_return_type = "MappingResult")]
+pub fn canon_map_verse(
+    reference: &str,
+    from_scheme: &str,
+    to_scheme: &str,
+) -> Result<JsValue, JsValue> {
+    let set = parse(reference, &AliasTable::english()).map_err(throw)?;
+    let verse = match set.ranges.as_slice() {
+        [range] if range.is_single() => &range.start,
+        _ => {
+            return Err(throw(WasmError::NotOneReference {
+                text: reference.to_owned(),
+            }));
+        }
+    };
+    to_js(&openlogos_core::canon::map(
+        verse,
+        &SchemeId::new(from_scheme),
+        &SchemeId::new(to_scheme),
+    ))
+}
+
+/// B078: the verse a segment starts at, OSIS (`John.3.16`; a bridge `Num.26.3-4` →
+/// `Num.26.3`), for the verse at the top of the viewport; `null` for an id that names no
+/// verse.
+#[wasm_bindgen(js_name = referenceForSegment)]
+#[must_use]
+pub fn reference_for_segment(segment_id: &str) -> Option<String> {
+    openlogos_text::reading::reference_for_segment(segment_id)
+}
+
+/// B078 continuous reading (specs/23): the installed editions, one text pack each.
+/// `ReadingHandle.placeholder()` is BSB, SBLGNT and WLC generated from the canon table with
+/// the conformance fixtures' verses overlaid. A file pack is added from its manifest
+/// (`addPackManifest`); the page fetches each chapter's chunk (`chunkFor`) and hands the
+/// bytes back (`supplyChunk`) before `chapterContent`, which throws `chunk_not_loaded` until
+/// then. Errors carry the core's `kind` (`verse_out_of_range`, `book_not_in_edition`, ...).
+#[wasm_bindgen(js_name = ReadingHandle)]
+pub struct ReadingHandle {
+    library: openlogos_text::reading::ReadingLibrary,
+}
+
+#[wasm_bindgen(js_class = ReadingHandle)]
+impl ReadingHandle {
+    /// No editions.
+    #[wasm_bindgen(constructor)]
+    #[must_use]
+    pub fn new() -> ReadingHandle {
+        ReadingHandle {
+            library: openlogos_text::reading::ReadingLibrary::new(),
+        }
+    }
+
+    /// The placeholder library (BSB, SBLGNT, WLC).
+    #[must_use]
+    pub fn placeholder() -> ReadingHandle {
+        ReadingHandle {
+            library: openlogos_conformance::reading_library(),
+        }
+    }
+
+    /// Installs a pack from its `manifest.json` text, replacing an edition with the same id.
+    #[wasm_bindgen(js_name = addPackManifest, unchecked_return_type = "ReadingEdition")]
+    pub fn add_pack_manifest(&mut self, manifest_json: &str) -> Result<JsValue, JsValue> {
+        let pack =
+            openlogos_text::reading::FilePack::from_manifest(manifest_json, None).map_err(throw)?;
+        let edition = openlogos_text::reading::TextPack::edition(&pack).clone();
+        self.library.insert(Box::new(pack));
+        to_js(&edition)
+    }
+
+    /// Every installed edition.
+    #[wasm_bindgen(unchecked_return_type = "ReadingEdition[]")]
+    pub fn editions(&self) -> Result<JsValue, JsValue> {
+        to_js(&self.library.editions())
+    }
+
+    /// Resource id → scheme, for `ShellHandle.setResourceSchemes`.
+    #[wasm_bindgen(unchecked_return_type = "Record<string, string>")]
+    pub fn schemes(&self) -> Result<JsValue, JsValue> {
+        to_js(&self.library.schemes())
+    }
+
+    /// Where a typed passage is: ranges, chapters, books.
+    #[wasm_bindgen(unchecked_return_type = "ReadingLocation")]
+    pub fn locate(&self, resource_id: &str, input: &str) -> Result<JsValue, JsValue> {
+        to_js(&self.library.locate(resource_id, input).map_err(throw)?)
+    }
+
+    /// The chapters before and after one, across books.
+    #[wasm_bindgen(js_name = chapterNeighbors, unchecked_return_type = "ReadingNeighbors")]
+    pub fn chapter_neighbors(
+        &self,
+        resource_id: &str,
+        chapter_key: &str,
+    ) -> Result<JsValue, JsValue> {
+        to_js(
+            &self
+                .library
+                .chapter_neighbors(resource_id, chapter_key)
+                .map_err(throw)?,
+        )
+    }
+
+    /// One chapter with its heading and verses.
+    #[wasm_bindgen(js_name = chapterContent, unchecked_return_type = "ReadingChapter")]
+    pub fn chapter_content(
+        &self,
+        resource_id: &str,
+        chapter_key: &str,
+    ) -> Result<JsValue, JsValue> {
+        to_js(
+            &self
+                .library
+                .chapter_content(resource_id, chapter_key)
+                .map_err(throw)?,
+        )
+    }
+
+    /// Where a pack chapter's chunk is; `null` for a generated edition.
+    #[wasm_bindgen(js_name = chunkFor, unchecked_return_type = "ReadingChunk | null")]
+    pub fn chunk_for(&self, resource_id: &str, chapter_key: &str) -> Result<JsValue, JsValue> {
+        to_js(
+            &self
+                .library
+                .chunk_for(resource_id, chapter_key)
+                .map_err(throw)?,
+        )
+    }
+
+    /// Hands a pack one chapter's chunk bytes, checked against its SHA-256.
+    #[wasm_bindgen(js_name = supplyChunk)]
+    pub fn supply_chunk(
+        &mut self,
+        resource_id: &str,
+        chapter_key: &str,
+        bytes: &[u8],
+    ) -> Result<(), JsValue> {
+        self.library
+            .supply_chunk(resource_id, chapter_key, bytes)
+            .map_err(throw)
+    }
+}
+
+impl Default for ReadingHandle {
+    fn default() -> Self {
+        ReadingHandle::new()
+    }
 }
 
 /// Parses a token id in the `edition:BBCCCVVVWWW[s]` form the pipeline mints and the fixture
@@ -562,6 +724,19 @@ impl ShellHandle {
         let languages: std::collections::BTreeMap<String, String> =
             from_js("languages", languages)?;
         self.shell.set_resource_languages(languages);
+        Ok(())
+    }
+
+    /// B078: registers resource versification schemes (`{ bsb: "eng", wlc: "org" }`, from
+    /// `ReadingHandle.schemes()`); linked tabs follow through them and
+    /// `effects.positions` carries each follower's mapped reference.
+    #[wasm_bindgen(js_name = setResourceSchemes)]
+    pub fn set_resource_schemes(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Record<string, string>")] schemes: JsValue,
+    ) -> Result<(), JsValue> {
+        let schemes: std::collections::BTreeMap<String, String> = from_js("schemes", schemes)?;
+        self.shell.set_resource_schemes(schemes);
         Ok(())
     }
 

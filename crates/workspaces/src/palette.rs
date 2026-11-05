@@ -29,7 +29,10 @@
 //! query is a passage in the same book and chapter as its reference, 600 in the same book.
 //! The Text section keeps the provider's order. When the notes dock or a Notes tab has
 //! focus ([`PaletteContext::focus`]) and no column target is given, the Passage section adds
-//! "Link John 3:16" (`note.link_passage`) after the navigation row (B076). Each section shows
+//! "Link John 3:16" (`note.link_passage`) after the navigation row (B076). A bare book name or
+//! abbreviation (`Genesis`, `Gen`, `1 Jn`, `Song`) is a Passage row of its own, the book's
+//! title opening its first chapter (`nav.navigate` to `Gen.1`) at 1000; a prefix of two or more
+//! letters (`Jo`) offers the books it starts as Passage rows ([`book_matches`], B078). Each section shows
 //! [`DEFAULT_SECTION_LIMIT`] results (one passage) unless it is the expanded one.
 //!
 //! **Incremental.** Everything that depends only on the session (folded tab and workspace
@@ -425,6 +428,44 @@ pub fn parse_tab_reference(text: &str) -> Option<ReferenceSet> {
     osis_verse(text)
         .or_else(|| parse(text, english()).ok())
         .filter(|set| !set.ranges.is_empty())
+}
+
+/// Books a typed name means (B078): every book the alias table resolves the whole text to,
+/// at 1000 (the most likely first), else the books one of whose names (title, display name,
+/// an alias or the OSIS id, compared as [`AliasTable::normalize`] folds them) starts with
+/// it, at 900 minus the extra length, best first and at most [`DEFAULT_SECTION_LIMIT`]. A
+/// prefix needs two letters; text with a digit after the first character (a passage being
+/// typed) matches nothing.
+#[must_use]
+pub fn book_matches(text: &str) -> Vec<(BookId, u32)> {
+    let exact = english().lookup(text);
+    if !exact.is_empty() {
+        return exact.into_iter().map(|b| (b, 1000)).collect();
+    }
+    let key = AliasTable::normalize(text);
+    let letters = key.chars().filter(char::is_ascii_alphabetic).count();
+    if letters < 2 || key.chars().skip(1).any(|c| !c.is_ascii_alphabetic()) {
+        return Vec::new();
+    }
+    let mut found: Vec<(BookId, u32)> = english()
+        .books
+        .iter()
+        .filter_map(|entry| {
+            let names = std::iter::once(entry.book.title())
+                .chain(std::iter::once(entry.display_name.as_str()))
+                .chain(entry.aliases.iter().map(String::as_str))
+                .chain(std::iter::once(entry.book.as_osis()));
+            names
+                .map(AliasTable::normalize)
+                .filter(|name| name.starts_with(&key))
+                .map(|name| 900 - (name.len() - key.len()).min(99) as u32)
+                .max()
+                .map(|score| (entry.book, score))
+        })
+        .collect();
+    found.sort_by(|(a, x), (b, y)| y.cmp(x).then(a.cmp(b)));
+    found.truncate(DEFAULT_SECTION_LIMIT);
+    found
 }
 
 /// A stored reference in words (`John 3:16`), as palette rows and menu labels show it;
@@ -972,6 +1013,37 @@ pub fn palette_query_indexed(
             ));
         }
         groups.extend(group(PaletteSection::Passage, items, context));
+    } else if matches!(mode, PaletteMode::All | PaletteMode::Passage) && !blank {
+        // B078: a bare book name opens the book; a prefix offers the books it starts.
+        let books = book_matches(&query.text);
+        if !books.is_empty() {
+            notice = None;
+            let items = books
+                .into_iter()
+                .enumerate()
+                .map(|(i, (book, score))| {
+                    let invocation = Invocation::with(
+                        "nav.navigate",
+                        target_args(query.target, Reference::chapter(book, 1).to_osis()),
+                    );
+                    let disabled = shell.enabled(&invocation, &command_context).err();
+                    (
+                        PaletteItem {
+                            section: PaletteSection::Passage,
+                            title: book.title().to_owned(),
+                            subtitle: Some(target_subtitle(query.target)),
+                            score,
+                            invocation,
+                            disabled_text: disabled.as_ref().map(ToString::to_string),
+                            disabled,
+                            shortcut: None,
+                        },
+                        i,
+                    )
+                })
+                .collect();
+            groups.extend(group(PaletteSection::Passage, items, context));
+        }
     }
 
     if mode == PaletteMode::Commands || (mode == PaletteMode::All && !blank) {

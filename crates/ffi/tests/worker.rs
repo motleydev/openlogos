@@ -241,6 +241,70 @@ fn shell_handle_returns_the_context_menu() {
     );
 }
 
+/// B078: the placeholder library streams across books, a fixture pack is read through the
+/// browser's fetch-and-supply path, and the shell follows a scroll through versification.
+#[wasm_bindgen_test]
+fn reading_handle_streams_chapters_and_the_shell_follows_scrolling() {
+    let reading = openlogos_ffi::wasm::ReadingHandle::placeholder();
+    let location: serde_json::Value =
+        serde_wasm_bindgen::from_value(reading.locate("bsb", "Jn 3:16-18").unwrap()).unwrap();
+    assert_eq!(location["highlight_range"], "John.3.16-John.3.18");
+    let neighbors: serde_json::Value =
+        serde_wasm_bindgen::from_value(reading.chapter_neighbors("bsb", "Mal.4").unwrap()).unwrap();
+    assert_eq!(neighbors["next"], "Matt.1");
+    let chapter: serde_json::Value =
+        serde_wasm_bindgen::from_value(reading.chapter_content("wlc", "Gen.1").unwrap()).unwrap();
+    assert_eq!(chapter["verses"][0]["placeholder"], false);
+    assert_eq!(chapter["verses"][2]["text"], "טקסט ממלא מקום — 1:3");
+    let error = reading.locate("wlc", "John 3:16").unwrap_err();
+    assert_eq!(
+        property(&error, "kind").as_string().as_deref(),
+        Some("book_not_in_edition")
+    );
+    assert_eq!(
+        openlogos_ffi::wasm::reference_for_segment("Ps.3.0").as_deref(),
+        Some("Ps.3.0")
+    );
+
+    let mut browser = openlogos_ffi::wasm::ReadingHandle::new();
+    let files = openlogos_conformance::FIXTURE_PACK_FILES;
+    let file = |path: &str| files.iter().find(|(p, _)| *p == path).unwrap().1;
+    browser
+        .add_pack_manifest(std::str::from_utf8(file("wlc/manifest.json")).unwrap())
+        .unwrap();
+    let chunk: serde_json::Value =
+        serde_wasm_bindgen::from_value(browser.chunk_for("wlc", "Gen.1").unwrap()).unwrap();
+    assert_eq!(chunk["path"], "chapters.bin");
+    let not_loaded = browser.chapter_content("wlc", "Gen.1").unwrap_err();
+    assert_eq!(
+        property(&not_loaded, "kind").as_string().as_deref(),
+        Some("chunk_not_loaded")
+    );
+    let start = chunk["offset"].as_u64().unwrap() as usize;
+    let end = start + chunk["length"].as_u64().unwrap() as usize;
+    browser
+        .supply_chunk("wlc", "Gen.1", &file("wlc/chapters.bin")[start..end])
+        .unwrap();
+    let gen1: serde_json::Value =
+        serde_wasm_bindgen::from_value(browser.chapter_content("wlc", "Gen.1").unwrap()).unwrap();
+    assert_eq!(gen1["verses"].as_array().unwrap().len(), 2);
+
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    shell
+        .set_resource_schemes(reading.schemes().unwrap())
+        .unwrap();
+    let scroll = js_sys::JSON::parse(
+        r#"{"command_id": "tab.record_scroll", "args": {"tab_id": "t1", "segment_id": "John.3.17", "scalar": 0}}"#,
+    )
+    .unwrap();
+    let outcome: serde_json::Value =
+        serde_wasm_bindgen::from_value(shell.apply(scroll, JsValue::UNDEFINED).unwrap()).unwrap();
+    let positions = outcome["effects"]["positions"].as_array().unwrap();
+    assert_eq!(positions[0]["reference_label"], "Jn 3:17");
+    assert_eq!(positions[1]["tab_id"], "t3");
+    assert_eq!(outcome["recorded"], false);
+}
+
 /// B064: with `--features retrieval`, SQLite with FTS5 and the `openlogos` tokenizer run
 /// inside the worker's module and answer an unaccented query against accented text.
 #[cfg(feature = "retrieval")]

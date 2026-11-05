@@ -212,6 +212,13 @@ impl BookId {
             .map(|(book, _, _)| *book)
     }
 
+    /// The book's full English title (`Genesis`, `Song of Songs`, `1 John`), as chapter
+    /// headings and palette passage rows show it (B078).
+    #[must_use]
+    pub fn title(self) -> &'static str {
+        BOOK_TITLES[self.canonical_index() as usize]
+    }
+
     /// Books with a single chapter, where `Jude 3` means verse 3 rather than chapter 3.
     #[must_use]
     pub fn is_single_chapter(self) -> bool {
@@ -221,6 +228,76 @@ impl BookId {
         )
     }
 }
+
+/// Full English titles, in [`BookId`] order (B078).
+const BOOK_TITLES: [&str; 66] = [
+    "Genesis",
+    "Exodus",
+    "Leviticus",
+    "Numbers",
+    "Deuteronomy",
+    "Joshua",
+    "Judges",
+    "Ruth",
+    "1 Samuel",
+    "2 Samuel",
+    "1 Kings",
+    "2 Kings",
+    "1 Chronicles",
+    "2 Chronicles",
+    "Ezra",
+    "Nehemiah",
+    "Esther",
+    "Job",
+    "Psalms",
+    "Proverbs",
+    "Ecclesiastes",
+    "Song of Songs",
+    "Isaiah",
+    "Jeremiah",
+    "Lamentations",
+    "Ezekiel",
+    "Daniel",
+    "Hosea",
+    "Joel",
+    "Amos",
+    "Obadiah",
+    "Jonah",
+    "Micah",
+    "Nahum",
+    "Habakkuk",
+    "Zephaniah",
+    "Haggai",
+    "Zechariah",
+    "Malachi",
+    "Matthew",
+    "Mark",
+    "Luke",
+    "John",
+    "Acts",
+    "Romans",
+    "1 Corinthians",
+    "2 Corinthians",
+    "Galatians",
+    "Ephesians",
+    "Philippians",
+    "Colossians",
+    "1 Thessalonians",
+    "2 Thessalonians",
+    "1 Timothy",
+    "2 Timothy",
+    "Titus",
+    "Philemon",
+    "Hebrews",
+    "James",
+    "1 Peter",
+    "2 Peter",
+    "1 John",
+    "2 John",
+    "3 John",
+    "Jude",
+    "Revelation",
+];
 
 impl From<BookId> for String {
     fn from(book: BookId) -> String {

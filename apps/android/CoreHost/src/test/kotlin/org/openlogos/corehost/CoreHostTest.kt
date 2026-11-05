@@ -8,6 +8,8 @@ package org.openlogos.corehost
 import org.json.JSONArray
 import org.json.JSONObject
 import org.openlogos.core.Paragraph
+import org.openlogos.core.ReadingCallException
+import org.openlogos.core.ReadingHandle
 import org.openlogos.core.ReanchorResult
 import org.openlogos.core.Reference
 import org.openlogos.core.ReferenceException
@@ -29,6 +31,8 @@ import org.openlogos.core.Utf16Range
 import org.openlogos.core.MappingStatus
 import org.openlogos.core.anchorToUtf16
 import org.openlogos.core.apiVersion
+import org.openlogos.core.canonMapVerse
+import org.openlogos.core.referenceForSegment
 import org.openlogos.core.conformanceFixturesJson
 import org.openlogos.core.formatHuman
 import org.openlogos.core.formatShort
@@ -49,7 +53,7 @@ import kotlin.test.assertTrue
 class CoreHostTest {
     @Test
     fun apiVersionMatchesTheCore() {
-        assertEquals("0.1.2", apiVersion())
+        assertEquals("0.1.3", apiVersion())
         assertEquals(apiVersion(), runConformance().apiVersion)
     }
 
@@ -262,6 +266,40 @@ class CoreHostTest {
             shell.contextMenu(ShellContextTarget.Column(9u), none)
         }
         assertTrue(refused.detail.contains("There is no column 9"))
+    }
+
+    // B078: continuous reading through the UniFFI handles, and the shell following a scroll.
+    @Test
+    fun continuousReadingStreamsChaptersAndTheShellFollows() {
+        val reading = ReadingHandle.placeholder()
+        assertEquals(listOf("bsb", "sblgnt", "wlc"), reading.editions().map { it.resourceId })
+        val location = reading.locate("bsb", "Jn 3:16-18")
+        assertEquals(listOf("John.3", "John.3.16"), listOf(location.chapterKey, location.segmentId))
+        assertEquals("John.3.16-John.3.18", location.highlightRange)
+        assertEquals("Matt.1", reading.chapterNeighbors("bsb", "Mal.4").next)
+        val psalm = reading.chapterContent("bsb", "Ps.3")
+        assertEquals("Psalm 3", psalm.heading.chapterLabel)
+        assertTrue(psalm.verses[0].superscription)
+        val genesis = reading.chapterContent("wlc", "Gen.1")
+        assertEquals(false, genesis.verses[0].placeholder)
+        assertEquals("טקסט ממלא מקום — 1:3", genesis.verses[2].text)
+        val refused = assertFailsWith<ReadingCallException.Refused> { reading.locate("wlc", "John 3:16") }
+        assertEquals("book_not_in_edition", refused.kind)
+        assertEquals("John is not in WLC", refused.reason)
+        assertEquals("Num.26.3", referenceForSegment("Num.26.3-4"))
+        val joel = parseReference("Joel 2:28").ranges[0].start
+        assertEquals(listOf(Reference(book = "Joel", chapter = 3u, verse = 1u, subverse = null)), canonMapVerse(joel, "eng", "org").targets)
+
+        val shell = ShellHandle.fixture()
+        shell.setResourceSchemes(reading.schemes())
+        val scrolled = shell.apply("tab.record_scroll", ShellCommandArgs(tabId = "t1", segmentId = "John.3.17", scalar = 0u), false)
+        assertEquals(listOf("t1", "t3", "t4"), scrolled.positions.map { it.tabId })
+        assertEquals("Jn 3:17", scrolled.positions[0].referenceLabel)
+        assertEquals(false, scrolled.recorded)
+        assertEquals("Jn 3:17", shell.session().workspaces[0].columns[0].tabs[0].referenceLabel)
+        shell.apply("nav.navigate", ShellCommandArgs(reference = "Joel.2.28-Joel.2.29"), false)
+        assertEquals("Joel.2.28-Joel.2.29", shell.session().workspaces[0].columns[0].tabs[0].highlightRange)
+        assertEquals("Joel.3.1-Joel.3.2", shell.session().workspaces[0].columns[1].tabs[0].highlightRange)
     }
 
     // Fixture decoding

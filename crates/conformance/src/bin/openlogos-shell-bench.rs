@@ -21,6 +21,15 @@
 //! a word and a selection in the active tab, a note spot and a passage link in the dock, a
 //! hidden tab in the next column (the menu works on a copy of the session with that tab
 //! focused), a column and the background; budget: shown on the next frame.
+//!
+//! B078 adds continuous reading: `locate` over verse ranges, chapters and books;
+//! `chapter_content` from the placeholder pack (Psalm 119, the longest chapter, among them) and
+//! from a file pack on disk (every chapter of John and Psalm 119 written in the B078 format
+//! under the `--json` directory, verses padded to the length of real verses with 25 tokens
+//! each, so each read is a file read, a SHA-256 and a JSON parse); `chapter_neighbors`; and
+//! `tab.record_scroll` moving the active tab verse by verse with its group and a follower
+//! mapped from `eng` to `org`. Budget: a chapter opens in ≤ 100 ms end to end (specs/22 §7);
+//! the core's share should stay far below 5 ms.
 
 use std::time::{Duration, Instant};
 
@@ -69,6 +78,7 @@ fn session() -> Session {
                     pinned,
                     history: Default::default(),
                     lexicon_word: None,
+                    highlight_range: None,
                 });
             }
             columns.push(Column {
@@ -105,6 +115,7 @@ fn session() -> Session {
         ink: Default::default(),
         resource_titles: Default::default(),
         resource_languages: Default::default(),
+        resource_schemes: Default::default(),
     };
     session.check().expect("the bench session is valid");
     session
@@ -160,6 +171,170 @@ fn time<F: FnMut()>(samples: &mut Vec<Duration>, mut f: F) {
     let start = Instant::now();
     f();
     samples.push(start.elapsed());
+}
+
+/// B078 rows: locate, chapter content (placeholder and file pack), neighbours, and the
+/// scroll-follow row.
+fn reading_bench(rounds: usize, json: Option<&str>) -> (Vec<Row>, Row) {
+    use openlogos_core::reference::BookId;
+    use openlogos_text::reading::{
+        ChapterVerse, DirSource, FilePack, PackWriter, TextPack, VerseToken,
+    };
+
+    let library = openlogos_conformance::reading_library();
+    let inputs = [
+        "John 3:16-18",
+        "Jn 3:36–4:2",
+        "Ps 119",
+        "Genesis",
+        "Joel 2:28",
+        "Rev 22:21",
+        "1 Cor 13:4-7",
+        "Mal 4",
+    ];
+    let chapters = [
+        "Ps.119", "Gen.1", "John.3", "Joel.2", "Mal.4", "Matt.1", "Rev.22",
+    ];
+    let mut locate = Vec::new();
+    let mut placeholder = Vec::new();
+    let mut neighbors = Vec::new();
+    for _ in 0..rounds {
+        for input in inputs {
+            time(&mut locate, || {
+                std::hint::black_box(library.locate("bsb", input).expect("locate"));
+            });
+        }
+        for key in chapters {
+            time(&mut placeholder, || {
+                std::hint::black_box(library.chapter_content("bsb", key).expect("chapter"));
+            });
+            time(&mut neighbors, || {
+                std::hint::black_box(library.chapter_neighbors("bsb", key).expect("neighbors"));
+            });
+        }
+    }
+
+    // A file pack on disk with real-sized verses: John 1–21 and Psalm 119.
+    let dir = std::path::Path::new(json.unwrap_or("target/bench-shell/b070.json"))
+        .parent()
+        .map_or_else(
+            || std::path::PathBuf::from("."),
+            std::path::Path::to_path_buf,
+        )
+        .join("b078-pack");
+    let bsb = library.editions().into_iter().next().expect("bsb");
+    let mut writer = PackWriter::new(&bsb, "synthetic", "openlogos-shell-bench", true);
+    let mut keys = Vec::new();
+    for (book, count) in [(BookId::John, 21), (BookId::Ps, 0)] {
+        let range: Vec<u32> = if count == 0 {
+            vec![119]
+        } else {
+            (1..=count).collect()
+        };
+        for chapter in range {
+            let key = format!("{}.{chapter}", book.as_osis());
+            let block = library.chapter_content("bsb", &key).expect("chapter");
+            let verses: Vec<ChapterVerse> = block
+                .verses
+                .into_iter()
+                .map(|mut v| {
+                    v.text = format!("{} {}", v.text, "lorem ipsum ".repeat(10));
+                    v.placeholder = false;
+                    v.tokens = (0..25)
+                        .map(|i| VerseToken {
+                            id: format!(
+                                "bsb:{:02}{:03}{:03}{:03}",
+                                book.number(),
+                                chapter,
+                                v.number,
+                                i + 1
+                            ),
+                            start: i * 5,
+                            end: i * 5 + 4,
+                        })
+                        .collect();
+                    v
+                })
+                .collect();
+            writer.chapter(
+                book,
+                openlogos_text::reading::book_title(book),
+                chapter,
+                verses,
+            );
+            keys.push(key);
+        }
+    }
+    let written = writer.finish().expect("pack");
+    for (path, bytes) in &written.files {
+        let full = dir.join(path);
+        std::fs::create_dir_all(full.parent().expect("parent")).expect("mkdir");
+        std::fs::write(full, bytes).expect("write chunk");
+    }
+    let pack =
+        FilePack::from_manifest(&written.manifest_json, Some(Box::new(DirSource::new(&dir))))
+            .expect("pack reads");
+    let id = pack.edition().resource_id.clone();
+    let mut packs = openlogos_text::reading::ReadingLibrary::new();
+    packs.insert(Box::new(pack));
+    let mut from_file = Vec::new();
+    for _ in 0..rounds.div_ceil(10).max(5) {
+        for key in &keys {
+            time(&mut from_file, || {
+                std::hint::black_box(packs.chapter_content(&id, key).expect("pack chapter"));
+            });
+        }
+    }
+
+    // The active tab scrolls verse by verse through John 3–4; its group (an `org` edition) and
+    // a follow-mode tab move along.
+    let mut session = openlogos_conformance::fixture_session();
+    session.resource_schemes = openlogos_conformance::fixture_resource_schemes();
+    let mut shell = Shell::new(session).expect("fixture session");
+    let context = CommandContext::default();
+    let mut scroll = Vec::new();
+    for round in 0..rounds {
+        for verse in 1..=20 {
+            let go = Invocation::with(
+                "tab.record_scroll",
+                CommandArgs {
+                    tab_id: Some("t1".to_owned()),
+                    segment_id: Some(format!("John.{}.{verse}", 3 + round % 2)),
+                    scalar: Some(0),
+                    ..CommandArgs::default()
+                },
+            );
+            time(&mut scroll, || {
+                shell.apply(&go, &context).expect("record_scroll");
+            });
+        }
+    }
+
+    (
+        vec![
+            row(
+                "locate a typed passage (ranges, chapters, books)",
+                5.0,
+                &mut locate,
+            ),
+            row(
+                "chapter content, placeholder pack (Ps 119 among them)",
+                5.0,
+                &mut placeholder,
+            ),
+            row(
+                "chapter content, file pack on disk (read, SHA-256, parse)",
+                5.0,
+                &mut from_file,
+            ),
+            row("chapter neighbours", 5.0, &mut neighbors),
+        ],
+        row(
+            "scroll into the next verse: tab, group and follower move (tab.record_scroll)",
+            16.0,
+            &mut scroll,
+        ),
+    )
 }
 
 fn main() {
@@ -346,7 +521,8 @@ fn main() {
         }
     }
 
-    let rows = vec![
+    let (reading_rows, scroll) = reading_bench(rounds, flag("--json").as_deref());
+    let mut rows = vec![
         row(
             "palette keystroke: passage, commands, tabs (index kept)",
             16.0,
@@ -401,6 +577,8 @@ fn main() {
             &mut view,
         ),
     ];
+    rows.extend(reading_rows);
+    rows.push(scroll);
 
     println!(
         "Session: {} workspaces, {tabs} tabs; {rounds} rounds.\n",
