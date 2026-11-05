@@ -397,7 +397,7 @@ const CASES = {
   },
 
   async "slash-focuses-palette"(p) {
-    await click(...(await centre('#columns > .column[data-number="2"] .measure')));
+    await click(...(await centre('#columns > .column[data-number="2"] .scroller')));
     await type("/");
     const s = await snap();
     expect(p, s.focus === "palette-field", `/ focuses the palette (${s.focus})`);
@@ -1135,6 +1135,19 @@ const CASES = {
   },
 
   // MARK: B078 continuous reading (specs/23)
+
+  async "reading-last-verse-reaches-the-line"(p) {
+    // The room after the text lets an edition's one-line last verse reach the reading line,
+    // at any window height (as on the Mac).
+    for (const [w, h] of [[1440, 900], [1024, 600], [1280, 1400]]) {
+      await setWindow(w, h);
+      await navigate("Rev 22:21");
+      await sleep(200);
+      const [line, top] = await readingLine(1, "Rev.22.21");
+      expect(p, top != null && Math.abs(top - line) <= 2, `Rev 22:21 on the reading line at ${w}×${h} (${top} vs ${line})`);
+    }
+    await setWindow(width, height);
+  },
 
   async "reading-jump-flash-mark"(p) {
     await palette("John 3:16");
