@@ -25,6 +25,7 @@ const shotsDir = option("--shots", null);
 const extraDir = option("--extra-shots", null); // shots beyond the ten kept in the evidence
 const wellShotsDir = option("--well-shots", null); // B076: the contextual well's states
 const menuShotsDir = option("--menu-shots", null); // B077: the context menu's states
+const readShotsDir = option("--read-shots", null); // B078: continuous reading
 const headed = args.includes("--headed");
 const benchOn = args.includes("--bench");
 const samples = Number(option("--samples", "200"));
@@ -183,6 +184,54 @@ function expect(problems, ok, message) { if (!ok) problems.push(message); }
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const sorted = (o) => (o ? Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b))) : o);
 const groupsOf = (well) => well.groups.map((g) => [g.kind, g.items]);
+
+// MARK: B078 helpers
+
+/** Scrolls column N's stream `dy` px a frame, `steps` times (or until `until` is the chapter at
+ *  the reading line), as a reader's wheel would: after each step the verse that was on the
+ *  reading line must have moved by exactly the scroll (prepends and releases above it shifted
+ *  scrollTop by their height), so `maxJump` is how far the text moved under the eye. */
+async function scrollStream(column, dy, steps, until = null) {
+  return jsAsync(`const [n, dy, steps, until] = arguments; const done = arguments[arguments.length - 1];
+    const v = [...window.openlogosShell.host.views.values()].find((x) => x.section.isConnected && x.section.dataset.number === String(n));
+    const st = v.stream, sc = v.scroller;
+    const out = { maxJump: 0, maxBlocks: 0, maxNodes: 0, chapters: [], headers: [], steps: 0 };
+    const next = (i) => {
+      if (i >= steps) return finish();
+      const top = st.measureTop(); const el = top && st.verseEl(top.segment_id); const before = el && el.getBoundingClientRect().top;
+      const t0 = sc.scrollTop; sc.scrollTop = t0 + dy; const moved = sc.scrollTop - t0;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (el && el.isConnected) out.maxJump = Math.max(out.maxJump, Math.abs(before - el.getBoundingClientRect().top - moved));
+        out.maxBlocks = Math.max(out.maxBlocks, st.blocks.length);
+        out.maxNodes = Math.max(out.maxNodes, v.page.getElementsByTagName('*').length);
+        const b = st.blockAtTop(); const key = b && b.key;
+        if (key && out.chapters[out.chapters.length - 1] !== key) { out.chapters.push(key); out.headers.push(st.header.textContent); }
+        out.steps = i + 1;
+        if (until && key === until) return finish();
+        next(i + 1);
+      }));
+    };
+    const finish = () => setTimeout(() => done(out), 400); // past the settle report
+    next(0);`, column, dy, steps, until);
+}
+
+/** The y of a column's reading line and of a verse's top, viewport px. */
+async function readingLine(column, segment) {
+  return js(`const v = [...window.openlogosShell.host.views.values()].find((x) => x.section.isConnected && x.section.dataset.number === String(arguments[0]));
+    const el = v.stream.verseEl(arguments[1]); return [v.stream.edge(), el ? el.getBoundingClientRect().top : null];`, column, segment);
+}
+
+async function navigate(reference) {
+  await js("window.openlogosShell.run({ command_id: 'nav.navigate', args: { reference: arguments[0] } })", reference);
+  await sleep(60);
+}
+
+async function palette(text) {
+  await chord("Meta", "k");
+  await type(text);
+  await chord("Enter");
+  await sleep(60);
+}
 
 // MARK: cases
 
@@ -447,7 +496,7 @@ const CASES = {
 
   async "pen-and-eraser"(p) {
     await type("p");
-    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .measure').getBoundingClientRect(); return [r.left, r.top, r.width];");
+    const box = await js("const m = document.querySelector('#columns > .column[data-number=\"1\"] .measure').getBoundingClientRect(); const r = document.querySelector('#columns > .column[data-number=\"1\"] .scroller').getBoundingClientRect(); return [m.left, r.top, m.width];");
     const y = box[1] + 140;
     await drag([box[0] + 40, y], [box[0] + 240, y + 30], 12);
     let s = await snap();
@@ -465,13 +514,13 @@ const CASES = {
   },
 
   async "placeholder-and-navigation"(p) {
+    // B078: Romans 8 is a placeholder chapter of the BSB and SBLGNT streams, marked as such.
     await chord("Meta", "k");
     await type("rom 8");
     await chord("Enter");
     const s = await snap();
-    expect(p, s.dom[0].placeholder && s.dom[1].placeholder, `Rom 8 shows the placeholder in the group: ${JSON.stringify(s.dom.map((c) => c.placeholder))}`);
-    const text = await js("return document.querySelector('.placeholder h2').textContent");
-    expect(p, text === "Berean Standard Bible · Rom 8", `placeholder "${text}"`);
+    expect(p, s.reading[0].blocks.includes("Rom.8") && s.reading[1].blocks.includes("Rom.8"), `Rom 8 opens in the group: ${JSON.stringify(s.reading.map((r) => r && r.blocks))}`);
+    expect(p, s.reading[0].header === "BSB · Rom 8" && s.reading[0].notice === "Placeholder text — this edition is not installed", `header and notice ${JSON.stringify(s.reading[0])}`);
     await chord("Meta", "[");
     const back = await snap();
     expect(p, back.columns[0].reference === "John.3.16", `⌘[ goes back (${back.columns[0].reference})`);
@@ -528,23 +577,24 @@ const CASES = {
   },
 
   async "scroll-anchor-recorded"(p) {
-    // Large text so the passage scrolls; scroll column 1, let it settle, check the core has it.
+    // Large text; scroll column 1 on from the typed verse, let it settle, check the core has it.
     await setWindow(1024, 420);
     for (let i = 0; i < 4; i++) await js("window.openlogosShell.run({ command_id: 'view.text_size_up' })");
-    const room = await js("const s = document.querySelector('#columns > .column .scroller'); s.scrollTop = 200; return [s.scrollHeight, s.clientHeight, s.scrollTop];");
-    expect(p, room[2] > 100, `column 1 scrolls (${room})`);
+    const room = await js("const s = document.querySelector('#columns > .column .scroller'); const t = s.scrollTop; s.scrollTop = t + 200; return [t, s.scrollTop];");
+    expect(p, room[1] - room[0] > 100, `column 1 scrolls (${room})`);
     await sleep(400);
     let s = await snap();
     const a = s.anchors[0];
-    expect(p, a && /^John\.3\.1[67]$/.test(a.segment_id) && a.scalar >= 0, `scroll anchor ${JSON.stringify(a)}`);
+    expect(p, a && /^John\.3\.(1[6-9]|2\d)$/.test(a.segment_id) && a.scalar >= 0, `scroll anchor ${JSON.stringify(a)}`);
     expect(p, s.log.some((l) => l.command_id === "tab.record_scroll" && l.handled), "tab.record_scroll dispatched");
     // Away and back: the column is rebuilt from the session and lands on the same anchor.
     const top = await js("return document.querySelector('#columns > .column .scroller').scrollTop");
+    const verse = (await snap()).reading[0].top;
     await chord("Alt", "]");
     await chord("Alt", "[");
     await sleep(300);
-    const again = await js("return document.querySelector('#columns > .column .scroller').scrollTop");
-    expect(p, Math.abs(again - top) < 40, `scroll restored from the anchor (${top} → ${again})`);
+    const again = await snap();
+    expect(p, again.reading[0].top && again.reading[0].top.segment_id === verse.segment_id, `scroll restored from the anchor (${JSON.stringify(verse)} → ${JSON.stringify(again.reading[0].top)})`);
     await setWindow(width, height);
   },
 
@@ -973,7 +1023,8 @@ const CASES = {
     s = await snap();
     expect(p, s.dom[0].shown === "SBLGNT Jn 3" && s.active === 1, `column 2 moved left: ${JSON.stringify(s.dom.map((c) => c.shown))}`);
     await chord("Meta", "z");
-    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .scroller').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom - 30];");
+    // B078: the stream fills the column; its sticky header is background.
+    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"1\"] .reading-header').getBoundingClientRect(); return [r.right - 30, r.top + r.height / 2];");
     await rightClick(...box);
     s = await snap();
     expect(p, s.target.kind === "background" && s.target.column === 1 && eq(s.contextMenu.menus[0].rows.map((r) => r.label), ["New tab", "Paste passage", "Text size", "Theme"]), `background ${JSON.stringify(s.target)} ${JSON.stringify(s.contextMenu.menus[0].rows.map((r) => r.label))}`);
@@ -990,7 +1041,7 @@ const CASES = {
     await chooseRow("Copy");
     await chooseRow("Copy reference", 1);
     await chord("Alt", "Shift", "]");
-    const box = await js("const r = document.querySelector('#columns > .column .scroller').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom - 30];");
+    const box = await js("const r = document.querySelector('#columns > .column .reading-header').getBoundingClientRect(); return [r.right - 30, r.top + r.height / 2];");
     await rightClick(...box);
     await chooseRow("Paste passage");
     await sleep(100);
@@ -1031,7 +1082,7 @@ const CASES = {
     expect(p, s.target && s.target.kind === "selection" && s.target.text === "eternal life", `⇧F10 with a selection: ${JSON.stringify(s.target)}`);
     await chord("Escape");
     // The context-menu key (DOM key "ContextMenu") on a collapsed caret in the text: the word there.
-    await js("const t = document.querySelector('#columns > .column[data-number=\"1\"] .t').firstChild; const r = document.createRange(); r.setStart(t, 13); r.collapse(true); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r); document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }));");
+    await js("const t = document.querySelector('#columns > .column[data-number=\"1\"] [data-segment=\"John.3.16\"] .t').firstChild; const r = document.createRange(); r.setStart(t, 13); r.collapse(true); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r); document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }));");
     s = await snap();
     expect(p, s.target && s.target.kind === "word" && s.target.text === "loved" && s.selection === "loved", `menu key at the caret: ${JSON.stringify(s.target)}`);
     await chord("Escape");
@@ -1053,6 +1104,220 @@ const CASES = {
     expect(p, r && r[0] >= 8 && r[1] >= 8 && r[2] <= 1024 - 8 && r[3] <= 600 - 8, `flipped inside 1024×600: ${r}`);
     await chord("Escape");
     await setWindow(width, height);
+  },
+
+  // MARK: B078 continuous reading (specs/23)
+
+  async "reading-jump-flash-mark"(p) {
+    await palette("John 3:16");
+    const s = await snap();
+    const [line, top] = await readingLine(1, "John.3.16");
+    expect(p, Math.abs(top - line) <= 2, `John 3:16 on the reading line (${top} vs ${line})`);
+    expect(p, s.reading[0].top.segment_id === "John.3.16" && s.reading[1].top.segment_id === "John.3.16", `tops ${JSON.stringify(s.reading.map((r) => r && r.top))}`);
+    expect(p, eq(s.reading[0].flashing, ["John.3.16"]) && eq(s.reading[0].marked, ["John.3.16"]), `flash ${s.reading[0].flashing} mark ${s.reading[0].marked}`);
+    expect(p, eq(s.reading[1].marked, ["John.3.16"]), `the follower is marked too: ${s.reading[1].marked}`);
+    expect(p, s.reading[0].header === "BSB · Jn 3" && s.reading[1].header === "SBLGNT · Jn 3", `headers ${s.reading.map((r) => r && r.header)}`);
+    expect(p, eq(s.reading[0].blocks.slice(0, 5), ["John.1", "John.2", "John.3", "John.4", "John.5"]), `window ${s.reading[0].blocks}`);
+    await sleep(1400);
+    const later = await snap();
+    expect(p, later.reading[0].flashing.length === 0 && eq(later.reading[0].marked, ["John.3.16"]), `flash once, mark stays: ${later.reading[0].flashing} ${later.reading[0].marked}`);
+  },
+
+  async "reading-range-and-back"(p) {
+    await palette("John 3:16-18");
+    let s = await snap();
+    expect(p, eq(s.reading[0].marked, ["John.3.16", "John.3.17", "John.3.18"]), `range marked ${s.reading[0].marked}`);
+    expect(p, s.dom[0].identity.includes("John 3:16–18"), `identity ${s.dom[0].identity}`);
+    await palette("Ps 23");
+    s = await snap();
+    expect(p, s.reading[0].top.segment_id === "Ps.23.1" && s.reading[0].marked.length === 0 && s.reading[0].header === "BSB · Ps 23", `Ps 23 ${JSON.stringify(s.reading[0])}`);
+    await palette("Jude 3");
+    s = await snap();
+    expect(p, s.reading[0].top.segment_id === "Jude.1.3" && eq(s.reading[0].marked, ["Jude.1.3"]), `Jude 3 ${JSON.stringify(s.reading[0].top)}`);
+    await chord("Meta", "[");
+    s = await snap();
+    expect(p, s.columns[0].reference === "Ps.23" && s.reading[0].marked.length === 0, `back to Ps 23: ${s.columns[0].reference} ${s.reading[0].marked}`);
+    await chord("Meta", "[");
+    s = await snap();
+    expect(p, s.columns[0].reference === "John.3.16-John.3.18" && s.reading[0].top.segment_id === "John.3.16" && s.reading[0].marked.length === 0, `back to Jn 3:16–18 (mark cleared): ${s.columns[0].reference} ${JSON.stringify(s.reading[0].top)} ${s.reading[0].marked}`);
+    await chord("Meta", "]");
+    s = await snap();
+    expect(p, s.columns[0].reference === "Ps.23", `forward ${s.columns[0].reference}`);
+    // A whole book opens at its first verse: the palette's Passage row for "Genesis".
+    await palette("Genesis");
+    s = await snap();
+    expect(p, s.reading[0].top.segment_id === "Gen.1.1" && s.reading[0].header === "BSB · Gen 1", `Genesis ${JSON.stringify(s.reading[0].top)}`);
+    expect(p, s.reading[1].error && s.reading[1].error.includes("Genesis is not in SBLGNT"), `SBLGNT has no Genesis: ${JSON.stringify(s.reading[1])}`);
+  },
+
+  async "reading-palette-books"(p) {
+    await chord("Meta", "k");
+    await type("Jo");
+    const rows = await js("return [...document.querySelectorAll('.results h3, .results .row .title')].map((e) => e.textContent)");
+    const passage = rows.slice(rows.indexOf("Passage") + 1, rows.indexOf("Passage") + 6);
+    expect(p, rows[0] === "Passage" && passage.includes("John"), `"Jo" offers John: ${JSON.stringify(rows)}`);
+    await chord("Meta", "a");
+    await type("Genesis");
+    const first = await js("const r = document.querySelector('.row[aria-selected=true]'); return [document.querySelector('.results h3').textContent, r && r.querySelector('.title').textContent]");
+    expect(p, eq(first, ["Passage", "Genesis"]), `first row ${JSON.stringify(first)}`);
+    await chord("Enter");
+    await sleep(60);
+    const s = await snap();
+    const [line, top] = await readingLine(1, "Gen.1.1");
+    expect(p, s.columns[0].reference === "Gen.1" && s.reading[0].top.segment_id === "Gen.1.1" && Math.abs(top - line) <= 2 && s.reading[0].header === "BSB · Gen 1", `Genesis → Gen 1:1: ${s.columns[0].reference} ${JSON.stringify(s.reading[0].top)}`);
+    expect(p, s.reading[1].error && s.reading[1].error.includes("Genesis is not in SBLGNT"), `SBLGNT: ${JSON.stringify(s.reading[1])}`);
+  },
+
+  async "reading-invalid-reference"(p) {
+    await palette("John 22");
+    const s = await snap();
+    expect(p, s.reading[0].error && s.reading[0].error.startsWith("Berean Standard Bible · John 22") && s.reading[0].error.includes("John has no chapter 22."), `not in edition: ${JSON.stringify(s.reading[0])}`);
+    expect(p, s.reading[1].error && s.reading[1].error.includes("John has no chapter 22"), `follower too: ${JSON.stringify(s.reading[1])}`);
+    expect(p, !s.dom[0].text, "no text of another chapter");
+    await chord("Meta", "[");
+    const back = await snap();
+    expect(p, back.reading[0].blocks && back.reading[0].top.segment_id === "John.3.16", `back to the text: ${JSON.stringify(back.reading[0].top)}`);
+  },
+
+  async "reading-scroll-down-across-books"(p) {
+    await navigate("John.21.20");
+    const r = await scrollStream(1, 60, 400, "Acts.2");
+    expect(p, r.chapters.includes("Acts.1") && r.chapters.includes("Acts.2"), `reached Acts: ${r.chapters}`);
+    expect(p, r.maxJump <= 2, `the text under the eye moved ${r.maxJump} px`);
+    expect(p, r.headers.includes("BSB · Acts 1"), `headers ${r.headers}`);
+    const s = await snap();
+    expect(p, s.dom[0].shown === "BSB Acts 2" && s.dom[0].tabs[0] === "BSB Acts 2", `tab label ${s.dom[0].shown}`);
+    expect(p, /^Acts 2:\d+$/.test(s.dom[0].identity.match(/Acts [\d:]+/)?.[0] || ""), `identity ${s.dom[0].identity}`);
+    const acts = await js("return [...document.querySelectorAll('#columns > .column[data-number=\"1\"] .chapter[data-chapter=\"Acts.1\"] .book-title')].map((h) => h.textContent)");
+    expect(p, eq(acts, ["Acts"]), `book heading on Acts 1: ${acts}`);
+    expect(p, s.reading[1].top && s.reading[1].top.segment_id.startsWith("Acts.2.") && s.reading[1].top.segment_id === s.reading[0].top.segment_id, `SBLGNT follows: ${JSON.stringify(s.reading.map((x) => x && x.top))}`);
+    expect(p, r.maxBlocks <= 9, `blocks ≤ 9 (${r.maxBlocks})`);
+  },
+
+  async "reading-scroll-up-across-books"(p) {
+    await navigate("John.1.3");
+    const r = await scrollStream(1, -60, 400, "Luke.23");
+    expect(p, r.chapters.includes("Luke.24") && r.chapters.includes("Luke.23"), `reached Luke: ${r.chapters}`);
+    expect(p, r.maxJump <= 2, `the text under the eye moved ${r.maxJump} px`);
+    expect(p, r.headers.includes("BSB · Lk 24"), `headers ${r.headers}`);
+    const s = await snap();
+    expect(p, s.dom[0].shown === "BSB Lk 23", `tab label ${s.dom[0].shown}`);
+    await navigate("Gen.2.3");
+    const g = await scrollStream(1, -60, 200, "Gen.1");
+    expect(p, g.chapters.includes("Gen.1") && g.maxJump <= 2, `Genesis 2 → 1 without a jump: ${g.chapters} ${g.maxJump}`);
+  },
+
+  async "reading-linked-follow"(p) {
+    await navigate("John.3.16");
+    const r = await scrollStream(1, 50, 120);
+    const s = await snap();
+    const [a, b] = [s.reading[0].top, s.reading[1].top];
+    expect(p, a && b && a.segment_id === b.segment_id && a.segment_id !== "John.3.16", `SBLGNT on the BSB's verse: ${JSON.stringify([a, b])}`);
+    const [line, top] = await readingLine(2, b.segment_id);
+    expect(p, Math.abs(top - line) <= 2, `the follower's verse on its reading line (${top} vs ${line})`);
+    const records = s.log.filter((l) => l.command_id === "tab.record_scroll");
+    expect(p, records.length > 0 && records.every((l) => l.tab_id === "t1"), `only the driver reports: ${JSON.stringify(records.slice(-4))}`);
+    expect(p, s.columns[1].reference === a.segment_id, `the follower's passage ${s.columns[1].reference}`);
+    expect(p, r.chapters.length >= 2, `scrolled through ${r.chapters}`);
+    // Scrolling the follower drives the group the other way.
+    await scrollStream(2, 300, 3);
+    const t = await snap();
+    expect(p, t.reading[0].top.segment_id === t.reading[1].top.segment_id && t.log.some((l) => l.command_id === "tab.record_scroll" && l.tab_id === "t3"), `column 2 drives: ${JSON.stringify([t.reading[0].top, t.reading[1].top])}`);
+  },
+
+  async "reading-wlc-follows-its-scheme"(p) {
+    // WLC (Gen 1:1, pinned behind the BSB in column 1) joins group 1 in column 3.
+    await js("const r = window.openlogosShell.run; r({ command_id: 'tab.focus', args: { workspace_id: 'w1', tab_id: 't2' } }); r({ command_id: 'tab.link', args: { group: '1' } }); r({ command_id: 'tab.move_to_column', args: { column: 3 } }); r({ command_id: 'column.focus', args: { column: 1 } });");
+    await palette("Mal 4");
+    let s = await snap();
+    expect(p, s.reading[2] && s.reading[2].top && s.reading[2].top.segment_id === "Mal.3.19" && s.reading[2].header === "WLC · Mal 3", `WLC at Malachi 3:19: ${JSON.stringify(s.reading[2])}`);
+    expect(p, s.reading[1].error && s.reading[1].error.includes("not in SBLGNT"), `SBLGNT has no Malachi: ${JSON.stringify(s.reading[1])}`);
+    // Scrolling the BSB from Malachi 4 into Matthew 1; the WLC stays at its last verse (its edition ends).
+    const r = await scrollStream(1, 60, 200, "Matt.1");
+    s = await snap();
+    expect(p, r.chapters.includes("Matt.1") && s.reading[0].header === "BSB · Mt 1", `BSB into Matthew: ${r.chapters} ${s.reading[0].header}`);
+    expect(p, r.maxJump <= 2, `no jump ${r.maxJump}`);
+  },
+
+  async "reading-psalm-poetry"(p) {
+    await navigate("Ps.3");
+    const s = await snap();
+    expect(p, s.reading[0].top.segment_id === "Ps.3.0" && s.reading[0].header === "BSB · Ps 3", `a titled Psalm opens at its title: ${JSON.stringify(s.reading[0].top)}`);
+    const block = await js(`const b = document.querySelector('#columns > .column[data-number="1"] .chapter[data-chapter="Ps.3"]');
+      return { heading: b.querySelector('.chapter-heading').textContent, book: !!b.querySelector('.book-title'), title: b.querySelector('p.superscription [data-segment]').dataset.segment,
+        titleLabel: b.querySelector('p.superscription .marker') ? 1 : 0, lines: b.querySelectorAll('p.line').length, verses: b.querySelectorAll('[data-segment]').length,
+        book1: [...document.querySelectorAll('#columns > .column[data-number="1"] .chapter[data-chapter="Ps.1"] .book-title')].map((h) => h.textContent) };`);
+    expect(p, block.heading === "Psalm 3" && !block.book && block.title === "Ps.3.0" && block.titleLabel === 0, `Psalm 3 heading and title ${JSON.stringify(block)}`);
+    expect(p, block.lines === 8 && block.verses === 9, `one line per verse ${JSON.stringify(block)}`);
+    expect(p, eq(block.book1, ["Psalms"]), `book title on Psalm 1 only: ${block.book1}`);
+  },
+
+  async "reading-placeholder-actions"(p) {
+    const pts = await phrasePoints(1, "Placeholder verse — John 3:18");
+    await drag(pts[0], pts[1]);
+    await sleep(80);
+    let s = await snap();
+    const disabled = await js("return [...document.querySelectorAll('#well button[aria-disabled]')].map((b) => b.dataset.command + ': ' + b.title)");
+    for (const id of ["selection.highlight", "selection.collect", "selection.note", "selection.study"]) {
+      expect(p, disabled.some((d) => d.startsWith(id) && d.endsWith("Placeholder text can’t be quoted or collected")), `${id} disabled with words: ${JSON.stringify(disabled)}`);
+    }
+    await click(...(await centre('#well button[data-command="selection.collect"]')));
+    s = await snap();
+    expect(p, s.toast === "Placeholder text can’t be quoted or collected", `pressing it says why: ${s.toast}`);
+    await rightClick((pts[0][0] + pts[1][0]) / 2, pts[0][1]);
+    const rows = await menuRows();
+    const row = (label) => rows.find((r) => r.label === label);
+    expect(p, row("Collect") && row("Collect").disabled === "Placeholder text can’t be quoted or collected" && row("Note on it").disabled && row("Highlight").disabled && !row("Highlight").submenu, `menu rows ${JSON.stringify(rows.map((r) => [r.label, r.disabled]))}`);
+    await chord("Escape");
+    await js("document.getSelection().removeAllRanges()");
+    await type("h");
+    await drag(pts[0], pts[1]);
+    await sleep(80);
+    s = await snap();
+    expect(p, s.highlights.length === 0 && s.toast === "Placeholder text can’t be quoted or collected", `the highlight tool refuses: ${JSON.stringify(s.highlights)} ${s.toast}`);
+    // A real verse in the same chapter still highlights.
+    const real = await phrasePoints(1, "eternal life");
+    await drag(real[0], real[1]);
+    await sleep(80);
+    s = await snap();
+    expect(p, s.highlights.length === 1, `fixture verse highlights: ${JSON.stringify(s.highlights)}`);
+  },
+
+  async "reading-highlight-and-ink-survive-unload"(p) {
+    await type("h");
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(80);
+    await type("p");
+    const at = await js("const el = document.querySelector('#columns > .column[data-number=\"1\"] [data-segment=\"John.3.17\"]'); const r = el.getBoundingClientRect(); return [r.left + 20, r.top + 6];");
+    await drag(at, [at[0] + 160, at[1] + 10], 10);
+    await type("v");
+    const inked = () => js(`const v = [...window.openlogosShell.host.views.values()].find((x) => x.section.isConnected && x.section.dataset.number === '1');
+      const el = v.stream.verseEl('John.3.17'); if (!el) return -1; const c = v.canvas; const cr = c.getBoundingClientRect(); const r = el.getBoundingClientRect();
+      const y0 = Math.max(0, Math.round(r.top - cr.top - 20)), h = 60; const d = c.getContext('2d').getImageData(0, y0, c.width, h).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n;`);
+    const before = await inked();
+    expect(p, before > 200, `stroke painted at John 3:17 (${before} px)`);
+    // Far enough that John 3 is released, then back.
+    await scrollStream(1, 400, 40);
+    let s = await snap();
+    expect(p, !s.reading[0].blocks.includes("John.3"), `John 3 released: ${s.reading[0].blocks}`);
+    await scrollStream(1, -400, 80, "John.3");
+    await navigate("John.3.16");
+    s = await snap();
+    expect(p, s.reading[0].blocks.includes("John.3"), "John 3 loaded again");
+    const painted = await js("const h = CSS.highlights.get('ol-yellow'); return h ? [...h].map((r) => r.toString()) : []");
+    expect(p, eq(painted, ["eternal life"]), `highlight repainted on the reloaded block: ${JSON.stringify(painted)}`);
+    const after = await inked();
+    expect(p, after > 200 && Math.abs(after - before) < before * 0.25, `stroke follows John 3:17 (${before} → ${after} px)`);
+  },
+
+  async "reading-dom-window-cap"(p) {
+    await navigate("Ps.100");
+    const r = await scrollStream(1, 120, 600);
+    expect(p, r.chapters.length >= 30, `scrolled through ${r.chapters.length} chapters`);
+    expect(p, r.maxBlocks <= 9 && r.maxNodes < 6000, `window ${r.maxBlocks} blocks, ${r.maxNodes} nodes`);
+    expect(p, r.maxJump <= 2, `no jump (${r.maxJump})`);
+    p.info = { chapters: r.chapters.length, maxBlocks: r.maxBlocks, maxNodes: r.maxNodes };
   },
 
   async "only-registered-commands"(p) {
@@ -1239,6 +1504,50 @@ async function menuScreenshots() {
   await shot("web-menu-dark");
 }
 
+/** B078: continuous reading, the same states as the Mac (docs/evidence/B078). */
+async function readScreenshots() {
+  await mkdir(readShotsDir, { recursive: true });
+  const shot = async (name, element = null) => {
+    const file = join(readShotsDir, `${name}.png`);
+    const png = element
+      ? await wd("GET", `${S}/element/${Object.values(await wd("POST", `${S}/element`, { using: "css selector", value: element }))[0]}/screenshot`)
+      : await wd("GET", `${S}/screenshot`);
+    await writeFile(file, Buffer.from(png, "base64"));
+    console.log(`screenshot ${file}`);
+  };
+  await setWindow(1440, 900);
+  for (const theme of ["light", "dark"]) {
+    await load(`?theme=${theme}&autotest=1`);
+    await navigate("Ps.23"); // somewhere else first, so the jump is a jump
+    await palette("John 3:16");
+    await sleep(140); // mid-flash
+    await shot(theme === "dark" ? "web-read-jump-dark" : "web-read-jump-john-3-16");
+  }
+  await load("?theme=light&autotest=1");
+  await navigate("John.21.20");
+  await scrollStream(1, 60, 400, "Acts.1");
+  await scrollStream(1, -60, 4);
+  await shot("web-read-john-acts-boundary");
+  await load("?theme=light&autotest=1");
+  await navigate("John.3.16");
+  await scrollStream(1, 50, 30);
+  await shot("web-read-linked-bsb-sblgnt");
+  await load("?theme=light&autotest=1");
+  await navigate("Ps.3");
+  await shot("web-read-psalm-3-poetry");
+  await load("?theme=light&autotest=1");
+  await js("const r = window.openlogosShell.run; r({ command_id: 'tab.focus', args: { workspace_id: 'w1', tab_id: 't2' } }); r({ command_id: 'tab.link', args: { group: '1' } }); r({ command_id: 'tab.move_to_column', args: { column: 3 } }); r({ command_id: 'column.focus', args: { column: 1 } });");
+  await palette("Mal 4:5");
+  await sleep(1400);
+  await shot("web-read-wlc-malachi-scheme");
+  await load("?theme=light&autotest=1");
+  await palette("John 22");
+  await shot("web-read-invalid-john-22");
+  await load("?theme=light&autotest=1");
+  await navigate("John.4");
+  await shot("web-read-placeholder-notice", '#columns > .column[data-number="1"] .scroller');
+}
+
 // MARK: run
 
 let failures = 0;
@@ -1316,6 +1625,7 @@ try {
   if (shotsDir) await screenshots();
   if (wellShotsDir) await wellScreenshots();
   if (menuShotsDir) await menuScreenshots();
+  if (readShotsDir) await readScreenshots();
 } catch (error) {
   console.error(String(error));
   failures = failures || 1;
