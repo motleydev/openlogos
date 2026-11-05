@@ -65,6 +65,20 @@ struct ReaderMark: Equatable {
     /// Display ranges, as `ReaderSelection.highlights` returns them.
     let ranges: [NSRange]
     let color: PlatformColor
+    /// B078: the same ranges as segment spans; when set, the surface paints these in whatever
+    /// window it shows, so a highlight stays on its verse while chapters load and unload.
+    var spans: [SegmentSpan] = []
+    /// B078: drawn as a 2 pt underline in this colour instead of a background (the typed
+    /// verses' mark, B072's `.target`).
+    var underline: PlatformColor?
+}
+
+/// B078: how a continuous window's text storage changes (ChapterLayout.swift): replaced, or
+/// one insertion or deletion at an end.
+enum ReaderLayoutEdit: Equatable {
+    case replace
+    case insert(at: Int, length: Int)
+    case delete(NSRange)
 }
 
 /// Something the host asks the surface to do; a new id is a new command.
@@ -174,6 +188,8 @@ final class ReaderSurface: NSObject {
     var onContextMenu: ((ReaderContextHit) -> ReaderPlatformMenu?)?
     var dragMode: ReaderDragMode = .select
     private var marks: [ReaderMark] = []
+    /// B078: marks the surface's owner paints under the host's (the typed verses' mark).
+    private(set) var overlay: [ReaderMark] = []
     private var typographyKey: String?
 
     private(set) var layout: ReaderLayout?
@@ -234,11 +250,63 @@ final class ReaderSurface: NSObject {
         clearHighlights()
     }
 
+    /// B078: a continuous window's layout, the storage changed by the edit only (the text
+    /// already laid out above or below stays). The selection is kept by the text view.
+    func replace(layout built: ReaderLayout, edit: ReaderLayoutEdit, typographyKey key: String?, overlay marks: [ReaderMark]) {
+        typographyKey = key
+        overlay = marks
+        layout = built
+        lastError = nil
+        guard let textView, let storage else { return }
+        storage.beginEditing()
+        switch edit {
+        case .replace:
+            storage.setAttributedString(built.display)
+            current = nil
+        case .insert(let at, let length):
+            storage.insert(built.display.attributedSubstring(from: NSRange(location: at, length: length)), at: at)
+        case .delete(let range):
+            storage.deleteCharacters(in: range)
+        }
+        storage.endEditing()
+        assert(storage.string == built.display.string, "the edit leaves the window's display")
+        if edit == .replace {
+            applyPadding()
+            #if canImport(UIKit)
+            textView.accessibilityIdentifier = "reader-\(paneID)"
+            textView.accessibilityLabel = "\(built.content.editionId) text"
+            #else
+            textView.setAccessibilityIdentifier("reader-\(paneID)")
+            textView.setAccessibilityLabel("\(built.content.editionId) text")
+            #endif
+        }
+        paint(current)
+    }
+
+    /// B078: called after every paint. A continuous window lays its text out again down to the
+    /// reader after an attribute change: TextKit 2 gives what an edit invalidated an estimated
+    /// height until it lays it out again, and text below an estimate moves when it is replaced.
+    var afterPaint: (() -> Void)?
+
+    /// B078: the owner's marks (painted first), replaced when they change.
+    func setOverlay(_ marks: [ReaderMark]) {
+        guard marks != overlay else { return }
+        overlay = marks
+        paint(current)
+    }
+
     /// Rebuilds the layout with the current Dynamic Type fonts (iOS content size changes).
     private func rebuildForTypography() {
         guard let content = layout?.content, typographyKey == nil else { return }
         layout = nil
         apply(content: content, padding: padding)
+    }
+
+    /// B078: the side padding alone (a continuous window keeps its layout).
+    func setPadding(_ padding: CGFloat) {
+        guard padding != self.padding else { return }
+        self.padding = padding
+        applyPadding()
     }
 
     private func applyPadding() {
@@ -340,7 +408,9 @@ final class ReaderSurface: NSObject {
     /// verse number, so the markers keep their own attributes.
     func paint(_ selection: ReaderSelection?) {
         clearHighlights()
-        paintMarks()
+        paintMarks(overlay)
+        paintMarks(marks)
+        defer { afterPaint?() }
         guard let selection, let storage = storage else { return }
         storage.beginEditing()
         for range in selection.highlights where range.location + range.length <= storage.length {
@@ -360,11 +430,15 @@ final class ReaderSurface: NSObject {
         paint(current)
     }
 
-    private func paintMarks() {
-        guard !marks.isEmpty, let storage else { return }
+    private func paintMarks(_ marks: [ReaderMark]) {
+        guard !marks.isEmpty, let storage, let layout else { return }
         storage.beginEditing()
         for mark in marks {
-            for range in mark.ranges where range.location + range.length <= storage.length {
+            for range in mark.spans.isEmpty ? mark.ranges : layout.displayRanges(of: mark.spans) where range.location + range.length <= storage.length {
+                if let underline = mark.underline {
+                    storage.addAttributes([.underlineStyle: NSUnderlineStyle.thick.rawValue, .underlineColor: underline], range: range)
+                    continue
+                }
                 storage.addAttribute(.backgroundColor, value: mark.color, range: range)
             }
         }
@@ -413,6 +487,7 @@ final class ReaderSurface: NSObject {
         let offset = textView.characterIndexForInsertion(at: point)
         #endif
         let index = min(max(0, offset), storage.length - 1)
+        if !layout.blocks.isEmpty { return layout.segment(at: index) }
         if let segment = storage.attribute(.openLogosSegment, at: index, effectiveRange: nil) as? String { return segment }
         return layout.markers.last { $0.range.location <= index }?.segmentId ?? layout.markers.first?.segmentId
     }
@@ -438,7 +513,7 @@ final class ReaderSurface: NSObject {
         #endif
     }
 
-    private var storage: NSTextStorage? {
+    var storage: NSTextStorage? {
         #if canImport(UIKit)
         return textView?.textStorage
         #else
@@ -446,13 +521,20 @@ final class ReaderSurface: NSObject {
         #endif
     }
 
+    /// Removes the painted attributes where there are any (B078: a window of chapters is long,
+    /// and an attribute change relays out what it covers, so the rest is left alone).
     private func clearHighlights() {
         guard let storage, storage.length > 0 else { return }
         let all = NSRange(location: 0, length: storage.length)
+        var painted: [(NSAttributedString.Key, NSRange)] = []
+        for key in [NSAttributedString.Key.backgroundColor, .underlineStyle, .underlineColor] {
+            storage.enumerateAttribute(key, in: all) { value, range, _ in
+                if value != nil { painted.append((key, range)) }
+            }
+        }
+        guard !painted.isEmpty else { return }
         storage.beginEditing()
-        storage.removeAttribute(.backgroundColor, range: all)
-        storage.removeAttribute(.underlineStyle, range: all)
-        storage.removeAttribute(.underlineColor, range: all)
+        for (key, range) in painted { storage.removeAttribute(key, range: range) }
         storage.endEditing()
     }
 
@@ -496,7 +578,12 @@ final class ReaderSurface: NSObject {
         scrollRangeToVisible(range)
     }
 
+    /// B078: the owner scrolls a range into view itself (a continuous window reveals it at the
+    /// top, and only when it is out of view).
+    var revealOverride: ((NSRange) -> Void)?
+
     private func scrollRangeToVisible(_ range: NSRange) {
+        if let revealOverride { return revealOverride(range) }
         #if canImport(UIKit)
         textView?.scrollRangeToVisible(range)
         #else

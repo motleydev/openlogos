@@ -30,6 +30,37 @@ final class ShellMeasure {
         let workspaces: Int
         let tabs: Int
         let stats: [Stat]
+        /// B078: the scripted continuous scrolls.
+        var scrolls: [ScrollRun] = []
+    }
+
+    /// B078: one continuous scroll through chapters at a steady pace, one step per frame.
+    struct ScrollRun: Codable {
+        let pointsPerFrame: Double
+        let chapters: Int
+        let frames: Int
+        let frameP50Ms: Double
+        let frameP95Ms: Double
+        let frameMaxMs: Double
+        let framesOver17Ms: Int
+        let framesOver34Ms: Int
+        /// The handler and the drawn frame: steps without a window edit, and steps with one.
+        let stepP50Ms: Double
+        let stepP95Ms: Double
+        let editSteps: Int
+        let editStepP50Ms: Double
+        let editStepP95Ms: Double
+        let editStepMaxMs: Double
+        /// Steps that moved less than asked (the window did not keep up).
+        let stalls: Int
+        let maxBlocks: Int
+        let maxVerses: Int
+        let maxStorageUnits: Int
+        let residentMBStart: Double
+        let residentMBEnd: Double
+        /// Frames over 34 ms: the frame, the scroll step in it and the deferred work since the
+        /// frame before (what made it long).
+        var slowFrames: [String] = []
     }
 
     private let model: ShellModel
@@ -81,7 +112,13 @@ final class ShellMeasure {
         model.run("column.focus", args: ShellCommandArgs(column: 1))
         Self.flush()
         if let surface = model.surface(for: model.activeColumn.shownTabId), let layout = surface.layout {
-            let range = layout.runMap.displayRange(fromCore: NSRange(location: 0, length: 12))
+            // Visible text: the start of the verse at the top (B078: a window starts chapters
+            // above the reader).
+            var core = NSRange(location: 0, length: 12)
+            #if os(macOS)
+            if let top = model.stream(for: model.activeColumn.shownTabId)?.topSegment, let offset = layout.segmentOffsets[top] { core.location = offset }
+            #endif
+            let range = layout.runMap.displayRange(fromCore: core)
             stats.append(await measure("selection appears → selection group drawn", budget: 16, prepare: { _ in surface.clearSelection() }) { _ in
                 surface.select(display: range)
             })
@@ -93,10 +130,15 @@ final class ShellMeasure {
         })
         #if os(macOS)
         stats += await measureContextMenu()
+        let (reading, scrolls) = await measureReading()
+        stats += reading
+        #else
+        let scrolls: [ScrollRun] = []
         #endif
         let size = Self.windowSize
         let tabs = model.session.workspaces.reduce(0) { $0 + $1.columns.reduce(0) { $0 + $1.tabs.count } }
-        return Report(host: "mac", window: "\(Int(size.width))x\(Int(size.height))", workspaces: model.session.workspaces.count, tabs: tabs, stats: stats)
+        return Report(host: "mac", window: "\(Int(size.width))x\(Int(size.height))", workspaces: model.session.workspaces.count, tabs: tabs, stats: stats,
+                      scrolls: scrolls)
     }
 
     #if os(macOS)
@@ -213,6 +255,154 @@ final class ShellMeasure {
         surface.clearSelection()
         Self.flush()
         return stats
+    }
+    #endif
+
+    #if os(macOS)
+    /// B078: continuous reading. Column 2 shows BSB in link group 1 with columns 1 (SBLGNT)
+    /// and 3 (BSB) in the measurement session, so every move also moves two followers.
+    private func measureReading() async -> ([Stat], [ScrollRun]) {
+        var stats: [Stat] = []
+        model.run("column.focus", args: ShellCommandArgs(column: 2))
+        Self.flush()
+        guard let stream = model.stream(for: model.activeColumn.shownTabId) else { return ([], []) }
+        // A typed passage whose chapter is not in the window: locate, the chapter and its
+        // neighbours from the core, the window laid out, the verse at the top, the followers
+        // the same, drawn.
+        let places = ["John.3.16", "Gen.1.1", "Ps.119.105", "Rev.22.21", "Isa.53.5", "Rom.8.28", "Mal.4.5", "Matt.5.3", "Job.38.4", "Acts.2.1",
+                      "Ps.23", "Jude.1.3", "Luke.24.27", "Heb.11.1", "Exod.20.1"]
+        stats.append(await measure("open a chapter: typed jump to a passage outside the window (nav.navigate, window loaded, two followers, drawn)", budget: 100) { i in
+            self.model.run("nav.navigate", args: ShellCommandArgs(reference: places[i % places.count]))
+        })
+        // Into the next verse: record_scroll, the followers scrolled, drawn.
+        model.run("nav.navigate", args: ShellCommandArgs(reference: "Matt.5.1"))
+        Self.flush()
+        model.followSamples = []
+        stats.append(await measure("scroll into the next verse (record_scroll, two followers scrolled, drawn)", budget: 16) { _ in
+            let before = stream.topSegment
+            var steps = 0
+            repeat { stream.scrollAsReader(by: 6); steps += 1 } while stream.topSegment == before && steps < 30
+        })
+        stats.append(Self.stat("linked follow, host side (core record_scroll and both followers scrolled, not drawn)", budget: 16, model.followSamples))
+        stats.append(await measure("tab switch within a column after reading (tab.next)", budget: 16) { _ in
+            self.model.run("tab.next")
+        })
+        model.run("column.focus", args: ShellCommandArgs(column: 2))
+        while model.activeTab?.contentId != "bsb" { model.run("tab.next") }
+        Self.flush()
+        stats.append(await measure("labels after a scroll (refresh: tab labels and identity rows re-rendered, drawn)", budget: 16,
+                                   prepare: { i in
+            _ = try? self.model.handle.apply(commandId: "tab.record_scroll",
+                                             args: ShellCommandArgs(workspaceId: self.model.session.activeWorkspaceId, tabId: self.model.activeColumn.shownTabId,
+                                                                    segmentId: i % 2 == 0 ? "Matt.5.3" : "Matt.6.1", scalar: 0), hasSelection: false)
+        }) { _ in self.model.refresh() })
+        var runs: [ScrollRun] = []
+        ReadingScheduler.shared.durations = []
+        ReadingStream.timings = []
+        ReadingScheduler.shared.kinds = []
+        for pace in [40.0, 120.0] {
+            guard let driver = model.stream(for: model.activeColumn.shownTabId) else { break }
+            model.run("nav.navigate", args: ShellCommandArgs(reference: "Matt.1.1"))
+            Self.flush()
+            runs.append(await scrollRun(driver, pace: CGFloat(pace)))
+        }
+        let parts = ReadingStream.timings
+        stats.append(Self.stat("window edit, part: layout of the window from its blocks (ReaderLayout(pieces:))", budget: 16, parts.map { $0.0 * 1000 }))
+        stats.append(Self.stat("window edit, part: text storage edit and paint", budget: 16, parts.map { $0.1 * 1000 }))
+        stats.append(Self.stat("window edit, part: TextKit 2 layout to the view and the viewport", budget: 16, parts.map { $0.2 * 1000 }))
+        for kind in ["add above", "add below", "release above", "release below", "replace"] {
+            let all = parts.filter { $0.3 == kind }.map { ($0.0 + $0.1 + $0.2) * 1000 }
+            if !all.isEmpty { stats.append(Self.stat("window edit, whole: \(kind)", budget: 16, all)) }
+        }
+        let scheduler = ReadingScheduler.shared
+        let window = zip(scheduler.durations, scheduler.kinds).filter { $0.1 == "window" && $0.0 > 0.05 }.map(\.0)
+        stats.append(Self.stat("deferred, one per frame: a block loaded or released (one column)", budget: 16, window))
+        return (stats, runs)
+    }
+
+    /// Scrolls one step per display-link frame until 32 chapters have passed the top.
+    private func scrollRun(_ stream: ReadingStream, pace: CGFloat) async -> ScrollRun {
+        var frames: [Double] = [], steps: [Double] = [], editSteps: [Double] = []
+        var chapters = Set<String>()
+        var stalls = 0, maxBlocks = 0, maxVerses = 0, maxUnits = 0
+        let start = Self.residentMB()
+        var slow: [String] = []
+        var stepNotes: [String] = []
+        var lastStep = 0.0
+        var deferredMark = ReadingScheduler.shared.durations.count
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            var last: CFTimeInterval?
+            var count = 0
+            let ticker = FrameTicker { timestamp in
+                if let last {
+                    let frame = (timestamp - last) * 1000
+                    frames.append(frame)
+                    let scheduler = ReadingScheduler.shared
+                    if frame > 34, slow.count < 40 {
+                        let work = zip(scheduler.durations.dropFirst(deferredMark), scheduler.kinds.dropFirst(deferredMark))
+                            .map { String(format: "%@ %.1f", $0.1, $0.0) }.joined(separator: ", ")
+                        slow.append(String(format: "frame %.1f · step %.1f · deferred [%@]", frame, lastStep, work))
+                    }
+                    deferredMark = scheduler.durations.count
+                }
+                last = timestamp
+                count += 1
+                guard chapters.count < 32, count < 8000 else { return true }
+                let edits = stream.edits.count
+                let others = self.model.activeWorkspace.columns.compactMap { self.model.stream(for: $0.shownTabId) }
+                let otherEdits = others.map(\.edits.count)
+                let reports = self.model.recordedScrolls
+                let before = stream.container?.scrollView.contentView.bounds.minY ?? 0
+                let t0 = CACurrentMediaTime()
+                stream.scrollAsReader(by: pace)
+                let scrolled = (CACurrentMediaTime() - t0) * 1000
+                Self.flush()
+                let dt = (CACurrentMediaTime() - t0) * 1000
+                lastStep = dt
+                if dt > 15 {
+                    let changed = zip(others, otherEdits).flatMap { s, n in s.edits.dropFirst(n).map { "\(s.tabID):\($0)" } }
+                    stepNotes.append(String(format: "step %.1f (scroll %.1f) at %@ reports %d edits %@", dt, scrolled, stream.topSegment ?? "-",
+                                            self.model.recordedScrolls - reports, changed.joined(separator: " ")))
+                }
+                let after = stream.container?.scrollView.contentView.bounds.minY ?? 0
+                if stream.edits.count != edits { editSteps.append(dt) } else {
+                    steps.append(dt)
+                    if after - before < pace - 1 { stalls += 1 }
+                }
+                if let key = stream.topBlock?.chapterKey { chapters.insert(key) }
+                maxBlocks = max(maxBlocks, stream.blocks.count)
+                maxVerses = max(maxVerses, stream.renderedVerses)
+                maxUnits = max(maxUnits, stream.surface.storage?.length ?? 0)
+                return false
+            } finished: {
+                done.resume()
+            }
+            ticker.start()
+        }
+        func pct(_ values: [Double], _ p: Double) -> Double {
+            guard !values.isEmpty else { return 0 }
+            let sorted = values.sorted()
+            return sorted[min(sorted.count - 1, Int((Double(sorted.count - 1) * p).rounded()))]
+        }
+        func r(_ v: Double) -> Double { (v * 100).rounded() / 100 }
+        frames.removeFirst(min(3, frames.count))
+        return ScrollRun(pointsPerFrame: Double(pace), chapters: chapters.count, frames: frames.count,
+                         frameP50Ms: r(pct(frames, 0.5)), frameP95Ms: r(pct(frames, 0.95)), frameMaxMs: r(frames.max() ?? 0),
+                         framesOver17Ms: frames.filter { $0 > 17.5 }.count, framesOver34Ms: frames.filter { $0 > 34 }.count,
+                         stepP50Ms: r(pct(steps, 0.5)), stepP95Ms: r(pct(steps, 0.95)),
+                         editSteps: editSteps.count, editStepP50Ms: r(pct(editSteps, 0.5)), editStepP95Ms: r(pct(editSteps, 0.95)),
+                         editStepMaxMs: r(editSteps.max() ?? 0), stalls: stalls, maxBlocks: maxBlocks, maxVerses: maxVerses,
+                         maxStorageUnits: maxUnits, residentMBStart: r(start), residentMBEnd: r(Self.residentMB()), slowFrames: slow + stepNotes.prefix(30))
+    }
+
+    /// The process's physical footprint, in MB.
+    static func residentMB() -> Double {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+        }
+        return result == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : 0
     }
     #endif
 
