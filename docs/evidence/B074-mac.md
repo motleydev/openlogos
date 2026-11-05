@@ -145,7 +145,16 @@ the command runs, and the core refuses and says why.
 
 ## Lanes
 
-LANES-PLACEHOLDER
+Run by the lead on 38aecd7 (6d01b63 with main merged in after #32–#36), `CARGO_INCREMENTAL=0`, in order:
+
+| Lane | Exit | Summary |
+|---|---|---|
+| `nix develop .#core -c just ci` | 0 | `Summary [7.404s] 337 tests run: 337 passed, 0 skipped` |
+| `nix develop .#apple -c just test-swift` | 0 | `Executed 11 tests, with 0 failures (0 unexpected)`; `conformance cases: 1844 passed, 0 failed` |
+| `nix develop .#apple -c just test-reader mac` | 0 | `Executed 81 tests, with 0 failures (0 unexpected)` (12 new StoreTests) |
+
+The agent's own run on 6d01b63 gave the same results. An earlier run at fe35ce5 failed `ci` on
+shellcheck SC2115 in scripts/b074-mac-shots.sh; 6d01b63 guards the `rm -rf`.
 
 ## Decisions (for the owner's review)
 
