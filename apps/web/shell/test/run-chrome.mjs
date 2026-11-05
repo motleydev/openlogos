@@ -26,7 +26,10 @@ const extraDir = option("--extra-shots", null); // shots beyond the ten kept in 
 const wellShotsDir = option("--well-shots", null); // B076: the contextual well's states
 const menuShotsDir = option("--menu-shots", null); // B077: the context menu's states
 const readShotsDir = option("--read-shots", null); // B078: continuous reading
+const storeShotsDir = option("--store-shots", null); // B074: the user store
 const headed = args.includes("--headed");
+const storeBenchOn = args.includes("--store-bench"); // B074: restore launches and save/workspace rows alone
+const launches = Number(option("--launches", "30"));
 const benchOn = args.includes("--bench");
 const samples = Number(option("--samples", "200"));
 const benchJson = option("--bench-json", null);
@@ -233,6 +236,31 @@ async function palette(text) {
   await sleep(60);
 }
 
+// MARK: B074 helpers
+
+let storeSerial = 0;
+/** A database of its own for a case, so cases never see each other's saved store. */
+const uniqueStore = (label) => `${label}-${process.pid}-${++storeSerial}`;
+
+/** Puts a value straight into a store database (as a damaged file would be). */
+async function idbPut(db, key, value) {
+  return jsAsync(`const [name, key, value] = arguments; const done = arguments[arguments.length - 1];
+    const r = indexedDB.open(name, 1); r.onupgradeneeded = () => r.result.createObjectStore('user-store');
+    r.onsuccess = () => { const tx = r.result.transaction('user-store', 'readwrite'); tx.objectStore('user-store').put(value, key); tx.oncomplete = () => { r.result.close(); done(true); }; };`, db, key, value);
+}
+
+async function idbKeys(db) {
+  return jsAsync(`const done = arguments[arguments.length - 1]; const r = indexedDB.open(arguments[0], 1); r.onupgradeneeded = () => r.result.createObjectStore('user-store');
+    r.onsuccess = () => { const g = r.result.transaction('user-store').objectStore('user-store').getAllKeys(); g.onsuccess = () => { r.result.close(); done(g.result.map(String)); }; };`, db);
+}
+
+/** Ink pixels on the margin canvas around a verse of column N. */
+async function inkNear(column, segment) {
+  return js(`const v = [...window.openlogosShell.host.views.values()].find((x) => x.section.isConnected && x.section.dataset.number === String(arguments[0]));
+    const el = v.stream.verseEl(arguments[1]); if (!el) return -1; const c = v.canvas; if (!c.width) return 0; const cr = c.getBoundingClientRect(); const r = el.getBoundingClientRect();
+    const y0 = Math.max(0, Math.round(r.top - cr.top - 20)), h = 60; const d = c.getContext('2d').getImageData(0, y0, c.width, h).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n;`, column, segment);
+}
+
 // MARK: cases
 
 const tokens = JSON.parse(await readFile(join(repoRoot, "design/tokens/shell.json"), "utf8"));
@@ -300,7 +328,7 @@ const CASES = {
     const r = await js(`const h = window.openlogosShell.host; const n = h.registry.reduce((a, s) => a + s.shortcuts.web.length, 0);
       return { bindings: h.bindings.length, shortcuts: n, commands: h.registry.length, wellKeys: [...document.querySelectorAll('.tool')].map((b) => b.getAttribute('aria-keyshortcuts')) };`);
     expect(p, r.bindings === r.shortcuts, `${r.bindings} bindings for ${r.shortcuts} registry shortcuts`);
-    expect(p, r.commands === 84, `${r.commands} commands`);
+    expect(p, r.commands === 85, `${r.commands} commands`);
     expect(p, eq(r.wellKeys, ["V", "H", "P", "M", "E", "C"]), `tool keys from the registry ${r.wellKeys}`);
   },
 
@@ -755,7 +783,7 @@ const CASES = {
     await type("item");
     s = await snap();
     note = s.notes["fixture:note:1"];
-    expect(p, note.includes("<h3>Heading</h3>") && /<ul><li>item/.test(note), `heading and list: ${note.slice(-160)}`);
+    expect(p, note.includes("<h2>Heading</h2>") && /<ul><li>item/.test(note), `heading and list: ${note.slice(-160)}`);
     await click(...(await centre('#well button[data-command="note.link_passage"]')));
     s = await snap();
     const value = await js("return document.getElementById('palette-field').value");
@@ -1320,6 +1348,240 @@ const CASES = {
     p.info = { chapters: r.chapters.length, maxBlocks: r.maxBlocks, maxNodes: r.maxNodes };
   },
 
+  // MARK: B074: the user store, restore, drag and resize undo
+
+  async "store-restores-everything"(p) {
+    const query = `?theme=light&autotest=1&store=${uniqueStore("restore")}`;
+    await load(query);
+    // A highlight on BSB John 3:16 and a pen stroke on John 3:17 in workspace 1.
+    await type("h");
+    const pts = await phrasePoints(1, "eternal life");
+    await drag(pts[0], pts[1]);
+    await sleep(80);
+    await type("p");
+    const at = await js("const el = document.querySelector('#columns > .column[data-number=\"1\"] [data-segment=\"John.3.17\"]'); const r = el.getBoundingClientRect(); return [r.left + 20, r.top + 6];");
+    await drag(at, [at[0] + 160, at[1] + 10], 10);
+    const inkBefore = await inkNear(1, "John.3.17");
+    // The note: bold and a passage link.
+    await type("v");
+    await click(...(await centre('#columns > .column[data-number="3"] .note-editor')));
+    await js("const e = document.querySelector('#columns > .column[data-number=\"3\"] .note-editor'); const r = document.createRange(); r.selectNodeContents(e); r.collapse(false); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r);");
+    await type(" ");
+    await chord("Meta", "b");
+    await type("grace");
+    await chord("Meta", "b");
+    await click(...(await centre('#well button[data-command="note.link_passage"]')));
+    await type("jn 3:17");
+    await chord("Enter");
+    await sleep(60);
+    // A lexicon tab from a Greek word (its language is kept on the tab).
+    await click(...(await wordPoint(2, "κόσμον")));
+    await type("w");
+    await click(...(await wordPoint(2, "ἠγάπησεν")));
+    // Workspace 3: a new one at Acts 2, scrolled so a verse sits on the reading line.
+    await js("window.openlogosShell.run({ command_id: 'workspace.new' })");
+    await sleep(60);
+    await navigate("Acts.2.4");
+    await scrollStream(1, 37, 3);
+    await sleep(300);
+    // Back to workspace 1, tool Highlight.
+    await js("window.openlogosShell.run({ command_id: 'workspace.switch', args: { workspace_id: 'w1' } })");
+    await type("h");
+    await sleep(60);
+    const before = await snap();
+    const third = before.workspaces.length === 3;
+    expect(p, third, `three workspaces ${JSON.stringify(before.workspaces)}`);
+    const ws3 = await js("const s = window.openlogosShell.host.session; return s.workspaces.find((w) => w.title === 'Workspace 3')");
+    const anchor = ws3 && ws3.columns[0].tabs.find((t) => t.id === ws3.columns[0].shown_tab_id).scroll_anchor;
+    expect(p, anchor && /^Acts\.2\./.test(anchor.segment_id), `workspace 3 anchored in Acts 2 (${JSON.stringify(anchor)})`);
+    // Quit: reload the page (the save runs on hide, nothing waited for).
+    await load(query);
+    const after = await snap();
+    const keep = (s) => ({ workspaces: s.workspaces, workspace: s.workspace, tool: s.tool, widths: s.widths, columns: s.columns, anchors: s.anchors, highlights: s.highlights, ink: s.ink.map((k) => [k.tab, k.strokes, k.segments]) });
+    expect(p, eq(keep(after), keep(before)), `same state after relaunch\n before ${JSON.stringify(keep(before))}\n after  ${JSON.stringify(keep(after))}`);
+    expect(p, after.tool === "highlight" && after.well.effective === "highlight", `tool ${after.tool}`);
+    expect(p, after.stored.restore && after.stored.restore.found && after.stored.restore.report.issues.length === 0 && !after.toast, `restored quietly ${JSON.stringify(after.stored.restore)} toast ${after.toast}`);
+    const painted = await js("const h = CSS.highlights.get('ol-yellow'); return h ? [...h].map((r) => r.toString()) : []");
+    expect(p, eq(painted, ["eternal life"]), `highlight painted after relaunch ${JSON.stringify(painted)}`);
+    const inkAfter = await inkNear(1, "John.3.17");
+    expect(p, inkBefore > 200 && Math.abs(inkAfter - inkBefore) < inkBefore * 0.25, `ink on John 3:17 (${inkBefore} → ${inkAfter} px)`);
+    const lexicon = await js("const l = document.querySelector('#columns .lexicon .word'); return l && [l.textContent, l.lang, l.nextElementSibling.textContent]");
+    expect(p, lexicon && lexicon[0] === "ἠγάπησεν" && lexicon[1] === "grc" && lexicon[2].startsWith("Greek"), `lexicon tab restored in Greek ${JSON.stringify(lexicon)}`);
+    const stored = JSON.stringify(after.stored.notes.find((n) => n.id === "fixture:note:1") || null);
+    expect(p, stored.includes('{"bold":true,"text":"grace"}') && stored.includes('"link":"John.3.17"'), `note in the core after relaunch ${stored}`);
+    await js("window.openlogosShell.run({ command_id: 'tab.focus', args: { workspace_id: 'w1', tab_id: 't4' } })");
+    const note = (await snap()).notes["fixture:note:1"] || "";
+    await js("window.openlogosShell.run({ command_id: 'column.focus', args: { column: 1 } })");
+    expect(p, /<b>grace<\/b>/.test(note) && note.includes('data-reference="John.3.17"') && note.includes(">John 3:17</a>"), `note after relaunch ${note.slice(-200)}`);
+    // Nothing to undo after a restore.
+    const undo = await js("return window.openlogosShell.host.handle.view().undo_title");
+    expect(p, undo == null, `nothing to undo (${undo})`);
+    // The palette finds workspace 3's tab from workspace 1 and switches to it.
+    await palette("@acts");
+    const s3 = await snap();
+    expect(p, s3.workspace === "Workspace 3", `palette switched to ${s3.workspace}`);
+    await sleep(200);
+    const s4 = await snap();
+    const r = s4.reading[0];
+    const line = r && await readingLine(1, anchor.segment_id);
+    expect(p, r && line && line[1] != null && Math.abs(line[1] - line[0]) < 40 + 0 && s4.anchors[0] && s4.anchors[0].segment_id === anchor.segment_id, `Acts verse back on the reading line ${JSON.stringify({ line, top: r && r.top, anchor: s4.anchors[0] })}`);
+  },
+
+  async "store-damaged-file"(p) {
+    const name = uniqueStore("damaged");
+    const query = `?theme=light&autotest=1&store=${name}`;
+    await load(query);
+    await idbPut(`openlogos-${name}`, "current", '{"format":"openlogos-user-store","schema_version":"1.0","sess');
+    await load(query);
+    let s = await snap();
+    expect(p, s.toast === "Your saved workspace could not be read; a copy was kept." && s.workspace === "Study", `notice "${s.toast}" on ${s.workspace}`);
+    await sleep(150);
+    let keys = await idbKeys(`openlogos-${name}`);
+    expect(p, keys.filter((k) => k.startsWith("backup-")).length === 1 && !keys.includes("current"), `backup kept, current moved aside ${JSON.stringify(keys)}`);
+    // The app works: a change saves a fresh store.
+    await js("window.openlogosShell.run({ command_id: 'tool.pen' })");
+    await jsAsync("const done = arguments[arguments.length - 1]; window.openlogosShell.saveNow().then(done)");
+    keys = await idbKeys(`openlogos-${name}`);
+    expect(p, keys.includes("current"), `a fresh store saved ${JSON.stringify(keys)}`);
+    await load(query);
+    s = await snap();
+    expect(p, s.tool === "pen" && s.toast == null, `the fresh store restores quietly (${s.tool}, ${s.toast})`);
+    // A newer major: said as such.
+    await idbPut(`openlogos-${name}`, "current", '{"format":"openlogos-user-store","schema_version":"2.0"}');
+    await load(query);
+    s = await snap();
+    expect(p, s.toast === "Your saved workspace was written by a newer version of OpenLogos; a copy was kept.", `newer version notice "${s.toast}"`);
+    // A readable store with a bad note and a dangling session: what was set aside is named.
+    await js("window.openlogosShell.host.handle.putNote({ id: 'n9', blocks: [{ kind: 'paragraph', spans: [{ text: 'ok' }] }] })");
+    const bad = await js("const d = JSON.parse(window.openlogosShell.host.handle.exportStore()); d.session.active_workspace_id = 'nowhere'; d.notes.push({ id: 'n8', blocks: [{ kind: 'paragraph', spans: [{ text: 'x', link: 'not a passage' }] }] }); return JSON.stringify(d);");
+    await js("window.openlogosShell.host.store = null"); // this page saves nothing as it goes
+    await idbPut(`openlogos-${name}`, "current", bad);
+    await load(query);
+    s = await snap();
+    expect(p, s.toast === "Your workspaces were reset; 1 note could not be restored; a copy was kept." && s.workspace === "Study" && s.stored.notes.some((n) => n.id === "n9"), `issues notice "${s.toast}", notes ${JSON.stringify(s.stored.notes.map((n) => n.id))}`);
+    await sleep(150);
+    keys = await idbKeys(`openlogos-${name}`);
+    expect(p, keys.filter((k) => k.startsWith("backup-")).length === 3, `three backups ${JSON.stringify(keys)}`);
+    expect(p, s.stored.changes !== s.stored.lastSaved, `the repaired store is due to save (${s.stored.changes} vs ${s.stored.lastSaved})`);
+  },
+
+  async "store-backups-keep-five"(p) {
+    const name = uniqueStore("five");
+    const query = `?theme=light&autotest=1&store=${name}`;
+    for (let i = 0; i < 7; i++) {
+      await load(query);
+      await idbPut(`openlogos-${name}`, "current", `not json ${i}`);
+      await sleep(5);
+    }
+    await load(query);
+    await sleep(200);
+    const keys = (await idbKeys(`openlogos-${name}`)).filter((k) => k.startsWith("backup-"));
+    expect(p, keys.length === 5, `five backups kept ${JSON.stringify(keys)}`);
+    const newest = await jsAsync(`const done = arguments[arguments.length - 1]; const r = indexedDB.open(arguments[0]); r.onsuccess = () => { const g = r.result.transaction('user-store').objectStore('user-store').get(arguments[1]); g.onsuccess = () => { done(g.result); r.result.close(); }; };`, `openlogos-${name}`, keys[keys.length - 1]);
+    expect(p, newest === "not json 6", `the newest is the last damaged file (${newest})`);
+  },
+
+  async "store-note-round-trip"(p) {
+    const query = `?theme=light&autotest=1&store=${uniqueStore("note")}`;
+    await load(query);
+    const fixture = JSON.parse(await readFile(join(repoRoot, "examples/user-store.json"), "utf8")).notes.find((n) => n.id === "fixture:note:1");
+    await js("window.openlogosShell.host.handle.putNote(arguments[0]); return window.openlogosShell.saveNow()", fixture);
+    await sleep(100);
+    await load(query);
+    // Loaded into the editor and saved back unchanged: the same blocks.
+    const html = await js("const e = document.querySelector('#columns > .column[data-number=\"3\"] .note-editor'); e.dispatchEvent(new Event('input')); e.dispatchEvent(new Event('blur')); return e.innerHTML;");
+    const back = await js("return window.openlogosShell.host.handle.note('fixture:note:1')");
+    expect(p, eq(back, fixture), `round trip\n ${JSON.stringify(fixture)}\n ${JSON.stringify(back)}\n ${html}`);
+    expect(p, html.startsWith("<h2>New birth <a") && html.includes("<i>works</i>") && html.includes("<b>from above</b>") && html.includes("<ul><li>Compare") && html.includes("<blockquote>") && html.endsWith("<p><br></p>"), `editor DOM ${html}`);
+    // Typing goes to the core within the settle time; the dock and the tab stay in step.
+    await click(...(await centre('#columns > .column[data-number="3"] .note-editor blockquote')));
+    await type("!");
+    await sleep(400);
+    const typed = await js("return JSON.stringify(window.openlogosShell.host.handle.note('fixture:note:1').blocks[3])");
+    expect(p, typed.includes("!"), `typed into the core ${typed}`);
+  },
+
+  async "tab-drag-and-resize-undo"(p) {
+    const strip = (n) => js("return [...document.querySelectorAll('#columns > .column[data-number=\"' + arguments[0] + '\"] .tab')].map((t) => { const r = t.getBoundingClientRect(); return [t.firstChild.textContent, r.left, r.right, r.top + r.height / 2]; })", n);
+    const c1 = await strip(1), c2 = await strip(2);
+    // WLC Gen 1 (column 1's second tab) onto column 2's strip after its only tab.
+    await drag([(c1[1][1] + c1[1][2]) / 2, c1[1][3]], [c2[0][2] + 20, c2[0][3]], 10);
+    let s = await snap();
+    expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3"], ["SBLGNT Jn 3", "WLC Gen 1"], ["Note"]]), `dropped in column 2 ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    expect(p, s.log.some((l) => l.command_id === "tab.move" && l.handled), "tab.move dispatched");
+    const title = await js("return window.openlogosShell.host.handle.view().undo_title");
+    expect(p, title === "Move tab to position", `undo title "${title}"`);
+    await chord("Meta", "z");
+    s = await snap();
+    expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3", "WLC Gen 1"], ["SBLGNT Jn 3"], ["Note"]]), `⌘Z put it back ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    // Into a new column at the trailing edge.
+    const again = await strip(1);
+    const box = await js("const r = document.querySelector('#columns > .column[data-number=\"3\"]').getBoundingClientRect(); return [r.right - 20, r.top + 300];");
+    // Held over the trailing zone: the band is drawn with its label.
+    const from = [(again[1][1] + again[1][2]) / 2, again[1][3]];
+    const steps = [];
+    for (let i = 1; i <= 12; i++) steps.push({ type: "pointerMove", duration: 16, x: Math.round(from[0] + ((box[0] - from[0]) * i) / 12), y: Math.round(from[1] + ((box[1] - from[1]) * i) / 12) });
+    await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerMove", duration: 0, x: Math.round(from[0]), y: Math.round(from[1]) }, { type: "pointerDown", button: 0 }, ...steps] }] });
+    await sleep(60);
+    const band = await js("const b = document.getElementById('drop-slot'); if (!b || b.hidden) return null; const r = b.getBoundingClientRect(); return [b.className, b.textContent, Math.round(r.width), getComputedStyle(b).display];");
+    expect(p, band && band[0] === "zone" && band[1] === "New column" && band[2] === 56 && band[3] !== "none", `the new-column band shows its label during the drag ${JSON.stringify(band)}`);
+    await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerUp", button: 0 }] }] });
+    await wd("DELETE", `${S}/actions`);
+    await sleep(60);
+    const gone = await js("const b = document.getElementById('drop-slot'); return !b || b.hidden;");
+    expect(p, gone, "the band goes when the drop ends");
+    s = await snap();
+    expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3"], ["SBLGNT Jn 3"], ["Note"], ["WLC Gen 1"]]), `new column ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    await chord("Meta", "z");
+    s = await snap();
+    expect(p, eq(s.dom.map((c) => c.tabs), [["BSB Jn 3", "WLC Gen 1"], ["SBLGNT Jn 3"], ["Note"]]), `⌘Z removed the new column ${JSON.stringify(s.dom.map((c) => c.tabs))}`);
+    // A drop back into its own slot sends nothing.
+    const moves = s.log.filter((l) => l.command_id === "tab.move").length;
+    const same = await strip(1);
+    await drag([(same[1][1] + same[1][2]) / 2, same[1][3]], [same[1][2] - 3, same[1][3]], 6);
+    s = await snap();
+    expect(p, s.log.filter((l) => l.command_id === "tab.move").length === moves && !s.toast, `no-op drop sent nothing (${s.toast})`);
+    // A plain click still shows the tab.
+    await click((same[1][1] + same[1][2]) / 2, same[1][3]);
+    s = await snap();
+    expect(p, s.dom[0].shown === "WLC Gen 1", `click shows the tab (${s.dom[0].shown})`);
+    // Resize: one column.resize at the end of the drag; ⌘Z restores the widths.
+    const widths = s.widths;
+    const rule = await centre(".rule");
+    await drag(rule, [rule[0] + 150, rule[1]], 8);
+    s = await snap();
+    expect(p, s.widths[0] > widths[0] + 0.05 && s.log.filter((l) => l.command_id === "column.resize").length === 1, `resized ${JSON.stringify(widths)} → ${JSON.stringify(s.widths)}`);
+    await chord("Meta", "z");
+    s = await snap();
+    expect(p, eq(s.widths, widths), `⌘Z restored the widths ${JSON.stringify(s.widths)}`);
+    const grow = await js("return [...document.querySelectorAll('#columns > .column')].map((c) => Number(c.style.flexGrow).toFixed(4))");
+    expect(p, eq(grow, widths.map((w) => w.toFixed(4))), `and on screen ${grow}`);
+  },
+
+  async "store-saves-after-debounce-and-on-hide"(p) {
+    const name = uniqueStore("save");
+    const query = `?theme=light&autotest=1&store=${name}`;
+    await load(query);
+    // A change is written 1 s after it settles (IndexedDB), with nothing kept aside.
+    await js("window.openlogosShell.run({ command_id: 'tool.pen' })");
+    await sleep(1500);
+    const pendingKey = `openlogos-${name}:current:pending`;
+    const quiet = await js("return [localStorage.getItem(arguments[0]), window.openlogosShell.host.lastSaved === window.openlogosShell.host.handle.changeCount()]", pendingKey);
+    expect(p, quiet[0] == null && quiet[1], `saved after the debounce, nothing pending ${JSON.stringify(quiet)}`);
+    await load(query);
+    let s = await snap();
+    expect(p, s.tool === "pen" && s.stored.restore.found && !s.stored.restore.pending, `restored from IndexedDB (${s.tool}, ${JSON.stringify(s.stored.restore)})`);
+    // A change just before the page goes: the copy kept on hide restores, then is written.
+    await js("window.openlogosShell.run({ command_id: 'tool.highlight' })");
+    await load(query);
+    s = await snap();
+    expect(p, s.tool === "highlight" && s.stored.restore.pending, `restored from the copy kept on hide (${s.tool}, ${JSON.stringify(s.stored.restore)})`);
+    await sleep(200);
+    const left = await js("return localStorage.getItem(arguments[0])", pendingKey);
+    const current = JSON.parse(await jsAsync(`const done = arguments[arguments.length - 1]; const r = indexedDB.open(arguments[0]); r.onsuccess = () => { const g = r.result.transaction('user-store').objectStore('user-store').get('current'); g.onsuccess = () => { done(g.result); r.result.close(); }; };`, `openlogos-${name}`));
+    expect(p, left == null && current.session.tool === "highlight", `the copy went into IndexedDB (${left == null}, ${current.session.tool})`);
+  },
+
   async "only-registered-commands"(p) {
     // Drive a bit of everything, then check every dispatch was a registry id.
     await chord("Alt", "2"); await type("h"); await chord("Alt", "n"); await chord("Meta", "z");
@@ -1327,6 +1589,40 @@ const CASES = {
     expect(p, r.length === 0, `unregistered dispatches ${r}`);
   },
 };
+
+// MARK: B074 speed: restore over launches, then saves and workspace commands at the acceptance size
+
+async function storeBenchRun() {
+  const query = `?theme=light&autotest=1&session=bench&store=${uniqueStore("accept")}`;
+  await load(query);
+  const bytes = await js("return window.openlogosShell.buildAcceptance()");
+  await jsAsync("const done = arguments[arguments.length - 1]; window.openlogosShell.saveNow().then(done)");
+  const rows = [];
+  const samples_ = { read: [], imported: [], rendered: [], painted: [] };
+  for (let i = 0; i < launches; i++) {
+    await load(query);
+    await jsAsync("const done = arguments[arguments.length - 1]; requestAnimationFrame(() => requestAnimationFrame(() => done()))");
+    const r = await js("return window.openlogosShell.host.restore");
+    if (!r || !r.found || r.refused || (r.report && r.report.issues.length)) { failures += 1; console.log(JSON.stringify({ bench: "store", error: "restore", restore: r })); continue; }
+    samples_.read.push(r.read_ms);
+    samples_.imported.push(r.read_ms + r.import_ms);
+    samples_.rendered.push(r.rendered_ms);
+    samples_.painted.push(r.first_paint_ms);
+  }
+  const st = (v) => { const a = [...v].sort((x, y) => x - y); const q = (p) => a[Math.min(a.length - 1, Math.floor(p * a.length))]; return { n: a.length, p50: +q(0.5).toFixed(3), p95: +q(0.95).toFixed(3), max: +a[a.length - 1].toFixed(3) }; };
+  const report = await js("return window.openlogosShell.host.restore.report");
+  rows.push({ name: `B074 restore: IndexedDB read (${bytes} bytes)`, work_ms: st(samples_.read) });
+  rows.push({ name: "B074 restore: read + importStore", work_ms: st(samples_.imported) });
+  rows.push({ name: "B074 restore: read → active workspace rendered (laid out)", work_ms: st(samples_.rendered) });
+  rows.push({ name: "B074 restore: read → first painted text (next frame)", work_ms: st(samples_.painted), report });
+  if (samples_.painted.length < Math.min(20, launches)) failures += 1;
+  const more = await jsAsync("const done = arguments[arguments.length - 1]; window.openlogosShell.storeBench({ samples: arguments[0] }).then(done, (e) => done({ error: String(e) }))", samples);
+  if (more.error) { failures += 1; console.log(JSON.stringify({ bench: "store", error: more.error })); return { rows }; }
+  rows.push(...more.rows);
+  for (const row of rows) console.log(JSON.stringify({ bench: "store", ...row }));
+  summary.push(`B074 store bench: ${launches} launches, ${samples} samples per row`);
+  return { bytes, workspaces: more.workspaces, rows };
+}
 
 // MARK: screenshots
 
@@ -1505,6 +1801,79 @@ async function menuScreenshots() {
 }
 
 /** B078: continuous reading, the same states as the Mac (docs/evidence/B078). */
+/** B074: the same state before a quit and after the relaunch, the damaged-store notice, a tab
+ *  drag in flight and undone, and the palette's rows from every workspace. */
+async function storeScreenshots() {
+  await mkdir(storeShotsDir, { recursive: true });
+  const shot = async (name) => {
+    const file = join(storeShotsDir, `${name}.png`);
+    await writeFile(file, Buffer.from(await wd("GET", `${S}/screenshot`), "base64"));
+    console.log(`screenshot ${file}`);
+  };
+  await setWindow(1440, 900);
+  const query = `?theme=light&autotest=1&store=${uniqueStore("shots")}`;
+  await load(query);
+  await type("h");
+  const pts = await phrasePoints(1, "eternal life");
+  await drag(pts[0], pts[1]);
+  await sleep(80);
+  await type("p");
+  // Under "condemn the world", John 3:17's second line.
+  const at = await js("const el = document.querySelector('#columns > .column[data-number=\"1\"] [data-segment=\"John.3.17\"]'); const r = [...el.getClientRects()][1]; return [r.left + 250, r.bottom - 2];");
+  await drag(at, [at[0] + 210, at[1] + 4], 12);
+  await type("v");
+  await click(...(await centre('#columns > .column[data-number="3"] .note-editor')));
+  await js("const e = document.querySelector('#columns > .column[data-number=\"3\"] .note-editor'); const r = document.createRange(); r.selectNodeContents(e); r.collapse(false); const s = document.getSelection(); s.removeAllRanges(); s.addRange(r);");
+  await chord("Enter");
+  await chord("Meta", "b");
+  await type("Grace");
+  await chord("Meta", "b");
+  await type(" in ");
+  await click(...(await centre('#well button[data-command="note.link_passage"]')));
+  await type("jn 3:17");
+  await chord("Enter");
+  await js("window.openlogosShell.run({ command_id: 'column.focus', args: { column: 1 } }); window.openlogosShell.run({ command_id: 'workspace.new' })");
+  await navigate("Acts.2.4");
+  await js("window.openlogosShell.run({ command_id: 'workspace.switch', args: { workspace_id: 'w1' } }); window.openlogosShell.run({ command_id: 'column.focus', args: { column: 1 } }); document.activeElement.blur(); document.getSelection().removeAllRanges()");
+  await type("h");
+  await js("window.openlogosShell.host.lastToast = null; document.getElementById('toast').classList.remove('show')");
+  await sleep(300);
+  await shot("web-store-before-quit");
+  await load(query);
+  await sleep(300);
+  await shot("web-store-after-relaunch");
+  // The palette finds tabs of every workspace.
+  await chord("Meta", "k");
+  await type("@a");
+  await sleep(120);
+  await shot("web-store-palette-workspaces");
+  await chord("Escape");
+  await js("document.getElementById('palette-field').value = ''");
+  // A tab drag in flight (the drop slot drawn), then dropped and undone.
+  const tabs = await js("return [...document.querySelectorAll('#columns > .column .tabstrip')].map((s) => [...s.querySelectorAll('.tab')].map((t) => { const r = t.getBoundingClientRect(); return [r.left, r.right, r.top + r.height / 2]; }))");
+  const from = [(tabs[0][1][0] + tabs[0][1][1]) / 2, tabs[0][1][2]];
+  const to = [tabs[1][0][1] + 24, tabs[1][0][2]];
+  const moves = [];
+  for (let i = 1; i <= 10; i++) moves.push({ type: "pointerMove", duration: 16, x: Math.round(from[0] + ((to[0] - from[0]) * i) / 10), y: Math.round(from[1] + ((to[1] - from[1]) * i) / 10) });
+  await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerMove", duration: 0, x: Math.round(from[0]), y: Math.round(from[1]) }, { type: "pointerDown", button: 0 }, ...moves] }] });
+  await sleep(80);
+  await shot("web-store-drag-in-flight");
+  await wd("POST", `${S}/actions`, { actions: [{ type: "pointer", id: "mouse", parameters: { pointerType: "mouse" }, actions: [{ type: "pointerUp", button: 0 }] }] });
+  await wd("DELETE", `${S}/actions`);
+  await sleep(80);
+  await chord("Meta", "z");
+  await sleep(80);
+  await js("window.openlogosShell.host.lastToast = null");
+  await shot("web-store-drag-undone");
+  // A damaged store: the notice on a fresh session.
+  const name = uniqueStore("shots-damaged");
+  await load(`?theme=light&autotest=1&store=${name}`);
+  await idbPut(`openlogos-${name}`, "current", '{"format":"openlogos-user-store","schema_version":"1.0","sess');
+  await load(`?theme=light&autotest=1&store=${name}`);
+  await sleep(250);
+  await shot("web-store-damaged-notice");
+}
+
 async function readScreenshots() {
   await mkdir(readShotsDir, { recursive: true });
   const shot = async (name, element = null) => {
@@ -1619,13 +1988,19 @@ try {
       console.log(JSON.stringify({ bench: label, name: "B077 trusted right-click → context menu drawn", ...menu }));
       if (menu.n < samples) failures += 1;
     }
+    result.store = await storeBenchRun();
     if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, ...result }, null, 2)); console.log(`bench json ${benchJson}`); }
     summary.push(`bench: ${headed ? "headed" : "headless"} Chrome, ${samples} samples per interaction`);
+  }
+  if (!benchOn && storeBenchOn) {
+    const out = await storeBenchRun();
+    if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, store: out }, null, 2)); console.log(`bench json ${benchJson}`); }
   }
   if (shotsDir) await screenshots();
   if (wellShotsDir) await wellScreenshots();
   if (menuShotsDir) await menuScreenshots();
   if (readShotsDir) await readScreenshots();
+  if (storeShotsDir) await storeScreenshots();
 } catch (error) {
   console.error(String(error));
   failures = failures || 1;
