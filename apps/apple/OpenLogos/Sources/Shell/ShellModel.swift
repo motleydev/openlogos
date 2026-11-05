@@ -8,7 +8,8 @@
 // Every button, menu item and shortcut goes through `run(_:args:)`, which dispatches a
 // registered command; the view re-renders from `session` after each. B077: the context menu
 // comes from the core for what was right-clicked (ContextMenu.swift); its rows dispatch under
-// the menu's context.
+// the menu's context. B074: the core keeps the notes, highlights and ink too, and the session
+// is saved to the user store and restored at launch (ShellStore.swift, specs/24).
 import Combine
 import SwiftUI
 #if canImport(AppKit)
@@ -63,8 +64,18 @@ final class ShellModel: ObservableObject {
     /// The core's well for `commandContext`, rebuilt on every focus, tab, selection and
     /// session change.
     @Published private(set) var well: ShellToolWell
-    /// The notes being edited, in memory until B074.
+    /// The notes being edited; the core keeps them (B074).
     let notes = NoteStore()
+
+    // MARK: The user store (B074)
+
+    /// The save policy over the store file; nil when this shell keeps nothing (tests, scripted
+    /// runs).
+    private(set) var persistence: ShellPersistence?
+    /// What the launch restored.
+    private(set) var restored: StoreRestore?
+    /// Bumped when a tab's stored ink first appears, so its canvas is shown.
+    @Published private(set) var inkRevision = 0
 
     // MARK: Per tab
 
@@ -103,7 +114,7 @@ final class ShellModel: ObservableObject {
     private var monitor: Any?
     #endif
 
-    init(handle: ShellHandle, textSource: TextSource = FixtureTextSource(), reading: ReadingHandle = .placeholder()) {
+    init(handle: ShellHandle, textSource: TextSource = FixtureTextSource(), reading: ReadingHandle = .placeholder(), store: UserStoreFile? = nil) {
         self.handle = handle
         self.textSource = textSource
         self.reading = reading
@@ -115,16 +126,42 @@ final class ShellModel: ObservableObject {
         handle.setResourceLanguages(languages: textSource.resourceLanguages)
         // B078: linked tabs follow through each edition's versification.
         handle.setResourceSchemes(schemes: reading.schemes())
+        // B074: the saved store over the seed session, before anything is shown (specs/24 §5).
+        if let store {
+            let before = handle.changeCount()
+            restored = ShellPersistence.restore(handle, from: store)
+            #if os(macOS)
+            // File read → first painted text (with no file: the launch's own share).
+            if let restored {
+                ShellPersistence.paintProbe = (restored.started, handle.session().activeWorkspaceId)
+            }
+            #endif
+            // After a clean restore a save of the same bytes writes nothing.
+            let persistence = ShellPersistence(file: store, handle: handle, lastSaved: before, written: restored?.cleanText)
+            self.persistence = persistence
+        }
         session = handle.session()
         well = handle.toolWell(context: ShellCommandContext(hasSelection: false, focus: .tab))
         notes.model = self
+        if let persistence {
+            persistence.beforeSave = { [weak self] in self?.notes.flush() }
+            persistence.onFailure = { [weak self] words in self?.show(notice: words) }
+            // A restore that set something aside saves the repaired store.
+            persistence.changed()
+        }
+        if let notice = restored?.notice { show(notice: notice) }
     }
 
-    convenience init(sessionJSON: String = ShellSeed.json) {
+    convenience init(sessionJSON: String = ShellSeed.json, store: UserStoreFile? = nil) {
         // The seed is ours; a seed the core rejects is a programming error.
         let handle = try! ShellHandle(sessionJson: sessionJSON)
         handle.useFixtureText()
-        self.init(handle: handle)
+        self.init(handle: handle, store: store)
+    }
+
+    /// Something the store keeps may have changed: the save debounce restarts when it did.
+    func storeChanged() {
+        persistence?.changed()
     }
 
     // MARK: Session views
@@ -252,9 +289,12 @@ final class ShellModel: ObservableObject {
             if !outcome.handled { performHost(id, args: args) }
             apply(positions: outcome)
             refresh()
+            storeChanged()
             return true
         } catch let error as ShellCommandError {
             switch error {
+            // B074: a tab dropped where it was changes nothing and says nothing.
+            case .Disabled(_, "already_in_column", _) where id == "tab.move": break
             // A bare key outside its context (`wrong_context`) says so in words, briefly.
             case .Disabled(_, _, let reason): show(toast: reason)
             case .UnknownCommand(let commandId): show(toast: "Unknown command \(commandId)")
@@ -460,6 +500,15 @@ final class ShellModel: ObservableObject {
         streams[stream.tabID] = WeakStream(stream: stream)
         surfaces[stream.tabID] = WeakSurface(surface: stream.surface)
         if let sheet = inkSheets[stream.tabID] { pin(sheet, to: stream) }
+        // B074: the core's highlights and ink on its window, now and whenever it changes.
+        stream.storedMarks = { [weak self] resource, layout in self?.storedMarks(resourceID: resource, layout: layout) ?? [] }
+        // The ink follows a frame later (ReadingScheduler): text first, then its strokes.
+        stream.onWindowChanged = { [weak self, weak stream] in
+            guard let self, let stream else { return }
+            self.scheduleInkSync(stream)
+        }
+        stream.repaintMarks()
+        scheduleInkSync(stream)
     }
 
     /// The tab's ink moves with its verses: strokes are pinned to the verse under them.
@@ -509,6 +558,7 @@ final class ShellModel: ObservableObject {
                                               hasSelection: false),
               !outcome.positions.isEmpty else { return }
         apply(positions: outcome)
+        storeChanged()
         recordedScrolls += 1
         // The tab labels and identity rows follow now, through a small object only they
         // observe; the session (and the whole shell) catches up when scrolling stops.
@@ -606,8 +656,12 @@ final class ShellModel: ObservableObject {
     }
 
     private func placeholderRefusal(_ id: String) -> String? {
-        Self.placeholderBlocked.contains(id) && selectionIsPlaceholder ? Self.placeholderReason : nil
+        // B074: a highlight in a reading stream is refused by the core (`placeholder_text`).
+        if Self.coreRefused.contains(id), let selection, hasStream(selection.paneID) { return nil }
+        return Self.placeholderBlocked.contains(id) && selectionIsPlaceholder ? Self.placeholderReason : nil
     }
+
+    static let coreRefused: Set<String> = ["selection.highlight", "selection.highlight_in"]
 
     /// Records every shown tab's scroll anchor in the core (`tab.record_scroll`, quiet: no
     /// revision bump, no undo) before a command can hide or rebuild it.
@@ -620,6 +674,72 @@ final class ShellModel: ObservableObject {
                                   args: ShellCommandArgs(workspaceId: ws.id, tabId: column.shownTabId, segmentId: segment, scalar: 0),
                                   hasSelection: false)
         }
+    }
+
+    // MARK: Tab drag (B074)
+
+    /// Where a dragged tab would land: a slot in a column (the slot in the column as drawn
+    /// before the move), or a new column with this number.
+    struct TabDrop: Equatable {
+        var column: UInt32
+        var index: UInt32?
+        var newColumn = false
+    }
+
+    struct TabDrag: Equatable {
+        let tabID: String
+        var location: CGPoint
+        var drop: TabDrop?
+    }
+
+    /// The tab being dragged, where the pointer is and where it would drop.
+    @Published private(set) var tabDrag: TabDrag?
+    /// Tab labels and columns in the columns' coordinate space, as last laid out.
+    var tabFrames: [String: CGRect] = [:]
+    var columnFrames: [UInt32: CGRect] = [:]
+    /// The trailing band of the last column that drops a tab into a new column.
+    static let newColumnZone: CGFloat = 56
+
+    func dragTab(_ tabID: String, to location: CGPoint) {
+        let next = TabDrag(tabID: tabID, location: location, drop: tabDrop(tabID, at: location))
+        if next != tabDrag { tabDrag = next }
+    }
+
+    /// The pointer was let go: `tab.move` to the slot under the indicator (undoable).
+    func dropTab() {
+        guard let drag = tabDrag else { return }
+        tabDrag = nil
+        if let drop = drag.drop { moveTab(drag.tabID, to: drop) }
+    }
+
+    func cancelTabDrag() { tabDrag = nil }
+
+    @discardableResult
+    func moveTab(_ tabID: String, to drop: TabDrop) -> Bool {
+        var args = ShellCommandArgs(tabId: tabID)
+        args.column = drop.column
+        if drop.newColumn { args.newColumn = true } else { args.index = drop.index }
+        return run("tab.move", args: args)
+    }
+
+    /// The slot under a point: past the last column's trailing band a new column; in a column's
+    /// tab strip the gap nearest the pointer; elsewhere in a column its end. Nil where a drop
+    /// would change nothing.
+    func tabDrop(_ tabID: String, at point: CGPoint) -> TabDrop? {
+        let ws = activeWorkspace
+        guard let last = ws.columns.last, let lastFrame = columnFrames[last.number],
+              let from = ws.columns.first(where: { $0.tabs.contains { $0.id == tabID } }),
+              let position = from.tabs.firstIndex(where: { $0.id == tabID }) else { return nil }
+        if point.x >= lastFrame.maxX - Self.newColumnZone {
+            return from.tabs.count > 1 || from.number != last.number ? TabDrop(column: UInt32(ws.columns.count + 1), newColumn: true) : nil
+        }
+        guard let column = ws.columns.first(where: { columnFrames[$0.number].map { point.x >= $0.minX && point.x < $0.maxX } ?? false }) else { return nil }
+        var index = column.tabs.count
+        if let strip = column.tabs.first.flatMap({ tabFrames[$0.id] }), point.y <= strip.maxY + ShellTokens.Spacing.xs {
+            index = column.tabs.filter { (tabFrames[$0.id]?.midX ?? .infinity) < point.x }.count
+        }
+        if column.id == from.id, index == position || index == position + 1 { return nil }
+        return TabDrop(column: column.number, index: UInt32(index))
     }
 
     /// The end of a rule drag: the left column's share goes to the core (`column.resize`).
@@ -646,7 +766,7 @@ final class ShellModel: ObservableObject {
     }
 
     func dragEnded(_ mode: ReaderDragMode, _ selection: ReaderSelection) {
-        if mode != .select, let layout = surface(for: selection.paneID)?.layout,
+        if mode != .select, !(mode == .highlight && hasStream(selection.paneID)), let layout = surface(for: selection.paneID)?.layout,
            selection.anchors.contains(where: { layout.placeholderSegments.contains($0.segmentId) }) {
             return show(toast: Self.placeholderReason)
         }
@@ -668,6 +788,27 @@ final class ShellModel: ObservableObject {
     }
 
     func highlight(_ selection: ReaderSelection, in color: ShellTokens.Swatch? = nil) {
+        #if os(macOS)
+        // B074: in a reading stream the core keeps it, as segment spans in Unicode scalars;
+        // it refuses placeholder text.
+        if let stream = stream(for: selection.paneID), let layout = stream.surface.layout, !layout.blocks.isEmpty {
+            let spans = Self.merged(selection.highlights.flatMap(layout.spans(ofDisplay:))).compactMap(layout.storeSpan)
+            guard !spans.isEmpty else { return }
+            let highlight = StoreHighlight(resourceId: stream.resourceID, contentRevision: layout.content.contentRevision, spans: spans,
+                                           color: ShellTokens.hex((color ?? swatch).rgb))
+            do {
+                _ = try handle.addHighlight(highlight: highlight, reading: reading)
+            } catch StoreCallError.Refused(let kind, let reason) {
+                return show(toast: kind == "placeholder_text" ? Self.placeholderReason : reason)
+            } catch {
+                return show(toast: "\(error)")
+            }
+            self.selection = nil
+            repaintHighlights(resourceID: stream.resourceID)
+            storeChanged()
+            return
+        }
+        #endif
         markCounter += 1
         var mark = ReaderMark(id: "mark-\(markCounter)", ranges: selection.highlights, color: (color ?? swatch).platformColor)
         // B078: kept as segment spans, so it stays on its verses in a continuous window.
@@ -676,6 +817,57 @@ final class ShellModel: ObservableObject {
         }
         marks[selection.paneID, default: []].append(mark)
         self.selection = nil
+    }
+
+    /// One span per segment: a selection split around verse numbers gives several.
+    static func merged(_ spans: [SegmentSpan]) -> [SegmentSpan] {
+        var out: [SegmentSpan] = []
+        for span in spans {
+            if let last = out.last, last.segmentId == span.segmentId {
+                let start = min(last.start, span.start), end = max(last.start + last.length, span.start + span.length)
+                out[out.count - 1] = SegmentSpan(segmentId: span.segmentId, start: start, length: end - start)
+            } else {
+                out.append(span)
+            }
+        }
+        return out
+    }
+
+    /// The core's highlights on the chapters a window shows, as marks (oldest first, so later
+    /// ones paint over earlier ones).
+    func storedMarks(resourceID: String, layout: ReaderLayout) -> [ReaderMark] {
+        #if os(macOS)
+        let t0 = CACurrentMediaTime()
+        defer { ShellPersistence.cost("highlights", since: t0) }
+        #endif
+        var seen: Set<String> = []
+        var marks: [ReaderMark] = []
+        for block in layout.blocks {
+            for highlight in handle.highlightsIn(resourceId: resourceID, chapterKey: block.chapterKey) where seen.insert(highlight.id).inserted {
+                let spans = highlight.spans.compactMap(layout.segmentSpan)
+                guard !spans.isEmpty else { continue }
+                marks.append(ReaderMark(id: highlight.id, ranges: [], color: ShellTokens.swatch(hex: highlight.color).platformColor, spans: spans))
+            }
+        }
+        return marks
+    }
+
+    /// The highlights a tab paints: the core's on a reading stream's window, else the host's
+    /// on its single passage.
+    func highlights(_ tabID: String) -> [ReaderMark] {
+        #if os(macOS)
+        if let stream = stream(for: tabID), let layout = stream.surface.layout, !layout.blocks.isEmpty {
+            return storedMarks(resourceID: stream.resourceID, layout: layout)
+        }
+        #endif
+        return marks[tabID] ?? []
+    }
+
+    /// Every shown stream of the edition paints the core's highlights again.
+    func repaintHighlights(resourceID: String) {
+        #if os(macOS)
+        for stream in streams.values.compactMap(\.stream) where stream.resourceID == resourceID { stream.repaintMarks() }
+        #endif
     }
 
     private func collect(_ selection: ReaderSelection) {
@@ -776,10 +968,105 @@ final class ShellModel: ObservableObject {
         inkSheets[tabID] = sheet
         configure(sheet)
         #if os(macOS)
+        sheet.onCommit = { [weak self, weak sheet] stroke in
+            guard let self, let sheet else { return nil }
+            return self.storeInk(stroke, tabID: tabID, sheet: sheet)
+        }
+        sheet.onErase = { [weak self] id in self?.eraseInk(id, tabID: tabID) }
         if let stream = stream(for: tabID) { pin(sheet, to: stream) }
         #endif
         return sheet
     }
+
+    #if os(macOS)
+    // MARK: Ink in the core (B074)
+
+    /// A finished stroke on a reading stream goes to the core, pinned to the verse under its
+    /// first point: `x` from the text's leading edge (mirrored for right-to-left), `y` from
+    /// that verse's top. The sheet keeps it
+    /// under the core's id, pinned to that verse as B078 pins a stroke.
+    private func storeInk(_ stroke: InkStroke, tabID: String, sheet: InkSheet) -> (InkStroke, InkSheet.Anchor)? {
+        guard let stream = stream(for: tabID), let first = stroke.points.first,
+              let anchor = stream.inkAnchor(atCanvasY: CGFloat(first.y)) else { return nil }
+        var pinned = stroke
+        pinned.points = stroke.points.map { var p = $0; p.x = stream.inkStoredX(p.x); p.y -= Double(anchor.y); return p }
+        let id: String
+        do {
+            id = try handle.addInk(mark: StoreInkMark(resourceId: stream.resourceID, segmentId: anchor.segment, stroke: pinned))
+        } catch {
+            show(toast: "\(error)")
+            return nil
+        }
+        storeChanged()
+        inkGeneration += 1
+        var kept = stroke
+        kept.id = id
+        DispatchQueue.main.async { [weak self] in self?.syncStoredInk(resourceID: stream.resourceID, except: tabID) }
+        return (kept, anchor)
+    }
+
+    /// The eraser took a stroke: the core forgets it, and every tab of the edition drops it.
+    private func eraseInk(_ id: String, tabID: String) {
+        guard let stream = stream(for: tabID), (try? handle.removeInk(id: id)) != nil else { return }
+        erasedInk.insert(id)
+        inkGeneration += 1
+        storeChanged()
+        syncStoredInk(resourceID: stream.resourceID, except: tabID)
+    }
+
+    /// Strokes the eraser took this session (other tabs of the edition drop them too).
+    private var erasedInk: Set<String> = []
+    /// Bumped by every stroke added or erased: each stream then takes all its chapters again;
+    /// otherwise a window change asks the core only for the chapters it has not seen.
+    private var inkGeneration = 0
+    private var inkSynced: [String: (generation: Int, chapters: Set<String>)] = [:]
+
+    /// Every shown stream of the edition takes the core's strokes again.
+    private func syncStoredInk(resourceID: String, except tabID: String? = nil) {
+        for stream in streams.values.compactMap(\.stream) where stream.resourceID == resourceID && stream.tabID != tabID {
+            syncStoredInk(stream)
+        }
+    }
+
+    private func scheduleInkSync(_ stream: ReadingStream) {
+        ShellPersistence.whenTextIsOnScreen { [weak self, weak stream] in
+            guard let stream else { return }
+            ReadingScheduler.shared.enqueue("ink-\(ObjectIdentifier(stream).hashValue)") { [weak self, weak stream] in
+                if let self, let stream { self.syncStoredInk(stream) }
+                return false
+            }
+        }
+    }
+
+    /// A stream's window changed: its sheet shows the core's strokes on the chapters in it.
+    func syncStoredInk(_ stream: ReadingStream) {
+        guard streams[stream.tabID]?.stream === stream, let layout = stream.surface.layout else { return }
+        let t0 = CACurrentMediaTime()
+        defer { ShellPersistence.cost("ink", since: t0) }
+        let key = "\(stream.workspaceID)|\(stream.tabID)|\(stream.resourceID)"
+        var synced = inkSynced[key].flatMap { $0.generation == inkGeneration ? $0 : nil } ?? (generation: inkGeneration, chapters: [])
+        let chapters = layout.blocks.map(\.chapterKey).filter { !synced.chapters.contains($0) }
+        guard !chapters.isEmpty else { return }
+        synced.chapters.formUnion(chapters)
+        inkSynced[key] = synced
+        var strokes: [(InkStroke, InkSheet.Anchor)] = []
+        for chapter in chapters {
+            for mark in handle.inkIn(resourceId: stream.resourceID, chapterKey: chapter) {
+                var stroke = mark.stroke
+                stroke.id = mark.id
+                stroke.points = stroke.points.map { var p = $0; p.x = stream.inkCanvasX(p.x); return p }
+                strokes.append((stroke, InkSheet.Anchor(segment: mark.segmentId, y: 0)))
+            }
+        }
+        if strokes.isEmpty && inkSheets[stream.tabID] == nil { return }
+        let sheet = inkSheet(for: stream.tabID)
+        let wasEmpty = sheet.liveStrokes.isEmpty
+        sheet.syncStored(strokes, erased: erasedInk)
+        if wasEmpty != sheet.liveStrokes.isEmpty {
+            DispatchQueue.main.async { [weak self] in self?.inkRevision += 1 }
+        }
+    }
+    #endif
 
     func hasInk(_ tabID: String) -> Bool { !(inkSheets[tabID]?.liveStrokes.isEmpty ?? true) }
 
@@ -801,15 +1088,25 @@ final class ShellModel: ObservableObject {
 
     // MARK: Toasts
 
-    func show(toast text: String) {
+    func show(toast text: String, seconds: Double = 2.4) {
         toast = text
         toastTask?.cancel()
         toastTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 2_400_000_000)
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
             self?.toast = nil
         }
     }
+
+    /// B074: said once at launch (a file that could not be restored) or when saves keep
+    /// failing; it stays up longer than a toast.
+    func show(notice text: String) {
+        lastNotice = text
+        show(toast: text, seconds: 6)
+    }
+
+    /// The last notice (the tests and the evidence read it).
+    private(set) var lastNotice: String?
 
     // MARK: Keyboard
 

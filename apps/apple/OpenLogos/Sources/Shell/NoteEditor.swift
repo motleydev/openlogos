@@ -1,4 +1,5 @@
-// B076: notes are editable in memory (nothing is persisted until B074). A notes tab and the
+// B076: notes are editable in place. B074: the core keeps them (`note(id:)`, `putNote`), in
+// the stored block form (specs/24 §2.1); this file converts at the edge. A notes tab and the
 // notes dock show an NSTextView over the note's rich text: Type is the notes context's tool,
 // and the well's Bold, Italic, Heading, List and Link passage act on the editor that last
 // had focus (⌘B and ⌘I only while it has it). A passage link is accent-coloured, underlined
@@ -37,13 +38,56 @@ final class NoteStore {
         return active.window?.firstResponder === active
     }
 
+    /// The note's text: as last edited, else the core's note, else the seed text (saved on its
+    /// first edit).
     func document(_ noteID: String) -> NSAttributedString {
         if let document = documents[noteID] { return document }
-        let paragraphs = model?.textSource.text(resourceID: noteID, reference: nil)?.content.verses.map(\.text) ?? []
-        let document = NSAttributedString(string: paragraphs.joined(separator: "\n"))
+        let document: NSAttributedString
+        if let stored = model?.handle.note(id: noteID) {
+            document = Self.attributed(stored)
+        } else {
+            let paragraphs = model?.textSource.text(resourceID: noteID, reference: nil)?.content.verses.map(\.text) ?? []
+            document = NSAttributedString(string: paragraphs.joined(separator: "\n"))
+        }
         documents[noteID] = document
         return document
     }
+
+    // MARK: Saving into the core (B074)
+
+    /// Notes edited since they were last put, saved when typing pauses (300 ms) or the
+    /// editor loses focus.
+    private var pending: Set<String> = []
+    private var putTimer: Timer?
+    static let putDelay: TimeInterval = 0.3
+
+    private func schedulePut(_ noteID: String) {
+        pending.insert(noteID)
+        putTimer?.invalidate()
+        putTimer = Timer.scheduledTimer(withTimeInterval: Self.putDelay, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.flush() }
+        }
+    }
+
+    /// Puts every pending note into the core now.
+    func flush() {
+        putTimer?.invalidate()
+        putTimer = nil
+        guard !pending.isEmpty, let model else { return }
+        let ids = pending
+        pending = []
+        for id in ids.sorted() {
+            guard let document = documents[id] else { continue }
+            do {
+                try model.handle.putNote(note: Self.storeNote(id: id, from: document))
+            } catch {
+                model.show(toast: "\(error)")
+            }
+        }
+        model.storeChanged()
+    }
+
+    var hasPending: Bool { !pending.isEmpty }
 
     // MARK: Editors
 
@@ -60,6 +104,7 @@ final class NoteStore {
     func didEdit(_ editor: NoteTextView) {
         guard let storage = editor.textStorage else { return }
         documents[editor.noteID] = NSAttributedString(attributedString: storage)
+        schedulePut(editor.noteID)
         for other in editors.values.compactMap(\.editor) where other !== editor && other.noteID == editor.noteID {
             other.load(documents[editor.noteID]!)
         }
@@ -168,7 +213,97 @@ final class NoteStore {
             if document.length > 0 { document.append(NSAttributedString(string: "\n")) }
             document.append(quote)
             documents[noteID] = document
+            schedulePut(noteID)
         }
+    }
+
+    // MARK: The stored form (specs/24 §2.1)
+
+    /// A stored note as editor text: a paragraph per block, a heading or quote mark on the
+    /// paragraph (its line break included), a `• ` bullet for a list item, bold and italic as
+    /// font traits (restyled to the reading size when shown) and passage links.
+    static func attributed(_ note: StoreNote) -> NSAttributedString {
+        let text = NSMutableAttributedString()
+        let base = NSFont.systemFont(ofSize: 13)
+        for (index, block) in note.blocks.enumerated() {
+            var paragraph: [NSAttributedString.Key: Any] = [:]
+            switch block.kind {
+            case .heading: paragraph[.openLogosNoteHeading] = true
+            case .quote: paragraph[.openLogosNoteQuote] = true
+            case .listItem, .paragraph: break
+            }
+            let start = text.length
+            if block.kind == .listItem { text.append(NSAttributedString(string: "• ", attributes: paragraph)) }
+            for span in block.spans where !span.text.isEmpty {
+                var attributes = paragraph
+                var traits: NSFontDescriptor.SymbolicTraits = []
+                if span.bold { traits.insert(.bold) }
+                if span.italic { traits.insert(.italic) }
+                if !traits.isEmpty { attributes[.font] = NSFont(descriptor: base.fontDescriptor.withSymbolicTraits(traits), size: base.pointSize) ?? base }
+                if let link = span.link { attributes[.link] = url(link) }
+                text.append(NSAttributedString(string: span.text, attributes: attributes))
+            }
+            if index < note.blocks.count - 1 { text.append(NSAttributedString(string: "\n", attributes: paragraph)) }
+            if text.length > start, !paragraph.isEmpty { text.addAttributes(paragraph, range: NSRange(location: start, length: text.length - start)) }
+        }
+        return text
+    }
+
+    /// Editor text as a stored note: each paragraph a block (heading, quote, `• ` list item or
+    /// paragraph) and its runs as spans, adjacent runs with the same marks merged. Anything
+    /// else the text holds (pasted colours, fonts) is not stored.
+    static func storeNote(id: String, from text: NSAttributedString) -> StoreNote {
+        let string = text.string as NSString
+        var blocks: [StoreNoteBlock] = []
+        var location = 0
+        repeat {
+            let line = string.range(of: "\n", range: NSRange(location: location, length: string.length - location))
+            let end = line.location == NSNotFound ? string.length : line.location
+            var content = NSRange(location: location, length: end - location)
+            // An empty paragraph's marks are on its line break; the last one, with none, is a
+            // plain paragraph.
+            let probe = content.length > 0 ? content.location : (line.location != NSNotFound ? line.location : text.length)
+            let marked = { (key: NSAttributedString.Key) in probe < text.length && text.attribute(key, at: probe, effectiveRange: nil) != nil }
+            var kind = StoreNoteBlockKind.paragraph
+            if marked(.openLogosNoteHeading) {
+                kind = .heading
+            } else if marked(.openLogosNoteQuote) {
+                kind = .quote
+            } else if string.substring(with: content).hasPrefix("• ") {
+                kind = .listItem
+                content = NSRange(location: content.location + 2, length: content.length - 2)
+            }
+            blocks.append(StoreNoteBlock(kind: kind, spans: spans(of: text, in: content, heading: kind == .heading)))
+            location = end + 1
+        } while location <= string.length
+        return StoreNote(id: id, blocks: blocks)
+    }
+
+    private static func spans(of text: NSAttributedString, in range: NSRange, heading: Bool) -> [StoreNoteSpan] {
+        var spans: [StoreNoteSpan] = []
+        guard range.length > 0 else { return spans }
+        text.enumerateAttributes(in: range) { attributes, run, _ in
+            let font = attributes[.font] as? NSFont
+            let traits = font?.fontDescriptor.symbolicTraits ?? []
+            // A heading's own semibold is not a bold mark: only a heavier run is.
+            let bold = heading ? heavierThanHeading(font) : traits.contains(.bold)
+            let span = StoreNoteSpan(text: (text.string as NSString).substring(with: run), bold: bold, italic: traits.contains(.italic),
+                                     link: attributes[.link].flatMap(reference))
+            if let last = spans.last, last.bold == span.bold, last.italic == span.italic, last.link == span.link {
+                spans[spans.count - 1].text += span.text
+            } else {
+                spans.append(span)
+            }
+        }
+        return spans
+    }
+
+    private static func heavierThanHeading(_ font: NSFont?) -> Bool {
+        guard let font else { return false }
+        guard let weight = (font.fontDescriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any])?[.weight] as? CGFloat else {
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+        }
+        return weight > NSFont.Weight.semibold.rawValue + 0.01
     }
 
     // MARK: Helpers
@@ -226,6 +361,13 @@ final class NoteTextView: NSTextView {
             onFocus()
         }
         return accepted
+    }
+
+    /// B074: a note leaving focus is saved into the core now.
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { store?.flush() }
+        return resigned
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -449,5 +591,6 @@ final class NoteStore {
     func toggleList() {}
     func insertLink(to reference: String) {}
     func appendQuote(_ text: String, reference: String, to noteID: String) {}
+    func flush() {}
 }
 #endif

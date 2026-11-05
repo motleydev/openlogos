@@ -19,7 +19,8 @@ struct OpenLogosApp: App {
             if showPrototype {
                 PrototypeRoot()
             } else {
-                ShellView(model: ShellLaunch.measurementPath == nil ? ShellModel() : ShellModel(sessionJSON: ShellSeed.measurementJSON))
+                // B074: the session and annotations saved last time come back (specs/24).
+                ShellView(model: ShellLaunch.measurementPath == nil ? ShellModel(store: ShellPersistence.launchFile()) : ShellModel(sessionJSON: ShellSeed.measurementJSON))
             }
             #else
             // B004: the reading-interactions prototype (Sources/Prototype/) is the root on
