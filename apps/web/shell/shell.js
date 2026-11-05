@@ -14,21 +14,31 @@
 // either; the host maps its icon names to SVG and performs the note and selection actions.
 //
 // Host view state, outside the session (docs/evidence/B072-web.md, B076-web.md): the tool well's position
-// and collapse, a column-rule drag until it ends in `column.resize`, and highlights and ink
-// strokes (in memory until the annotation store, B074), and the notes as edited (B074 too).
+// and collapse, a column-rule drag until it ends in `column.resize`, a tab drag until it ends
+// in `tab.move`. Notes, highlights and ink are the core's (B074, specs/24): the page converts
+// at the edge, and saves the core's user store to IndexedDB (store.js) and restores it at
+// launch.
 //
-// Rendering is per column: a column's DOM is rebuilt only when its tabs, shown tab or passage
-// change; focus, tool and theme changes touch classes and attributes only, so they cost a
-// style pass, and a drag in the text is never cut short by a re-render. Hidden tabs and other
-// workspaces keep no DOM (specs/22 §7: they release their rendered text).
+// Rendering is per column: a column's DOM is rebuilt only when its tabs or shown tab change or
+// its tab is navigated; focus, tool and theme changes touch classes and attributes only, so
+// they cost a style pass, and a drag in the text is never cut short by a re-render. Hidden tabs
+// and other workspaces keep no DOM (specs/22 §7: they release their rendered text).
+//
+// A reading tab is one continuous scroll through its edition (B078, specs/23; reading.js): the
+// reading handle's chapter blocks, a window of them around the reading line. Scrolling moves the
+// tab's passage quietly (`tab.record_scroll`) and carries linked tabs along; labels change in
+// place and the column is not rebuilt for it.
 import init, * as core from "../core-host/pkg/openlogos_ffi.js";
-import { renderParagraph, selectionAnchors, anchorRange } from "../reader/surface.js";
+import { selectionAnchors } from "../reader/surface.js";
 import { BRUSHES, HIGHLIGHTER_WIDTH_FACTOR, TouchArbiter, compositeAt, strokeOutline, distanceToSegment } from "../ink/layer.js";
 import { fixtureTextSource } from "./text-source.js";
 import { seedSession, benchSession } from "./seed.js";
 import { bindingsFrom, match } from "./keys.js";
 import { humanPassage, shortcutGlyphs, linkWord } from "./format.js";
 import { openContextMenu, closeContextMenu, isOpen as contextMenuOpen, openMenuElement } from "./context-menu.js";
+import { ReadingStream, PLACEHOLDER_REASON, chapterOfSegment } from "./reading.js";
+import { UserStore, refusedNotice, issuesNotice, WRITE_FAILED_NOTICE } from "./store.js";
+import { renderNote, noteFromEditor } from "./note-form.js";
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -43,6 +53,8 @@ export const TOKENS = {
   themes: ["light", "sepia", "dark"],
 };
 const SWATCH_ORDER = ["yellow", "green", "blue", "pink"];
+/** The root classes the tool in effect sets (shell.css); no style rule reads `data-tool`. */
+const TOOL_CLASSES = [["tool-ink", ["pen", "highlighter_pen", "eraser"]], ["tool-eraser", ["eraser"]], ["tool-highlight", ["highlight"]], ["tool-word-study", ["word_study"]]];
 
 /** The swatch name of a `#RRGGBB` (the core stores colours), or null for another colour. */
 function swatchName(hex) {
@@ -116,14 +128,24 @@ const host = {
   focusMode: false, layout: null,
   views: new Map(), order: [],
   well: { top: null, collapsed: false },
-  highlights: [], ink: new Map(),
+  // B074 (specs/24): the core holds the notes, highlights and ink; the host keeps what it last
+  // fetched for each rendered block (keyed by a version bumped on every change) and the eraser's
+  // count for the tests.
+  hlVersion: 0, hlCache: new Map(), inkCache: new Map(), erased: new Map(),
   palette: { expanded: null, rows: [], index: -1, result: null, returnTo: null },
-  menu: null, log: [], targets: new Map(), colourRules: new Set(), labels: new Map(),
+  menu: null, log: [], colourRules: new Set(), labels: new Map(),
   // B076: what has focus for the core's context (`tab`, `notes_dock`; `empty` never arises, a
-  // column always has a tab), the last tool well drawn, the notes as edited (HTML per note id,
-  // in memory until B074) and the column a passage link navigates.
-  focus: "tab", toolWell: null, notes: new Map(), readingColumn: 1,
-  lexicon: new Map(), // "word@reference" → the language of the text it was clicked in
+  // column always has a tab), the last tool well drawn and the column a passage link navigates.
+  focus: "tab", toolWell: null, readingColumn: 1,
+  // B074: the user store (IndexedDB; null when `?store=off`), the change count last saved, the
+  // pending save, consecutive failed writes, and what the launch restore did and cost.
+  store: null, lastSaved: 0, saveTimer: 0, saveFailures: 0, saves: [], restore: null,
+  // B078 (specs/23): the reading handle (placeholder editions until B071's packs), and per tab
+  // (`ws/tab`) the passage its stream was last put at or reported (a reference that differs is
+  // a navigation: the column is rebuilt there), a navigation serial in the column signature,
+  // and the tabs whose next build flashes the typed verses.
+  reading: null, editions: new Set(), known: new Map(), navSerial: new Map(), flash: new Set(),
+  frames: null,
 };
 
 // MARK: - Commands
@@ -148,20 +170,73 @@ export function run(invocation, ctx = context()) {
     host.log.push({ command_id: invocation.command_id, error: error.kind || String(error) });
     return null;
   }
-  host.log.push({ command_id: invocation.command_id, handled: outcome.handled });
+  changed();
+  host.log.push(invocation.command_id === "tab.record_scroll"
+    ? { command_id: invocation.command_id, handled: outcome.handled, tab_id: invocation.args.tab_id, segment_id: invocation.args.segment_id }
+    : { command_id: invocation.command_id, handled: outcome.handled });
   const spec = host.specs.get(invocation.command_id);
-  if (spec && spec.quiet) { sync(); return outcome; }
+  if (spec && spec.quiet) { sync(); followPositions(outcome); return outcome; }
   if (outcome.handled) {
     sync();
-    if (invocation.command_id === "nav.navigate" && invocation.args && invocation.args.reference) {
-      host.targets.set(activeTab().id, invocation.args.reference);
-    }
+    followPositions(outcome);
   } else {
     perform(invocation);
   }
   render();
   return outcome;
 }
+
+// MARK: - Saving (B074, specs/24 §4): the core's store, 1 s after the last change and on hide
+
+/** After anything that may change what the store writes: a save is due when the core's change
+ *  count moved since the last one, `save_debounce_ms` after the last change. */
+function changed() {
+  if (!host.store || host.handle.changeCount() === host.lastSaved) return;
+  clearTimeout(host.saveTimer);
+  host.saveTimer = setTimeout(() => saveNow(), host.saveDebounce);
+}
+
+/** Exports on the main thread (under a millisecond, specs/24 §4) and hands the string to
+ *  IndexedDB, whose write runs off it. A failed write keeps the previous value and leaves the
+ *  save due, so the next change retries; three in a row are said once. */
+export function saveNow() {
+  clearTimeout(host.saveTimer);
+  flushNotes();
+  host.saveTimer = 0;
+  if (!host.store) return Promise.resolve(false);
+  const count = host.handle.changeCount();
+  if (count === host.lastSaved) return Promise.resolve(false);
+  const t0 = performance.now();
+  const json = host.handle.exportStore();
+  const exported = performance.now() - t0;
+  host.lastSaved = count;
+  host.inflight = json;
+  const sample = { export_ms: exported, bytes: json.length };
+  host.saves.push(sample);
+  if (host.saves.length > 1000) host.saves.shift();
+  return host.store.write(json).then(() => {
+    sample.write_ms = performance.now() - t0;
+    host.saveFailures = 0;
+    if (host.inflight === json) { host.inflight = null; host.store.clearPending(); }
+    return true;
+  }, (error) => {
+    console.warn("save failed", error);
+    if (host.lastSaved === count) host.lastSaved = -1;
+    host.saveFailures += 1;
+    if (host.saveFailures === 3) notice(WRITE_FAILED_NOTICE);
+    return false;
+  });
+}
+
+/** On hide: save now, and keep the newest store not yet committed in the page's synchronous
+ *  storage too. A page closed or reloaded is torn down before IndexedDB commits a transaction
+ *  started as it goes (Chrome drops it), so the next launch takes that copy first. */
+function saveOnHide() {
+  saveNow();
+  if (host.store && host.inflight) host.store.keepPending(host.inflight);
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveOnHide(); });
+window.addEventListener("pagehide", saveOnHide);
 
 /** The host's half of the commands the core leaves to it (`handled: false`). */
 function perform({ command_id: id, args }) {
@@ -175,7 +250,7 @@ function perform({ command_id: id, args }) {
       break;
     case "selection.highlight": highlightSelection(); break;
     case "selection.collect": collectSelection(); break;
-    case "selection.study": toast("Word study is not built yet"); break;
+    case "selection.study": if (!refusePlaceholder(selectionInView())) toast("Word study is not built yet"); break;
     case "selection.note": noteSelection(); break;
     case "selection.search": searchSelection(); break;
     case "selection.copy_reference": copyReference(); break;
@@ -220,6 +295,12 @@ const activeColumn = () => { const ws = activeWorkspace(); return ws.columns.fin
 const activeTab = () => { const c = activeColumn(); return c.tabs.find((t) => t.id === c.shown_tab_id); };
 const shownTab = (c) => c.tabs.find((t) => t.id === c.shown_tab_id);
 const tabKey = (ws, tab) => `${ws.id}/${tab.id}`;
+/** A reading tab whose edition the reading handle has: one continuous scroll (B078). */
+const isStream = (tab) => !!tab && tab.kind === "reading" && host.editions.has(tab.content_id);
+const sessionTab = (wsId, tabId) => {
+  const ws = host.session.workspaces.find((w) => w.id === wsId);
+  return ws && ws.columns.flatMap((c) => c.tabs).find((t) => t.id === tabId);
+};
 
 /** Reads the session and the core's labelled view of it (`view()`: each tab's resource title
  *  and chapter_label) after a change. */
@@ -273,6 +354,7 @@ export function render() {
   if (host.find && !host.find.view.text.isConnected) clearFind();
   root.dataset.theme = r.theme;
   root.dataset.tool = host.toolWell.effective_tool;
+  for (const [name, tools] of TOOL_CLASSES) root.classList.toggle(name, tools.includes(host.toolWell.effective_tool));
   root.classList.toggle("focus-mode", host.focusMode);
   root.classList.toggle("well-collapsed", host.well.collapsed);
   root.style.setProperty("--reading-size", `${r.size}px`);
@@ -283,8 +365,16 @@ export function render() {
   root.style.setProperty("--swatch-opacity", String(alpha));
   renderSwitcher();
   renderColumns();
+  // A reflow (text size, spacing, column widths, focus mode) keeps each stream on the verse it
+  // had at the top (B078).
+  const layout = `${r.size}|${r.spacing}|${r.measure}|${ws.id}|${ws.columns.map((c) => c.width_fraction.toFixed(4)).join(",")}|${host.focusMode}|${host.well.collapsed}|${ws.notes_dock.open}`;
+  if (layout !== host.layoutKey) { host.layoutKey = layout; restoreStreams(); }
   renderWell();
   paintHighlights();
+}
+
+function restoreStreams() {
+  for (const view of host.views.values()) if (view.stream && view.section.isConnected) { view.stream.restore(); placeBand(view, true); }
 }
 
 function renderSwitcher() {
@@ -299,9 +389,22 @@ function renderSwitcher() {
   if (size.textContent !== pt) size.textContent = pt;
 }
 
+/** What a column's DOM is built from. A reading stream's passage is not in it (B078): the
+ *  passage follows the scroll, and a navigation bumps the tab's serial instead. */
 function columnSignature(ws, column, number) {
-  const tabs = column.tabs.map((t) => `${t.id}:${t.content_id}:${t.reference}:${t.link_group}:${t.pinned}:${t.lexicon_word || ""}`).join("|");
-  return `${ws.id}#${number}#${column.shown_tab_id}#${tabs}#${host.targets.get(column.shown_tab_id) || ""}`;
+  const tabs = column.tabs.map((t) => `${t.id}:${t.content_id}:${isStream(t) ? `n${host.navSerial.get(tabKey(ws, t)) || 0}` : t.reference}:${t.link_group}:${t.pinned}:${t.lexicon_word || ""}`).join("|");
+  return `${ws.id}#${number}#${column.shown_tab_id}#${tabs}`;
+}
+
+/** A stream whose tab's passage or mark is no longer what it was put at or reported was
+ *  navigated by something without a position (an undo, a restore): rebuild it there. */
+function noteNavigation(ws, tab) {
+  if (!isStream(tab)) return;
+  const key = tabKey(ws, tab);
+  const known = host.known.get(key);
+  if (known && (known.reference !== tab.reference || known.highlight !== (tab.highlight_range || null))) {
+    host.navSerial.set(key, (host.navSerial.get(key) || 0) + 1);
+  }
 }
 
 function renderColumns() {
@@ -312,12 +415,16 @@ function renderColumns() {
   ws.columns.forEach((column, i) => {
     const key = `${ws.id}/${column.id}`;
     live.add(key);
+    noteNavigation(ws, shownTab(column));
     const signature = columnSignature(ws, column, i + 1);
     let view = host.views.get(key);
     if (!view || view.signature !== signature) {
       view = buildColumn(ws, column, i + 1);
       view.signature = signature;
       host.views.set(key, view);
+    } else {
+      view.tab = shownTab(column);
+      view.column = column;
     }
     const active = column.id === ws.active_column_id;
     view.section.classList.toggle("active", active);
@@ -331,8 +438,13 @@ function renderColumns() {
   // Re-insert only when the order changed: moving a node resets its scroll position.
   const same = order.length === host.order.length && order.every((n, i) => n === host.order[i]);
   if (!same) {
-    container.replaceChildren(...order);
-    for (const view of host.views.values()) if (view.section.isConnected) restoreScroll(view);
+    // A rebuilt column takes its old one's place, and the others keep their scroll (B078: a
+    // stream holds several chapters); a new order re-inserts every column.
+    const inPlace = order.length === host.order.length && order.every((n, i) => n === host.order[i] || !n.isConnected);
+    const moved = new Set();
+    if (inPlace) order.forEach((n, i) => { if (n !== host.order[i]) { container.replaceChild(n, host.order[i]); moved.add(n); } });
+    else { container.replaceChildren(...order); for (const n of order) moved.add(n); }
+    for (const view of host.views.values()) if (view.section.isConnected && moved.has(view.section)) restoreScroll(view);
     host.order = order;
   }
   for (const view of host.views.values()) if (view.section.isConnected) sizeCanvas(view);
@@ -392,7 +504,11 @@ function buildColumn(ws, column, number) {
       run({ command_id: "tab.close" });
     });
     el.append(label, close);
-    el.addEventListener("click", () => { if (activeTab().id !== t.id) run({ command_id: "tab.focus", args: { workspace_id: ws.id, tab_id: t.id } }); });
+    el.addEventListener("pointerdown", (e) => { if (e.button === 0 && !e.target.closest(".close")) startTabDrag(e, el, ws, column, t); });
+    el.addEventListener("click", () => {
+      if (el.dragged) { el.dragged = false; return; }
+      if (activeTab().id !== t.id) run({ command_id: "tab.focus", args: { workspace_id: ws.id, tab_id: t.id } });
+    });
     strip.appendChild(el);
   }
   const add = document.createElement("button");
@@ -438,46 +554,19 @@ function buildColumn(ws, column, number) {
   const page = document.createElement("div");
   page.className = "page";
   scroller.appendChild(page);
-  const view = { section, scroller, page, ws, column, tab, resource, number, text: null, paragraph: null, canvas: null, key: tabKey(ws, tab) };
-  const passageText = host.text.passage(tab.content_id, tab.reference);
-  if (resource.kind === "notes") {
+  const view = { section, scroller, page, ws, column, tab, resource, number, text: null, stream: null, canvas: null, key: tabKey(ws, tab) };
+  if (isStream(tab)) {
+    buildStream(view);
+  } else if (resource.kind === "notes") {
     const article = document.createElement("article");
     article.className = "measure";
     article.appendChild(noteEditor(tab.content_id, `${resource.name}, column ${number}`));
     page.appendChild(article);
   } else if (resource.kind === "lexicon") {
     page.appendChild(lexiconPage(tab));
-  } else if (passageText) {
-    const article = document.createElement("article");
-    article.className = "measure";
-    article.lang = resource.lang;
-    const text = renderParagraph(passageText.paragraph, resource.dir, resource.lang);
-    const attribution = document.createElement("p");
-    attribution.className = "attribution";
-    attribution.textContent = passageText.attribution;
-    article.append(text, attribution);
-    page.appendChild(article);
-    view.text = text;
-    view.paragraph = passageText.paragraph;
-    text.addEventListener("click", (e) => studyWordAt(view, e));
-    const target = host.targets.get(tab.id);
-    if (target && /\.\d+$/.test(target.split("-")[0])) {
-      const verse = text.querySelector(`[data-segment="${target.split("-")[0]}"]`);
-      if (verse) { verse.classList.add("target"); view.scrollTo = verse; }
-    }
-    const canvas = document.createElement("canvas");
-    canvas.className = "margin";
-    canvas.setAttribute("aria-hidden", "true");
-    page.appendChild(canvas);
-    view.canvas = canvas;
-    attachInk(view);
   } else {
     page.appendChild(placeholder(ws, tab, resource));
   }
-  scroller.addEventListener("scroll", () => {
-    clearTimeout(view.scrollTimer);
-    view.scrollTimer = setTimeout(() => recordScroll(view), 150);
-  }, { passive: true });
   section.addEventListener("pointerdown", (e) => {
     // A right-click focuses nothing: the context menu carries the focus change for its rows.
     if (e.button !== 0 || e.target.closest(".tabstrip, .pane-menu")) return;
@@ -504,6 +593,147 @@ function placeholder(ws, tab, resource) {
   return box;
 }
 
+// MARK: - Continuous reading (B078, specs/23): the stream of chapter blocks
+
+/** A reading tab's page: the sticky header and the stream, opened at the tab's passage once
+ *  the column is in the document (restoreScroll); or specs/21's not-in-this-edition state with
+ *  the core's words when the edition has no such passage. */
+function buildStream(view) {
+  const { tab, resource, scroller, page } = view;
+  let location = null, error = null;
+  try {
+    location = tab.reference ? host.reading.locate(tab.content_id, tab.reference) : null;
+  } catch (e) {
+    error = e;
+  }
+  host.known.set(view.key, { reference: tab.reference, highlight: tab.highlight_range || null });
+  if (!location) {
+    host.flash.delete(view.key);
+    page.appendChild(error ? notInEdition(tab, resource, error) : placeholder(view.ws, tab, resource));
+    return;
+  }
+  const header = document.createElement("div");
+  header.className = "reading-header";
+  scroller.insertBefore(header, page);
+  const article = document.createElement("article");
+  article.className = "measure stream";
+  article.lang = resource.lang;
+  const text = document.createElement("div");
+  text.className = "text";
+  text.dir = resource.dir;
+  text.lang = resource.lang;
+  text.addEventListener("click", (e) => studyWordAt(view, e));
+  article.appendChild(text);
+  page.appendChild(article);
+  const canvas = document.createElement("canvas");
+  canvas.className = "margin";
+  canvas.setAttribute("aria-hidden", "true");
+  page.appendChild(canvas);
+  view.text = text;
+  view.canvas = canvas;
+  view.stream = new ReadingStream({
+    core, reading: host.reading, resource, scroller, text, header,
+    onTop: (anchor) => reportTop(view, anchor),
+    onBlocks: () => { attributeBlocks(view); paintHighlights(); placeBand(view, true); },
+    onFrame: (ms) => { placeBand(view); if (host.frames) host.frames.push(ms); },
+  });
+  // A scrolled tab comes back to its anchor; a navigation puts the passage on the reading line
+  // and flashes its typed verses.
+  const anchor = tab.scroll_anchor;
+  view.pendingOpen = anchor
+    ? { chapterKey: chapterOfSegment(anchor.segment_id) || location.chapter_key, segmentId: anchor.segment_id, scalar: anchor.scalar, mark: tab.highlight_range || null, flash: false }
+    : { chapterKey: location.chapter_key, segmentId: location.segment_id, scalar: 0, mark: tab.highlight_range || null, flash: host.flash.has(view.key) };
+  host.flash.delete(view.key);
+  attachInk(view);
+}
+
+/** specs/21 §11 for a passage the edition does not have: the core's words ("John has no
+ *  chapter 22", "Genesis is not in SBLGNT"), never another edition's text. */
+function notInEdition(tab, resource, error) {
+  const box = document.createElement("div");
+  box.className = "placeholder not-in-edition";
+  box.innerHTML = `<h2>${escapeHtml(resource.name)} · ${escapeHtml(humanPassage(core, tab.reference))}</h2>
+    <p>${escapeHtml(error.message || String(error))}.</p>
+    <div class="actions"><button type="button" data-act="choose">Choose another…</button><button type="button" data-act="close">Close tab</button></div>`;
+  box.querySelector('[data-act="choose"]').addEventListener("click", () => run({ command_id: "palette.focus" }));
+  box.querySelector('[data-act="close"]').addEventListener("click", () => run({ command_id: "tab.close" }));
+  return box;
+}
+
+/** The fixture verses' licence line at the end of each block that holds one. */
+function attributeBlocks(view) {
+  for (const b of view.stream.blocks) {
+    if (b.attributed) continue;
+    b.attributed = true;
+    if (!b.data.verses.some((v) => !v.placeholder)) continue;
+    const fixture = host.text.passage(view.tab.content_id, b.key);
+    if (!fixture) continue;
+    const line = document.createElement("p");
+    line.className = "attribution";
+    line.textContent = fixture.attribution;
+    b.section.appendChild(line);
+  }
+}
+
+/** The reader moved the verse at the top: `tab.record_scroll` (quiet), which carries linked
+ *  tabs along (followPositions). */
+function reportTop(view, anchor) {
+  const t0 = performance.now();
+  run({ command_id: "tab.record_scroll", args: { workspace_id: view.ws.id, tab_id: view.tab.id, ...anchor } });
+  if (host.followTimes) host.followTimes.push(performance.now() - t0);
+}
+
+function streamViewOf(key) {
+  for (const view of host.views.values()) if (view.stream && view.key === key && view.section.isConnected) return view;
+  return null;
+}
+
+/** B078: what a command moved (`effects.positions`, specs/23 §6). A navigation (`scrolled:
+ *  false`) rebuilds each listed tab's column at its passage and flashes its typed verses; a
+ *  scroll moves each linked follower without animation (and the follower does not report
+ *  it); every moved tab's labels change in place, the reading column is not rebuilt. */
+function followPositions(outcome) {
+  const positions = (outcome && outcome.effects && outcome.effects.positions) || [];
+  if (!positions.length) return;
+  for (const p of positions) {
+    const key = `${p.workspace_id}/${p.tab_id}`;
+    if (!p.scrolled) {
+      host.navSerial.set(key, (host.navSerial.get(key) || 0) + 1);
+      if (p.highlight_range) host.flash.add(key);
+      continue;
+    }
+    host.known.set(key, { reference: p.reference, highlight: p.highlight_range || null });
+    if (p.driver || !p.segment_id) continue;
+    const view = streamViewOf(key);
+    if (view) view.stream.follow(p.segment_id);
+  }
+  refreshLabels();
+}
+
+/** Tab labels and identity rows from the session, written only where they changed. */
+function refreshLabels() {
+  for (const view of host.views.values()) {
+    if (!view.section.isConnected) continue;
+    const wsId = view.ws.id;
+    for (const el of view.section.querySelectorAll(".tabstrip .tab")) {
+      const label = host.labels.get(`${wsId}/${el.dataset.tabId}`);
+      if (label && el.firstChild.textContent !== label) {
+        el.firstChild.textContent = label;
+        el.querySelector(".close").setAttribute("aria-label", `Close ${label}`);
+      }
+    }
+    if (!view.stream) continue;
+    const tab = sessionTab(wsId, view.tab.id);
+    const passage = view.section.querySelector(".identity .passage");
+    const text = tab ? humanPassage(core, tab.reference) : "";
+    if (passage.textContent !== text) {
+      passage.textContent = text;
+      view.scroller.setAttribute("aria-label", `${view.resource.name} ${text}`);
+      view.section.setAttribute("aria-label", `Column ${view.number}: ${host.labels.get(`${wsId}/${view.tab.id}`)}`);
+    }
+  }
+}
+
 let dock = null;
 function dockView(ws) {
   const noteId = ws.notes_dock.note_id || "fixture:note:1";
@@ -524,54 +754,13 @@ function dockView(ws) {
   return el;
 }
 
-/** Where the reader is: the segment and scalar at the top of the text, sent to the core as
- *  `tab.record_scroll` once scrolling settles (a quiet command: no re-render, no undo). */
-function scrollAnchorOf(view) {
-  if (!view.text || !view.section.isConnected) return null;
-  const box = view.scroller.getBoundingClientRect();
-  const text = view.text.getBoundingClientRect();
-  const rtl = view.resource.dir === "rtl";
-  const x = rtl ? Math.min(text.right, box.right) - 2 : Math.max(text.left, box.left) + 2;
-  const y = box.top + 2;
-  const caret = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
-  const node = caret && caret.startContainer;
-  const verse = node && node.parentElement && node.parentElement.closest("[data-segment]");
-  if (verse && view.text.contains(verse) && node.parentElement.classList.contains("t")) {
-    return { segment_id: verse.dataset.segment, scalar: [...node.data.slice(0, caret.startOffset)].length };
-  }
-  // Between lines or above the text: the first segment whose bottom is below the top edge.
-  for (const v of view.text.querySelectorAll("[data-segment]")) {
-    if (v.getBoundingClientRect().bottom > y) return { segment_id: v.dataset.segment, scalar: 0 };
-  }
-  return null;
-}
-
-function recordScroll(view) {
-  const anchor = scrollAnchorOf(view);
-  if (!anchor) return;
-  const old = view.tab.scroll_anchor;
-  if (!old && view.scroller.scrollTop < 4) return;
-  if (old && old.segment_id === anchor.segment_id && old.scalar === anchor.scalar) return;
-  run({ command_id: "tab.record_scroll", args: { workspace_id: view.ws.id, tab_id: view.tab.id, ...anchor } });
-  view.tab = { ...view.tab, scroll_anchor: anchor };
-}
-
-/** Scrolls a freshly built column to a navigation target, or to its tab's scroll_anchor. */
+/** Opens a freshly built stream at its tab's passage or scroll anchor, or puts a moved one
+ *  back on the verse it had (moving a node resets its scroll position). */
 function restoreScroll(view) {
-  if (view.scrollTo) { view.scroller.scrollTop = Math.max(0, view.scrollTo.offsetTop - 24); view.scrollTo = null; return; }
-  const anchor = view.tab.scroll_anchor;
-  const verse = anchor && view.text && view.text.querySelector(`[data-segment="${CSS.escape(anchor.segment_id)}"]`);
-  if (!verse) return;
-  const node = verse.querySelector(".t").firstChild;
-  let top = verse.getBoundingClientRect().top;
-  if (node && anchor.scalar > 0) {
-    const r = document.createRange();
-    const at = [...node.data].slice(0, anchor.scalar).join("").length;
-    r.setStart(node, Math.min(at, node.length));
-    r.setEnd(node, Math.min(at + 1, node.length));
-    top = r.getBoundingClientRect().top;
-  }
-  view.scroller.scrollTop += top - view.scroller.getBoundingClientRect().top - 1;
+  if (!view.stream) return;
+  const o = view.pendingOpen;
+  view.pendingOpen = null;
+  if (o) view.stream.open(o.chapterKey, o); else view.stream.restore();
 }
 
 function viewOfNode(node) {
@@ -614,6 +803,111 @@ function startResize(event, rule, index) {
   rule.addEventListener("pointerup", up);
 }
 
+// MARK: - Tab drag (B074): a drag ends in `tab.move`, undoable
+
+/** Within this far of the columns' trailing edge, a drop makes a new column. */
+const NEW_COLUMN_ZONE = 56;
+
+/** Where a tab dropped at (x, y) goes: a slot of a column's strip (the slot as drawn before the
+ *  move), the end of a column dropped on its text, or a new column at the trailing edge; null
+ *  off the columns. */
+function dropTarget(x, y) {
+  const ws = activeWorkspace();
+  const box = $("columns").getBoundingClientRect();
+  if (y < box.top || y > box.bottom || x < box.left) return null;
+  const lastView = host.views.get(`${ws.id}/${ws.columns[ws.columns.length - 1].id}`);
+  const last = lastView && lastView.section.getBoundingClientRect();
+  if (last && x >= last.right - NEW_COLUMN_ZONE && x <= last.right + 8 && y > last.top + 40) return { new_column: true, column: ws.columns.length + 1 };
+  const hit = document.elementFromPoint(x, y);
+  const section = hit && hit.closest("#columns > .column");
+  if (!section) return null;
+  const number = Number(section.dataset.number);
+  const column = ws.columns[number - 1];
+  if (!column) return null;
+  const strip = section.querySelector(".tabstrip");
+  const r = strip.getBoundingClientRect();
+  if (y >= r.top && y <= r.bottom) {
+    const tabs = [...strip.querySelectorAll(".tab")];
+    const index = tabs.filter((el) => { const b = el.getBoundingClientRect(); return b.left + b.width / 2 < x; }).length;
+    return { column: number, index, strip: true };
+  }
+  return { column: number, index: column.tabs.length, strip: false };
+}
+
+/** Whether a drop changes nothing: back into its own slot, or a new column from a column that
+ *  holds only this tab (the core refuses both; nothing is sent). */
+function noOpDrop(target, column, tabId) {
+  const ws = activeWorkspace();
+  const from = ws.columns.findIndex((c) => c.id === column.id) + 1;
+  const at = column.tabs.findIndex((t) => t.id === tabId);
+  if (target.new_column) return column.tabs.length === 1;
+  return target.column === from && (target.index === at || target.index === at + 1);
+}
+
+/** Draws where the tab would go: a bar at a strip slot, the column outlined, or the new-column
+ *  zone labelled "New column" (the Mac's words). */
+function showDrop(target) {
+  let bar = $("drop-slot");
+  if (!bar) { bar = document.createElement("div"); bar.id = "drop-slot"; document.body.appendChild(bar); }
+  for (const el of document.querySelectorAll("#columns > .column.drop-target")) el.classList.remove("drop-target");
+  bar.hidden = !target;
+  if (!target) return;
+  const ws = activeWorkspace();
+  if (target.new_column) {
+    const r = host.views.get(`${ws.id}/${ws.columns[ws.columns.length - 1].id}`).section.getBoundingClientRect();
+    Object.assign(bar.style, { left: `${r.right - NEW_COLUMN_ZONE}px`, top: `${r.top}px`, width: `${NEW_COLUMN_ZONE}px`, height: `${r.height}px` });
+    bar.className = "zone";
+    bar.textContent = "New column";
+    return;
+  }
+  const view = host.views.get(`${ws.id}/${ws.columns[target.column - 1].id}`);
+  if (!target.strip) { view.section.classList.add("drop-target"); bar.hidden = true; return; }
+  const strip = view.section.querySelector(".tabstrip");
+  const tabs = [...strip.querySelectorAll(".tab")];
+  const sr = strip.getBoundingClientRect();
+  const x = target.index < tabs.length ? tabs[target.index].getBoundingClientRect().left : (tabs.length ? tabs[tabs.length - 1].getBoundingClientRect().right : sr.left);
+  Object.assign(bar.style, { left: `${x - 1}px`, top: `${sr.top + 4}px`, width: "2px", height: `${sr.height - 8}px` });
+  bar.className = "slot";
+  bar.textContent = "";
+}
+
+function startTabDrag(event, el, ws, column, tab) {
+  const x0 = event.clientX, y0 = event.clientY;
+  let ghost = null, target = null;
+  el.setPointerCapture(event.pointerId);
+  const move = (e) => {
+    if (!ghost) {
+      if (Math.hypot(e.clientX - x0, e.clientY - y0) < 5) return;
+      ghost = document.createElement("div");
+      ghost.className = "tab-ghost";
+      ghost.textContent = el.firstChild.textContent;
+      document.body.appendChild(ghost);
+      el.classList.add("dragging");
+    }
+    ghost.style.transform = `translate(${e.clientX + 8}px, ${e.clientY + 8}px)`;
+    target = dropTarget(e.clientX, e.clientY);
+    if (target && noOpDrop(target, column, tab.id)) target = null;
+    showDrop(target);
+  };
+  const up = (e) => {
+    el.removeEventListener("pointermove", move);
+    el.removeEventListener("pointerup", up);
+    el.removeEventListener("pointercancel", up);
+    if (!ghost) return;
+    ghost.remove();
+    el.classList.remove("dragging");
+    showDrop(null);
+    el.dragged = true;
+    setTimeout(() => { el.dragged = false; }, 0);
+    if (e.type === "pointercancel" || !target) return;
+    const args = target.new_column ? { tab_id: tab.id, new_column: true, column: target.column } : { tab_id: tab.id, column: target.column, index: target.index };
+    run({ command_id: "tab.move", args });
+  };
+  el.addEventListener("pointermove", move);
+  el.addEventListener("pointerup", up);
+  el.addEventListener("pointercancel", up);
+}
+
 // MARK: - Highlights (anchors through the core, as the B005 reader)
 
 function selectionInView() {
@@ -622,14 +916,56 @@ function selectionInView() {
   const range = s.getRangeAt(0);
   const view = viewOfNode(range.commonAncestorContainer);
   if (!view) return null;
-  const trip = selectionAnchors(core, view.paragraph, view.text, range);
-  return trip ? { view, trip } : null;
+  const trip = streamAnchors(view, range);
+  return trip ? { view, trip, range, placeholder: view.stream.touchesPlaceholder(range) } : null;
 }
 
+/** A selection in a reading stream: each block it touches is one core paragraph (B078), so
+ *  the range is cut at the blocks' text and their anchors are put together in order. */
+function streamAnchors(view, range) {
+  const anchors = [], ranges = [];
+  for (const b of view.stream.blocks) {
+    if (!range.intersectsNode(b.verses)) continue;
+    const part = document.createRange();
+    part.selectNodeContents(b.verses);
+    if (range.compareBoundaryPoints(Range.START_TO_START, part) > 0) part.setStart(range.startContainer, range.startOffset);
+    if (range.compareBoundaryPoints(Range.END_TO_END, part) < 0) part.setEnd(range.endContainer, range.endOffset);
+    if (part.collapsed) continue;
+    let trip = null;
+    try { trip = selectionAnchors(core, b.paragraph, b.verses, part); } catch { trip = null; }
+    if (!trip) continue;
+    anchors.push(...trip.anchors);
+    ranges.push(...trip.ranges);
+  }
+  return anchors.length ? { anchors, ranges } : null;
+}
+
+/** Placeholder verses are never quoted, collected or studied (specs/23 §5): says so. */
+function refusePlaceholder(found) {
+  if (!found || !found.placeholder) return false;
+  toast(PLACEHOLDER_REASON);
+  return true;
+}
+
+/** B074: the selection's anchors as one stored highlight (scalar spans, one per segment, in
+ *  text order) into the core, which refuses one on placeholder text (`placeholder_text`, said
+ *  in the words of specs/23 §5). */
 function highlightSelection(swatch = host.session.ink.swatch) {
   const found = selectionInView();
   if (!found) return toast("Select some text first");
-  host.highlights.push({ edition_id: found.view.paragraph.edition_id, anchors: found.trip.anchors, swatch: swatch.toUpperCase() });
+  const anchors = found.trip.anchors;
+  const highlight = {
+    resource_id: anchors[0].edition_id, content_revision: anchors[0].content_revision,
+    spans: anchors.map((a) => ({ segment_id: a.segment_id, start: a.range.start, end: a.range.end })), color: swatch.toUpperCase(),
+  };
+  try {
+    host.handle.addHighlight(highlight, host.reading);
+  } catch (error) {
+    toast(error.kind === "placeholder_text" ? PLACEHOLDER_REASON : error.message || String(error));
+    return;
+  }
+  highlightsChanged(highlight.resource_id, highlight.spans);
+  changed();
   document.getSelection().removeAllRanges();
 }
 
@@ -644,6 +980,7 @@ function selectionPassage(found) {
 function collectSelection() {
   const found = selectionInView();
   if (!found) return toast("Select some text first");
+  if (refusePlaceholder(found)) return;
   const passage = selectionPassage(found);
   const where = passage ? short(passage) : found.view.resource.name;
   host.collected = (host.collected || 0) + 1;
@@ -666,19 +1003,71 @@ function highlightName(hex) {
   return name;
 }
 
+/** After a highlight changed: its chapters are fetched again (all when none is named) and
+ *  every block works out its paint again. */
+function highlightsChanged(resource = null, spans = null) {
+  if (resource && spans) for (const x of spans) host.hlCache.delete(`${resource}|${chapterOfSegment(x.segment_id)}`);
+  else host.hlCache.clear();
+  host.hlVersion += 1;
+}
+
+/** UTF-16 index of a Unicode scalar offset in `text`. */
+function utf16At(text, scalar) {
+  let i = 0;
+  for (let n = 0; n < scalar && i < text.length; n++) i += text.codePointAt(i) > 0xffff ? 2 : 1;
+  return i;
+}
+
+/** B074: what a rendered block paints, `[highlight name, Range]` in the core's order (oldest
+ *  first, `highlightsIn`); worked out once per block and again only after a highlight changed
+ *  (a block's text never changes while it is rendered). A span of another chapter is painted
+ *  by that chapter's block. */
+function blockHighlights(view, b) {
+  if (b.hlVersion === host.hlVersion) return b.hlRanges;
+  b.hlVersion = host.hlVersion;
+  b.hlRanges = [];
+  const key = `${view.tab.content_id}|${b.key}`;
+  let marks = host.hlCache.get(key);
+  if (!marks) { marks = host.handle.highlightsIn(view.tab.content_id, b.key); host.hlCache.set(key, marks); }
+  if (!marks.length) return b.hlRanges;
+  if (!b.textNodes) {
+    b.textNodes = new Map();
+    for (const v of b.verses.querySelectorAll("[data-segment]")) {
+      const t = v.querySelector(".t");
+      if (t && t.firstChild) b.textNodes.set(v.dataset.segment, t.firstChild);
+    }
+  }
+  for (const h of marks) {
+    const name = highlightName(h.color);
+    for (const span of h.spans) {
+      const node = b.textNodes.get(span.segment_id);
+      if (!node) continue;
+      const r = document.createRange();
+      r.setStart(node, Math.min(node.length, utf16At(node.data, span.start)));
+      r.setEnd(node, Math.min(node.length, utf16At(node.data, span.end)));
+      b.hlRanges.push([name, r]);
+    }
+  }
+  return b.hlRanges;
+}
+
+/** The highlights of every rendered block, set again only when the blocks on screen or the
+ *  highlights changed. */
 function paintHighlights() {
   if (!("highlights" in CSS)) return;
-  const bySwatch = new Map(SWATCH_ORDER.map((s) => [`ol-${s}`, []]));
+  const blocks = [];
   for (const view of host.views.values()) {
-    if (!view.text || !view.section.isConnected) continue;
-    for (const h of host.highlights) {
-      if (h.edition_id !== view.paragraph.edition_id) continue;
-      for (const anchor of h.anchors) {
-        if (!view.paragraph.segments.some((s) => s.segment_id === anchor.segment_id)) continue;
-        const name = highlightName(h.swatch);
-        if (!bySwatch.has(name)) bySwatch.set(name, []);
-        bySwatch.get(name).push(anchorRange(core, view.paragraph, view.text, anchor));
-      }
+    if (!view.stream || !view.section.isConnected) continue;
+    for (const b of view.stream.blocks) blocks.push([view, b]);
+  }
+  const last = host.painted;
+  if (last && last.version === host.hlVersion && last.blocks.length === blocks.length && last.blocks.every((x, i) => x[1] === blocks[i][1])) return;
+  host.painted = { version: host.hlVersion, blocks };
+  const bySwatch = new Map(SWATCH_ORDER.map((s) => [`ol-${s}`, []]));
+  for (const [view, b] of blocks) {
+    for (const [name, range] of blockHighlights(view, b)) {
+      if (!bySwatch.has(name)) bySwatch.set(name, []);
+      bySwatch.get(name).push(range);
     }
   }
   for (const [name, ranges] of bySwatch) CSS.highlights.set(name, new Highlight(...ranges));
@@ -689,6 +1078,35 @@ function fetchWell() {
   const ctx = context();
   host.toolWell = host.handle.toolWell(ctx);
   host.wellSelection = ctx.has_selection;
+  // B078: on placeholder verses the quoting and collecting actions say why they are off.
+  if (ctx.has_selection) {
+    const found = selectionInView();
+    if (found && found.placeholder) {
+      for (const g of host.toolWell.groups) for (const item of g.items) if (QUOTE_COMMANDS.has(item.command_id)) item.disabled_text = PLACEHOLDER_REASON;
+    }
+  }
+}
+
+/** The commands that quote, collect or study the text under them (specs/23 §5). */
+const QUOTE_COMMANDS = new Set(["selection.highlight", "selection.highlight_in", "selection.collect", "selection.note", "selection.study", "copy.passage", "tab.open_lexicon", "search.lemma"]);
+
+/** The core's menu with its quoting rows disabled, for a word or selection on placeholder
+ *  verses (a submenu of them goes; one quoting row inside a submenu is disabled). */
+function withPlaceholderRows(menu) {
+  const off = (item) => ({ ...item, disabled_text: PLACEHOLDER_REASON, submenu: [] });
+  const items = (list) => list.map((item) => {
+    if (QUOTE_COMMANDS.has(item.command_id)) return off(item);
+    return item.submenu && item.submenu.length ? { ...item, submenu: items(item.submenu) } : item;
+  });
+  return { ...menu, sections: menu.sections.map((sec) => ({ ...sec, items: items(sec.items) })) };
+}
+
+/** Whether a context-menu hit is on placeholder verses. */
+function onPlaceholder(hit) {
+  if (!hit.view || !hit.view.stream) return false;
+  if (hit.word) return !!hit.word.node.parentElement.closest(".verse.placeholder-verse");
+  if (hit.target.kind === "selection") { const found = selectionInView(); return !!(found && found.placeholder); }
+  return false;
 }
 
 /** The selection group follows the selection: the well alone is redrawn when text becomes
@@ -728,6 +1146,7 @@ function selectedQuote(found) {
 function noteSelection() {
   const found = selectionInView();
   if (!found) return toast("Select some text first");
+  if (refusePlaceholder(found)) return;
   const passage = selectionPassage(found);
   let editor = openNoteEditor();
   if (!editor) {
@@ -787,16 +1206,17 @@ function studyWordAt(view, event) {
   if (host.toolWell.effective_tool !== "word_study" || !document.getSelection().isCollapsed) return;
   const found = wordAt(view, event.clientX, event.clientY);
   if (!found) return;
+  if (found.node.parentElement.closest(".verse.placeholder-verse")) { toast(PLACEHOLDER_REASON); return; }
   // tab.open_lexicon reuses the Lexicon tab in the next column or opens one (a new column when
-  // there is none), and focuses it; the word's language is the host's to show.
-  host.lexicon.set(`${found.word}@${found.segment_id}`, view.resource.lang);
+  // there is none), and focuses it; the core records the clicked edition's language on the tab
+  // (`lexicon_language`, B074), so a restored tab looks up in the same lexicon.
   run({ command_id: "tab.open_lexicon", args: { text: found.word, reference: found.segment_id } });
 }
 
 /** The lexicon tab's page: the word as clicked, its language and passage, and an honest line
  *  that the entries are not there yet (no glosses are made up). */
 function lexiconPage(tab) {
-  const lang = host.lexicon.get(`${tab.lexicon_word}@${tab.reference}`);
+  const lang = tab.lexicon_language || null;
   const article = document.createElement("article");
   article.className = "measure lexicon";
   const word = document.createElement("h2");
@@ -819,16 +1239,16 @@ function lexiconPage(tab) {
   return article;
 }
 
-// MARK: - Notes (B076): an editable note in memory until B074
+// MARK: - Notes (B076; B074: the core holds them, specs/24 §2.1)
 
-/** A note's HTML as edited, first the fixture note's text as one paragraph. */
-function noteHtml(noteId) {
-  if (!host.notes.has(noteId)) {
-    const note = host.text.passage(noteId, null);
-    const text = note ? note.paragraph.segments.map((s) => s.text).join(note.paragraph.joiner) : "";
-    host.notes.set(noteId, text ? `<p>${escapeHtml(text)}</p>` : "<p><br></p>");
-  }
-  return host.notes.get(noteId);
+/** Fills an editor from the core's note (`note(id)`), or, for a note the core does not have
+ *  yet, the fixture note's text as one paragraph (saved on its first edit). */
+function loadNote(editor, noteId) {
+  const stored = host.handle.note(noteId);
+  if (stored) { renderNote(editor, stored, passageLink); return; }
+  const note = host.text.passage(noteId, null);
+  const text = note ? note.paragraph.segments.map((s) => s.text).join(note.paragraph.joiner) : "";
+  renderNote(editor, { id: noteId, blocks: [{ kind: "paragraph", spans: text ? [{ text }] : [] }] }, passageLink);
 }
 
 /** A rich-text editor over one note; the notes tab and the dock showing the same note stay in
@@ -842,8 +1262,11 @@ function noteEditor(noteId, label) {
   el.setAttribute("role", "textbox");
   el.setAttribute("aria-multiline", "true");
   el.setAttribute("aria-label", `Note: ${label}`);
-  el.innerHTML = noteHtml(noteId);
+  // An edit another editor has not handed to the core yet goes first, so this one shows it.
+  flushNotes();
+  loadNote(el, noteId);
   el.addEventListener("input", () => noteChanged(el));
+  el.addEventListener("blur", () => flushNote(el));
   el.addEventListener("click", (e) => {
     const link = e.target.closest("a.passage-link");
     if (!link) return;
@@ -854,21 +1277,45 @@ function noteEditor(noteId, label) {
   return el;
 }
 
+/** The editor changed: the other editors of the note follow at once, the core gets the note
+ *  when the edit settles (300 ms after the last input, or on blur). */
 function noteChanged(editor) {
-  host.notes.set(editor.dataset.note, editor.innerHTML);
   for (const other of document.querySelectorAll(".note-editor")) {
     if (other !== editor && other.dataset.note === editor.dataset.note) other.innerHTML = editor.innerHTML;
   }
+  clearTimeout(editor.noteTimer);
+  editor.noteDirty = true;
+  editor.noteTimer = setTimeout(() => flushNote(editor), NOTE_SETTLE_MS);
+}
+const NOTE_SETTLE_MS = 300;
+
+/** `putNote` with the editor's blocks, when it has an edit the core has not seen. */
+function flushNote(editor) {
+  clearTimeout(editor.noteTimer);
+  if (!editor.noteDirty) return;
+  editor.noteDirty = false;
+  try {
+    host.handle.putNote(noteFromEditor(editor, editor.dataset.note));
+  } catch (error) {
+    toast(error.message || String(error));
+    return;
+  }
+  changed();
+}
+
+/** Every editor's pending edit into the core (before a save on hide). */
+function flushNotes() {
+  for (const editor of document.querySelectorAll(".note-editor")) flushNote(editor);
 }
 
 /** A passage link: the human reference, not editable as text, carrying the OSIS reference. */
-function passageLink(reference) {
+function passageLink(reference, text = humanPassage(core, reference)) {
   const a = document.createElement("a");
   a.className = "passage-link";
   a.href = "#";
   a.contentEditable = "false";
   a.dataset.reference = reference;
-  a.textContent = humanPassage(core, reference);
+  a.textContent = text;
   a.title = `Go to ${a.textContent}`;
   return a;
 }
@@ -907,8 +1354,8 @@ function noteFormat(kind) {
   else if (kind === "list") document.execCommand("insertUnorderedList");
   else if (kind === "heading") {
     const node = document.getSelection().anchorNode;
-    const block = node && (node.nodeType === 1 ? node : node.parentElement).closest("h3, p, li, blockquote, div:not(.note-editor)");
-    document.execCommand("formatBlock", false, block && block.tagName === "H3" ? "p" : "h3");
+    const block = node && (node.nodeType === 1 ? node : node.parentElement).closest("h2, h3, p, li, blockquote, div:not(.note-editor)");
+    document.execCommand("formatBlock", false, block && /^H[23]$/.test(block.tagName) ? "p" : "h2");
   }
   noteChanged(editor);
 }
@@ -938,49 +1385,198 @@ function linkPassage(args) {
 }
 
 // MARK: - Ink in the margin layer (B039's brushes and compositing, ../ink/layer.js)
+//
+// B074 (specs/24 §2.3): the core holds the strokes, each pinned to the verse under its first
+// point, with `y` from that verse's top and `x` from the text's leading edge (the right edge
+// in a right-to-left text, measured leftward). A block's strokes come from `inkIn` and are drawn
+// at the verse's top, so they move with it and are hidden while it is not rendered.
 
-function inkOf(key) {
-  let ink = host.ink.get(key);
-  if (!ink) { ink = { strokes: [], deleted: new Set(), serial: 0 }; host.ink.set(key, ink); }
-  return ink;
+/** The core's strokes of an edition's chapter (`inkIn`), fetched once and again only after a
+ *  stroke of that chapter changed; every column showing the chapter shares them. */
+function chapterInk(resource, chapterKey) {
+  const key = `${resource}|${chapterKey}`;
+  let marks = host.inkCache.get(key);
+  if (!marks) { marks = host.handle.inkIn(resource, chapterKey); host.inkCache.set(key, marks); }
+  return marks;
+}
+const blockInk = (view, b) => chapterInk(view.tab.content_id, b.key);
+
+/** Whether any rendered block of the view holds a stroke. */
+function viewHasInk(view) {
+  return !!view.stream && view.stream.blocks.some((b) => blockInk(view, b).length > 0);
 }
 
+/** The text's leading edge in page x, and the direction x grows from it. */
+function inkFrame(view) {
+  const page = view.page.getBoundingClientRect(), text = view.text.getBoundingClientRect();
+  return view.resource.dir === "rtl" ? { edge: text.right - page.left, sign: -1 } : { edge: text.left - page.left, sign: 1 };
+}
+
+/** The margin layer is a band three viewports tall around the visible text, moved (and
+ *  repainted) only when the reader scrolls out of it or blocks change, so strokes scroll with
+ *  the text and a long stream never holds a page-tall canvas (B078). */
 function sizeCanvas(view) {
   if (!view.canvas) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = view.page.scrollWidth, h = Math.max(view.page.scrollHeight, view.scroller.clientHeight);
+  // No bitmap until there is ink to show or an ink tool to draw with (a tab switch then
+  // allocates nothing).
+  const needed = ["pen", "highlighter_pen", "eraser"].includes(host.toolWell && host.toolWell.effective_tool) || viewHasInk(view);
+  const w = needed ? view.page.clientWidth : 0, h = needed ? view.scroller.clientHeight * 3 : 0;
   if (view.canvas.width === Math.round(w * dpr) && view.canvas.height === Math.round(h * dpr)) return;
   view.canvas.width = Math.round(w * dpr);
   view.canvas.height = Math.round(h * dpr);
   view.canvas.style.width = `${w}px`;
   view.canvas.style.height = `${h}px`;
-  repaintInk(view);
+  placeBand(view, true);
+}
+
+/** Puts the band around the viewport (page coordinates) and repaints when it moved. */
+function placeBand(view, force = false) {
+  if (!view.canvas || !view.section.isConnected) return;
+  const visible = view.scroller.scrollTop - view.page.offsetTop;
+  const h = view.scroller.clientHeight;
+  const top = view.bandTop;
+  if (!force && top != null && visible >= top && visible + h <= top + h * 3) return;
+  view.bandTop = Math.max(0, visible - h);
+  view.canvas.style.top = `${view.bandTop}px`;
+  scheduleInk(view);
+}
+
+/** Repaints a view's ink before the next frame is painted, once however often it was asked
+ *  for in this frame (a workspace switch moves a band, sizes a canvas and loads blocks). */
+const inkDue = new Set();
+function scheduleInk(view) {
+  if (!inkDue.size) requestAnimationFrame(flushInk);
+  inkDue.add(view);
+}
+function flushInk() {
+  const views = [...inkDue];
+  inkDue.clear();
+  for (const v of views) if (v.canvas && v.section.isConnected) repaintInk(v);
+}
+
+/** Page y of a verse's top. */
+function verseTop(view, segmentId) {
+  const el = view.stream && view.stream.verseEl(segmentId);
+  return el ? el.getBoundingClientRect().top - view.page.getBoundingClientRect().top : null;
+}
+
+/** The verse under a page point (a line box of it holds the point; else the nearest line box),
+ *  and that verse's top, for a stroke's pin. */
+function verseAnchorAt(view, x, y) {
+  if (!view.stream) return null;
+  const page = view.page.getBoundingClientRect();
+  const cx = x + page.left, cy = y + page.top;
+  let best = null;
+  for (const b of view.stream.blocks) {
+    for (const v of b.verses.querySelectorAll("[data-segment]")) {
+      for (const r of v.getClientRects()) {
+        const dy = cy < r.top ? r.top - cy : cy > r.bottom ? cy - r.bottom : 0;
+        const dx = cx < r.left ? r.left - cx : cx > r.right ? cx - r.right : 0;
+        const d = dy * 1000 + dx; // the line first, then along it
+        if (!best || d < best.d) best = { d, el: v };
+        if (d === 0) break;
+      }
+      if (best && best.d === 0) break;
+    }
+    if (best && best.d === 0) break;
+  }
+  return best && { segment_id: best.el.dataset.segment, top: best.el.getBoundingClientRect().top - page.top };
+}
+
+/** The view's stored strokes in page coordinates, for drawing and erasing. */
+function pageStrokes(view) {
+  if (!view.stream) return [];
+  const frame = inkFrame(view);
+  const out = [];
+  for (const b of view.stream.blocks) {
+    for (const mark of blockInk(view, b)) {
+      const top = verseTop(view, mark.segment_id);
+      if (top == null) continue;
+      const stroke = mark.stroke;
+      out.push({ ...stroke, id: mark.id, segment_id: mark.segment_id, points: stroke.points.map((pt) => ({ ...pt, x: frame.edge + frame.sign * pt.x, y: top + pt.y })) });
+    }
+  }
+  return out;
+}
+
+/** A stored stroke's outline in its own coordinates (from its verse's top and the text's
+ *  edge), worked out once per stroke: a stroke never changes, only where it is drawn. */
+const outlines = new Map();
+function outlineOf(mark) {
+  let o = outlines.get(mark.id);
+  if (!o) { o = strokeOutline(core, mark.stroke); outlines.set(mark.id, o); }
+  return o;
 }
 
 function repaintInk(view, live = null) {
   const ctx = view.canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, view.canvas.width, view.canvas.height);
-  const ink = host.ink.get(view.key);
-  const strokes = ink ? ink.strokes.filter((s) => !ink.deleted.has(s.id)) : [];
-  if (live) strokes.push(live);
-  for (const stroke of strokes) if (stroke.points.length >= 2) compositeAt(ctx, stroke, strokeOutline(core, stroke), dpr);
+  if (!view.canvas.width) return;
+  const band = view.bandTop || 0, bottom = band + view.canvas.height / dpr;
+  if (view.stream) {
+    const frame = inkFrame(view);
+    for (const b of view.stream.blocks) {
+      for (const mark of blockInk(view, b)) {
+        const top = verseTop(view, mark.segment_id);
+        if (top == null) continue;
+        // Only what reaches into the band.
+        let lo = Infinity, hi = -Infinity;
+        for (const pt of mark.stroke.points) { if (pt.y < lo) lo = pt.y; if (pt.y > hi) hi = pt.y; }
+        if (top + hi + mark.stroke.width < band || top + lo - mark.stroke.width > bottom) continue;
+        // x from the leading edge (mirrored in a right-to-left text), y from the verse's top.
+        ctx.setTransform(frame.sign, 0, 0, 1, frame.edge * dpr, (top - band) * dpr);
+        compositeAt(ctx, mark.stroke, outlineOf(mark), dpr);
+      }
+    }
+  }
+  if (live && live.points && live.points.length >= 2) {
+    ctx.setTransform(1, 0, 0, 1, 0, -band * dpr);
+    compositeAt(ctx, live, strokeOutline(core, live), dpr);
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+/** A colour as `#RRGGBB` (the store's form), whatever CSS form it was given in. */
+function hexColour(colour) {
+  const c = String(colour).trim();
+  if (/^#[0-9a-f]{6}$/i.test(c)) return c.toUpperCase();
+  const probe = document.createElement("canvas").getContext("2d");
+  probe.fillStyle = c;
+  const v = probe.fillStyle;
+  return /^#[0-9a-f]{6}$/i.test(v) ? v.toUpperCase() : "#000000";
+}
+
+/** Every stream showing an edition repaints its ink (strokes belong to the edition); the
+ *  chapter that changed is fetched again (all of them when none is named). */
+function inkChanged(resource = null, segmentId = null) {
+  if (resource && segmentId) host.inkCache.delete(`${resource}|${chapterOfSegment(segmentId)}`);
+  else host.inkCache.clear();
+  for (const v of host.views.values()) if (v.stream && v.section.isConnected) { sizeCanvas(v); scheduleInk(v); }
+  changed();
 }
 
 function attachInk(view) {
   const canvas = view.canvas;
   const arbiter = new TouchArbiter("stylus");
   let live = null, scheduled = false;
-  const point = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  // Page coordinates: the band moves, the page does not.
+  const point = (e) => { const r = view.page.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const contact = (e) => (e.pointerType === "pen" ? "stylus" : e.pointerType === "touch" ? "finger" : "pointer");
   const frame = () => { if (scheduled) return; scheduled = true; requestAnimationFrame(() => { scheduled = false; repaintInk(view, live); }); };
   const erase = (p) => {
-    const ink = inkOf(view.key);
-    for (let i = ink.strokes.length - 1; i >= 0; i--) {
-      const s = ink.strokes[i];
-      if (ink.deleted.has(s.id)) continue;
+    const strokes = pageStrokes(view);
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      const s = strokes[i];
       for (let j = 1; j < s.points.length; j++) {
-        if (distanceToSegment(p, s.points[j - 1], s.points[j]) <= s.width / 2 + 4) { ink.deleted.add(s.id); repaintInk(view); return; }
+        if (distanceToSegment(p, s.points[j - 1], s.points[j]) <= s.width / 2 + 4) {
+          try { host.handle.removeInk(s.id); } catch { return; }
+          host.erased.set(view.tab.content_id, (host.erased.get(view.tab.content_id) || 0) + 1);
+          inkChanged(view.tab.content_id, s.segment_id);
+          return;
+        }
       }
     }
   };
@@ -995,9 +1591,9 @@ function attachInk(view) {
     const brush = tool === "highlighter_pen" ? BRUSHES.highlighter : BRUSHES.pen;
     // The session's brush width; the highlighter band is wider (B039's factor).
     const width = host.session.ink.width * (tool === "highlighter_pen" ? HIGHLIGHTER_WIDTH_FACTOR : 1);
-    const color = tool === "highlighter_pen" ? host.session.ink.swatch : getComputedStyle(root).getPropertyValue("--accent").trim();
+    const color = hexColour(tool === "highlighter_pen" ? host.session.ink.swatch : getComputedStyle(root).getPropertyValue("--accent"));
     const p = point(e);
-    live = { id: `stroke-${++inkOf(view.key).serial}`, tool: brush.tool, brush_version: brush.version, width, color, opacity: brush.opacity, points: [{ ...p, pressure: e.pointerType === "pen" ? e.pressure : null, elapsed_ms: 0 }], started: e.timeStamp };
+    live = { id: "live", tool: brush.tool, brush_version: brush.version, width, color, opacity: brush.opacity, points: [{ ...p, pressure: e.pointerType === "pen" ? e.pressure : null, elapsed_ms: 0 }], started: e.timeStamp };
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!live) return;
@@ -1009,11 +1605,25 @@ function attachInk(view) {
   const end = (e) => {
     arbiter.decide({ id: e.pointerId, contact: contact(e), phase: e.type === "pointercancel" ? "cancelled" : "ended", pane: 0, radius: null });
     if (!live) return;
-    if (!live.eraser && live.points.length >= 2 && e.type !== "pointercancel") {
-      const { started, ...stroke } = live;
-      inkOf(view.key).strokes.push(stroke);
-    }
+    const done = live;
     live = null;
+    if (!done.eraser && done.points.length >= 2 && e.type !== "pointercancel") {
+      // Pinned to the verse under the first point: x from the text's leading edge, y from the
+      // verse's top (the core rounds to a tenth of a point).
+      const pin = verseAnchorAt(view, done.points[0].x, done.points[0].y);
+      if (pin) {
+        const f = inkFrame(view);
+        const { started, ...stroke } = done;
+        stroke.points = stroke.points.map((pt) => ({ ...pt, x: (pt.x - f.edge) * f.sign, y: pt.y - pin.top }));
+        try {
+          host.handle.addInk({ resource_id: view.tab.content_id, segment_id: pin.segment_id, stroke });
+          inkChanged(view.tab.content_id, pin.segment_id);
+          return;
+        } catch (error) {
+          toast(error.message || String(error));
+        }
+      }
+    }
     repaintInk(view);
   };
   canvas.addEventListener("pointerup", end);
@@ -1402,6 +2012,7 @@ export function showContextMenu(hit, x, y, keyboard = false) {
     toast(error.message || String(error));
     return null;
   }
+  if (onPlaceholder(hit)) menu = withPlaceholderRows(menu);
   const s = document.getSelection();
   host.ctx = { menu, hit, range: s.rangeCount > 0 ? s.getRangeAt(0).cloneRange() : null, returnTo: document.activeElement };
   host.lastTarget = hit.target;
@@ -1501,8 +2112,18 @@ function copyText(text, message) {
   toast(message);
 }
 
-/** The text of a verse or verse range of a resource, as the text source has it. */
+/** The text of a verse or verse range of a resource (one chapter), from the reading handle;
+ *  null when a verse of it is a placeholder (specs/23 §5). */
 function verseText(resourceId, reference) {
+  if (resourceId && reference && host.editions.has(resourceId)) {
+    const [first, last = first] = reference.split("-");
+    let verses;
+    try { verses = host.reading.chapterContent(resourceId, chapterOfSegment(first)).verses; } catch { return ""; }
+    const i = verses.findIndex((v) => v.segment_id === first);
+    const j = verses.findIndex((v) => v.segment_id === last);
+    const picked = i < 0 ? [] : verses.slice(i, Math.max(i, j) + 1);
+    return picked.some((v) => v.placeholder) ? null : picked.map((v) => v.text).join(" ");
+  }
   const passage = resourceId && reference && host.text.passage(resourceId, reference);
   if (!passage) return "";
   const [first, last = first] = reference.split("-");
@@ -1516,6 +2137,7 @@ function verseText(resourceId, reference) {
 function copyPassage({ text, reference, resource_id: resource }) {
   const where = humanPassage(core, reference);
   const words = text || verseText(resource, reference);
+  if (words === null) return toast(PLACEHOLDER_REASON);
   const edition = resource ? ` (${host.text.resource(resource).short})` : "";
   copyText(`“${words}” — ${where}${edition}`, `Copied ${where} with its text`);
 }
@@ -1624,7 +2246,9 @@ function findInChapter(text, resource, reference) {
   document.getSelection().removeAllRanges();
   const needle = text.toLocaleLowerCase();
   const ranges = [];
-  for (const t of view.text.querySelectorAll(".t")) {
+  // A stream finds in the named chapter's block (B078).
+  const scope = (view.stream && view.text.querySelector(`section.chapter[data-chapter="${CSS.escape(reference)}"]`)) || view.text;
+  for (const t of scope.querySelectorAll(".t")) {
     const node = t.firstChild;
     if (!node || !needle) continue;
     const hay = node.data.toLocaleLowerCase();
@@ -1867,18 +2491,24 @@ document.addEventListener("keydown", (e) => {
 
 $("workspace-switcher").addEventListener("click", openSwitcher);
 $("text-menu").addEventListener("click", openTextMenu);
-window.addEventListener("resize", () => { host.well.autoTop = null; placeWell(); for (const v of host.views.values()) if (v.section.isConnected) sizeCanvas(v); });
+window.addEventListener("resize", () => { host.well.autoTop = null; placeWell(); for (const v of host.views.values()) if (v.section.isConnected) sizeCanvas(v); restoreStreams(); });
 
 // MARK: - Toast
 
 let toastTimer = 0;
-function toast(message) {
+function toast(message, ms = 2400) {
   const el = $("toast");
   el.textContent = message;
   el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+  toastTimer = setTimeout(() => el.classList.remove("show"), ms);
   host.lastToast = message;
+}
+
+/** B074: a quiet notice about the saved store, said once and left up a little longer. */
+function notice(message) {
+  host.notices = [...(host.notices || []), message];
+  toast(message, 6000);
 }
 
 function escapeHtml(s) {
@@ -1924,6 +2554,41 @@ export function keyReport(reset) {
   const out = keyLatency.length ? { n: keyLatency.length, handler_done_ms: stats(keyLatency.map((k) => k.done)), next_frame_ms: stats(keyLatency.map((k) => k.frame)) } : { n: 0 };
   if (reset) keyLatency.length = 0;
   return out;
+}
+
+/** A scripted continuous scroll: `dy` px each frame for `frames` frames, as a steady wheel
+ *  would. Rows: the frame intervals (a frame beyond one interval is a dropped frame), each
+ *  scroll frame's own work (the window, the header, the reading line), and each linked follow
+ *  (`tab.record_scroll` through every follower scrolled and laid out). */
+async function scrollRun(view, frames, dy) {
+  host.frames = [];
+  host.followTimes = [];
+  const intervals = [], chapters = [];
+  let maxBlocks = 0, maxNodes = 0, last = null, i = 0;
+  const heap0 = performance.memory ? performance.memory.usedJSHeapSize : null;
+  await new Promise((ok) => {
+    const step = (t) => {
+      if (last != null) intervals.push(t - last);
+      last = t;
+      const b = view.stream.blockAtTop();
+      if (b && chapters[chapters.length - 1] !== b.key) chapters.push(b.key);
+      maxBlocks = Math.max(maxBlocks, view.stream.blocks.length);
+      maxNodes = Math.max(maxNodes, view.page.getElementsByTagName("*").length);
+      if (i++ >= frames) { ok(); return; }
+      view.scroller.scrollTop += dy;
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+  const heap = performance.memory ? performance.memory.usedJSHeapSize : null;
+  const extra = { chapters: chapters.length, from: chapters[0], to: chapters[chapters.length - 1], max_blocks: maxBlocks, max_dom_nodes: maxNodes, frames_over_25ms: intervals.filter((x) => x > 25).length, js_heap_mb: heap && +(heap / 1048576).toFixed(1), js_heap_delta_mb: heap && +((heap - heap0) / 1048576).toFixed(1), stats: { ...view.stream.stats } };
+  const rows = [
+    { name: `B078 continuous scroll, ${dy} px a frame through ${chapters.length} chapters (frame interval; work = one scroll frame)`, work_ms: stats(host.frames), frame_ms: stats(intervals), ...extra },
+    { name: "B078 linked follow (tab.record_scroll → followers scrolled, during the scroll)", work_ms: stats(host.followTimes), frame_ms: stats(host.followTimes) },
+  ];
+  host.frames = null;
+  host.followTimes = null;
+  return rows;
 }
 
 export async function bench({ samples = 200 } = {}) {
@@ -2007,7 +2672,116 @@ export async function bench({ samples = 200 } = {}) {
     document.getSelection().removeAllRanges();
   }
   out.push(await measure("open a chapter in a tab, warm (nav.navigate)", samples, (i) => run({ command_id: "nav.navigate", args: { reference: ["John.3", "Gen.1", "John.3.16", "Gen.1.2"][i % 4] } })));
+  // B078 (specs/23 §7): a typed jump anywhere in the canon, the stream rebuilt around it (and
+  // its linked followers); then a scripted continuous scroll through dozens of chapters.
+  const jumps = ["Ps.119.105", "Gen.1.1", "Rev.22.21", "Matt.5.3", "Isa.53.5", "John.3.16-John.3.18", "Acts.1.8", "Ps.23", "Rom.8.28", "Jude.1.3", "Obad.1.1", "Mal.4.5"];
+  run({ command_id: "column.focus", args: { column: 1 } });
+  out.push(await measure("B078 typed jump → stream painted (nav.navigate across the canon, followers too)", samples, (i) => run({ command_id: "nav.navigate", args: { reference: jumps[i % jumps.length] } })));
+  run({ command_id: "nav.navigate", args: { reference: "Ps.1.1" } });
+  await nextFrame();
+  const view = activeView();
+  if (view && view.stream) out.push(...(await scrollRun(view, Math.max(samples * 3, 600), 90)));
   return { user_agent: navigator.userAgent, dpr: window.devicePixelRatio, viewport: [innerWidth, innerHeight], workspaces: host.session.workspaces.length, tabs: host.session.workspaces.reduce((a, w) => a + w.columns.reduce((b, c) => b + c.tabs.length, 0), 0), rows: out };
+}
+
+/** The words a stored span covers, from the reading handle (for the tests). */
+function spanText(resourceId, span) {
+  try {
+    const verse = host.reading.chapterContent(resourceId, chapterOfSegment(span.segment_id)).verses.find((v) => v.segment_id === span.segment_id);
+    return verse ? [...verse.text].slice(span.start, span.end).join("") : "";
+  } catch { return ""; }
+}
+
+// MARK: - B074: the acceptance store and its speed runs
+
+/** Fills the shell (the bench session: ten workspaces of twelve tabs) to the acceptance size
+ *  through the API: 200 notes, 1,000 highlights on the fixture verses and 200 strokes of 120
+ *  points with pressure across John 3 and Genesis 1. Returns the store's size. */
+export function buildAcceptance() {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  for (let n = 1; n <= 200; n++) {
+    host.handle.putNote({ id: `bench:note:${n}`, blocks: [
+      { kind: "heading", spans: [{ text: `Study ${n} ` }, { text: "Jn 3:16", link: "John.3.16" }] },
+      { kind: "paragraph", spans: [{ text: "A bench note with " }, { text: "bold", bold: true }, { text: " and " }, { text: "italic", italic: true }, { text: " words." }] },
+      { kind: "list_item", spans: [{ text: "Compare " }, { text: "Gen 1:1", link: "Gen.1.1" }] },
+      { kind: "quote", spans: [{ text: "A bench quote, not Scripture." }] },
+    ] });
+  }
+  const verses = [["bsb", "John.3.16"], ["bsb", "John.3.17"], ["sblgnt", "John.3.16"], ["sblgnt", "John.3.17"], ["wlc", "Gen.1.1"], ["wlc", "Gen.1.2"]].map(([r, id]) => {
+    const block = host.reading.chapterContent(r, chapterOfSegment(id));
+    const verse = block.verses.find((v) => v.segment_id === id);
+    return { r, id, revision: block.content_revision, length: [...verse.text].length, placeholder: verse.placeholder };
+  }).filter((v) => !v.placeholder);
+  const colours = SWATCH_ORDER.map((k) => TOKENS.swatches[k][0]);
+  for (let i = 0; i < 1000; i++) {
+    const v = verses[i % verses.length];
+    const start = Math.floor(rnd() * (v.length - 8));
+    const end = Math.min(v.length, start + 3 + Math.floor(rnd() * 20));
+    host.handle.addHighlight({ resource_id: v.r, content_revision: v.revision, spans: [{ segment_id: v.id, start, end }], color: colours[i % 4] }, host.reading);
+  }
+  for (let i = 0; i < 200; i++) {
+    const [r, id] = i % 4 === 3 ? ["wlc", `Gen.1.${1 + (i % 31)}`] : ["bsb", `John.3.${1 + (i % 36)}`];
+    const x0 = 20 + rnd() * 300, y0 = rnd() * 20;
+    const points = Array.from({ length: 120 }, (_, k) => ({ x: x0 + k * 2.5, y: y0 + Math.sin(k / 8) * 6, pressure: 0.3 + 0.5 * rnd(), elapsed_ms: k * 8 }));
+    host.handle.addInk({ resource_id: r, segment_id: id, stroke: { id: "bench", tool: i % 2 ? "highlighter" : "pen", brush_version: i % 2 ? BRUSHES.highlighter.version : BRUSHES.pen.version, width: 4, color: i % 2 ? "#F5D90A" : "#2F5BD3", opacity: i % 2 ? 0.35 : 1, points } });
+  }
+  highlightsChanged();
+  inkChanged();
+  render();
+  return host.handle.exportStore().length;
+}
+
+/** Save and workspace commands at the acceptance size (specs/24 §4, B074 brief). `export` is
+ *  the main thread's part of a save (`exportStore` after one change); `save → committed` is
+ *  saveNow to IndexedDB's commit, off the main thread but for the call. */
+export async function storeBench({ samples = 200 } = {}) {
+  closePalette(false);
+  const out = [];
+  const exportAfter = async (name, change) => {
+    const work = [];
+    for (let i = 0; i < samples; i++) {
+      change(i);
+      const t0 = performance.now();
+      host.handle.exportStore();
+      work.push(performance.now() - t0);
+      if (i % 20 === 0) await nextFrame();
+    }
+    out.push({ name, work_ms: stats(work), frame_ms: stats(work) });
+  };
+  const ws = activeWorkspace();
+  const tab = shownTab(ws.columns[0]);
+  await exportAfter("B074 exportStore after a scroll (tab.record_scroll)", (i) => run({ command_id: "tab.record_scroll", args: { workspace_id: ws.id, tab_id: tab.id, segment_id: `John.3.${1 + (i % 30)}`, scalar: 0 } }));
+  const added = [];
+  await exportAfter("B074 exportStore after a stroke (addInk)", (i) => {
+    added.push(host.handle.addInk({ resource_id: "bsb", segment_id: "John.3.20", stroke: { id: "b", tool: "pen", brush_version: BRUSHES.pen.version, width: 4, color: "#2F5BD3", opacity: 1, points: Array.from({ length: 120 }, (_, k) => ({ x: k * 2 + i, y: k % 7, pressure: 0.5, elapsed_ms: k * 8 })) } }));
+  });
+  for (const id of added) host.handle.removeInk(id);
+  inkChanged("bsb", "John.3.20");
+  await exportAfter("B074 exportStore after a note edit (putNote)", (i) => host.handle.putNote({ id: "bench:note:1", blocks: [{ kind: "paragraph", spans: [{ text: `Edit ${i}` }] }] }));
+  // The whole save as the page does it: export on the main thread, then the IndexedDB put.
+  const sync = [], committed = [];
+  for (let i = 0; i < Math.min(samples, 100); i++) {
+    run({ command_id: "tab.record_scroll", args: { workspace_id: ws.id, tab_id: tab.id, segment_id: `John.3.${1 + (i % 30)}`, scalar: 0 } });
+    await nextFrame();
+    const t0 = performance.now();
+    const done = saveNow();
+    sync.push(performance.now() - t0);
+    await done;
+    committed.push(performance.now() - t0);
+  }
+  out.push({ name: "B074 save on the main thread (saveNow: export + put queued)", work_ms: stats(sync), frame_ms: stats(sync) });
+  out.push({ name: "B074 save → IndexedDB committed (off the main thread)", work_ms: stats(committed), frame_ms: stats(committed) });
+  const count = () => host.session.workspaces.length;
+  const base = count();
+  out.push(await measure(`B074 workspace.new (${base} workspaces at the acceptance size)`, samples, () => run({ command_id: "workspace.new" }), () => { while (count() > base) run({ command_id: "workspace.close" }); }));
+  while (count() > base) run({ command_id: "workspace.close" });
+  out.push(await measure("B074 workspace.rename", samples, (i) => run({ command_id: "workspace.rename", args: { text: `Bench ${1 + (i % 9)}` } })));
+  out.push(await measure("B074 workspace.duplicate", samples, () => run({ command_id: "workspace.duplicate" }), () => { while (count() > base) run({ command_id: "workspace.close" }); }));
+  while (count() > base) run({ command_id: "workspace.close" });
+  out.push(await measure("B074 workspace.close", samples, () => run({ command_id: "workspace.close" }), () => { run({ command_id: "workspace.duplicate" }); }));
+  out.push(await measure("B074 workspace.switch (workspace.next)", samples, () => run({ command_id: "workspace.next" })));
+  return { workspaces: count(), bytes: host.handle.exportStore().length, rows: out };
 }
 
 // MARK: - Boot
@@ -2035,6 +2809,7 @@ function contextMenuSnapshot() {
 /** A compact picture of what is on screen, for the tests. */
 export function snapshot() {
   const ws = activeWorkspace();
+  const stored = JSON.parse(host.handle.exportStore());
   return {
     workspace: ws.title, workspaces: host.session.workspaces.map((w) => w.title), tool: host.session.tool, theme: reading().theme,
     size: reading().size, spacing: host.session.reading.line_spacing, swatches: [swatchName(host.session.ink.swatch) || host.session.ink.swatch, swatchName(host.session.ink.alternate_swatch) || host.session.ink.alternate_swatch], width: host.session.ink.width,
@@ -2046,8 +2821,10 @@ export function snapshot() {
       tabs: [...s.querySelectorAll(".tab")].map((t) => t.firstChild.textContent), shown: s.querySelector('.tab[aria-selected="true"]')?.firstChild.textContent,
       identity: s.querySelector(".identity").textContent, text: !!s.querySelector(".measure .text, .note-editor, .lexicon"), placeholder: !!s.querySelector(".placeholder"),
     })),
-    highlights: host.highlights.map((h) => ({ swatch: swatchName(h.swatch) || h.swatch, anchors: h.anchors.map((a) => ({ segment_id: a.segment_id, exact: a.quote ? a.quote.exact : "" })) })),
-    ink: [...host.ink.entries()].map(([k, v]) => ({ tab: k, strokes: v.strokes.length, erased: v.deleted.size })),
+    // B074: the core's highlights (with the words they cover) and strokes per edition.
+    highlights: stored.highlights.map((h) => ({ id: h.id, swatch: swatchName(h.color) || h.color, anchors: h.spans.map((x) => ({ segment_id: x.segment_id, exact: spanText(h.resource_id, x) })) })),
+    ink: [...new Set([...stored.ink.map((k) => k.resource_id), ...host.erased.keys()])].map((r) => ({ tab: r, strokes: stored.ink.filter((k) => k.resource_id === r).length, erased: host.erased.get(r) || 0, segments: stored.ink.filter((k) => k.resource_id === r).map((k) => k.segment_id) })),
+    stored: { notes: stored.notes, changes: host.handle.changeCount(), lastSaved: host.lastSaved, restore: host.restore },
     toast: host.lastToast || null, focus: document.activeElement ? (document.activeElement.id || document.activeElement.className) : null,
     paletteOpen: !results.hidden, log: host.log.slice(-20),
     // B076: the well as drawn, what has focus, the notes as edited, the last copied reference.
@@ -2057,13 +2834,82 @@ export function snapshot() {
       pressed: [...$("well").querySelectorAll('button[aria-pressed="true"]')].map((b) => b.dataset.command),
       top: $("well").getBoundingClientRect().top,
     },
-    notes: Object.fromEntries(host.notes), copied: host.copied || null,
+    notes: Object.fromEntries([...document.querySelectorAll(".note-editor")].reverse().map((e) => [e.dataset.note, e.innerHTML])), copied: host.copied || null,
     // B077: the context menu as drawn (every open level), the last target, find and scope.
     contextMenu: contextMenuSnapshot(), target: host.lastTarget || null, selection: document.getSelection().toString(),
     find: host.find ? { count: host.find.ranges.length, index: host.find.index, where: host.find.where, current: host.find.ranges[host.find.index].toString() } : null,
     scope: host.palette.scope ? { ...host.palette.scope, chip: $("scope-chip").firstChild.textContent } : null,
     paletteValue: field.value,
+    // B078: each column's reading stream as rendered.
+    reading: ws.columns.map((c) => {
+      const view = host.views.get(`${ws.id}/${c.id}`);
+      if (!view || !isStream(view.tab)) return null;
+      const missing = view.section.querySelector(".not-in-edition");
+      if (!view.stream) return { error: missing ? missing.textContent.replace(/\s+/g, " ").trim() : null };
+      const st = view.stream;
+      return {
+        blocks: st.blocks.map((b) => b.key), header: st.header.textContent, top: st.top, scrollTop: view.scroller.scrollTop,
+        notice: (view.text.querySelector(".notice") || {}).textContent || null,
+        marked: [...view.text.querySelectorAll(".verse.target")].map((v) => v.dataset.segment),
+        flashing: [...view.text.querySelectorAll(".verse.flash")].map((v) => v.dataset.segment),
+        nodes: view.page.getElementsByTagName("*").length, stats: { ...st.stats },
+      };
+    }),
   };
+}
+
+/** `?store=off` keeps nothing (the tests' default, `autotest=1`); `?store=<name>` uses the
+ *  database `openlogos-<name>`; otherwise the page's own `openlogos`. */
+function openStore() {
+  const name = params.get("store") ?? (params.get("autotest") ? "off" : "");
+  host.saveDebounce = core.storeConstants().save_debounce_ms;
+  if (name === "off" || typeof indexedDB === "undefined") return null;
+  if (!name && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  return new UserStore(name ? `openlogos-${name}` : "openlogos");
+}
+
+/** Reads the saved store into the shell. A store refused whole keeps the seed session, is
+ *  moved aside as a backup and said once; one that restored with something set aside is kept
+ *  as a backup too, and what was set aside is said. Nothing is due to save afterwards (a
+ *  restore that set something aside moved the count, so the repaired store is written). */
+async function restoreStore() {
+  host.store = openStore();
+  if (!host.store) return;
+  const t0 = performance.now();
+  let json = null, pending = false;
+  try {
+    json = host.store.pending();
+    pending = json != null;
+    if (!pending) json = await host.store.read();
+  } catch (error) {
+    console.warn("the store could not be opened", error);
+    host.restore = { t0: null, error: String(error) };
+    host.store = null;
+    return;
+  }
+  const read = performance.now() - t0;
+  if (json == null) { host.restore = { t0, found: false, read_ms: read }; host.lastSaved = host.handle.changeCount(); return; }
+  const before = host.handle.changeCount();
+  try {
+    const report = host.handle.importStore(json);
+    host.restore = { t0, found: true, read_ms: read, import_ms: performance.now() - t0 - read, bytes: json.length, report };
+    const text = issuesNotice(report);
+    if (text) {
+      host.store.backup(json).catch((e) => console.warn("backup failed", e));
+      notice(text);
+    }
+  } catch (error) {
+    host.restore = { t0, found: true, read_ms: read, refused: error.kind || String(error), bytes: json.length };
+    host.store.setAside(json).catch((e) => console.warn("backup failed", e));
+    notice(refusedNotice(error));
+  }
+  // A clean restore leaves the count where it was saved; one that set something aside moved it.
+  host.lastSaved = host.restore.report && host.restore.report.issues.length ? before : host.handle.changeCount();
+  host.restore.pending = pending;
+  // A copy kept on hide goes into IndexedDB as it is (or, refused, it was set aside above).
+  if (pending && !host.restore.refused) host.store.write(json).then(() => host.store.clearPending(), (e) => console.warn("save failed", e));
+  else if (pending) host.store.clearPending();
+  changed();
 }
 
 async function main() {
@@ -2081,12 +2927,25 @@ async function main() {
   host.handle.useFixtureText();
   host.handle.setResourceTitles(host.text.titles());
   host.handle.setResourceLanguages(host.text.languages());
+  // B078: reading tabs take their text from the reading handle (placeholder editions until
+  // B071's packs; then `addPackManifest` and fetched chunks, same resource ids), and linked
+  // tabs follow through each edition's versification.
+  host.reading = core.ReadingHandle.placeholder();
+  host.editions = new Set(host.reading.editions().map((e) => e.resource_id));
+  host.handle.setResourceSchemes(host.reading.schemes());
+  // B074 (specs/24 §5): the saved store over the seed session, then the active workspace drawn.
+  await restoreStore();
   sync();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();
   render();
+  if (host.restore && host.restore.t0 != null) {
+    const r = host.restore;
+    r.rendered_ms = performance.now() - r.t0;
+    requestAnimationFrame(() => { r.first_paint_ms = performance.now() - r.t0; });
+  }
   $("scope-chip").lastChild.addEventListener("click", () => { host.palette.scope = null; field.focus(); queryPalette(); });
-  window.openlogosShell = { core, host, run, render, selectionChanged, snapshot, bench, keyReport, menuReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab, showContextMenu, closeContextMenu };
+  window.openlogosShell = { core, host, run, saveNow, storeBench, buildAcceptance, render, selectionChanged, snapshot, bench, keyReport, menuReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab, showContextMenu, closeContextMenu };
   window.openlogosReady = true;
 }
 

@@ -210,6 +210,39 @@ button { font: inherit; color: inherit; }
 .measure .marker { font-size: 0.55em; color: var(--chrome); vertical-align: 0.5em; line-height: 0; margin-inline-end: 0.2em; font-family: var(--font-chrome); }
 .measure .attribution { font-size: 12px; color: var(--chrome); margin: var(--space-4) 0 0; }
 .measure .verse.target .t { text-decoration: underline 2px color-mix(in srgb, var(--accent) 60%, transparent); text-underline-offset: 0.2em; }
+/* B078 continuous reading (specs/23 §7): a stream of chapter blocks under a sticky header.
+   The scroller's own scroll anchoring is off; the stream keeps the verse under the eye itself. */
+.scroller { overflow-anchor: none; }
+.page { overflow: clip; }
+.reading-header {
+  position: sticky; top: 0; z-index: 3; height: 28px; display: flex; align-items: center; padding: 0 var(--space-3);
+  background: color-mix(in srgb, var(--page) 94%, transparent); backdrop-filter: blur(6px); border-bottom: var(--column-rule) solid var(--rule);
+  font: 600 12px var(--font-chrome); color: var(--chrome); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.column:first-child .reading-header { padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-width) + var(--space-2)); }
+:root.well-collapsed .column:first-child .reading-header { padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-collapsed) + var(--space-2)); }
+.stream .chapter { padding-bottom: var(--space-5); }
+/* Room after the text so an edition's last verse can still reach the reading line. */
+.measure.stream { padding-bottom: 80vh; }
+.stream .book-title { font: 600 calc(var(--reading-size) * 1.6)/1.2 var(--font-reading); text-align: center; margin: var(--space-5) 0 var(--space-4); color: var(--text); }
+.stream .chapter-heading {
+  font: 600 13px var(--font-chrome); letter-spacing: 0.08em; text-transform: uppercase; color: var(--chrome);
+  margin: var(--space-4) 0 var(--space-2); text-align: start;
+}
+.stream .notice { font: italic 12px var(--font-chrome); color: var(--chrome); margin: 0 0 var(--space-3); }
+.stream .verses { unicode-bidi: plaintext; }
+.stream .verses[dir="rtl"] { text-align: right; }
+.stream .verses p { margin: 0; }
+.stream .verses p.para + p.para, .stream .verses p.line + p.para, .stream .verses p.superscription + p.para { margin-top: 0.6em; }
+.stream .verses p.line { padding-inline-start: 1.5em; text-indent: -1.5em; }
+.stream .verses p.line + p.line { margin-top: 0.1em; }
+.stream .verses p.para + p.line { margin-top: 0.6em; }
+.stream .verses p.superscription { font-style: italic; color: var(--chrome); margin-bottom: 0.4em; }
+.stream .verse.placeholder-verse .t { color: color-mix(in srgb, var(--chrome) 85%, var(--page)); }
+.stream .attribution { font-size: 12px; color: var(--chrome); margin: var(--space-3) 0 0; font-family: var(--font-chrome); }
+/* Flash once on navigation; the quiet mark (.target) stays until the next navigation. */
+@keyframes ol-flash { from { background-color: color-mix(in srgb, var(--accent) 30%, transparent); } to { background-color: transparent; } }
+.measure .verse.flash { animation: ol-flash 1.2s ease-out 1; border-radius: 2px; }
 .placeholder { max-width: var(--measure); margin: 0 auto; padding: 48px var(--space-5); color: var(--chrome); font-size: 14px; }
 .placeholder h2 { font: 600 16px var(--font-chrome); color: var(--text); margin: 0 0 var(--space-2); }
 .placeholder p { margin: 0 0 var(--space-4); line-height: 1.45; }
@@ -218,10 +251,11 @@ button { font: inherit; color: inherit; }
 .placeholder button:hover { border-color: var(--accent); }
 
 canvas.margin { position: absolute; inset: 0; pointer-events: none; touch-action: pan-y; }
-:root[data-tool="pen"] canvas.margin, :root[data-tool="highlighter_pen"] canvas.margin, :root[data-tool="eraser"] canvas.margin { pointer-events: auto; cursor: crosshair; }
-:root[data-tool="eraser"] canvas.margin { cursor: cell; }
-:root[data-tool="highlight"] .measure .text, :root[data-tool="collect"] .measure .text { cursor: text; }
-:root[data-tool="highlight"] .measure .text ::selection { background: color-mix(in srgb, var(--swatch) calc(var(--swatch-opacity) * 100%), transparent); }
+/* The tool in effect as one class per rule (shell.js `TOOL_CLASSES`): a tool change toggles only
+   the classes whose rules change, so it does not restyle every verse of the streams (B078). */
+:root.tool-ink canvas.margin { pointer-events: auto; cursor: crosshair; }
+:root.tool-eraser canvas.margin { cursor: cell; }
+:root.tool-highlight .measure .text .t::selection { background: color-mix(in srgb, var(--swatch) calc(var(--swatch-opacity) * 100%), transparent); }
 
 /* Painted highlights (CSS Custom Highlight API, as the B005 reader). */
 ::highlight(ol-yellow) { background-color: color-mix(in srgb, #F5D90A 35%, transparent); }
@@ -237,10 +271,10 @@ canvas.margin { position: absolute; inset: 0; pointer-events: none; touch-action
 }
 .note-editor p, .note-editor ul { margin: 0 0 0.6em; }
 .note-editor ul { padding-inline-start: 1.3em; }
-.note-editor h3 { font-size: 1.25em; font-weight: 600; line-height: 1.3; margin: 0.4em 0 0.4em; }
+.note-editor h2, .note-editor h3 { font-size: 1.25em; font-weight: 600; line-height: 1.3; margin: 0.4em 0 0.4em; }
 .note-editor blockquote { margin: 0 0 0.6em; padding-inline-start: var(--space-3); border-inline-start: 2px solid var(--rule); }
 .note-editor a.passage-link { white-space: nowrap; color: var(--accent); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; }
-:root[data-tool="word_study"] .measure .text .t { cursor: pointer; }
+:root.tool-word-study .measure .text { cursor: pointer; }
 /* B076: the lexicon tab (word, language and passage, an honest placeholder line). */
 .lexicon .word { font: 600 calc(var(--reading-size) * 1.5)/1.2 var(--font-reading); color: var(--text); margin: 0 0 var(--space-2); }
 .lexicon .where { color: var(--chrome); font-size: 14px; margin: 0 0 var(--space-4); }
@@ -337,3 +371,18 @@ canvas.margin { position: absolute; inset: 0; pointer-events: none; touch-action
   transition: opacity 120ms; opacity: 0;
 }
 .toast.show { opacity: 1; }
+
+/* B074: a tab being dragged, where it would land. */
+.tab.dragging { opacity: 0.45; }
+.tab-ghost {
+  position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; padding: 3px var(--space-2); font: 600 var(--tab-label-size) var(--font-chrome);
+  background: var(--well); color: var(--text); border: 1px solid var(--rule); border-radius: var(--radius-control); box-shadow: var(--shadow);
+}
+#drop-slot { position: fixed; z-index: 49; pointer-events: none; background: var(--accent); border-radius: 1px; }
+#drop-slot.zone {
+  background: color-mix(in srgb, var(--accent) 16%, transparent); border-inline-start: 2px solid var(--accent); border-radius: 0;
+  display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 2px; box-sizing: border-box;
+  font: 600 var(--tab-label-size) / 1.25 var(--font-chrome); color: var(--accent);
+}
+#drop-slot.zone[hidden] { display: none; }
+.column.drop-target { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent); }
