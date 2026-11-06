@@ -94,7 +94,7 @@ final class ReadingTests: XCTestCase {
         XCTAssertEqual(stream.topSegment, "John.3.16")
         XCTAssertEqual(try XCTUnwrap(screenY(stream, "John.3.16")), ReadingStream.topMargin, accuracy: 1, "the verse's first line on the reading line")
         XCTAssertTrue(stream.blocks.map(\.chapterKey).contains("John.2") && stream.blocks.map(\.chapterKey).contains("John.4"), "the chapters around it")
-        XCTAssertEqual(stream.container?.header.text, "Jn 3 · BSB")
+        XCTAssertEqual(stream.container?.header.text, "BSB · Jn 3")
         XCTAssertEqual(shownTab(model, column: 1)?.highlightRange, "John.3.16")
         XCTAssertTrue(stream.isFlashing, "flashed once")
         let layout = try XCTUnwrap(stream.surface.layout)
@@ -135,7 +135,7 @@ final class ReadingTests: XCTestCase {
         XCTAssertEqual(stream.topSegment, "Jude.1.3")
         // Three short chapters were added above since (one a frame), each anchored to the pixel.
         XCTAssertEqual(try XCTUnwrap(screenY(stream, "Jude.1.3")), ReadingStream.topMargin, accuracy: 2)
-        XCTAssertEqual(stream.container?.header.text, "Jude · BSB")
+        XCTAssertEqual(stream.container?.header.text, "BSB · Jude")
 
         type("Ps 3", model)
         XCTAssertEqual(stream.topSegment, "Ps.3.0", "a titled Psalm opens at its title")
@@ -145,7 +145,7 @@ final class ReadingTests: XCTestCase {
         type("Genesis", model)
         XCTAssertEqual(stream.topSegment, "Gen.1.1", "a whole book opens at its first verse")
         XCTAssertEqual(stream.blocks.first?.chapterKey, "Gen.1", "nothing before Genesis 1")
-        XCTAssertEqual(stream.container?.header.text, "Gen 1 · BSB")
+        XCTAssertEqual(stream.container?.header.text, "BSB · Gen 1")
     }
 
     func testAnEditionsLastVerseCanReachTheReadingLine() throws {
@@ -208,7 +208,7 @@ final class ReadingTests: XCTestCase {
         // Down: John 21 into Acts 1, a book heading on the way.
         let steps = scroll(stream, by: 40, limit: 200) { self.at($0, "Acts.1", atLeast: 3) }
         XCTAssertLessThan(steps, 200)
-        XCTAssertEqual(stream.container?.header.text, "Acts 1 · BSB")
+        XCTAssertEqual(stream.container?.header.text, "BSB · Acts 1")
         XCTAssertEqual(model.liveLabels.byTab["t1"]?.chapterLabel, "Acts 1", "the tab label follows while the reader scrolls")
         XCTAssertEqual(model.liveLabels.byTab["t3"]?.chapterLabel, "Acts 1", "and the linked column's")
         XCTAssertEqual(stream.surface.layout?.blocks.first { $0.chapterKey == "Acts.1" }.map { stream.surface.layout!.display.attributedSubstring(from: $0.headingRange).string }, "Acts\nChapter 1\n\(ReadingNotice.placeholder)\n")
@@ -219,13 +219,13 @@ final class ReadingTests: XCTestCase {
         // Up: back through John 21 and John 20 into John 19.
         _ = scroll(stream, by: -40, limit: 400) { $0.topSegment?.hasPrefix("John.19.") == true }
         XCTAssertTrue(stream.topSegment?.hasPrefix("John.19.") == true)
-        XCTAssertEqual(stream.container?.header.text, "Jn 19 · BSB")
+        XCTAssertEqual(stream.container?.header.text, "BSB · Jn 19")
 
         // Malachi 4 into Matthew 1 (the testaments), and Genesis 2 up into Genesis 1.
         type("Mal 4", model)
         _ = scroll(stream, by: 40, limit: 200) { self.at($0, "Matt.1", atLeast: 2) }
         XCTAssertTrue(at(stream, "Matt.1", atLeast: 2))
-        XCTAssertEqual(stream.container?.header.text, "Mt 1 · BSB")
+        XCTAssertEqual(stream.container?.header.text, "BSB · Mt 1")
         type("Gen 2:1", model)
         _ = scroll(stream, by: -40, limit: 200) { self.place($0.topSegment).map { $0.chapter == "Gen.1" && $0.verse <= 20 } == true }
         XCTAssertEqual(place(stream.topSegment)?.chapter, "Gen.1")
@@ -295,7 +295,7 @@ final class ReadingTests: XCTestCase {
         let hebrew = try XCTUnwrap(model.stream(for: try XCTUnwrap(shownTab(model, column: 2)).id))
         XCTAssertEqual(shownTab(model, column: 2)?.reference, "Mal.3.23")
         XCTAssertEqual(hebrew.topSegment, "Mal.3.23")
-        XCTAssertEqual(hebrew.container?.header.text, "Mal 3 · WLC")
+        XCTAssertEqual(hebrew.container?.header.text, "WLC · Mal 3")
         type("Joel 2:28", model)
         let bsb2 = try XCTUnwrap(model.stream(for: "t1"))
         _ = scroll(bsb2, by: 40, limit: 60) { self.at($0, "Joel.2", atLeast: 30) }

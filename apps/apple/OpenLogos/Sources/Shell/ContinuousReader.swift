@@ -5,7 +5,7 @@
 // side, ChapterLayout.swift); nearing an end loads the next block, far blocks are released,
 // and the verse at the top stays where it is on screen while blocks come and go (the clip
 // view's origin moves by what was inserted or removed above). A sticky header names the
-// block in view (`Jn 3 · BSB`). The verse at the top is reported to the core as the reader
+// block in view (`BSB · Jn 3`). The verse at the top is reported to the core as the reader
 // scrolls (`tab.record_scroll`, quiet); linked tabs are scrolled to the verse the core maps
 // for them, without animation and without reporting it back. The reading column is keyed on
 // the tab and its edition: a reference changed by scrolling never rebuilds it.
@@ -105,7 +105,7 @@ final class ReadingContainerView: NSView {
     }
 }
 
-/// `Jn 3 · BSB`: the block in view, over a 1 pt rule. Drawn by the view itself: a label whose
+/// `BSB · Jn 3`: the block in view, over a 1 pt rule. Drawn by the view itself: a label whose
 /// text changes would ask the window for a layout pass (SwiftUI's included) at every chapter.
 final class ReadingHeaderView: NSView {
     static let height: CGFloat = 28
@@ -126,13 +126,14 @@ final class ReadingHeaderView: NSView {
     override var isFlipped: Bool { true }
 
     func set(chapter: String, edition: String, theme: ShellTokens.Theme, padding: CGFloat) {
-        let text = NSMutableAttributedString(string: chapter, attributes: [
-            .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize, weight: .semibold),
-            .foregroundColor: PlatformColor(hex: theme.text),
-        ])
-        text.append(NSAttributedString(string: " · \(edition)", attributes: [
+        // The tab label's order, as on the web.
+        let text = NSMutableAttributedString(string: "\(edition) · ", attributes: [
             .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize),
             .foregroundColor: PlatformColor(hex: theme.chrome),
+        ])
+        text.append(NSAttributedString(string: chapter, attributes: [
+            .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize, weight: .semibold),
+            .foregroundColor: PlatformColor(hex: theme.text),
         ]))
         let page = PlatformColor(hex: theme.page), rules = PlatformColor(hex: theme.rules)
         guard text != title || page != self.page || rules != self.rules || padding != self.padding else { return }
@@ -140,7 +141,7 @@ final class ReadingHeaderView: NSView {
         self.page = page
         self.rules = rules
         self.padding = padding
-        setAccessibilityLabel("\(chapter), \(edition)")
+        setAccessibilityLabel("\(edition), \(chapter)")
         needsDisplay = true
     }
 
