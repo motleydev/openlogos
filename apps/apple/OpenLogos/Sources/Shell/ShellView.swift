@@ -319,7 +319,8 @@ struct PaletteResults: View {
                         Text(notice).font(ShellTokens.chromeFont).foregroundStyle(model.theme.chromeColor)
                             .padding(ShellTokens.Spacing.m)
                     }
-                    if rows.isEmpty, result.notice == nil {
+                    let searchNotice = model.textSearchNotice(for: result)
+                    if rows.isEmpty, result.notice == nil, searchNotice == nil, !model.textPending {
                         Text(model.paletteText.isEmpty ? "Type a passage, a command (>), a tab or workspace (@), or words to find (#)" : "No results").font(ShellTokens.chromeFont).foregroundStyle(model.theme.chromeColor)
                             .padding(ShellTokens.Spacing.m)
                     }
@@ -350,6 +351,21 @@ struct PaletteResults: View {
                             .padding(.horizontal, ShellTokens.Spacing.m)
                             .padding(.vertical, ShellTokens.Spacing.xs)
                         }
+                    }
+                    if let searchNotice {
+                        Text(Self.heading(.text))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(model.theme.chromeColor)
+                            .textCase(.uppercase)
+                            .padding(.horizontal, ShellTokens.Spacing.m)
+                            .padding(.top, ShellTokens.Spacing.s)
+                            .padding(.bottom, ShellTokens.Spacing.xs)
+                            .accessibilityAddTraits(.isHeader)
+                        Text(searchNotice)
+                            .font(ShellTokens.chromeFont)
+                            .foregroundStyle(model.theme.chromeColor)
+                            .padding(.horizontal, ShellTokens.Spacing.m)
+                            .padding(.bottom, ShellTokens.Spacing.xs)
                     }
                 }
                 .padding(.vertical, ShellTokens.Spacing.xs)

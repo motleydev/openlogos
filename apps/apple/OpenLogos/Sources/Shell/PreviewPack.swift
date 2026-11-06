@@ -19,7 +19,8 @@ struct PreviewPack {
     let installed: [String: ReadingEdition]
     /// What did not open, for the log and the evidence: `wlc: <the core's words>`.
     let problems: [String]
-    /// Nil when `search/` is missing or refused: the Text section is then simply empty.
+    /// Nil when `search/` is missing or refused: the Text section then says so
+    /// (`ShellModel.textSearchNotice`).
     let search: EditionTextSearch?
 
     static let environmentKey = "OPENLOGOS_PREVIEW_PACK"
@@ -67,6 +68,8 @@ struct PreviewPack {
             } catch {
                 problems.append("search: \(error)")
             }
+        } else {
+            problems.append("search: no \(directory.path)")
         }
         if !problems.isEmpty { NSLog("OpenLogos preview pack at %@: %@", root.path, problems.joined(separator: "; ")) }
         return PreviewPack(root: root, reading: reading, installed: installed, problems: problems, search: search)

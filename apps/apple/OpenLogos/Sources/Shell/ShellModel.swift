@@ -28,6 +28,8 @@ final class ShellModel: ObservableObject {
     /// B071: the Text section over the search packs, off the main thread; nil on the fixtures
     /// (the session handle answers those itself) or with no search packs.
     let textSearch: EditionTextSearch?
+    /// B071: the editions are installed but their search packs did not open.
+    private let textSearchFailed: Bool
 
     @Published private(set) var session: ShellSession
 
@@ -119,11 +121,12 @@ final class ShellModel: ObservableObject {
     #endif
 
     init(handle: ShellHandle, textSource: TextSource = FixtureTextSource(), reading: ReadingHandle = .placeholder(), store: UserStoreFile? = nil,
-         textSearch: EditionTextSearch? = nil) {
+         textSearch: EditionTextSearch? = nil, textSearchFailed: Bool = false) {
         self.handle = handle
         self.textSource = textSource
         self.reading = reading
         self.textSearch = textSearch
+        self.textSearchFailed = textSearchFailed
         registry = shellRegistry()
         keymap = ShellKeymap(registry: registry, platform: .mac)
         // Tab views and palette rows name resources by these (`BSB · Jn 3:16`).
@@ -168,7 +171,7 @@ final class ShellModel: ObservableObject {
             self.init(handle: handle, store: store)
             return
         }
-        self.init(handle: handle, textSource: InstalledTextSource(editions: pack.installed), reading: pack.reading, store: store, textSearch: pack.search)
+        self.init(handle: handle, textSource: InstalledTextSource(editions: pack.installed), reading: pack.reading, store: store, textSearch: pack.search, textSearchFailed: pack.search == nil)
     }
 
     /// Something the store keeps may have changed: the save debounce restarts when it did.
@@ -429,6 +432,18 @@ final class ShellModel: ObservableObject {
         palette.result = scoped(result)
         paletteSelection = min(paletteSelection, max(0, paletteRows.count - 1))
     }
+
+    /// The words under the Text heading when the field asks for text and the search packs did not
+    /// open, the web's words. No loading line: the packs open in the launch's 4.6 ms (B071-mac.md).
+    func textSearchNotice(for result: ShellPaletteResult) -> String? {
+        guard textSearchFailed else { return nil }
+        // The core's rule for asking at all (`wants_text`, TEXT_MIN_CHARS is 2 there).
+        let wanted = !result.text.isEmpty && (result.mode == "text" || (result.mode == "all" && result.text.count >= 2))
+        return wanted ? "Text search could not load." : nil
+    }
+
+    /// An answer on its way is not "No results".
+    var textPending: Bool { pendingText != nil }
 
     /// The session handle's answer to the last keystroke, before the Text section is merged.
     private var paletteBase: ShellPaletteResult?

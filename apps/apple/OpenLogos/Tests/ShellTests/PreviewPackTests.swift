@@ -398,15 +398,60 @@ final class PreviewPackTests: PackTestCase {
         XCTAssertFalse(model.paletteOpen)
     }
 
-    func testPackWithoutSearchHasNoTextRowsAndNoFixtureRows() throws {
+    func testSearchPacksThatDoNotOpenSaySoUnderTheTextHeading() throws {
+        func check(_ pack: PreviewPack) throws {
+            XCTAssertNil(pack.search)
+            XCTAssertTrue(pack.problems.contains { $0.hasPrefix("search:") }, "\(pack.problems)")
+            let model = ShellModel(pack: pack)
+            host(model)
+            spin()
+            search("#loved", model)
+            XCTAssertTrue(textRows(model).isEmpty, "no fixture rows over real editions either")
+            XCTAssertEqual(model.textSearchNotice(for: try XCTUnwrap(model.paletteResult)), "Text search could not load.")
+            search("loved", model)
+            XCTAssertEqual(model.textSearchNotice(for: try XCTUnwrap(model.paletteResult)), "Text search could not load.")
+            search("l", model)
+            XCTAssertNil(model.textSearchNotice(for: try XCTUnwrap(model.paletteResult)), "too short to ask")
+            search(">loved", model)
+            XCTAssertNil(model.textSearchNotice(for: try XCTUnwrap(model.paletteResult)), "commands say nothing about search")
+            windows.forEach { $0.close() }
+            windows = []
+        }
+        // No search directory at all.
         try TestPack.standard(under: root, search: false)
-        let pack = try XCTUnwrap(PreviewPack.open(root: root))
-        XCTAssertNil(pack.search)
-        let model = ShellModel(pack: pack)
+        try check(try XCTUnwrap(PreviewPack.open(root: root)))
+        // A search pack that is not a database.
+        let directory = root.appendingPathComponent("search", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("not a database".utf8).write(to: directory.appendingPathComponent("bsb.sqlite"))
+        try check(try XCTUnwrap(PreviewPack.open(root: root)))
+    }
+
+    func testAWorkingSearchAndTheFixturesSayNothing() throws {
+        try TestPack.standard(under: root)
+        let model = ShellModel(pack: PreviewPack.open(root: root))
         host(model)
         spin()
-        search("#loved", model)
-        XCTAssertTrue(textRows(model).isEmpty)
+        search("#zebra", model)
+        XCTAssertNil(model.textSearchNotice(for: try XCTUnwrap(model.paletteResult)))
+        let placeholder = ShellModel()
+        placeholder.focusPalette()
+        placeholder.paletteText = "#loved"
+        placeholder.paletteTextChanged()
+        XCTAssertNil(placeholder.textSearchNotice(for: try XCTUnwrap(placeholder.paletteResult)))
+    }
+
+    func testNothingIsAnAnswerUntilTheAnswerArrives() throws {
+        try TestPack.standard(under: root)
+        let model = ShellModel(pack: PreviewPack.open(root: root))
+        host(model)
+        spin()
+        model.focusPalette()
+        model.paletteText = "#nothing"
+        model.paletteTextChanged()
+        XCTAssertTrue(model.textPending, "the list does not say No results yet")
+        spin(0.15)
+        XCTAssertFalse(model.textPending)
     }
 
     // MARK: A session saved on placeholder text
