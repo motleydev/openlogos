@@ -4,7 +4,10 @@
 // and a pane menu), then the TextKit 2 reading surface for the shown tab, capped at the
 // measure and centred, with an ink layer over it. Columns are separated by 1 pt rules that
 // resize them when dragged. B077: a right-click on a tab, the identity row, the strip or the
-// column's empty area opens the OpenLogos menu for it (ContextMenu.swift).
+// column's empty area opens the OpenLogos menu for it (ContextMenu.swift). B074: a tab is
+// dragged by its label to a slot in any column's strip (an accent bar marks the slot), onto a
+// column's text (its end) or onto the band at the last column's trailing edge (a new
+// column); the drop is one undoable `tab.move`. A rule drag commits one `column.resize`.
 import SwiftUI
 
 struct ColumnsView: View {
@@ -23,9 +26,14 @@ struct ColumnsView: View {
                         .frame(width: max(0, widths[index]))
                 }
             }
+            .coordinateSpace(name: Self.space)
+            .overlay(alignment: .topLeading) { TabDropOverlay(model: model) }
             .id(ws.id)
         }
     }
+
+    /// The columns' coordinate space (tab frames, the drag's pointer).
+    static let space = "shell-columns"
 
     /// The columns' widths: the core's fractions, or the host's after a drag, normalised.
     static func widths(_ columns: [ShellColumn], overrides: [String: CGFloat], total: CGFloat) -> [CGFloat] {
@@ -103,6 +111,7 @@ struct ColumnView: View {
             }
         }
         .background(model.theme.pageColor)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(ColumnsView.space)) } action: { model.columnFrames[column.number] = $0 }
         .contentShape(Rectangle())
         .simultaneousGesture(TapGesture().onEnded { model.focusColumn(column.number) })
         .accessibilityElement(children: .contain)
@@ -202,11 +211,19 @@ struct TabLabel: View {
             }
         }
         .contentShape(Rectangle())
+        .opacity(model.tabDrag?.tabID == tab.id ? 0.4 : 1)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(ColumnsView.space)) } action: { model.tabFrames[tab.id] = $0 }
         .onHover { hovering = $0 }
         .onTapGesture {
             model.focusColumn(column.number)
             if !shown { model.showTab(tab.id) }
         }
+        // B074: dragged to another slot or column.
+        .gesture(
+            DragGesture(minimumDistance: 6, coordinateSpace: .named(ColumnsView.space))
+                .onChanged { model.dragTab(tab.id, to: $0.location) }
+                .onEnded { _ in model.dropTab() }
+        )
         .shellContextMenu("tab-\(tab.id)", { .tab(tabId: tab.id) }, model: model)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(label)
@@ -230,6 +247,63 @@ enum TabTitle {
         case "pinned": return "Pinned"
         default: return "Follows"
         }
+    }
+}
+
+/// B074: while a tab is dragged, the slot it would drop into (a 2 pt accent bar in the strip),
+/// the new-column band at the trailing edge, and the tab's label under the pointer.
+struct TabDropOverlay: View {
+    @ObservedObject var model: ShellModel
+
+    var body: some View {
+        if let drag = model.tabDrag {
+            let ws = model.activeWorkspace
+            ZStack(alignment: .topLeading) {
+                if let last = ws.columns.last, let frame = model.columnFrames[last.number] {
+                    let active = drag.drop?.newColumn == true
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(model.theme.accentColor.opacity(active ? 0.18 : 0.07))
+                        .overlay(
+                            Text("New column")
+                                .font(ShellTokens.chromeFont)
+                                .foregroundStyle(model.theme.accentColor)
+                                .rotationEffect(.degrees(-90))
+                                .fixedSize()
+                        )
+                        .frame(width: ShellModel.newColumnZone - 8, height: max(0, frame.height - 16))
+                        .offset(x: frame.maxX - ShellModel.newColumnZone + 4, y: frame.minY + 8)
+                        .accessibilityIdentifier("shell-drop-new-column")
+                }
+                if let drop = drag.drop, !drop.newColumn, let bar = slotBar(drop, ws: ws) {
+                    Rectangle().fill(model.theme.accentColor)
+                        .frame(width: 2, height: bar.height)
+                        .offset(x: bar.minX - 1, y: bar.minY)
+                        .accessibilityIdentifier("shell-drop-slot")
+                }
+                if let tab = ws.columns.lazy.flatMap(\.tabs).first(where: { $0.id == drag.tabID }) {
+                    Text(TabTitle.label(tab))
+                        .font(.system(size: ShellTokens.tabLabelSize, weight: .semibold))
+                        .padding(.horizontal, ShellTokens.Spacing.s)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(model.theme.pageColor).shadow(radius: 3))
+                        .fixedSize()
+                        .offset(x: drag.location.x + 10, y: drag.location.y + 6)
+                }
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    /// The gap before the slot's tab, or after the column's last tab.
+    private func slotBar(_ drop: ShellModel.TabDrop, ws: ShellWorkspace) -> CGRect? {
+        guard let column = ws.columns.first(where: { $0.number == drop.column }), let index = drop.index else { return nil }
+        if let tab = column.tabs[safe: Int(index)], let frame = model.tabFrames[tab.id] {
+            return CGRect(x: frame.minX, y: frame.minY + 4, width: 0, height: frame.height - 8)
+        }
+        if let tab = column.tabs.last, let frame = model.tabFrames[tab.id] {
+            return CGRect(x: frame.maxX, y: frame.minY + 4, width: 0, height: frame.height - 8)
+        }
+        return nil
     }
 }
 

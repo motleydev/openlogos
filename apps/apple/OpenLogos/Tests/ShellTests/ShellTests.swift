@@ -385,9 +385,9 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(surface.dragMode, .highlight)
         surface.select(display: layout.runMap.displayRange(fromCore: try XCTUnwrap(layout.coreRange(ofPhrase: "loved the world"))))
         surface.dragEnded()
-        XCTAssertEqual(model.marks["t1"]?.count, 1)
+        XCTAssertEqual(model.highlights("t1").count, 1)
         XCTAssertEqual(surface.selectedRange.length, 0, "the selection collapses into the highlight")
-        let painted = model.marks["t1"]![0].ranges[0]
+        let painted = try XCTUnwrap(surface.layout?.displayRanges(of: model.highlights("t1")[0].spans).first)
         XCTAssertEqual((layout.display.string as NSString).substring(with: painted), "loved the world")
 
         model.run("tool.collect")
