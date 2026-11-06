@@ -342,6 +342,9 @@ private struct IdentityRowContent: View {
                 .lineLimit(1)
                 .fixedSize()
                 .layoutPriority(1)
+            if let attribution = resource?.attribution, let resource {
+                AboutTextButton(resource: resource, attribution: attribution, theme: model.theme)
+            }
             Spacer(minLength: ShellTokens.Spacing.xs)
             if let tab {
                 Text(TabTitle.linkState(tab))
@@ -358,6 +361,50 @@ private struct IdentityRowContent: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Column \(column.number), \(resource?.name ?? ""), \(ShellReference.humanOsis(reference)), \(tab.map(TabTitle.linkState) ?? "")\(isActive ? ", active" : "")")
         .accessibilityIdentifier("shell-identity-\(column.number)")
+    }
+}
+
+/// B071: the licence's words, as the edition's manifest has them (`Edition.attribution`): one
+/// quiet mark on the identity row, a small panel on click, nothing over the text.
+struct AboutTextButton: View {
+    let resource: ResourceInfo
+    let attribution: String
+    let theme: ShellTokens.Theme
+    @State private var shown = false
+
+    var body: some View {
+        Button { shown.toggle() } label: {
+            Image(systemName: "info.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(theme.chromeColor)
+                .frame(width: 16, height: 16)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("About this text")
+        .accessibilityLabel("About this text: \(resource.name)")
+        .accessibilityIdentifier("shell-about-\(resource.id)")
+        .popover(isPresented: $shown, arrowEdge: .bottom) {
+            AboutTextPanel(resource: resource, attribution: attribution)
+        }
+    }
+}
+
+struct AboutTextPanel: View {
+    let resource: ResourceInfo
+    let attribution: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ShellTokens.Spacing.s) {
+            Text(resource.name).font(ShellTokens.chromeFont.weight(.semibold))
+            Text(attribution)
+                .font(ShellTokens.chromeFont)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(ShellTokens.Spacing.m)
+        .frame(width: 340, alignment: .leading)
+        .accessibilityIdentifier("shell-about-panel")
     }
 }
 

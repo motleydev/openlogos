@@ -25,7 +25,7 @@
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
 //                                       (no screen-recording permission needed)
-// B074's store arguments are in StoreLaunch.swift.
+// B074's store arguments are in StoreLaunch.swift; B071's pack argument in PreviewPack.swift.
 import SwiftUI
 #if os(macOS)
 import AppKit

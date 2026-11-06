@@ -389,8 +389,14 @@ final class ReadingStream: NSObject {
         do {
             location = try reading.locate(resourceId: resourceID, input: reference)
             lastError = nil
-        } catch ReadingCallError.Refused(_, let reason) {
+        } catch ReadingCallError.Refused(let kind, let reason) {
             lastError = reason
+            // B071: a follower's mapped verse past the chapter's last (SBLGNT Rom 16:25): its
+            // chapter, at the last verse there is. A passage typed in this tab shows the
+            // not-in-edition state instead and no stream is on screen (ShellModel.readingError).
+            if kind == "verse_out_of_range", let verse = reference.split(separator: "-").first.map(String.init) {
+                follow(segment: segment ?? verse)
+            }
             return
         } catch {
             lastError = "\(error)"
@@ -439,7 +445,8 @@ final class ReadingStream: NSObject {
             return
         }
         pendingJump = nil
-        let target = layout.segment(holding: segment) ?? segment
+        // B071: a mapped verse the edition does not print lands beside it (specs/23 §4).
+        let target = layout.segment(landingOn: segment) ?? segment
         // Enough text on both sides of the target to put it at the top and scroll on.
         let height = scroll.contentView.bounds.height
         while blocks.count < Self.maxBlocks, let next = blocks.last?.next, let top = top(of: target),

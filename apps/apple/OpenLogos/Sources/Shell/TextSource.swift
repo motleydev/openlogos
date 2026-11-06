@@ -16,6 +16,9 @@ struct ResourceInfo: Equatable {
     /// BCP 47 language tag (`en`, `grc`, `hbo`), registered with the core
     /// (`setResourceLanguages`) so original-language tabs get the original tools.
     var language = "en"
+    /// B071: what the edition's licence asks a reader to be shown, word for word from its
+    /// pack's manifest; nil for an edition that is not installed.
+    var attribution: String?
 }
 
 /// What a tab shows.
@@ -85,6 +88,29 @@ struct FixtureTextSource: TextSource {
             attribution: passage.attribution.isEmpty ? "" : "Fixture: \(info.name). \(passage.attribution)"
         )
         return SourceText(resource: info, content: content)
+    }
+}
+
+/// B071: the installed editions' names, direction and attribution from their packs, over the
+/// fixtures for everything else (the study note, the lexicon, an edition with no pack). An
+/// edition's text comes from its `ReadingHandle`; this source has none for it.
+struct InstalledTextSource: TextSource {
+    private let base = FixtureTextSource()
+    private let editions: [String: ResourceInfo]
+
+    init(editions installed: [String: ReadingEdition]) {
+        editions = installed.mapValues {
+            ResourceInfo(id: $0.resourceId, shortName: $0.title, name: $0.name, isRightToLeft: $0.direction == "rtl", language: $0.language, attribution: $0.attribution)
+        }
+    }
+
+    var resourceTitles: [String: String] { base.resourceTitles.merging(editions.mapValues(\.shortName)) { $1 } }
+    var resourceLanguages: [String: String] { base.resourceLanguages.merging(editions.mapValues(\.language)) { $1 } }
+
+    func resource(_ id: String) -> ResourceInfo { editions[id] ?? base.resource(id) }
+
+    func text(resourceID: String, reference: String?) -> SourceText? {
+        editions[resourceID] == nil ? base.text(resourceID: resourceID, reference: reference) : nil
     }
 }
 

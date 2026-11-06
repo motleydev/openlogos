@@ -37,6 +37,12 @@ enum ShellSeed {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// B071: the session of the text-search handle (EditionTextSearch): only a place to answer
+    /// from. The rows it returns are checked against the real session when they are merged.
+    static let singleColumnJSON: String = session([
+        workspace("w1", "Search", [column("c1", [tab("t1", "reading", "bsb", "John.3.16")], shown: "t1", width: 1)]),
+    ])
+
     /// The preview session.
     static var json: String {
         session([
