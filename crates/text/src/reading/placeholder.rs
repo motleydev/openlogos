@@ -70,7 +70,10 @@ impl PlaceholderPack {
     }
 }
 
-fn is_poetry(book: BookId, chapter: u32, verse: u32) -> bool {
+/// Whether a verse is set as poetry when its source says nothing about layout: the poetic
+/// books (Job 3:1–42:6, Psalms, Proverbs, Song of Songs, Lamentations).
+#[must_use]
+pub fn is_poetry(book: BookId, chapter: u32, verse: u32) -> bool {
     match book {
         BookId::Ps | BookId::Prov | BookId::Song | BookId::Lam => true,
         BookId::Job => (3..=41).contains(&chapter) || (chapter == 42 && verse <= 6),
@@ -80,7 +83,8 @@ fn is_poetry(book: BookId, chapter: u32, verse: u32) -> bool {
 
 /// The last verse of a Psalm's title in the scheme: 0 in `eng` when it numbers one, the
 /// verse an `eng` title maps to in `org`; `None` for a chapter without one.
-fn title_end(scheme: &SchemeId, book: BookId, chapter: u32) -> Option<u32> {
+#[must_use]
+pub fn title_end(scheme: &SchemeId, book: BookId, chapter: u32) -> Option<u32> {
     if book != BookId::Ps {
         return None;
     }
@@ -198,6 +202,7 @@ mod tests {
             scheme: scheme.to_owned(),
             book_order: BookOrder::Protestant,
             placeholder: false,
+            attribution: None,
         }
     }
 

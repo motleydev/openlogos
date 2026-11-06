@@ -31,7 +31,7 @@ pub use pack::{
     ChapterChunk, ChunkRef, ChunkSource, DirSource, FilePack, MemorySource, PACK_FORMAT,
     PACK_FORMAT_VERSION, PackBook, PackChapter, PackManifest, PackWriter, WrittenPack,
 };
-pub use placeholder::{OverlayVerse, PlaceholderPack, placeholder_text};
+pub use placeholder::{OverlayVerse, PlaceholderPack, is_poetry, placeholder_text, title_end};
 
 /// One edition as a reader sees it: its names, language, direction, versification and book
 /// order.
@@ -55,6 +55,9 @@ pub struct Edition {
     pub book_order: canon::BookOrder,
     /// Whether the text is generated placeholder text (B078) rather than the edition.
     pub placeholder: bool,
+    /// The attribution a reader must be shown, from the pack's manifest (B071).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attribution: Option<String>,
 }
 
 /// One chapter of a book as a pack has it: the first and last verse numbers.
@@ -315,6 +318,11 @@ pub trait TextPack: Send + Sync {
     /// Where a chapter's bytes are, for a pack read from files; `None` for a generated one.
     fn chunk(&self, _book: BookId, _chapter: u32) -> Option<ChunkRef> {
         None
+    }
+
+    /// Verse numbers between a chapter's first and last that the edition does not print.
+    fn absent_verses(&self, _book: BookId, _chapter: u32) -> &[u32] {
+        &[]
     }
 
     /// Hands a file pack the bytes of one chapter's chunk, checked against its hash.
@@ -581,6 +589,21 @@ impl ReadingLibrary {
         let first = check(&start)?;
         let last = check(&end)?;
         let verse = |r: &Reference, v: u32| Reference::verse(r.book, r.chapter, v).to_osis();
+        // A verse the edition does not print (BSB Matthew 17:21) has no segment to scroll to:
+        // the reader lands on the next printed verse of the typed range, else the nearest
+        // earlier one, and a typed verse that is not there is not marked.
+        let absent = start.verse.is_some_and(|v| {
+            installed
+                .pack
+                .absent_verses(start.book, start.chapter)
+                .contains(&v)
+        });
+        let printed = |v: u32| {
+            !installed
+                .pack
+                .absent_verses(start.book, start.chapter)
+                .contains(&v)
+        };
         let verse_start = match start.verse {
             Some(v) => verse(&start, v),
             None => verse(&start, first.first_verse),
@@ -599,8 +622,22 @@ impl ReadingLibrary {
         Ok(Location {
             resource_id: resource_id.to_owned(),
             chapter_key: chapter_key(start.book, start.chapter),
-            segment_id: verse_start.clone(),
-            highlight_range: (granularity == Granularity::Verse).then(|| reference.clone()),
+            segment_id: match start.verse.filter(|_| absent) {
+                Some(v) => {
+                    let until = (end.book == start.book && end.chapter == start.chapter)
+                        .then_some(end.verse)
+                        .flatten()
+                        .unwrap_or(v);
+                    let landing = (v..=until)
+                        .find(|n| printed(*n))
+                        .or_else(|| (first.first_verse..v).rev().find(|n| printed(*n)))
+                        .unwrap_or(first.first_verse);
+                    verse(&start, landing)
+                }
+                None => verse_start.clone(),
+            },
+            highlight_range: (granularity == Granularity::Verse && !(absent && start == end))
+                .then(|| reference.clone()),
             reference,
             verse_start,
             verse_end,

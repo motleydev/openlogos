@@ -29,7 +29,7 @@ sqlite-vec = { workspace = true }
 # compatible with the 0.2.121 the web bindings pin; 0.6 needs ^0.2.128. sqlite-vec is not
 # built for wasm here: its C file includes libc headers the wasm32 target has no sysroot for.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-rusqlite = { version = "=0.41.0", default-features = false, features = ["ffi-sqlite-wasm-rs", "cache"] }
+rusqlite = { version = "=0.41.0", default-features = false, features = ["ffi-sqlite-wasm-rs", "cache", "serialize"] }
 sqlite-wasm-rs = "=0.5.5"
 
 [lints]

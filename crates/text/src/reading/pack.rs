@@ -27,8 +27,12 @@ use super::{BookShape, ChapterShape, ChapterVerse, Edition, ReadingError, TextPa
 /// `format` of a manifest.
 pub const PACK_FORMAT: &str = "openlogos-text-pack";
 
-/// `format_version` this reader writes; it reads any `1.x`.
+/// `format_version` of a manifest using nothing newer than the first format; the reader reads
+/// any `1.x`.
 pub const PACK_FORMAT_VERSION: &str = "1.0";
+
+/// `format_version` of a manifest with `attribution` or a chapter's `absent` (B071).
+pub const PACK_FORMAT_VERSION_1_1: &str = "1.1";
 
 /// `format` of a chapter chunk.
 pub const CHUNK_FORMAT: &str = "openlogos-text-pack-chapter";
@@ -42,6 +46,10 @@ pub struct PackChapter {
     pub first_verse: u32,
     /// Last verse number.
     pub last_verse: u32,
+    /// Verse numbers between the first and the last that the edition does not print (BSB
+    /// Matthew 17:21): no segment exists for them. Format 1.1.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub absent: Vec<u32>,
     /// The file holding the chunk, relative to the pack (`chapters/John/3.json`).
     pub path: String,
     /// Byte offset of the chunk in `path` when `path` is a bundle; absent for a file that
@@ -93,10 +101,15 @@ pub struct PackManifest {
     pub license: String,
     /// Where the text came from.
     pub source: String,
+    /// The attribution the licence asks a reader to be shown, with any change made to the
+    /// text. Format 1.1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attribution: Option<String>,
     /// Synthetic or fixture data, never an installed edition.
     #[serde(default)]
     pub fixture_only: bool,
-    /// Whether every chapter has every verse of the scheme; `false` for an excerpt.
+    /// Whether every chapter has every verse the edition prints; `false` for an excerpt.
+    /// Verses the edition leaves out are in each chapter's `absent`, or past its `last_verse`.
     pub complete: bool,
     /// Books in reading order.
     pub books: Vec<PackBook>,
@@ -332,6 +345,7 @@ impl FilePack {
             scheme: manifest.scheme.clone(),
             book_order: manifest.book_order,
             placeholder: false,
+            attribution: manifest.attribution.clone(),
         };
         let books = manifest
             .books
@@ -450,6 +464,11 @@ impl TextPack for FilePack {
         self.parse_chunk(&key, entry, &bytes)
     }
 
+    fn absent_verses(&self, book: BookId, chapter: u32) -> &[u32] {
+        self.entry(book, chapter)
+            .map_or(&[], |e| e.absent.as_slice())
+    }
+
     fn chunk(&self, book: BookId, chapter: u32) -> Option<ChunkRef> {
         let entry = self.entry(book, chapter)?;
         Some(ChunkRef {
@@ -515,6 +534,7 @@ impl PackWriter {
                 book_order: edition.book_order,
                 license: license.to_owned(),
                 source: source.to_owned(),
+                attribution: edition.attribution.clone(),
                 fixture_only,
                 complete: false,
                 books: Vec::new(),
@@ -531,7 +551,7 @@ impl PackWriter {
         self
     }
 
-    /// Marks the pack as having every verse of its scheme.
+    /// Marks the pack as having every verse the edition prints.
     #[must_use]
     pub fn complete(mut self, complete: bool) -> PackWriter {
         self.manifest.complete = complete;
@@ -554,6 +574,13 @@ impl PackWriter {
                 return Err(invalid(format!("{book}.{chapter} has no verses")));
             };
             let (first_verse, last_verse) = (first.number, last.last_number.max(last.number));
+            let absent = (first_verse..=last_verse)
+                .filter(|n| {
+                    !verses
+                        .iter()
+                        .any(|v| (v.number..=v.last_number.max(v.number)).contains(n))
+                })
+                .collect();
             let key = chapter_key(book, chapter);
             let chunk = ChapterChunk {
                 format: CHUNK_FORMAT.to_owned(),
@@ -567,6 +594,7 @@ impl PackWriter {
                 chapter,
                 first_verse,
                 last_verse,
+                absent,
                 path: if self.bundle {
                     BUNDLE_PATH.to_owned()
                 } else {
@@ -593,6 +621,15 @@ impl PackWriter {
         if self.bundle {
             files.push((BUNDLE_PATH.to_owned(), bundle));
         }
+        let newer = manifest.attribution.is_some()
+            || manifest
+                .books
+                .iter()
+                .flat_map(|b| &b.chapters)
+                .any(|c| !c.absent.is_empty());
+        if newer {
+            PACK_FORMAT_VERSION_1_1.clone_into(&mut manifest.format_version);
+        }
         let mut json =
             serde_json::to_string_pretty(&manifest).map_err(|e| invalid(e.to_string()))?;
         json.push('\n');
@@ -608,6 +645,67 @@ mod tests {
     use super::*;
     use crate::reading::{ReadingLibrary, VerseToken};
 
+    #[test]
+    fn a_verse_the_edition_does_not_print_is_listed_and_locate_lands_beside_it() {
+        // Verses 1, 2, 4, 5: verse 3 is absent, as BSB Matthew 17:21 is.
+        let mut writer = PackWriter::new(&edition(), "l", "s", false).complete(true);
+        let verses = [1, 2, 4, 5]
+            .iter()
+            .map(|n| verse(&format!("John.3.{n}"), *n, "text"))
+            .collect();
+        writer.chapter(BookId::John, "John", 3, verses);
+        let written = writer.finish().unwrap();
+        let manifest: PackManifest = serde_json::from_str(&written.manifest_json).unwrap();
+        assert_eq!(manifest.books[0].chapters[0].absent, vec![3]);
+        let source = MemorySource::new(written.files);
+        let pack = FilePack::from_manifest(&written.manifest_json, Some(Box::new(source))).unwrap();
+        let mut library = ReadingLibrary::new();
+        library.insert(Box::new(pack));
+
+        let at = library.locate("test", "John 3:3").unwrap();
+        assert_eq!(
+            at.segment_id, "John.3.2",
+            "the nearest earlier printed verse"
+        );
+        assert_eq!(at.reference, "John.3.3", "the reference stays as typed");
+        assert_eq!(at.highlight_range, None, "nothing to mark");
+
+        let at = library.locate("test", "John 3:3-4").unwrap();
+        assert_eq!(
+            at.segment_id, "John.3.4",
+            "the first printed verse of the range"
+        );
+        assert_eq!(at.highlight_range.as_deref(), Some("John.3.3-John.3.4"));
+
+        let at = library.locate("test", "John 3:2").unwrap();
+        assert_eq!(at.segment_id, "John.3.2");
+        assert_eq!(at.highlight_range.as_deref(), Some("John.3.2"));
+    }
+
+    #[test]
+    fn attribution_travels_from_the_edition_through_the_manifest() {
+        let mut with = edition();
+        with.attribution = Some("Credit the makers.".to_owned());
+        let mut writer = PackWriter::new(&with, "l", "s", false);
+        writer.chapter(BookId::John, "John", 3, vec![verse("John.3.1", 1, "t")]);
+        let written = writer.finish().unwrap();
+        let pack = FilePack::from_manifest(&written.manifest_json, None).unwrap();
+        assert_eq!(
+            pack.edition().attribution.as_deref(),
+            Some("Credit the makers.")
+        );
+        // An edition without one writes no field, so older readers and fixtures are unchanged.
+        let mut writer = PackWriter::new(&edition(), "l", "s", false);
+        writer.chapter(BookId::John, "John", 3, vec![verse("John.3.1", 1, "t")]);
+        assert!(
+            !writer
+                .finish()
+                .unwrap()
+                .manifest_json
+                .contains("attribution")
+        );
+    }
+
     fn edition() -> Edition {
         Edition {
             resource_id: "test".to_owned(),
@@ -619,6 +717,7 @@ mod tests {
             scheme: "eng".to_owned(),
             book_order: BookOrder::Protestant,
             placeholder: false,
+            attribution: None,
         }
     }
 

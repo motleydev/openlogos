@@ -1,0 +1,27 @@
+[package]
+name = "openlogos-preview-pack"
+description = "The B071 importer: BSB, SBLGNT and WLC from the NAS artifacts into text packs and FTS5 search packs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "openlogos-preview-pack"
+path = "src/main.rs"
+
+[dependencies]
+openlogos-core = { workspace = true }
+openlogos-text = { workspace = true }
+openlogos-retrieval = { workspace = true }
+openlogos-retrieval-sqlite = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+# The error type of the B064 pack writer.
+rusqlite = { workspace = true }
+
+[lints]
+workspace = true

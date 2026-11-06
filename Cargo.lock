@@ -786,6 +786,21 @@ name = "openlogos-package"
 version = "0.1.0"
 
 [[package]]
+name = "openlogos-preview-pack"
+version = "0.1.0"
+dependencies = [
+ "openlogos-core",
+ "openlogos-retrieval",
+ "openlogos-retrieval-sqlite",
+ "openlogos-text",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "openlogos-retrieval"
 version = "0.1.0"
 dependencies = [

@@ -191,7 +191,7 @@ export interface ShellContextMenuItem { command_id: string; args: ShellCommandAr
 export interface ShellContextMenuSection { label: string | null; items: ShellContextMenuItem[] }
 export interface ShellContextMenu { target_kind: ShellContextTargetKind; title: string | null; focus: ShellInvocation | null; context: { has_selection: boolean; focus: ShellFocus }; sections: ShellContextMenuSection[] }
 /** B078 continuous reading (specs/23). */
-export interface ReadingEdition { resource_id: string; content_revision: string; title: string; name: string; language: string; direction: "ltr" | "rtl"; scheme: string; book_order: "protestant" | "tanakh_bhs"; placeholder: boolean }
+export interface ReadingEdition { resource_id: string; content_revision: string; title: string; name: string; language: string; direction: "ltr" | "rtl"; scheme: string; book_order: "protestant" | "tanakh_bhs"; placeholder: boolean; attribution?: string }
 export interface ReadingLocation { resource_id: string; chapter_key: string; segment_id: string; reference: string; verse_start: string; verse_end: string; highlight_range: string | null; granularity: "verse" | "chapter" | "book" }
 export interface ReadingNeighbors { chapter_key: string; prev: string | null; next: string | null }
 export interface ReadingVerse { segment_id: string; number: number; last_number: number; label: string; text: string; paragraph_start: boolean; poetry: boolean; superscription: boolean; placeholder: boolean; tokens: { id: string; start: number; end: number }[] }

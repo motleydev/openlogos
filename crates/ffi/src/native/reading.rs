@@ -70,6 +70,9 @@ pub struct ReadingEdition {
     pub book_order: String,
     /// Whether its text is generated placeholder text.
     pub placeholder: bool,
+    /// The attribution a reader must be shown, from the pack's manifest; `None` for a
+    /// placeholder edition.
+    pub attribution: Option<String>,
 }
 
 impl From<Edition> for ReadingEdition {
@@ -84,6 +87,7 @@ impl From<Edition> for ReadingEdition {
             direction: e.direction,
             scheme: e.scheme,
             placeholder: e.placeholder,
+            attribution: e.attribution,
         }
     }
 }

@@ -130,6 +130,7 @@ fn edition(e: &FixtureEdition, fixture: &TextFixture) -> Edition {
         scheme: e.scheme.to_owned(),
         book_order: BookOrder::Protestant,
         placeholder: false,
+        attribution: None,
     }
 }
 
