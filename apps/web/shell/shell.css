@@ -222,8 +222,9 @@ button { font: inherit; color: inherit; }
 .column:first-child .reading-header { padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-width) + var(--space-2)); }
 :root.well-collapsed .column:first-child .reading-header { padding-inline-start: calc(var(--tool-well-inset) + var(--tool-well-collapsed) + var(--space-2)); }
 .stream .chapter { padding-bottom: var(--space-5); }
-/* Room after the text so an edition's last verse can still reach the reading line. */
-.measure.stream { padding-bottom: 80vh; }
+/* Room after the text so an edition's last verse, even a one-line one, can reach the reading
+   line at any window height: a full viewport, since the scroller is never taller (B078). */
+.measure.stream { padding-bottom: 100vh; }
 .stream .book-title { font: 600 calc(var(--reading-size) * 1.6)/1.2 var(--font-reading); text-align: center; margin: var(--space-5) 0 var(--space-4); color: var(--text); }
 .stream .chapter-heading {
   font: 600 13px var(--font-chrome); letter-spacing: 0.08em; text-transform: uppercase; color: var(--chrome);
