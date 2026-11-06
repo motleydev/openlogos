@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use openlogos_conformance::fixture_session;
 use openlogos_retrieval_sqlite::EditionSearch;
+use openlogos_text::reading::{DirSource, FilePack, ReadingLibrary};
 use openlogos_workspaces::commands::Shell;
 use openlogos_workspaces::palette::{
     DEFAULT_SECTION_LIMIT, EXPANDED_SECTION_LIMIT, PaletteContext, PaletteIndex, TextProvider,
@@ -154,6 +155,7 @@ pub fn run(search_dir: &Path, rounds: usize) -> Result<BenchReport, ImportError>
         }
     }
     rows.push(row("palette with text results, all three", samples));
+    rows.push(chapter_row(search_dir)?);
     let spot_hits = ["for god so loved", "λογος", "בראשית", "melchizedek"]
         .iter()
         .map(|q| ((*q).to_owned(), provider.search(q, 50).len()))
@@ -163,6 +165,43 @@ pub fn run(search_dir: &Path, rounds: usize) -> Result<BenchReport, ImportError>
         rows,
         spot_hits,
     })
+}
+
+/// Every chapter of the three packs through the reader, from disk with its hash checked: the
+/// core's share of "open a chapter" (≤ 100 ms end to end, specs/22 §7).
+fn chapter_row(search_dir: &Path) -> Result<Row, ImportError> {
+    let pack_error = |e: &dyn std::fmt::Display| ImportError::Pack(e.to_string());
+    let packs = search_dir.with_file_name("packs");
+    let mut library = ReadingLibrary::new();
+    let mut keys = Vec::new();
+    for id in ["bsb", "sblgnt", "wlc"] {
+        let directory = packs.join(id);
+        let manifest_path = directory.join("manifest.json");
+        let manifest =
+            std::fs::read_to_string(&manifest_path).map_err(|error| ImportError::Io {
+                path: manifest_path.display().to_string(),
+                error,
+            })?;
+        let pack = FilePack::from_manifest(&manifest, Some(Box::new(DirSource::new(&directory))))
+            .map_err(|e| pack_error(&e))?;
+        for book in &pack.manifest().books {
+            for chapter in &book.chapters {
+                keys.push((id, format!("{}.{}", book.book, chapter.chapter)));
+            }
+        }
+        library.insert(Box::new(pack));
+    }
+    let mut samples = Vec::new();
+    for (id, key) in keys {
+        let started = Instant::now();
+        let block = library
+            .chapter_content(id, &key)
+            .map_err(|e| pack_error(&e))?;
+        let ms = started.elapsed().as_secs_f64() * 1000.0;
+        std::hint::black_box(block);
+        samples.push((ms, format!("{id} {key}")));
+    }
+    Ok(row("chapter_content from disk, every chapter", samples))
 }
 
 #[cfg(test)]

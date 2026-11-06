@@ -471,7 +471,11 @@ fn bsb_spec(source: &VerifiedSource) -> EditionSpec {
     EditionSpec {
         edition: Edition {
             resource_id: "bsb".to_owned(),
-            content_revision: "bsb-usfm-2026-03-08".to_owned(),
+            // The USFM export's date and the checked manifest: `bsb.txt` carries no date.
+            content_revision: format!(
+                "bsb-2026-03-08-{}",
+                source.manifest_sha256.chars().take(7).collect::<String>()
+            ),
             title: "BSB".to_owned(),
             name: "Berean Standard Bible".to_owned(),
             language: "en".to_owned(),
@@ -483,7 +487,7 @@ fn bsb_spec(source: &VerifiedSource) -> EditionSpec {
         },
         license: format!("{}, https://berean.bible/terms.htm", source.license),
         source_line: format!(
-            "{} ({}), MANIFEST.sha256 {}",
+            "Verse text from https://bereanbible.com/bsb.txt, structure from {} ({}), MANIFEST.sha256 {}",
             source.upstream_url, source.edition_id, source.manifest_sha256
         ),
     }
@@ -544,7 +548,7 @@ fn wlc_spec(source: &VerifiedSource) -> EditionSpec {
             attribution: Some(attribution),
         },
         license: format!(
-            "Text: public domain (Westminster Leningrad Codex). OSHB markup: {}, {CC_BY}",
+            "{}: the text of the Westminster Leningrad Codex is public domain, the OSHB layer is CC BY 4.0, {CC_BY}",
             source.license
         ),
         source_line: format!(

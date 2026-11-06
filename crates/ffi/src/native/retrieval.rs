@@ -32,15 +32,27 @@ pub struct RetrievalSmoke {
     pub nearest: u64,
 }
 
+/// Why the smoke test failed. A uniffi error type because binding generation refuses a bare
+/// `String`, which went unnoticed until the host scripts built this feature (B071).
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum RetrievalSmokeError {
+    /// What the engine said.
+    #[error("{detail}")]
+    Failed {
+        /// The engine's error as text.
+        detail: String,
+    },
+}
+
 /// Opens `pack_path` read-only, installs its edges into the link index at `link_index_path`
 /// and runs one query of each kind for `query` (a word, searched as text and as lemma).
-/// Errors are returned as text: the smoke test is diagnostic, not an API.
+/// The smoke test is diagnostic, not an API.
 #[uniffi::export]
 pub fn retrieval_smoke(
     pack_path: String,
     link_index_path: String,
     query: String,
-) -> Result<RetrievalSmoke, String> {
+) -> Result<RetrievalSmoke, RetrievalSmokeError> {
     let run = || -> openlogos_retrieval::Result<RetrievalSmoke> {
         let mut engine = Engine::new()?.with_link_index(std::path::Path::new(&link_index_path))?;
         let info = engine.attach_pack(std::path::Path::new(&pack_path))?;
@@ -91,7 +103,9 @@ pub fn retrieval_smoke(
             nearest,
         })
     };
-    run().map_err(|e| e.to_string())
+    run().map_err(|e| RetrievalSmokeError::Failed {
+        detail: e.to_string(),
+    })
 }
 
 fn rusqlite_version() -> String {

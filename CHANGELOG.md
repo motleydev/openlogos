@@ -1,3 +1,10 @@
+# B071 — 6 November 2026
+
+- Adds the preview pack: `just preview-pack` builds the BSB, SBLGNT and WLC from the NAS into text packs and FTS5 search packs outside the repository, after the rights records and every hash (docs/preview-pack.md, docs/evidence/B071.md).
+- Text pack format 1.1: `attribution`, and a chapter's `absent` verses. The core's API is 0.1.5 (`Edition.attribution`, `use_edition_search`); `locate` lands beside a verse an edition does not print.
+- The binding scripts build with the `retrieval` feature on every host; text search is real on all of them once a host installs the packs.
+- The WLC pack declares `tanakh_bhs` order; specs/23 §1 no longer says no edition does.
+
 # Blueprint revision 5.1 — 27 October 2026
 
 - Decides D18-1: a bounded teaching view (large-text preaching mode) is in scope as B069; sermon editor, teleprompter and slides stay excluded (specs/18, 01, 09, 11).
