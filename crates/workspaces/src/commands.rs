@@ -822,6 +822,18 @@ const DEFS: &[Def] = &[
     )
     .names(&["notes", "open notes dock"], &["dock"]),
     def(
+        "view.about_edition",
+        "About this edition",
+        S::Tab,
+        A::None,
+        false,
+        false,
+    )
+    .names(
+        &["edition info", "attribution", "licence"],
+        &["license", "credits", "copyright", "revision"],
+    ),
+    def(
         "view.collection_drawer",
         "Toggle collection drawer",
         S::Workspace,
@@ -1544,6 +1556,12 @@ pub fn enabled(
                 column_number(ws, args)?;
             }
             Ok(())
+        }
+        "view.about_edition" if tab.kind != crate::PaneKind::Reading => {
+            Err(DisabledReason::WrongContext {
+                what: "About this edition".to_owned(),
+                place: "on a reading tab".to_owned(),
+            })
         }
         "nav.back" if tab.history.back.is_empty() => Err(DisabledReason::NoBackHistory),
         "nav.forward" if tab.history.forward.is_empty() => Err(DisabledReason::NoForwardHistory),
@@ -2918,6 +2936,28 @@ pub(crate) mod tests {
             args.resource_id = Some("sblgnt".into());
         }
         args
+    }
+
+    #[test]
+    fn about_this_edition_is_for_a_reading_tab_and_the_host_shows_it() {
+        let session = fixture_session();
+        let context = CommandContext::default();
+        let invocation = Invocation::new("view.about_edition");
+        assert_eq!(
+            enabled(&session, false, false, &invocation, &context),
+            Ok(())
+        );
+        assert!(!command("view.about_edition").unwrap().handled_by_core);
+        let mut notes = session;
+        let ws = notes.active_mut();
+        let id = ws.active_tab().id.clone();
+        tab_mut(ws, &id).kind = crate::PaneKind::Notes;
+        assert_eq!(
+            enabled(&notes, false, false, &invocation, &context)
+                .unwrap_err()
+                .to_string(),
+            "About this edition works on a reading tab"
+        );
     }
 
     #[test]
