@@ -6,14 +6,18 @@
 //
 //   node apps/web/shell/test/run-chrome.mjs --chromedriver <path> [--case name…] [--headed]
 //        [--bench [--samples 200] [--bench-json <file>]] [--shots <dir> [--extra-shots <dir>]]
+//        [--pack-bench [--samples 200] [--bench-json <file>]] [--pack-shots <dir>]
 //
 // Exit code 0 when every case passed (and, with --bench, every run produced its samples); the
 // results are printed as JSON lines and a Summary line.
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile, writeFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeSyntheticPack } from "./synthetic-pack.mjs";
 
 const webRoot = resolve(fileURLToPath(new URL("../../", import.meta.url)));
 const repoRoot = resolve(webRoot, "../..");
@@ -31,18 +35,37 @@ const headed = args.includes("--headed");
 const storeBenchOn = args.includes("--store-bench"); // B074: restore launches and save/workspace rows alone
 const launches = Number(option("--launches", "30"));
 const benchOn = args.includes("--bench");
+const packBenchOn = args.includes("--pack-bench"); // B071: specs/22 §7 end to end over the real pack
 const samples = Number(option("--samples", "200"));
 const benchJson = option("--bench-json", null);
 const width = Number(option("--width", "1440"));
 const height = Number(option("--height", "900"));
 
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".wasm": "application/wasm", ".json": "application/json", ".css": "text/css; charset=utf-8", ".ts": "text/plain" };
+// B071: packs, each under its own path outside apps/web. `/__fixture-pack/` honours Range,
+// `/__fixture-norange/` ignores it, `/__slow-pack/` holds each chunk back; none of them is the
+// default `/preview-pack/`, so every other case runs on the placeholder.
+const syntheticDir = await mkdtemp(join(tmpdir(), "openlogos-synthetic-pack-"));
+await writeSyntheticPack(syntheticDir, repoRoot);
+const realPackDir = process.env.OPENLOGOS_PREVIEW_PACK || join(homedir(), ".cache/openlogos/preview-pack");
+const hasRealPack = existsSync(join(realPackDir, "search/bsb.sqlite"));
+const fixturePacks = join(repoRoot, "crates/conformance/fixtures");
+const packRoutes = { "/__fixture-pack/": fixturePacks, "/__fixture-norange/": fixturePacks, "/__synthetic-pack/": syntheticDir, "/__slow-pack/": syntheticDir, "/__real-pack/": realPackDir };
 const server = createServer(async (request, response) => {
   const path = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
-  const file = join(webRoot, path.endsWith("/") ? `${path}index.html` : path);
+  const route = Object.keys(packRoutes).find((r) => path.startsWith(r));
+  const file = route ? join(packRoutes[route], path.slice(route.length)) : join(webRoot, path.endsWith("/") ? `${path}index.html` : path);
   try {
-    const body = await readFile(file);
-    response.writeHead(200, { "content-type": types[extname(file)] || "application/octet-stream" });
+    let body = await readFile(file);
+    if (route === "/__slow-pack/" && path.includes("/chapters/")) await sleep(120);
+    const range = route === "/__fixture-pack/" && /bytes=(\d+)-(\d+)/.exec(request.headers.range || "");
+    if (range) {
+      body = body.subarray(Number(range[1]), Number(range[2]) + 1);
+      response.writeHead(206, { "content-type": "application/octet-stream" });
+      response.end(body);
+      return;
+    }
+    response.writeHead(200, { "content-type": types[extname(file)] || "application/octet-stream", "content-length": body.length });
     response.end(body);
   } catch {
     response.writeHead(404);
@@ -79,9 +102,9 @@ const capabilities = { alwaysMatch: { browserName: "chrome", "goog:chromeOptions
 
 // MARK: helpers
 
+const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const K = { Meta: "", Alt: "", Shift: "", Control: "", Enter: "", Escape: "", Tab: "", ArrowDown: "", ArrowUp: "", ArrowLeft: "", ArrowRight: "", F10: "" };
 let S = "";
-const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const js = (script, ...a) => wd("POST", `${S}/execute/sync`, { script, args: a });
 const jsAsync = (script, ...a) => wd("POST", `${S}/execute/async`, { script, args: a });
 const snap = () => js("return window.openlogosShell.snapshot()");
@@ -265,7 +288,273 @@ async function inkNear(column, segment) {
 
 const tokens = JSON.parse(await readFile(join(repoRoot, "design/tokens/shell.json"), "utf8"));
 
+// MARK: B071 helpers
+
+const PACK = (route, more = "") => `?theme=light&autotest=1&pack=/${route}/${more}`;
+const columnText = (n) => js(`return document.querySelector('#columns > .column[data-number="' + arguments[0] + '"] .scroller').innerText`, n);
+const resultsText = () => js("return document.getElementById('palette-results').innerText");
+const reading_ = async (n) => (await snap()).reading[n - 1];
+/** Until no shown stream is waiting for a chunk. */
+async function settled() {
+  for (let i = 0; i < 200; i++) {
+    if (await js("return ![...window.openlogosShell.host.views.values()].some((v) => v.section.isConnected && v.stream && v.stream.waiting)")) break;
+    await sleep(20);
+  }
+  await sleep(60);
+}
+async function navigateIn(column, reference) {
+  await js("const s = window.openlogosShell; s.run({ command_id: 'column.focus', args: { column: arguments[0] } }); s.run({ command_id: 'nav.navigate', args: { reference: arguments[1] } })", column, reference);
+  await settled();
+}
+/** Scrolls column N so a verse is on its reading line, as the reader would (reported). */
+async function scrollVerseToLine(column, segment) {
+  await js(`const v = [...window.openlogosShell.host.views.values()].find((x) => x.section.isConnected && x.section.dataset.number === String(arguments[0]));
+    v.scroller.scrollTop += v.stream.verseEl(arguments[1]).getBoundingClientRect().top - v.stream.edge();`, column, segment);
+  await sleep(300);
+  await settled();
+}
+
 const CASES = {
+  // MARK: B071, the pack in the shell
+
+  async "pack-none-is-the-placeholder"(p) {
+    const s = await snap();
+    expect(p, eq(s.pack.editions, []) && s.pack.search === null, `no pack: ${JSON.stringify(s.pack)}`);
+    await navigate("John.4");
+    expect(p, (await snap()).reading[0].notice === "Placeholder text — this edition is not installed", "the placeholder says so");
+    await type("");
+    await js("window.openlogosShell.focusPalette('#loved')");
+    await sleep(60);
+    expect(p, (await resultsText()).includes("John") || (await resultsText()).includes("Jn"), `fixture text still answers: ${await resultsText()}`);
+  },
+
+  async "pack-fixture-chunks-through-the-core"(p) {
+    for (const route of ["__fixture-pack/packs/..", "__fixture-norange/packs/.."]) {
+      await load(PACK(route));
+      await settled();
+      const s = await snap();
+      expect(p, eq(s.pack.editions, ["bsb", "sblgnt", "wlc"]), `installed ${s.pack.editions}`);
+      expect(p, s.reading[0].notice === null, `no placeholder notice: ${s.reading[0].notice}`);
+      const text = await columnText(1);
+      expect(p, text.includes("For God so loved the world"), `fixture verse from the pack: ${text.slice(0, 120)}`);
+      expect(p, !text.includes("Fixture text."), "the fixture licence line is not on a pack's text");
+      // WLC is a bundle: read by Range, or cut here from a server that ignores it.
+      await js("window.openlogosShell.run({ command_id: 'tab.next' })");
+      await settled();
+      const hebrew = await columnText(1);
+      expect(p, /[\u05D0-\u05EA]/.test(hebrew), `${route}: the bundle's chapter: ${hebrew.slice(0, 80)}`);
+    }
+  },
+
+  async "pack-search-states"(p) {
+    await load(PACK("__synthetic-pack", "&search=manual"));
+    await settled();
+    await chord("Meta", "k");
+    await type("#made");
+    await sleep(60);
+    let text = await resultsText();
+    expect(p, text.includes("Text search is loading") && !text.includes("Nothing matches"), `not ready is said: ${text}`);
+    await chord("Escape");
+    await chord("Meta", "k");
+    await type(">new tab");
+    await sleep(60);
+    expect(p, !(await resultsText()).includes("Text search"), "a commands query says nothing about search");
+    await js("window.openlogosShell.host.search.start()");
+    for (let i = 0; i < 100 && (await js("return window.openlogosShell.host.search.state")) === "loading"; i++) await sleep(50);
+    await chord("Escape");
+    await chord("Meta", "k");
+    await type("#made");
+    await sleep(100);
+    text = await resultsText();
+    expect(p, text.includes("Text search could not load."), `a pack without search packs says so: ${text}`);
+  },
+
+  async "pack-follower-beside-an-unprinted-verse"(p) {
+    await load(PACK("__synthetic-pack"));
+    await settled();
+    // SBLGNT prints Rom 16:24, the BSB does not: the BSB follower lands on 16:23.
+    await navigateIn(2, "Rom.16.20");
+    await scrollVerseToLine(2, "Rom.16.24");
+    let s = await snap();
+    expect(p, s.reading[1].top.segment_id === "Rom.16.24", `driver ${JSON.stringify(s.reading[1].top)}`);
+    expect(p, s.reading[0].top.segment_id === "Rom.16.23", `the BSB at or below an absent verse: ${JSON.stringify(s.reading[0].top)}`);
+    // The BSB prints Rom 16:25, this SBLGNT ends at 16:24.
+    await navigateIn(1, "Rom.16.22");
+    await scrollVerseToLine(1, "Rom.16.25");
+    s = await snap();
+    expect(p, s.reading[0].top.segment_id === "Rom.16.25", `driver ${JSON.stringify(s.reading[0].top)}`);
+    expect(p, s.reading[1].top.segment_id === "Rom.16.24" && !s.reading[1].error, `the SBLGNT at its last verse: ${JSON.stringify(s.reading[1])}`);
+    // Rebuilt (a workspace switch and back) it comes back there, not to "no verse 25".
+    await js("const s = window.openlogosShell; s.run({ command_id: 'workspace.next' }); s.run({ command_id: 'workspace.previous' })");
+    await settled();
+    s = await snap();
+    expect(p, !s.reading[1].error && s.reading[1].top && s.reading[1].top.segment_id.startsWith("Rom.16."), `after a rebuild: ${JSON.stringify(s.reading[1])}`);
+    // Typed, the verse past the end is the core's state; an absent one lands on the nearest
+    // earlier printed verse of the chapter and is not marked (core locate).
+    await navigateIn(1, "Rom.16.25");
+    s = await snap();
+    expect(p, s.reading[1].error && s.reading[1].error.includes("25"), `typed past the end: ${JSON.stringify(s.reading[1])}`);
+    await navigateIn(1, "Matt.17.21");
+    s = await snap();
+    expect(p, s.reading[0].top.segment_id === "Matt.17.20" && eq(s.reading[0].marked, []), `typed absent verse: ${JSON.stringify(s.reading[0].top)} ${s.reading[0].marked}`);
+    expect(p, s.reading[1].top.segment_id === "Matt.17.20", `its follower: ${JSON.stringify(s.reading[1].top)}`);
+  },
+
+  async "pack-wlc-order-and-direction"(p) {
+    await load(PACK("__synthetic-pack"));
+    await js("window.openlogosShell.run({ command_id: 'tab.next' })");
+    await settled();
+    await navigateIn(1, "Mal.3.20");
+    const dir = await js(`const t = document.querySelector('#columns > .column[data-number="1"] .text'); return [t.dir, t.lang, getComputedStyle(t.querySelector('.verses')).direction]`);
+    expect(p, eq(dir, ["rtl", "hbo", "rtl"]), `direction ${dir}`);
+    const s = await snap();
+    expect(p, s.reading[0].header === "WLC · Mal 3", `header ${s.reading[0].header}`);
+    expect(p, s.reading[0].blocks.includes("Ps.1"), `Malachi 3 runs on into Psalms (tanakh_bhs): ${s.reading[0].blocks}`);
+    const names = await js("return window.openlogosShell.host.reading.chapterNeighbors('wlc', 'Mal.3')");
+    expect(p, names.next === "Ps.1", `next ${names.next}`);
+    // A BSB tab linked to it: Mal 4:5 is the WLC's 3:23.
+    await load(PACK("__synthetic-pack"));
+    await settled();
+    await js("const s = window.openlogosShell; s.run({ command_id: 'tab.next' }); s.run({ command_id: 'tab.link', args: { group: '1' } })");
+    await settled();
+    await navigateIn(2, "Rom.1.1");
+    await js("window.openlogosShell.run({ command_id: 'column.focus', args: { column: 1 } })");
+  },
+
+  async "pack-highlight-across-a-new-revision"(p) {
+    await load(PACK("__synthetic-pack"));
+    await settled();
+    const out = await js(`const s = window.openlogosShell, h = s.host.handle, r = s.host.reading;
+      const add = (seg, start, end, rev) => h.addHighlight({ resource_id: 'bsb', content_revision: rev, spans: [{ segment_id: seg, start, end }], color: '#FFD60A' }, r);
+      add('John.3.16', 11, 16, 'bsb-2024');              // "loved": the same verse
+      add('John.3.17', 4, 7, 'bsb-2024');                // "God": 7 scalars further on now
+      add('John.3.16', 0, 3, 'some-revision-long-gone'); // text this host does not have
+      s.run({ command_id: 'tool.select' });
+      return true;`);
+    expect(p, out === true, "added");
+    await navigateIn(1, "John.3.17");
+    await js("window.openlogosShell.host.hlVersion += 1; window.openlogosShell.host.hlCache.clear(); window.openlogosShell.render()");
+    await sleep(100);
+    const painted = await js(`const out = []; for (const [, h] of CSS.highlights) for (const r of h) out.push(r.toString()); return out;`);
+    expect(p, painted.includes("loved"), `3:16 exact: ${painted}`);
+    expect(p, painted.includes("God"), `3:17 moved with its words: ${painted}`);
+    expect(p, !painted.includes("For"), `a revision with no text is not painted at a guess: ${painted}`);
+    const r = (await snap()).pack.reanchors;
+    expect(p, r.exact >= 1 && r.moved >= 1 && r.unknown_revision >= 1, `reanchors ${JSON.stringify(r)}`);
+    const kept = await js("return window.openlogosShell.host.handle.highlightsIn('bsb', 'John.3').map((h) => h.content_revision)");
+    expect(p, eq(kept, ["bsb-2024", "bsb-2024", "some-revision-long-gone"]), `stored as they were: ${kept}`);
+  },
+
+  async "pack-about-this-edition"(p) {
+    await load(PACK("__synthetic-pack"));
+    await settled();
+    await click(...(await centre('#columns > .column[data-number="1"] .pane-menu')));
+    await click(...(await js("const b = [...document.querySelectorAll('.menu button')].find((x) => x.textContent === 'About this edition'); const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]")));
+    const about = await js("const m = document.querySelector('.menu.about'); return m && { text: m.innerText, role: m.getAttribute('role'), href: m.querySelector('a') && m.querySelector('a').href }");
+    expect(p, about && about.text.includes("Made-up credit for the BSB pack") && about.text.includes("bsb-synthetic-1"), `about ${JSON.stringify(about)}`);
+    expect(p, about && about.href === "https://example.org/licence/", `the address is a link: ${about && about.href}`);
+    await chord("Escape");
+    expect(p, !(await js("return !!document.querySelector('.menu.about')")), "Escape closes it");
+    // On the placeholder it says what it is.
+    await load("?theme=light&autotest=1");
+    await click(...(await centre('#columns > .column[data-number="1"] .pane-menu')));
+    await click(...(await js("const b = [...document.querySelectorAll('.menu button')].find((x) => x.textContent === 'About this edition'); const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]")));
+    expect(p, (await js("return document.querySelector('.menu.about').innerText")).includes("Placeholder text — this edition is not installed"), "the placeholder's panel");
+  },
+
+  async "pack-chunk-failures-say-so"(p) {
+    await load(PACK("__synthetic-pack"));
+    await settled();
+    for (const reference of ["Rev.1.1", "Rev.2.1"]) {
+      await navigateIn(1, reference);
+      const text = await columnText(1);
+      expect(p, /could not be loaded/.test(text) && text.includes("Try again"), `${reference}: ${text.slice(0, 160)}`);
+      expect(p, !(await js("return window.openlogosError || null")), "the page lives on");
+    }
+    await navigateIn(1, "Rom.3.1");
+    expect(p, (await snap()).reading[0].top.segment_id === "Rom.3.1", "and reads on elsewhere");
+  },
+
+  async "pack-slow-chunks-no-jump"(p) {
+    await load(PACK("__slow-pack"));
+    await settled();
+    await navigateIn(1, "Rom.2.1");
+    const r = await scrollStream(1, 120, 160);
+    expect(p, r.maxJump <= 2, `the text under the eye moved ${r.maxJump} px`);
+    expect(p, r.chapters.length >= 4, `read on: ${r.chapters}`);
+    expect(p, r.maxBlocks <= 9, `window ${r.maxBlocks}`);
+    const up = await scrollStream(1, -120, 120);
+    expect(p, up.maxJump <= 2, `up: ${up.maxJump} px`);
+    // A newer jump wins over one still waiting for its chunks.
+    await js("const s = window.openlogosShell; s.run({ command_id: 'nav.navigate', args: { reference: 'Rom.9.1' } }); s.run({ command_id: 'nav.navigate', args: { reference: 'Rom.12.5' } })");
+    await settled();
+    expect(p, (await snap()).reading[0].top.segment_id === "Rom.12.5", `newest jump: ${JSON.stringify((await snap()).reading[0].top)}`);
+  },
+
+  // MARK: B071, over the real pack (skipped visibly without one; nothing asserts or prints its text)
+
+  async "pack-real-editions-and-search"(p) {
+    await load(PACK("__real-pack"));
+    await settled();
+    let s = await snap();
+    expect(p, eq(s.pack.editions, ["bsb", "sblgnt", "wlc"]), `installed ${s.pack.editions}`);
+    expect(p, s.reading[0].notice === null && s.reading[0].blocks.length >= 3, `real blocks: ${JSON.stringify(s.reading[0])}`);
+    for (let i = 0; i < 200 && (await snap()).pack.search.state !== "ready"; i++) await sleep(50);
+    s = await snap();
+    expect(p, s.pack.search.state === "ready" && s.pack.search.bytes > 1e7, `search ${JSON.stringify(s.pack.search)}`);
+    for (const query of ["eternal life", "#ἀγάπη", "#בראשית"]) {
+      await chord("Meta", "k");
+      await js("const f = document.getElementById('palette-field'); f.value = arguments[0]; f.dispatchEvent(new Event('input'))", query);
+      await sleep(150);
+      const rows = await js("return window.openlogosShell.host.palette.rows.filter((r) => r.section === 'text').length");
+      expect(p, rows > 0, `${query}: ${rows} text rows`);
+      await chord("Escape");
+    }
+    // A hit opens the verse on the reading line.
+    await chord("Meta", "k");
+    await js("const f = document.getElementById('palette-field'); f.value = '#for god so loved'; f.dispatchEvent(new Event('input'))");
+    await sleep(200);
+    const row = await js("const rows = window.openlogosShell.host.palette.rows; const i = rows.findIndex((r) => r.section === 'text'); return [i, rows[i].item.invocation.args.reference]");
+    await js("document.getElementById('pr-' + arguments[0]).dispatchEvent(new MouseEvent('click', { bubbles: true }))", row[0]);
+    await settled();
+    await sleep(100);
+    s = await snap();
+    expect(p, s.reading[0].top.segment_id === row[1], `hit ${row[1]} opened at ${JSON.stringify(s.reading[0].top)}`);
+    const [line, top] = await readingLine(1, row[1]);
+    expect(p, Math.abs(top - line) <= 2, `on the reading line (${top} vs ${line})`);
+  },
+
+  async "pack-real-awkward-places"(p) {
+    await load(PACK("__real-pack"));
+    await settled();
+    // Rom 16: BSB has no 24, this SBLGNT no 25.
+    await navigateIn(2, "Rom.16.22");
+    await scrollVerseToLine(2, "Rom.16.24");
+    let s = await snap();
+    expect(p, s.reading[0].top.segment_id === "Rom.16.23", `BSB beside 16:24: ${JSON.stringify(s.reading[0].top)}`);
+    await navigateIn(1, "Rom.16.23");
+    await scrollVerseToLine(1, "Rom.16.25");
+    s = await snap();
+    expect(p, s.reading[1].top.segment_id === "Rom.16.24" && !s.reading[1].error, `SBLGNT at its end: ${JSON.stringify(s.reading[1].top)}`);
+    // Into Psalms from Malachi in the WLC; 2 Chronicles is its end.
+    await js("const s = window.openlogosShell; s.run({ command_id: 'column.focus', args: { column: 1 } }); s.run({ command_id: 'tab.next' })");
+    await settled();
+    await navigateIn(1, "Mal.3.24");
+    s = await snap();
+    const after = await js("return window.openlogosShell.host.reading.chapterNeighbors('wlc', 'Mal.3').next");
+    expect(p, after === "Ps.1", `tanakh_bhs: Malachi 3 → ${after}`);
+    expect(p, s.reading[0].blocks.includes("Ps.1"), `blocks ${s.reading[0].blocks}`);
+    const last = await js("return window.openlogosShell.host.reading.chapterNeighbors('wlc', '2Chr.36')");
+    expect(p, last.next == null, `the WLC ends at 2 Chronicles: ${JSON.stringify(last)}`);
+    const psalm = await js(`const v = window.openlogosShell.host.reading.chapterContent('wlc', 'Ps.3').verses[0]; return v.superscription`);
+    expect(p, psalm === true, "WLC Ps 3:1 is a title");
+    // The licences are reachable.
+    for (const [id, words] of [["sblgnt", "CC BY 4.0"], ["wlc", "CC BY 4.0"], ["bsb", "public domain"]]) {
+      const a = await js("return window.openlogosShell.host.text.edition(arguments[0]).attribution", id);
+      expect(p, a.includes(words), `${id} attribution`);
+    }
+  },
+
   async "seed-session"(p) {
     const s = await snap();
     expect(p, eq(s.workspaces, ["Study", "Hebrew"]), `workspaces ${JSON.stringify(s.workspaces)}`);
@@ -1930,11 +2219,104 @@ async function readScreenshots() {
   await shot("web-read-placeholder-notice", '#columns > .column[data-number="1"] .scroller');
 }
 
+// MARK: B071 speed runs over the real pack (specs/22 §7)
+
+async function packBench() {
+  const out = {};
+  const bench = `${PACK("__real-pack")}&session=bench`;
+  const queriesJson = JSON.parse(await readFile(join(repoRoot, "crates/preview-pack/bench-queries.json"), "utf8"));
+  const queries = ["en", "grc", "hbo"].flatMap((k) => queriesJson[k]);
+  // Script-driven rows, then chapters, workspaces and scrolling, on the bench session.
+  await load(bench);
+  // Polled: a single driver call of many minutes outlives the HTTP client's timeout.
+  await js("window.__pack = null; window.openlogosShell.benchPack(arguments[0]).then((r) => { window.__pack = r; }, (e) => { window.__pack = { error: String(e && e.stack || e) }; })", { samples, queries });
+  let inPage = null;
+  while (!inPage) { await sleep(1000); inPage = await js("return window.__pack"); }
+  if (inPage.error) { failures += 1; console.log(JSON.stringify({ bench: "pack", error: inPage.error })); return inPage; }
+  for (const row of inPage.rows) console.log(JSON.stringify({ bench: "pack", ...row }));
+  for (const row of inPage.scroll) console.log(JSON.stringify({ bench: "pack", ...row, stats: undefined }));
+  out.in_page = inPage;
+
+  // Trusted keystrokes through the driver, at a typist's pace, from each keydown's timestamp.
+  await load(PACK("__real-pack"));
+  await jsAsync(`const done = arguments[arguments.length - 1]; const s = window.openlogosShell;
+    const wait = () => s.host.search.state === 'ready' ? done() : setTimeout(wait, 20); wait();`);
+  await js(`const s = window.openlogosShell; window.__keys = []; window.__long = 0;
+    new PerformanceObserver((l) => { window.__long += l.getEntries().length; }).observe({ entryTypes: ['longtask'] });
+    s.host.textLatency = () => { const start = s.host.keyDownAt; requestAnimationFrame(() => { const c = new MessageChannel(); c.port1.onmessage = () => window.__keys.push(performance.now() - start); c.port2.postMessage(0); }); };
+    document.getElementById('palette-field').focus();`);
+  let typed = 0;
+  const pace = 70;
+  while (typed < samples + 40) {
+    for (const q of queries) {
+      await chord("Meta", "a");
+      const actions = [...q].flatMap((c) => [{ type: "keyDown", value: c }, { type: "keyUp", value: c }, { type: "pause", duration: pace }]);
+      await wd("POST", `${S}/actions`, { actions: [{ type: "key", id: "kb", actions }] });
+      typed += [...q].length;
+      await sleep(40);
+      if (typed >= samples + 40) break;
+    }
+  }
+  await sleep(200);
+  const trusted = await js("return { keys: window.__keys, long_tasks: window.__long }");
+  const sorted = trusted.keys.slice().sort((a, b) => a - b);
+  const q = (x) => +sorted[Math.min(sorted.length - 1, Math.floor(x * sorted.length))].toFixed(2);
+  out.trusted = { n: sorted.length, p50: q(0.5), p95: q(0.95), max: +sorted[sorted.length - 1].toFixed(2), long_tasks: trusted.long_tasks, pace_ms: pace };
+  console.log(JSON.stringify({ bench: "pack", name: "trusted keystroke → text results painted (budget 50)", ...out.trusted }));
+  if (sorted.length < samples) { failures += 1; console.log(JSON.stringify({ bench: "pack", error: `only ${sorted.length} trusted samples` })); }
+
+  // Cold launch: a new navigation with the saved store, each time; a page cold start in a warm
+  // browser (the server sends the module no-store and the pack no-cache).
+  const store = uniqueStore("packlaunch");
+  const launchQuery = `?theme=light&pack=/__real-pack/&store=${store}`;
+  await load(launchQuery);
+  await js("const s = window.openlogosShell; s.run({ command_id: 'nav.navigate', args: { reference: 'Ps.119.105' } })");
+  await sleep(300);
+  await jsAsync("const done = arguments[arguments.length - 1]; window.openlogosShell.saveNow().then(done)");
+  const painted = [];
+  let resources = null;
+  for (let i = 0; i < samples; i++) {
+    await load(launchQuery);
+    let l = null;
+    for (let k = 0; k < 200; k++) { l = await js("return window.openlogosShell.host.launch"); if (l && l.painted_ms != null) break; await sleep(10); }
+    painted.push(l.painted_ms);
+    resources = l.resources;
+  }
+  const ps = painted.slice().sort((a, b) => a - b);
+  const pq = (x) => +ps[Math.min(ps.length - 1, Math.floor(x * ps.length))].toFixed(1);
+  out.cold_launch = { n: ps.length, p50: pq(0.5), p95: pq(0.95), max: +ps[ps.length - 1].toFixed(1), last_resources: resources };
+  console.log(JSON.stringify({ bench: "pack", name: "cold launch → restored text painted (budget 1000)", n: ps.length, p50: pq(0.5), p95: pq(0.95), max: out.cold_launch.max }));
+
+  // First load: a browser with nothing cached, then the same over an emulated network.
+  const first = async (label, throttle) => {
+    await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.enable", params: {} });
+    await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.clearBrowserCache", params: {} });
+    await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.setCacheDisabled", params: { cacheDisabled: true } });
+    await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.emulateNetworkConditions", params: { offline: false, latency: throttle ? throttle.latency : 0, downloadThroughput: throttle ? throttle.bps / 8 : -1, uploadThroughput: throttle ? throttle.bps / 8 : -1 } });
+    await wd("POST", `${S}/url`, { url: `${base}${PACK("__real-pack")}` });
+    for (let k = 0; k < 6000; k++) {
+      const r = await js("const s = window.openlogosShell; return s && s.host.search && s.host.search.state === 'ready' && s.host.launch && s.host.launch.painted_ms != null");
+      if (r) break;
+      await sleep(50);
+    }
+    const r = await js(`const s = window.openlogosShell; const e = performance.getEntriesByType('resource');
+      const sum = (f) => e.filter((x) => f.test(x.name)).reduce((a, x) => a + x.decodedBodySize, 0);
+      return { label: arguments[0], painted_ms: s.host.launch.painted_ms, search_ready_after_painted_ms: s.host.search.timing.first_load_ms, search_timing: s.host.search.timing, search_bytes: s.host.search.bytes, module_bytes: sum(/_bg\.wasm/), manifest_bytes: sum(/manifest\.json/), chunk_bytes: sum(/chapters\//), chunks: s.host.chunks.stats.fetched };`, label);
+    console.log(JSON.stringify({ bench: "pack", name: "first load", ...r }));
+    await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.emulateNetworkConditions", params: { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 } });
+    await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.setCacheDisabled", params: { cacheDisabled: false } });
+    return r;
+  };
+  out.first_load = [await first("localhost", null), await first("emulated 50 Mbit/s, 20 ms", { bps: 50e6, latency: 20 })];
+  return out;
+}
+
 // MARK: run
 
 let failures = 0;
 let sessionId = null;
 const summary = [];
+const skipped = [];
 try {
   const session = await wd("POST", "/session", { capabilities });
   sessionId = session.sessionId;
@@ -1948,6 +2330,11 @@ try {
   for (const name of names) {
     const problems = [];
     try {
+      if (name.startsWith("pack-real-") && !hasRealPack) {
+        skipped.push(name);
+        console.log(JSON.stringify({ name, skipped: true, reason: `no preview pack at ${realPackDir}` }));
+        continue;
+      }
       await load("?theme=light&autotest=1");
       await CASES[name](problems);
     } catch (error) {
@@ -1957,7 +2344,8 @@ try {
     if (!passed) failures += 1;
     console.log(JSON.stringify({ name, passed, problems }));
   }
-  summary.push(`Web shell: ${names.length - failures}/${names.length} cases passed`);
+  const ran = names.length - skipped.length;
+  summary.push(`Web shell: ${ran - failures}/${ran} cases passed${skipped.length ? `, ${skipped.length} SKIPPED (no preview pack): ${skipped.join(", ")}` : ""}`);
 
   if (benchOn) {
     const result = {};
@@ -2009,6 +2397,16 @@ try {
     const out = await storeBenchRun();
     if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify({ headed, store: out }, null, 2)); console.log(`bench json ${benchJson}`); }
   }
+  if (packBenchOn) {
+    if (!hasRealPack) {
+      console.log(JSON.stringify({ bench: "pack", skipped: true, reason: `no preview pack at ${realPackDir}` }));
+      summary.push("pack bench: SKIPPED (no preview pack)");
+    } else {
+      const out = await packBench();
+      if (benchJson) { await mkdir(dirname(benchJson), { recursive: true }); await writeFile(benchJson, JSON.stringify(out, null, 2)); console.log(`bench json ${benchJson}`); }
+      summary.push(`pack bench: ${samples} samples`);
+    }
+  }
   if (shotsDir) await screenshots();
   if (wellShotsDir) await wellScreenshots();
   if (menuShotsDir) await menuScreenshots();
@@ -2021,6 +2419,7 @@ try {
   if (sessionId) { try { await wd("DELETE", `/session/${sessionId}`); } catch {} }
   if (driver) driver.kill();
   server.close();
+  await rm(syntheticDir, { recursive: true, force: true });
 }
 console.log(`Summary: ${summary.join("; ")}${failures ? ` — ${failures} failure(s)` : ""}`);
 process.exit(failures ? 1 : 0);

@@ -611,10 +611,10 @@ function buildStream(view) {
   } catch (e) {
     error = e;
     // B071: a follower's verse past the edition's last (SBLGNT Rom 16:25): nobody typed it, so
-    // it opens at the last verse at or below it, as a live follow does. A typed verse is marked
-    // and gets specs/21's state.
+    // it opens at the last verse at or below it, as a live follow does. A typed verse is the
+    // tab's mark too, and gets specs/21's state.
     const chapter = chapterOfSegment(tab.reference);
-    if (e.kind === "verse_out_of_range" && !tab.highlight_range && chapter) {
+    if (e.kind === "verse_out_of_range" && tab.highlight_range !== tab.reference && chapter) {
       location = { chapter_key: chapter, segment_id: tab.reference.split("-")[0] };
       error = null;
     }
@@ -649,6 +649,7 @@ function buildStream(view) {
     onTop: (anchor) => reportTop(view, anchor),
     onBlocks: () => { attributeBlocks(view); paintHighlights(); placeBand(view, true); },
     onFrame: (ms) => { placeBand(view); if (host.frames) host.frames.push(ms); },
+    onSettled: () => { if (host.streamSettled) host.streamSettled(); },
   });
   // A scrolled tab comes back to its anchor; a navigation puts the passage on the reading line
   // and flashes its typed verses.
@@ -2734,6 +2735,87 @@ async function scrollRun(view, frames, dy) {
   return rows;
 }
 
+/** B071: until the shown streams have their text, then painted: the frame after it and the
+ *  task after that frame. */
+async function textPainted() {
+  const busy = () => [...host.views.values()].some((v) => v.section.isConnected && v.stream && v.stream.waiting);
+  while (busy()) await new Promise((ok) => { host.streamSettled = ok; setTimeout(ok, 50); });
+  host.streamSettled = null;
+  await nextFrame();
+  await new Promise((ok) => { const c = new MessageChannel(); c.port1.onmessage = () => ok(); c.port2.postMessage(0); });
+  return performance.now();
+}
+
+/** B071: the end-to-end rows of specs/22 §7 over the real pack, each with a repaint. `queries`
+ *  (bench-queries.json) are replayed keystroke by keystroke, a sample ending when that
+ *  keystroke's text results have been painted. */
+export async function benchPack({ samples = 200, queries = [] } = {}) {
+  const out = [];
+  const row = (name, values, extra = {}) => out.push({ name, ...stats(values), ...extra });
+  while (host.search.state !== "ready") await new Promise((ok) => setTimeout(ok, 20));
+  // Keystroke → painted text results.
+  const strokes = queries.flatMap((q) => [...q].slice(1).map((_, i) => [...q].slice(0, i + 2).join("")));
+  const field = $("palette-field");
+  focusPalette("");
+  const painted = [], handler = [], answered = [];
+  let longTasks = 0;
+  const observer = new PerformanceObserver((list) => { longTasks += list.getEntries().length; });
+  observer.observe({ entryTypes: ["longtask"] });
+  for (let i = 0; i < Math.max(samples, strokes.length); i++) {
+    await new Promise((ok) => setTimeout(ok, Math.random() * 16));
+    const t0 = performance.now();
+    const answer = new Promise((ok) => { host.textLatency = ok; });
+    field.value = strokes[i % strokes.length];
+    field.dispatchEvent(new Event("input"));
+    handler.push(performance.now() - t0);
+    await answer;
+    answered.push(performance.now() - t0);
+    painted.push((await textPainted()) - t0);
+  }
+  observer.disconnect();
+  host.textLatency = null;
+  row("keystroke → text results painted (script-driven; budget 50)", painted, { long_tasks_over_50ms: longTasks });
+  row("  of which the page's own handler per keystroke (main thread)", handler);
+  row("  of which keystroke → worker's answer rendered", answered);
+  closePalette(false);
+  field.value = "";
+  // Open a chapter.
+  run({ command_id: "column.focus", args: { column: 1 } });
+  const openOnce = async (reference) => {
+    const t0 = performance.now();
+    run({ command_id: "nav.navigate", args: { reference } });
+    return (await textPainted()) - t0;
+  };
+  const warmRefs = ["John.3", "Gen.1", "John.3.16", "Gen.1.2", "Ps.119.105", "Rev.22.21", "Matt.5.3", "Isa.53.5", "Acts.1.8", "Ps.23", "Rom.8.28", "Jude.1.3"];
+  for (const r of warmRefs) await openOnce(r);
+  await new Promise((ok) => setTimeout(ok, 200)); // what was fetched ahead
+  const warm = [];
+  for (let i = 0; i < samples; i++) warm.push(await openOnce(warmRefs[i % warmRefs.length]));
+  row("open a chapter, warm: chunks already in the core, across the canon (budget 100)", warm);
+  // A chapter not yet visited: its chunks come from the server (localhost here).
+  const chapters = [];
+  const books = host.reading.editions().length && JSON.parse(await (await fetch(`${packBase(params)}packs/bsb/manifest.json`)).text()).books;
+  for (const b of books) for (const c of b.chapters) if (!host.chunks.supplied.has(`bsb|${b.book}.${c.chapter}`)) chapters.push(`${b.book}.${c.chapter}`);
+  const first = [];
+  for (let i = 0; i < samples && i * 4 < chapters.length; i++) first.push(await openOnce(chapters[i * 4]));
+  row("open a chapter on first visit: chunk fetched from localhost (budget 100 is for warm)", first);
+  // Workspace switch.
+  const switches = [];
+  for (let i = 0; i < samples; i++) {
+    const t0 = performance.now();
+    run({ command_id: "workspace.next" });
+    switches.push((await textPainted()) - t0);
+  }
+  row(`workspace switch to first painted text, ${host.session.workspaces.length} workspaces (budget 100)`, switches);
+  // Scrolling through chapters that have to be fetched.
+  run({ command_id: "column.focus", args: { column: 1 } });
+  run({ command_id: "nav.navigate", args: { reference: "Isa.1.1" } });
+  await textPainted();
+  const view = activeView();
+  const scroll = view && view.stream ? await scrollRun(view, Math.max(samples * 3, 600), 90) : [];
+  return { user_agent: navigator.userAgent, viewport: [innerWidth, innerHeight], rows: out, scroll, chunks: { ...host.chunks.stats }, search: { timing: host.search.timing, bytes: host.search.bytes } };
+}
+
 export async function bench({ samples = 200 } = {}) {
   closePalette(false);
   const out = [];
@@ -3108,6 +3190,9 @@ async function main() {
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();
   render();
+  // B071: from the navigation to the restored workspace's text painted (specs/22 §7).
+  host.launch = { rendered_ms: performance.now() };
+  textPainted().then((t) => { host.launch.painted_ms = t; host.launch.resources = performance.getEntriesByType("resource").map((e) => ({ name: e.name.split("/").slice(-2).join("/"), ms: +e.duration.toFixed(1), bytes: e.decodedBodySize })); });
   if (host.restore && host.restore.t0 != null) {
     const r = host.restore;
     r.rendered_ms = performance.now() - r.t0;
@@ -3122,7 +3207,7 @@ async function main() {
     if (params.get("search") !== "manual") setTimeout(() => host.search.start(), 0);
   }
   $("scope-chip").lastChild.addEventListener("click", () => { host.palette.scope = null; field.focus(); queryPalette(); });
-  window.openlogosShell = { core, host, run, saveNow, storeBench, buildAcceptance, render, selectionChanged, snapshot, bench, keyReport, menuReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab, showContextMenu, closeContextMenu };
+  window.openlogosShell = { core, host, benchPack, run, saveNow, storeBench, buildAcceptance, render, selectionChanged, snapshot, bench, keyReport, menuReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab, showContextMenu, closeContextMenu };
   window.openlogosReady = true;
 }
 

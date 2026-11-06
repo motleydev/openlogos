@@ -127,8 +127,9 @@ export class ReadingStream {
    *  bar; `onTop(anchor, settled)`: the reader moved the verse at the top; `onBlocks()`:
    *  blocks were loaded or released (highlights and ink repaint); `onFrame(ms)`: one scroll
    *  frame's work, for the speed runs. */
-  constructor({ core, reading, chunks, resource, scroller, text, header, onTop, onBlocks, onFrame }) {
-    Object.assign(this, { core, reading, chunks, resource, scroller, text, header, onTop, onBlocks, onFrame });
+  constructor({ core, reading, chunks, resource, scroller, text, header, onTop, onBlocks, onFrame, onSettled }) {
+    Object.assign(this, { core, reading, chunks, resource, scroller, text, header, onTop, onBlocks, onFrame, onSettled });
+    this.waiting = false; // an open() is waiting for its chunks
     this.opening = 0; // the newest open(); an older one waiting for its chunks gives up
     this.blocks = []; // { key, prev, next, data, section, verses, paragraph }
     this.top = null; // { segment_id, scalar }: the verse at the top as last measured
@@ -208,15 +209,21 @@ export class ReadingStream {
     const around = this.reading.chapterNeighbors(id, chapterKey);
     const wanted = [chapterKey, around.prev, around.next].filter(Boolean);
     if (wanted.every((k) => this.ready(k) || (k !== chapterKey && this.chunks.failure(id, k)))) {
+      this.waiting = false;
       this.openNow(chapterKey, options);
       return;
     }
     // A pack's chunks first. What is on screen stays until they are here.
+    this.waiting = true;
     if (!this.blocks.length) this.showWaiting(chapterKey);
     Promise.allSettled(wanted.map((k) => this.chunks.request(id, k))).then((settled) => {
-      if (token !== this.opening || !this.text.isConnected) return;
-      if (this.ready(chapterKey)) this.openNow(chapterKey, options);
-      else this.showFailure(chapterKey, options, settled[0].reason);
+      if (token !== this.opening) { if (this.onSettled) this.onSettled(); return; }
+      this.waiting = false;
+      if (this.text.isConnected) {
+        if (this.ready(chapterKey)) this.openNow(chapterKey, options);
+        else this.showFailure(chapterKey, options, settled[0].reason);
+      }
+      if (this.onSettled) this.onSettled();
     });
   }
 
