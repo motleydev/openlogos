@@ -166,7 +166,8 @@ is not installed". XCTest never looks there on its own: tests name what they ope
 Text search runs on a second `ShellHandle` (`EditionTextSearch`) off the main thread, because the
 session handle has one lock: a keystroke paints passages, commands and tabs at once, and the Text
 rows follow, the last keystroke's rows staying until then. Enter waits for the current answer.
-`Edition.attribution` is one click away, the info mark on a column's identity row. Evidence and
+A hit opens its own edition's verse (`resource_id`, the core's rule). `Edition.attribution` is in
+About this edition (`view.about_edition`), from a column's menu or the palette. Evidence and
 speed: docs/evidence/B071-mac.md, `scripts/b071-mac-shots.sh`.
 
 ## The contextual tool well (B076)

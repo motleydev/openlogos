@@ -343,6 +343,8 @@ final class ShellModel: ObservableObject {
     private func performHost(_ id: String, args: ShellCommandArgs) {
         switch id {
         case "palette.focus": focusPalette()
+        // B071: the panel under the active column's menu.
+        case "view.about_edition": aboutColumn = activeColumn.number
         case "view.tool_palette": toolWellCollapsed.toggle()
         case "selection.highlight":
             if let selection { highlight(selection) }
@@ -433,7 +435,7 @@ final class ShellModel: ObservableObject {
     /// The Text rows on show (they may be the previous keystroke's until `pendingText` lands).
     private var paletteTextGroup: ShellPaletteGroup?
     private var pendingText: UInt64?
-    /// The column whose About this text panel a scripted run opens (`-OPENLOGOS_ABOUT`).
+    /// The column showing the About this edition panel (`view.about_edition`).
     @Published var aboutColumn: UInt32?
     /// Called on the main thread once a keystroke's Text section is in `palette.result`
     /// (ShellMeasure stops its clock on the paint after this).
@@ -712,8 +714,8 @@ final class ShellModel: ObservableObject {
     private var typedPassage: [String: String] = [:]
 
     /// The fixtures' licence line under a placeholder block whose verses include real fixture
-    /// text. An installed edition's attribution is one click away from the identity row, so
-    /// it is not repeated under every chapter.
+    /// text. An installed edition's attribution is in About this edition (`view.about_edition`),
+    /// not repeated under every chapter.
     func attribution(for chapter: ReadingChapter) -> String? {
         guard chapter.placeholder, chapter.verses.contains(where: { !$0.placeholder }),
               let text = textSource.text(resourceID: chapter.resourceId, reference: "\(chapter.chapterKey).1") else { return nil }

@@ -25,7 +25,6 @@
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
 //   -OPENLOGOS_PACK_MEASURE <path>      B071: the budgets over the real editions (runPack), JSON to
 //                                       <path>, quit; -OPENLOGOS_PACK_QUERIES <file> one query a line
-//   -OPENLOGOS_ABOUT 2                  B071: opens the About this text panel of column 2
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
 //                                       (no screen-recording permission needed)
 // B074's store arguments are in StoreLaunch.swift; B071's pack argument in PreviewPack.swift.
@@ -110,9 +109,6 @@ enum ShellLaunch {
         #endif
         if let target = defaults.string(forKey: "OPENLOGOS_SELECT"), let (surface, range) = phrase(target, in: model) {
             surface.select(display: range)
-        }
-        if defaults.object(forKey: "OPENLOGOS_ABOUT") != nil {
-            model.aboutColumn = UInt32(defaults.integer(forKey: "OPENLOGOS_ABOUT"))
         }
         if let text = defaults.string(forKey: "OPENLOGOS_PALETTE") {
             model.focusPalette()

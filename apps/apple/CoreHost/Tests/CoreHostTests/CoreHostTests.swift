@@ -425,6 +425,7 @@ final class CoreHostTests: XCTestCase {
         XCTAssertTrue(row.subtitle?.contains("zebra") == true, row.subtitle ?? "")
         XCTAssertEqual(row.commandId, "nav.navigate")
         XCTAssertEqual(row.args.reference, "John.3.16")
+        XCTAssertEqual(row.args.resourceId, "bsb", "a hit opens its own edition")
         XCTAssertNil(row.disabledReason)
         // The shared tokenizer folds Greek: no accents typed, the accented word found.
         XCTAssertEqual(textRows(handle, "ζεβρας").first?.title, "SBLGNT · Jn 3:16")

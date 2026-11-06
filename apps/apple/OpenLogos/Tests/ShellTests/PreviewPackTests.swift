@@ -196,11 +196,39 @@ final class PreviewPackTests: PackTestCase {
         try TestPack.standard(under: root)
         let model = ShellModel(pack: PreviewPack.open(root: root))
         XCTAssertEqual(model.textSource.resource("sblgnt").attribution, "SBLGNT attribution words.")
+        XCTAssertEqual(model.textSource.resource("sblgnt").revision, "sblgnt-test-1")
         XCTAssertEqual(model.textSource.resource("sblgnt").name, "SBL Greek New Testament")
         XCTAssertNil(model.textSource.resource("fixture:note:1").attribution)
         host(model)
         spin()
         XCTAssertFalse(try XCTUnwrap(model.stream(for: "t3")?.surface.layout).display.string.contains("attribution words"))
+    }
+
+    func testAboutThisEditionIsTheCoresCommandOnAReadingTab() throws {
+        try TestPack.standard(under: root)
+        let model = ShellModel(pack: PreviewPack.open(root: root))
+        host(model)
+        spin()
+        model.focusColumn(2)
+        model.focusPalette()
+        model.paletteText = ">licence"
+        model.paletteTextChanged()
+        spin(0.1)
+        let row = try XCTUnwrap(model.paletteRows.first { $0.commandId == "view.about_edition" }, "the palette finds it")
+        XCTAssertEqual(row.title, "About this edition")
+        model.runRow(row)
+        spin(0.1)
+        XCTAssertEqual(model.aboutColumn, 2, "the active column's panel")
+        model.aboutColumn = nil
+        // Its addresses can be followed; the words stay as they are.
+        let linked = AboutEditionPanel.linked("Licence: https://example.org/by/4.0/. Source.")
+        XCTAssertEqual(String(linked.characters), "Licence: https://example.org/by/4.0/. Source.")
+        XCTAssertEqual(linked.runs.compactMap(\.link).map(\.absoluteString), ["https://example.org/by/4.0/"])
+        // The note's column: not a reading tab, so the core disables it.
+        model.focusColumn(3)
+        spin(0.1)
+        model.run("view.about_edition")
+        XCTAssertNil(model.aboutColumn)
     }
 
     // MARK: Followers
@@ -282,6 +310,28 @@ final class PreviewPackTests: PackTestCase {
         XCTAssertEqual(model.stream(for: "t1")?.topSegment, "Mark.9.43")
         XCTAssertEqual(model.activeTab?.reference, "Mark.9.43")
         XCTAssertFalse(model.paletteOpen)
+    }
+
+    func testAHitFromAnotherEditionOpensThatEditionsVerseInANewTab() throws {
+        try TestPack.standard(under: root)
+        let model = ShellModel(pack: PreviewPack.open(root: root))
+        host(model)
+        spin()
+        let column = model.activeWorkspace.columns[0]
+        let before = try XCTUnwrap(model.activeTab)
+        search("#ζεβρας", model)
+        let row = try XCTUnwrap(textRows(model).first)
+        XCTAssertEqual(row.title, "SBLGNT · Jn 3:16")
+        XCTAssertEqual(row.args.resourceId, "sblgnt")
+        model.runRow(row)
+        spin()
+        let opened = try XCTUnwrap(model.activeTab)
+        XCTAssertEqual(opened.contentId, "sblgnt")
+        XCTAssertEqual(opened.reference, "John.3.16")
+        XCTAssertNotEqual(opened.id, before.id)
+        XCTAssertEqual(model.activeWorkspace.columns[0].tabs.count, column.tabs.count + 1)
+        XCTAssertEqual(model.stream(for: opened.id)?.topSegment, "John.3.16")
+        XCTAssertEqual(model.activeWorkspace.columns[0].tabs.first { $0.id == before.id }?.reference, before.reference, "the shown tab is left alone")
     }
 
     func testEnterActsOnTheRowsForWhatIsTypedNow() throws {
@@ -588,20 +638,18 @@ final class RealPackTests: PackTestCase {
         }
     }
 
-    /// As the core has it today (docs/evidence/B071-mac.md, for a ruling): a hit opens its
-    /// reference in the focused tab's edition, unmapped.
-    func testAHitFromAnotherEditionOpensItsNumberInTheFocusedEdition() throws {
+    func testAWLCHitOnABSBTabOpensTheWLCsOwnVerse() throws {
         let model = ShellModel(pack: try real())
         host(model)
         spin()
-        search("#וְיֹסֵף", model)
-        XCTAssertTrue(textRows(model).allSatisfy { $0.title.hasPrefix("WLC ·") })
-        model.closePalette()
-        model.run("nav.navigate", args: ShellCommandArgs(reference: "Mal.3.19"))
+        // The WLC numbers Malachi's end 3:19–24; the BSB ends the chapter at 18.
+        model.run("nav.navigate", args: ShellCommandArgs(reference: "Mal.3.19", resourceId: "wlc"))
         spin()
-        let tab = try XCTUnwrap(model.activeTab)
-        XCTAssertEqual(tab.contentId, "bsb")
-        XCTAssertNotNil(model.readingError(for: tab), "the BSB ends Malachi 3 at 18")
+        let opened = try XCTUnwrap(model.activeTab)
+        XCTAssertEqual(opened.contentId, "wlc")
+        XCTAssertNil(model.readingError(for: opened))
+        XCTAssertEqual(model.stream(for: opened.id)?.topSegment, "Mal.3.19")
+        XCTAssertEqual(model.stream(for: opened.id)?.surface.layout?.content.isRightToLeft, true)
     }
 
     func testASearchHitOpensTheVerseOverTheRealEditions() throws {

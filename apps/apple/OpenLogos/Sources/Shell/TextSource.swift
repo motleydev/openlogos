@@ -19,6 +19,8 @@ struct ResourceInfo: Equatable {
     /// B071: what the edition's licence asks a reader to be shown, word for word from its
     /// pack's manifest; nil for an edition that is not installed.
     var attribution: String?
+    /// B071: the installed pack's revision.
+    var revision: String?
 }
 
 /// What a tab shows.
@@ -100,7 +102,7 @@ struct InstalledTextSource: TextSource {
 
     init(editions installed: [String: ReadingEdition]) {
         editions = installed.mapValues {
-            ResourceInfo(id: $0.resourceId, shortName: $0.title, name: $0.name, isRightToLeft: $0.direction == "rtl", language: $0.language, attribution: $0.attribution)
+            ResourceInfo(id: $0.resourceId, shortName: $0.title, name: $0.name, isRightToLeft: $0.direction == "rtl", language: $0.language, attribution: $0.attribution, revision: $0.contentRevision)
         }
     }
 

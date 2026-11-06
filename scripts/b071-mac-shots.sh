@@ -56,8 +56,11 @@ case "${1:-shots}" in
     shot mac-follow-absent -OPENLOGOS_TYPE "Mk 9:44"
     shot mac-follow-past-end -OPENLOGOS_TYPE "Rom 16:25"
     # The licence's words.
-    shot mac-about-sblgnt -OPENLOGOS_ABOUT 2
-    shot mac-about-wlc -OPENLOGOS_RUN "column.focus:1,tab.next" -OPENLOGOS_ABOUT 1
+    shot mac-about-sblgnt -OPENLOGOS_RUN "column.focus:2,view.about_edition"
+    shot mac-about-wlc -OPENLOGOS_RUN "column.focus:1,tab.next,view.about_edition"
+    shot mac-palette-about -OPENLOGOS_PALETTE ">licence"
+    # A hit from another edition: its own verse in its own tab.
+    shot mac-hit-other-edition -OPENLOGOS_TYPE "#בראשית ברא"
     # Texts the owner has not ruled on, as the packs hold them.
     shot mac-open-psalm-titles -OPENLOGOS_TYPE "Ps 3"
     shot mac-open-psalm-poetry -OPENLOGOS_TYPE "Ps 11"
