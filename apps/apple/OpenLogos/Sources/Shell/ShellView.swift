@@ -309,6 +309,9 @@ struct PaletteResults: View {
 
     var body: some View {
         let rows = model.paletteRows
+        #if os(macOS)
+        let _ = ShellMeasure.notePaletteRender(textRows: result.groups.first { $0.section == .text }?.items.count ?? 0)
+        #endif
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {

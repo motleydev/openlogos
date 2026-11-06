@@ -74,8 +74,13 @@ struct PreviewPack {
 
     /// The pack this launch reads, if any.
     static func forLaunch() -> PreviewPack? {
-        location().flatMap(open(root:))
+        let t0 = Date()
+        defer { openMs = Date().timeIntervalSince(t0) * 1000 }
+        return location().flatMap(open(root:))
     }
+
+    /// What `forLaunch` took (the launch measurement reads it).
+    private(set) nonisolated(unsafe) static var openMs: Double = 0
 }
 
 /// The Text section of the palette over the search packs, off the main thread.

@@ -43,6 +43,8 @@ enum StoreLaunch {
                 "laid_out_ms": ShellPersistence.firstPaint?.laidOut ?? -1, "first_frame_ms": ShellPersistence.firstPaint?.frame ?? -1,
                 "workspaces": model.session.workspaces.count, "notice": restored?.notice ?? "",
                 "highlights_ms": ShellPersistence.launchCosts["highlights"] ?? 0, "ink_ms": ShellPersistence.launchCosts["ink"] ?? 0,
+                "pack_open_ms": PreviewPack.openMs, "process_to_frame_ms": processToFrame(restored?.started, ShellPersistence.firstPaint?.frame),
+                "frame_epoch": Date().timeIntervalSince1970 - (CACurrentMediaTime() - (restored?.started ?? 0) - (ShellPersistence.firstPaint?.frame ?? 0) / 1000),
                 "relayout_ms": ReadingStream.timings.reduce(0) { $0 + ($1.0 + $1.1 + $1.2) * 1000 }, "relayouts": ReadingStream.timings.count,
             ]
             if let data = try? JSONSerialization.data(withJSONObject: line, options: [.sortedKeys]) {
@@ -71,6 +73,19 @@ enum StoreLaunch {
             ShellMeasure.write(report, to: path)
             NSApp.terminate(nil)
         }
+    }
+
+    /// From the process's start (the kernel's clock) to the first frame with the restored text.
+    private static func processToFrame(_ started: CFTimeInterval?, _ frameMs: Double?) -> Double {
+        guard let started, let frameMs else { return -1 }
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var name: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&name, 4, &info, &size, nil, 0) == 0 else { return -1 }
+        let start = info.kp_proc.p_starttime
+        let began = Double(start.tv_sec) + Double(start.tv_usec) / 1_000_000
+        let frameEpoch = Date().timeIntervalSince1970 - (CACurrentMediaTime() - started - frameMs / 1000)
+        return (frameEpoch - began) * 1000
     }
 
     private static func append(_ data: Data, to path: String) {

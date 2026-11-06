@@ -23,6 +23,9 @@
 //   -OPENLOGOS_SCROLL "1:900"           B078: scrolls column 1's reading stream by 900 pt, as the
 //                                       reader would (40 pt steps, each reported); negative is up
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
+//   -OPENLOGOS_PACK_MEASURE <path>      B071: the budgets over the real editions (runPack), JSON to
+//                                       <path>, quit; -OPENLOGOS_PACK_QUERIES <file> one query a line
+//   -OPENLOGOS_ABOUT 2                  B071: opens the About this text panel of column 2
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
 //                                       (no screen-recording permission needed)
 // B074's store arguments are in StoreLaunch.swift; B071's pack argument in PreviewPack.swift.
@@ -39,7 +42,7 @@ private extension Double {
 enum ShellLaunch {
     static var defaults: UserDefaults { .standard }
 
-    static var measurementPath: String? { defaults.string(forKey: "OPENLOGOS_SHELL_MEASURE") }
+    static var measurementPath: String? { defaults.string(forKey: "OPENLOGOS_SHELL_MEASURE") ?? defaults.string(forKey: "OPENLOGOS_PACK_MEASURE") }
 
     static func apply(to model: ShellModel) async {
         #if os(macOS)
@@ -108,6 +111,9 @@ enum ShellLaunch {
         if let target = defaults.string(forKey: "OPENLOGOS_SELECT"), let (surface, range) = phrase(target, in: model) {
             surface.select(display: range)
         }
+        if defaults.object(forKey: "OPENLOGOS_ABOUT") != nil {
+            model.aboutColumn = UInt32(defaults.integer(forKey: "OPENLOGOS_ABOUT"))
+        }
         if let text = defaults.string(forKey: "OPENLOGOS_PALETTE") {
             model.focusPalette()
             model.paletteText = text
@@ -130,7 +136,16 @@ enum ShellLaunch {
             NSApp.terminate(nil)
             #endif
         }
-        if let path = measurementPath {
+        #if os(macOS)
+        if let path = defaults.string(forKey: "OPENLOGOS_PACK_MEASURE") {
+            let queries = (defaults.string(forKey: "OPENLOGOS_PACK_QUERIES").flatMap { try? String(contentsOfFile: $0, encoding: .utf8) } ?? "")
+                .split(whereSeparator: \.isNewline).map(String.init)
+            ShellMeasure.write(await ShellMeasure(model: model).runPack(queries: queries), to: path)
+            NSApp.terminate(nil)
+            return
+        }
+        #endif
+        if let path = defaults.string(forKey: "OPENLOGOS_SHELL_MEASURE") {
             let report = await ShellMeasure(model: model).run()
             ShellMeasure.write(report, to: path)
             #if os(macOS)
@@ -317,7 +332,10 @@ enum ShellLaunch {
         let scale = window.backingScaleFactor
         let size = view.bounds.size
         guard let rep = bitmap(of: view, scale: scale) else { return }
-        let overlays = NSApp.windows.filter { $0 !== window && $0.isVisible && $0.level.rawValue > NSWindow.Level.normal.rawValue }
+        // B071: a popover's window may sit at the normal level.
+        let overlays = NSApp.windows.filter {
+            $0 !== window && $0.isVisible && ($0.level.rawValue > NSWindow.Level.normal.rawValue || String(describing: type(of: $0)).contains("Popover"))
+        }
         guard !overlays.isEmpty, let canvas = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: rep.pixelsWide, pixelsHigh: rep.pixelsHigh,
                                                                 bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
                                                                 colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else {

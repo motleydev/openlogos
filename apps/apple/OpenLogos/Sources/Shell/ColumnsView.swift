@@ -343,7 +343,7 @@ private struct IdentityRowContent: View {
                 .fixedSize()
                 .layoutPriority(1)
             if let attribution = resource?.attribution, let resource {
-                AboutTextButton(resource: resource, attribution: attribution, theme: model.theme)
+                AboutTextButton(resource: resource, attribution: attribution, theme: model.theme, open: model.aboutColumn == column.number)
             }
             Spacer(minLength: ShellTokens.Spacing.xs)
             if let tab {
@@ -370,6 +370,7 @@ struct AboutTextButton: View {
     let resource: ResourceInfo
     let attribution: String
     let theme: ShellTokens.Theme
+    var open = false
     @State private var shown = false
 
     var body: some View {
@@ -387,6 +388,7 @@ struct AboutTextButton: View {
         .popover(isPresented: $shown, arrowEdge: .bottom) {
             AboutTextPanel(resource: resource, attribution: attribution)
         }
+        .onChange(of: open) { _, open in if open { shown = true } }
     }
 }
 

@@ -34,7 +34,9 @@ browser) for each `packs/<id>`; `ShellHandle.use_edition_search(<out>/search)` n
 `useEditionSearch([Uint8Array, ...])` with the fetched `search/*.sqlite` in a browser. Show each
 edition's `attribution`: the CC BY text of the SBLGNT and the OSHB requires it.
 
-What each source contributes and every decision about the text: docs/evidence/B071.md.
+On the Mac: `-OPENLOGOS_PREVIEW_PACK <dir>` (`none` for the placeholder library), then this
+variable, then the default; apps/apple/README.md. What each source contributes and every decision
+about the text: docs/evidence/B071.md; the Mac app over it: docs/evidence/B071-mac.md.
 
 A test that needs the corpus never runs in `just ci`: `just preview-pack-verify` and
 `just preview-pack-bench-wasm` need the built pack, and say `SKIPPED` without it.

@@ -153,6 +153,22 @@ scripts/b072-mac-shots.sh measure    # Release build in artifacts/mac-release fi
 just test-reader mac                 # Tests/ReaderTests and Tests/ShellTests in the Mac app
 ```
 
+## The real editions (B071)
+
+The app reads a preview pack (docs/preview-pack.md) from `-OPENLOGOS_PREVIEW_PACK <dir>` (a launch
+argument; `none` keeps the placeholder library), else `OPENLOGOS_PREVIEW_PACK` in the
+environment, else `~/.cache/openlogos/preview-pack` (`Sources/Shell/PreviewPack.swift`). No corpus
+byte is in the repository or the app. Each `packs/<id>` goes in with `ReadingHandle.open_pack`
+over the placeholder library, so with no pack every chapter says "Placeholder text — this edition
+is not installed". XCTest never looks there on its own: tests name what they open, and
+`RealPackTests` skips with `SKIPPED` when no pack is built.
+
+Text search runs on a second `ShellHandle` (`EditionTextSearch`) off the main thread, because the
+session handle has one lock: a keystroke paints passages, commands and tabs at once, and the Text
+rows follow, the last keystroke's rows staying until then. Enter waits for the current answer.
+`Edition.attribution` is one click away, the info mark on a column's identity row. Evidence and
+speed: docs/evidence/B071-mac.md, `scripts/b071-mac-shots.sh`.
+
 ## The contextual tool well (B076)
 
 The well is drawn from the core's `toolWell(context:)` for what has focus (`ShellModel.focus`:

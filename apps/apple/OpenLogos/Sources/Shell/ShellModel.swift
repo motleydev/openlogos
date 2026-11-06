@@ -433,6 +433,8 @@ final class ShellModel: ObservableObject {
     /// The Text rows on show (they may be the previous keystroke's until `pendingText` lands).
     private var paletteTextGroup: ShellPaletteGroup?
     private var pendingText: UInt64?
+    /// The column whose About this text panel a scripted run opens (`-OPENLOGOS_ABOUT`).
+    @Published var aboutColumn: UInt32?
     /// Called on the main thread once a keystroke's Text section is in `palette.result`
     /// (ShellMeasure stops its clock on the paint after this).
     var onTextDelivered: (() -> Void)?

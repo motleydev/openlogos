@@ -588,6 +588,22 @@ final class RealPackTests: PackTestCase {
         }
     }
 
+    /// As the core has it today (docs/evidence/B071-mac.md, for a ruling): a hit opens its
+    /// reference in the focused tab's edition, unmapped.
+    func testAHitFromAnotherEditionOpensItsNumberInTheFocusedEdition() throws {
+        let model = ShellModel(pack: try real())
+        host(model)
+        spin()
+        search("#וְיֹסֵף", model)
+        XCTAssertTrue(textRows(model).allSatisfy { $0.title.hasPrefix("WLC ·") })
+        model.closePalette()
+        model.run("nav.navigate", args: ShellCommandArgs(reference: "Mal.3.19"))
+        spin()
+        let tab = try XCTUnwrap(model.activeTab)
+        XCTAssertEqual(tab.contentId, "bsb")
+        XCTAssertNotNil(model.readingError(for: tab), "the BSB ends Malachi 3 at 18")
+    }
+
     func testASearchHitOpensTheVerseOverTheRealEditions() throws {
         let model = ShellModel(pack: try real())
         host(model)
