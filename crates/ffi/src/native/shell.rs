@@ -1038,7 +1038,7 @@ fn view(shell: &Shell) -> ShellSession {
 pub(crate) struct State {
     pub(crate) shell: Shell,
     index: Option<(u64, PaletteIndex)>,
-    text: Option<FixtureTextProvider>,
+    text: Option<Box<dyn TextProvider + Send>>,
 }
 
 /// A session with its undo history, owned by the core. One per window.
@@ -1065,6 +1065,21 @@ impl ShellHandle {
         self.state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+#[cfg(feature = "retrieval")]
+#[uniffi::export]
+impl ShellHandle {
+    /// Answers the Text section from the search packs in `directory` (`search/` of a preview
+    /// pack, B071): the shared tokenizer over each edition's FTS5 index, opened read-only.
+    pub fn use_edition_search(&self, directory: String) -> Result<(), ShellCommandError> {
+        let search = openlogos_retrieval_sqlite::EditionSearch::open_directory(
+            std::path::Path::new(&directory),
+        )
+        .map_err(invalid)?;
+        self.lock().text = Some(Box::new(search));
+        Ok(())
     }
 }
 
@@ -1103,7 +1118,7 @@ impl ShellHandle {
         let handle = ShellHandle::from_session(session).expect("the fixture session checks");
         {
             let mut state = handle.lock();
-            state.text = Some(FixtureTextProvider::new());
+            state.text = Some(Box::new(FixtureTextProvider::new()));
             // Set directly, so a fresh fixture handle is still at revision 0.
             state.shell.session.resource_languages =
                 openlogos_conformance::fixture_resource_languages();
@@ -1113,7 +1128,7 @@ impl ShellHandle {
 
     /// Answers the Text section from the conformance fixture texts (until B071's search).
     pub fn use_fixture_text(&self) {
-        self.lock().text = Some(FixtureTextProvider::new());
+        self.lock().text = Some(Box::new(FixtureTextProvider::new()));
     }
 
     /// Registers the short names resources are shown under (`bsb` → `BSB`); palette rows
@@ -1274,7 +1289,7 @@ impl ShellHandle {
             expanded: context.expanded.map(Into::into),
             focus: context.focus.map_or(Focus::Tab, Into::into),
         };
-        let provider = state.text.as_ref().map(|p| p as &dyn TextProvider);
+        let provider = state.text.as_ref().map(|p| &**p as &dyn TextProvider);
         let result = palette_query_indexed(&state.shell, index, &text, &context, provider);
         ShellPaletteResult {
             mode: match result.query.mode {
@@ -1606,5 +1621,69 @@ mod tests {
             ShellHandle::new("{}".into()),
             Err(ShellCommandError::InvalidDocument { .. })
         ));
+    }
+}
+
+#[cfg(all(test, feature = "retrieval"))]
+mod edition_search_tests {
+    use super::*;
+    use openlogos_retrieval::VerseId;
+    use openlogos_retrieval_sqlite::{PackBuilder, PackManifest};
+
+    /// A hand-written search pack, not corpus text.
+    fn search_directory() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("openlogos-ffi-search-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let manifest = PackManifest {
+            edition: "bsb".to_owned(),
+            scheme: "eng".to_owned(),
+            source: "test".to_owned(),
+            license: "test".to_owned(),
+            attribution: "test".to_owned(),
+            work: None,
+            locator_scheme: None,
+        };
+        let mut builder = PackBuilder::create(&dir.join("bsb.sqlite"), &manifest, &[]).unwrap();
+        builder
+            .add_verse(VerseId::new(43, 1, 2), "A sentence with a zebra in it.")
+            .unwrap();
+        builder.finish().unwrap();
+        dir
+    }
+
+    fn context() -> ShellPaletteContext {
+        ShellPaletteContext {
+            has_selection: false,
+            platform: ShellPlatform::Mac,
+            expanded: None,
+            focus: None,
+        }
+    }
+
+    #[test]
+    fn the_shell_answers_text_from_the_search_packs_after_use_edition_search() {
+        let handle = ShellHandle::fixture();
+        let before = handle.palette_query("zebra".to_owned(), context());
+        assert!(format!("{before:?}").find("Lk 1:2").is_none());
+        handle
+            .use_edition_search(search_directory().display().to_string())
+            .unwrap();
+        let after = handle.palette_query("zebr".to_owned(), context());
+        let shown = format!("{after:?}");
+        assert!(shown.contains("A sentence with a zebra in it."), "{shown}");
+    }
+
+    #[test]
+    fn a_directory_without_search_packs_is_an_error_and_keeps_the_provider() {
+        let handle = ShellHandle::fixture();
+        let empty = std::env::temp_dir().join("openlogos-ffi-search-none");
+        assert!(
+            handle
+                .use_edition_search(empty.display().to_string())
+                .is_err()
+        );
+        let answer = handle.palette_query("loved".to_owned(), context());
+        assert!(format!("{answer:?}").contains("loved"));
     }
 }

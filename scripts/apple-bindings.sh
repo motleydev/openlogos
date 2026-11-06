@@ -63,7 +63,7 @@ library_args=()
 for target in $targets; do
   SECONDS=0
   SDKROOT="$(xcrun --sdk "$(sdk_for "$target")" --show-sdk-path)" \
-    cargo build -p openlogos-ffi --release --target "$target"
+    cargo build -p openlogos-ffi --release --target "$target" --features retrieval
   archive="$root/target/$target/release/libopenlogos_ffi.a"
   printf '   %s: %s bytes (%ss)\n' "$target" "$(size_of "$archive")" "$SECONDS"
   library_args+=(-library "$archive" -headers "$headers")

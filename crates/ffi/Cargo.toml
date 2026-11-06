@@ -22,8 +22,9 @@ required-features = ["bindgen"]
 [features]
 # Pulls uniffi's command-line generator into the binary above; off for every library build.
 bindgen = ["uniffi/cli"]
-# Links the embedded retrieval engine (ADR 0002) and exports `retrieval_smoke`; off by
-# default until the search crate's query API exists. B064 measures the size it adds (R3).
+# Links the embedded retrieval engine (ADR 0002) and exports `retrieval_smoke` and, since B071,
+# `use_edition_search`. Off in `cargo`'s default features so the workspace tests stay free of
+# it; the binding scripts turn it on for every host. B064 measures the size it adds (R3).
 retrieval = ["dep:openlogos-retrieval", "dep:openlogos-retrieval-sqlite"]
 
 [dependencies]
@@ -56,6 +57,8 @@ openlogos-retrieval-sqlite = { workspace = true, optional = true }
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 serde_json = { workspace = true }
 wasm-bindgen-test = "=0.3.71"
+# B071's latency test fetches the search packs; already in the lock through wasm-bindgen-test.
+wasm-bindgen-futures = "=0.4.71"
 
 [lints]
 workspace = true

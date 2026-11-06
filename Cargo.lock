@@ -759,6 +759,7 @@ dependencies = [
  "thiserror",
  "uniffi",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "wasm-bindgen-test",
 ]
 
@@ -789,10 +790,12 @@ version = "0.1.0"
 name = "openlogos-preview-pack"
 version = "0.1.0"
 dependencies = [
+ "openlogos-conformance",
  "openlogos-core",
  "openlogos-retrieval",
  "openlogos-retrieval-sqlite",
  "openlogos-text",
+ "openlogos-workspaces",
  "rusqlite",
  "serde",
  "serde_json",
@@ -815,6 +818,7 @@ version = "0.1.0"
 dependencies = [
  "openlogos-core",
  "openlogos-retrieval",
+ "openlogos-workspaces",
  "roaring",
  "rusqlite",
  "serde",

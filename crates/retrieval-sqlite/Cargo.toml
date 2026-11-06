@@ -10,6 +10,8 @@ publish.workspace = true
 [dependencies]
 openlogos-core = { workspace = true }
 openlogos-retrieval = { workspace = true }
+# The palette's `TextProvider`, which `edition_search` answers (B071).
+openlogos-workspaces = { workspace = true }
 roaring = { workspace = true }
 unicode-normalization = { workspace = true }
 thiserror = { workspace = true }

@@ -14,6 +14,9 @@ path = "src/main.rs"
 [dependencies]
 openlogos-core = { workspace = true }
 openlogos-text = { workspace = true }
+openlogos-workspaces = { workspace = true }
+# The fixture session the benchmark's palette runs over.
+openlogos-conformance = { workspace = true }
 openlogos-retrieval = { workspace = true }
 openlogos-retrieval-sqlite = { workspace = true }
 serde = { workspace = true }

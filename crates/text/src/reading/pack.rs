@@ -694,6 +694,7 @@ mod tests {
             pack.edition().attribution.as_deref(),
             Some("Credit the makers.")
         );
+        assert_eq!(pack.manifest().format_version, "1.1");
         // An edition without one writes no field, so older readers and fixtures are unchanged.
         let mut writer = PackWriter::new(&edition(), "l", "s", false);
         writer.chapter(BookId::John, "John", 3, vec![verse("John.3.1", 1, "t")]);

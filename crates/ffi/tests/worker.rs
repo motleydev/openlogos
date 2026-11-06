@@ -398,3 +398,105 @@ fn retrieval_engine_runs_fts5_with_the_shared_tokenizer() {
         "{summary}"
     );
 }
+
+/// B071: bytes that are no search pack are refused, and the fixture provider stays in place.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+fn edition_search_refuses_bytes_that_are_no_pack() {
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    let garbage = js_sys::Uint8Array::from(&b"not a database"[..]);
+    assert!(shell.use_edition_search(vec![garbage]).is_err());
+    let answer = shell.palette_query("loved", JsValue::UNDEFINED).unwrap();
+    assert!(
+        js_sys::JSON::stringify(&answer)
+            .unwrap()
+            .as_string()
+            .unwrap()
+            .contains("John"),
+    );
+}
+
+/// B071: keystroke to text results in this worker, against the 50 ms of specs/22 §7, over the
+/// real search packs. They are corpus-derived and never in the repository, so
+/// `just preview-pack-bench-wasm` serves them and names the URL when it builds this test;
+/// without it the test says so and passes.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+async fn edition_search_latency_over_the_preview_pack() {
+    let Some(base) = option_env!("OPENLOGOS_SEARCH_BENCH_URL") else {
+        console_log!(
+            "SKIPPED edition_search_latency: OPENLOGOS_SEARCH_BENCH_URL is not set (just preview-pack-bench-wasm)"
+        );
+        return;
+    };
+    let global = js_sys::global();
+    let performance = property(&global, "performance");
+    let now = js_sys::Function::from(property(&performance, "now"));
+    let clock = || now.call0(&performance).unwrap().as_f64().unwrap();
+
+    let started = clock();
+    let fetch = js_sys::Function::from(property(&global, "fetch"));
+    let mut packs = Vec::new();
+    let mut bytes = 0;
+    for name in ["bsb", "sblgnt", "wlc"] {
+        let url = format!("{base}/{name}.sqlite");
+        let response = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+            fetch.call1(&global, &JsValue::from_str(&url)).unwrap(),
+        ))
+        .await
+        .unwrap();
+        let read = js_sys::Function::from(property(&response, "arrayBuffer"));
+        let buffer = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+            read.call0(&response).unwrap(),
+        ))
+        .await
+        .unwrap();
+        let pack = js_sys::Uint8Array::new(&buffer);
+        bytes += pack.length();
+        packs.push(pack);
+    }
+    let fetched = clock();
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    shell.use_edition_search(packs).unwrap();
+    let attached = clock();
+
+    let list: serde_json::Value =
+        serde_json::from_str(include_str!("../../preview-pack/bench-queries.json")).unwrap();
+    let mut strokes = Vec::new();
+    for script in ["en", "grc", "hbo"] {
+        for query in list[script].as_array().unwrap() {
+            let chars: Vec<char> = query.as_str().unwrap().chars().collect();
+            for n in 2.min(chars.len())..=chars.len() {
+                strokes.push(chars[..n].iter().collect::<String>());
+            }
+        }
+    }
+    let mut samples = Vec::new();
+    let mut with_hits = 0;
+    for _round in 0..3 {
+        for stroke in &strokes {
+            let start = clock();
+            let answer = shell.palette_query(stroke, JsValue::UNDEFINED).unwrap();
+            samples.push((clock() - start, stroke.clone()));
+            let groups = js_sys::JSON::stringify(&answer)
+                .unwrap()
+                .as_string()
+                .unwrap();
+            if groups.contains("\"section\":\"text\"") {
+                with_hits += 1;
+            }
+        }
+    }
+    samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    let rank = |p: f64| samples[((p / 100.0 * samples.len() as f64).ceil() as usize).max(1) - 1].0;
+    let (p50, p95) = (rank(50.0), rank(95.0));
+    let (max, slowest) = samples.last().unwrap();
+    console_log!(
+        "B071 wasm: {} samples, {with_hits} with text hits; palette with text results p50 {p50:.2} ms, p95 {p95:.2} ms, max {max:.2} ms ({slowest}); {bytes} pack bytes fetched in {:.0} ms, attached in {:.0} ms",
+        samples.len(),
+        fetched - started,
+        attached - fetched,
+    );
+    assert!(samples.len() >= 200);
+    assert!(with_hits > 200, "{with_hits}");
+}

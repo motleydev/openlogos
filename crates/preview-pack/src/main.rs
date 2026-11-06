@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use openlogos_preview_pack::bench;
 use openlogos_preview_pack::build::{BuildOptions, build};
 use openlogos_preview_pack::model::ImportError;
 
@@ -29,11 +30,19 @@ fn run() -> Result<(), ImportError> {
     let mut corpora = PathBuf::from(DEFAULT_CORPORA);
     let mut rights = PathBuf::from("rights");
     let mut out = default_out();
+    let mut rounds = 3usize;
+    let mut json: Option<PathBuf> = None;
     while let Some(flag) = args.next() {
         match flag.as_str() {
             "--corpora" => corpora = PathBuf::from(value(&mut args, &flag)?),
             "--rights" => rights = PathBuf::from(value(&mut args, &flag)?),
             "--out" => out = PathBuf::from(value(&mut args, &flag)?),
+            "--rounds" => {
+                rounds = value(&mut args, &flag)?
+                    .parse()
+                    .map_err(|_| ImportError::Usage("--rounds needs a number".to_owned()))?;
+            }
+            "--json" => json = Some(PathBuf::from(value(&mut args, &flag)?)),
             other => return Err(ImportError::Usage(format!("unknown argument {other}"))),
         }
     }
@@ -74,8 +83,29 @@ fn run() -> Result<(), ImportError> {
             );
             Ok(())
         }
+        "bench" => {
+            let report = bench::run(&out.join("search"), rounds)?;
+            println!("group | samples | p50 ms | p95 ms | max ms | slowest");
+            for r in &report.rows {
+                println!(
+                    "{} | {} | {:.2} | {:.2} | {:.2} | {}",
+                    r.group, r.samples, r.p50_ms, r.p95_ms, r.max_ms, r.slowest
+                );
+            }
+            println!("spot hits (limit 50): {:?}", report.spot_hits);
+            println!("budget: p95 <= {} ms", report.budget_ms);
+            if let Some(path) = json {
+                let text = serde_json::to_string_pretty(&report)
+                    .map_err(|e| ImportError::Pack(e.to_string()))?;
+                std::fs::write(&path, text + "\n").map_err(|error| ImportError::Io {
+                    path: path.display().to_string(),
+                    error,
+                })?;
+            }
+            Ok(())
+        }
         _ => Err(ImportError::Usage(
-            "usage: openlogos-preview-pack build [--corpora DIR] [--rights DIR] [--out DIR]"
+            "usage: openlogos-preview-pack build [--corpora DIR] [--rights DIR] [--out DIR]\n       openlogos-preview-pack bench [--out DIR] [--rounds N] [--json FILE]"
                 .to_owned(),
         )),
     }

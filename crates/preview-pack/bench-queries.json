@@ -1,0 +1,18 @@
+{
+  "comment": "Typed queries for the text search benchmark (B071). Each one is replayed keystroke by keystroke from its second character, as the palette asks (TEXT_MIN_CHARS). Chosen to span rare words, common words, phrases and all three scripts; `the` and `and` are the worst case in English, `και` in Greek, `את` and `יהוה` in Hebrew.",
+  "en": [
+    "the", "and", "of", "lord", "god", "love", "faith", "grace", "righteousness", "shepherd",
+    "in the beginning", "for god so loved", "the lord is my shepherd", "and it came to pass",
+    "blessed are the", "melchizedek", "nebuchadnezzar", "steadfast", "covenant", "jerusalem",
+    "peace be with you", "kingdom of heaven", "son of man", "holy spirit", "he said to them"
+  ],
+  "grc": [
+    "και", "ο", "του", "λογος", "θεος", "αγαπη", "πιστις", "χαρις", "δικαιοσυνη", "εν αρχη",
+    "ο λογος", "κυριος", "ιησους χριστος", "βασιλεια των ουρανων", "υιος του ανθρωπου",
+    "πνευμα αγιον", "μελχισεδεκ", "ειπεν αυτοις", "Ἐν ἀρχῇ ἦν ὁ λόγος"
+  ],
+  "hbo": [
+    "את", "יהוה", "אלהים", "ברא", "בראשית", "ארץ", "מלך", "ישראל", "ויאמר", "חסד", "שלום",
+    "משה", "ירושלם", "ויאמר יהוה", "כה אמר יהוה", "בני ישראל", "נבוכדנאצר", "בְּרֵאשִׁ֖ית בָּרָ֣א"
+  ]
+}
