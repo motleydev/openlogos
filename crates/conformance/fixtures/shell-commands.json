@@ -2881,7 +2881,8 @@
           "title": "BSB · Jn 3:16",
           "command": "nav.navigate",
           "args": {
-            "reference": "John.3.16"
+            "reference": "John.3.16",
+            "resource_id": "bsb"
           },
           "disabled": null
         }
@@ -2898,7 +2899,8 @@
           "command": "nav.navigate",
           "args": {
             "reference": "Gen.1.1",
-            "column": 2
+            "column": 2,
+            "resource_id": "wlc"
           },
           "disabled": null
         }
