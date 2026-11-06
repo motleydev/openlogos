@@ -282,6 +282,7 @@ final class ReadingStream: NSObject {
     private var typography: ReaderTypography = .current()
     private var padding: CGFloat = 24
     private var layoutWidth: CGFloat = 0
+    private var layoutHeight: CGFloat = 0
     /// The window waits for the column's first width.
     private var needsReplace = false
     /// A block added below is laid out in a frame of its own before the reader reaches it (else
@@ -678,6 +679,13 @@ final class ReadingStream: NSObject {
             if !first, !blocks.isEmpty, pendingJump == nil { anchored(stored: true) { ensureLayout() } }
             onScrolled()
         }
+        let height = scroll.contentView.bounds.height
+        if height != layoutHeight {
+            let first = layoutHeight == 0
+            layoutHeight = height
+            // The room below an edition's last chapter is a share of this height.
+            if !first, !blocks.isEmpty, pendingJump == nil { anchored(stored: true) { applyEndRoom() } }
+        }
         if needsReplace, width > 0 { relayout(.replace) }
         if let pending = pendingJump, scroll.contentView.bounds.height > 0 {
             jump(to: pending.segment, flash: pending.flash)
@@ -691,7 +699,8 @@ final class ReadingStream: NSObject {
         defer { if !maintaining { onScrolled() } }
         guard !maintaining, let scroll = container?.scrollView else { return }
         // A resize reflows the text before `containerDidLayout` re-anchors it: not a scroll.
-        guard pendingJump == nil, scroll.contentView.bounds.width == layoutWidth else { return }
+        // B071: nor is a column that grew and pushed the text back at the end of an edition.
+        guard pendingJump == nil, scroll.contentView.bounds.width == layoutWidth, scroll.contentView.bounds.height == layoutHeight else { return }
         let previous = reportedTop
         // A block is loaded now only when the reader is close to an end of the window; other
         // loads and releases go one per frame (ReadingScheduler), so a scroll that crosses a

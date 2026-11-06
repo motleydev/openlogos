@@ -473,6 +473,8 @@ final class ShellModel: ObservableObject {
     func paletteTextChanged() {
         // The field's onChange repeats a change made in code; the second call is a no-op.
         guard palette.result == nil || paletteText != queriedText else { return }
+        // Closing empties the field in code: that change must not open the list again.
+        guard palette.open || !paletteText.isEmpty else { return }
         palette.open = true
         palette.expanded = nil
         paletteSelection = 0

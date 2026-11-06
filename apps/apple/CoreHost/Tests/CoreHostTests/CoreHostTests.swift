@@ -390,4 +390,56 @@ final class CoreHostTests: XCTestCase {
             )
         }
     }
+
+    // MARK: B071: text search through use_edition_search
+
+    /// The made-up search packs (fixtures/search, crates/preview-pack/tests/search_fixture.rs).
+    private var searchFixtures: String {
+        URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../../fixtures/search").standardized.path
+    }
+
+    private let searchSession = """
+    {"schema_version":"1.0","fixture_only":true,"active_workspace_id":"w1","tool":"select","next_serial":5,
+     "reading":{"text_size_step":0,"line_spacing":1.5,"theme":"light"},
+     "workspaces":[{"schema_version":"2.0","fixture_only":true,"id":"w1","title":"W","active_column_id":"c1","next_serial":5,
+       "notes_dock":{"note_id":null,"open":false},
+       "columns":[{"id":"c1","shown_tab_id":"t1","width_fraction":1,
+         "tabs":[{"id":"t1","kind":"reading","content_id":"bsb","content_revision":"0","reference":"John.3.16","link_group":null,"pinned":true}]}]}]}
+    """
+
+    private func textRows(_ handle: ShellHandle, _ query: String) -> [ShellPaletteItem] {
+        let context = ShellPaletteContext(hasSelection: false, platform: .mac, expanded: nil, focus: nil)
+        return handle.paletteQuery(text: query, context: context).groups.first { $0.section == .text }?.items ?? []
+    }
+
+    func testUseEditionSearchAnswersTheTextSectionAndAHitNavigatesToItsVerse() throws {
+        let handle = try ShellHandle(sessionJson: searchSession)
+        handle.setResourceTitles(titles: ["bsb": "BSB", "sblgnt": "SBLGNT"])
+        XCTAssertTrue(textRows(handle, "zebra").isEmpty, "no provider yet")
+        try handle.useEditionSearch(directory: searchFixtures)
+        // The last word is a prefix until a space follows.
+        let rows = textRows(handle, "zebr")
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertEqual(row.title, "BSB · Jn 3:16")
+        XCTAssertTrue(row.subtitle?.contains("zebra") == true, row.subtitle ?? "")
+        XCTAssertEqual(row.commandId, "nav.navigate")
+        XCTAssertEqual(row.args.reference, "John.3.16")
+        XCTAssertNil(row.disabledReason)
+        // The shared tokenizer folds Greek: no accents typed, the accented word found.
+        XCTAssertEqual(textRows(handle, "ζεβρας").first?.title, "SBLGNT · Jn 3:16")
+        // What is typed is words, never syntax.
+        XCTAssertTrue(textRows(handle, "\"zebra AND (").allSatisfy { $0.subtitle?.isEmpty == false })
+        // A hit opens its verse.
+        let outcome = try handle.apply(commandId: "nav.navigate", args: try XCTUnwrap(textRows(handle, "quagga").first).args, hasSelection: false)
+        XCTAssertEqual(outcome.positions.first?.reference, "Mark.9.43")
+    }
+
+    func testADirectoryWithoutSearchPacksIsRefusedAndTheProviderStays() throws {
+        let handle = try ShellHandle(sessionJson: searchSession)
+        try handle.useEditionSearch(directory: searchFixtures)
+        let empty = FileManager.default.temporaryDirectory.appendingPathComponent("openlogos-no-search-\(UUID().uuidString)")
+        XCTAssertThrowsError(try handle.useEditionSearch(directory: empty.path))
+        XCTAssertFalse(textRows(handle, "zebra").isEmpty)
+    }
 }
