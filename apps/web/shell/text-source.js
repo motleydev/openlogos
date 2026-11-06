@@ -13,6 +13,9 @@
 //   passage(contentId, reference) → { paragraph, attribution } or null when the resource has no
 //                                  text for that passage (the shell shows specs/21's
 //                                  placeholder, not an error)
+//   useEditions(editions)        → B071: installed packs' `ReadingEdition`s name their resources
+//                                  from now on, and their fixture verses are no longer offered
+//   edition(contentId)           → that `ReadingEdition`, or null on a placeholder
 //
 // `paragraph` is the shape the core's selectionToAnchor takes (edition_id, content_revision,
 // joiner, segments with token spans), so the reader surface and the anchors work unchanged.
@@ -37,6 +40,7 @@ function chapterOf(reference) {
 export function fixtureTextSource(core) {
   const fixtures = JSON.parse(core.conformanceFixturesJson());
   const paragraphs = new Map();
+  const editions = new Map();
   for (const [id, r] of Object.entries(RESOURCES)) {
     const f = fixtures.find((x) => x.kind === "text" && x.id === r.fixture);
     if (!f) continue;
@@ -55,21 +59,40 @@ export function fixtureTextSource(core) {
       },
     });
   }
+  const named = (id) => {
+    const r = RESOURCES[id];
+    const e = editions.get(id);
+    return e ? { ...r, short: e.title, name: e.name, dir: e.direction, lang: e.language } : r;
+  };
   return {
+    useEditions(list) {
+      for (const e of list) editions.set(e.resource_id, e);
+    },
+    edition(contentId) {
+      return editions.get(contentId) || null;
+    },
     titles() {
-      return Object.fromEntries(Object.entries(RESOURCES).map(([id, r]) => [id, r.short]));
+      return Object.fromEntries(Object.keys(RESOURCES).map((id) => [id, named(id).short]));
     },
     languages() {
-      return Object.fromEntries(Object.entries(RESOURCES).filter(([, r]) => !r.kind).map(([id, r]) => [id, r.lang]));
+      return Object.fromEntries(Object.keys(RESOURCES).filter((id) => !RESOURCES[id].kind).map((id) => [id, named(id).lang]));
     },
     resource(contentId) {
-      const r = RESOURCES[contentId];
+      const r = RESOURCES[contentId] && named(contentId);
       return r ? { id: contentId, kind: r.kind || "reading", short: r.short, name: r.name, dir: r.dir, lang: r.lang }
         : { id: contentId, kind: "reading", short: contentId, name: contentId, dir: "ltr", lang: "und" };
     },
+    /** B071: a fixture verse at the revision a highlight may have been stored on, whatever is
+     *  installed now; null if that is not the revision this host carries. */
+    fixtureRevision(contentId, revision, segmentId) {
+      const text = paragraphs.get(contentId);
+      if (!text || text.paragraph.content_revision !== revision) return null;
+      const segment = text.paragraph.segments.find((s) => s.segment_id === segmentId);
+      return segment ? { content_revision: revision, text: segment.text, tokens: segment.tokens } : null;
+    },
     passage(contentId, reference) {
       const text = paragraphs.get(contentId);
-      if (!text) return null;
+      if (!text || editions.has(contentId)) return null;
       if (RESOURCES[contentId].kind === "notes") return text;
       const wanted = chapterOf(reference);
       if (!wanted) return null;

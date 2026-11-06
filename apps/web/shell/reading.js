@@ -17,10 +17,12 @@
 import { JOINER } from "../reader/surface.js";
 
 export const PLACEHOLDER_NOTICE = "Placeholder text — this edition is not installed";
+const LOADING_NOTICE = "Loading…";
 export const PLACEHOLDER_REASON = "Placeholder text can’t be quoted or collected";
 /** Chapters kept each side of the one in view; the cap on blocks; how far (in viewports) the
- *  rendered text reaches past either edge before more is loaded. */
-export const WINDOW = { eachSide: 2, cap: 9, reach: 1.5 };
+ *  rendered text reaches past either edge before more is loaded; how many chapters past the
+ *  window a pack's chunks are fetched ahead of the reader. */
+export const WINDOW = { eachSide: 2, cap: 9, reach: 1.5, ahead: 3 };
 /** The reading line, this far below the sticky header: a typed passage lands on it (a sliver
  *  of context shows above), the verse on it is the tab's position, a follower's verse is put
  *  on it. */
@@ -125,8 +127,9 @@ export class ReadingStream {
    *  bar; `onTop(anchor, settled)`: the reader moved the verse at the top; `onBlocks()`:
    *  blocks were loaded or released (highlights and ink repaint); `onFrame(ms)`: one scroll
    *  frame's work, for the speed runs. */
-  constructor({ core, reading, resource, scroller, text, header, onTop, onBlocks, onFrame }) {
-    Object.assign(this, { core, reading, resource, scroller, text, header, onTop, onBlocks, onFrame });
+  constructor({ core, reading, chunks, resource, scroller, text, header, onTop, onBlocks, onFrame }) {
+    Object.assign(this, { core, reading, chunks, resource, scroller, text, header, onTop, onBlocks, onFrame });
+    this.opening = 0; // the newest open(); an older one waiting for its chunks gives up
     this.blocks = []; // { key, prev, next, data, section, verses, paragraph }
     this.top = null; // { segment_id, scalar }: the verse at the top as last measured
     this.reported = null; // the segment last reported (live) and the anchor on settle
@@ -144,7 +147,37 @@ export class ReadingStream {
   load(key) {
     const data = this.reading.chapterContent(this.resource.id, key);
     const { section, verses } = renderBlock(data, this.resource, this.mark);
-    return { key, prev: data.prev, next: data.next, data, section, verses, paragraph: paragraphOf(this.core, data) };
+    const core = this.core;
+    return {
+      key, prev: data.prev, next: data.next, data, section, verses,
+      // Asked for by a selection; a real chapter has thousands of tokens to convert.
+      get paragraph() { return Object.defineProperty(this, "paragraph", { value: paragraphOf(core, data) }).paragraph; },
+    };
+  }
+
+  /** Whether a chapter's chunk is in the core. */
+  ready(key) {
+    return this.chunks.ready(this.resource.id, key);
+  }
+
+  /** Asks for a chapter's chunk unless it is there, on its way or recently failed; when it
+   *  comes, the window looks again. */
+  want(key) {
+    if (!key || this.ready(key) || this.chunks.failure(this.resource.id, key)) return;
+    this.chunks.request(this.resource.id, key).then(() => this.scrolled(), () => {});
+  }
+
+  /** The chapters just past the window, on their way before the reader reaches them. */
+  prefetch() {
+    const ahead = (key, side) => {
+      for (let i = 0; key && i < WINDOW.ahead; i++) {
+        this.want(key);
+        try { key = this.reading.chapterNeighbors(this.resource.id, key)[side]; } catch { return; }
+      }
+    };
+    if (!this.blocks.length) return;
+    ahead(this.blocks[0].prev, "prev");
+    ahead(this.blocks[this.blocks.length - 1].next, "next");
   }
 
   blockOf(node) {
@@ -169,15 +202,64 @@ export class ReadingStream {
 
   /** Opens the window at `chapterKey` and puts `segmentId` (the line holding its `scalar`) on
    *  the reading line. */
-  open(chapterKey, { segmentId, scalar = 0, mark = this.mark, flash = false } = {}) {
+  open(chapterKey, options = {}) {
+    const token = ++this.opening;
+    const id = this.resource.id;
+    const around = this.reading.chapterNeighbors(id, chapterKey);
+    const wanted = [chapterKey, around.prev, around.next].filter(Boolean);
+    if (wanted.every((k) => this.ready(k) || (k !== chapterKey && this.chunks.failure(id, k)))) {
+      this.openNow(chapterKey, options);
+      return;
+    }
+    // A pack's chunks first. What is on screen stays until they are here.
+    if (!this.blocks.length) this.showWaiting(chapterKey);
+    Promise.allSettled(wanted.map((k) => this.chunks.request(id, k))).then((settled) => {
+      if (token !== this.opening || !this.text.isConnected) return;
+      if (this.ready(chapterKey)) this.openNow(chapterKey, options);
+      else this.showFailure(chapterKey, options, settled[0].reason);
+    });
+  }
+
+  /** A quiet line in an empty stream if its chapter takes more than a moment to arrive. */
+  showWaiting() {
+    clearTimeout(this.waitTimer);
+    this.waitTimer = setTimeout(() => {
+      if (this.blocks.length || !this.text.isConnected) return;
+      this.text.innerHTML = `<p class="stream-state">${LOADING_NOTICE}</p>`;
+    }, 200);
+  }
+
+  /** A chapter that could not be had: says so, and offers to try again. */
+  showFailure(chapterKey, options, error) {
+    clearTimeout(this.waitTimer);
+    if (this.blocks.length) { console.warn(`${chapterKey} could not be loaded`, error); return; }
+    this.text.innerHTML = "";
+    const p = document.createElement("p");
+    p.className = "stream-state";
+    p.textContent = `${chapterKey.replace(".", " ")} could not be loaded. `;
+    const again = document.createElement("button");
+    again.type = "button";
+    again.textContent = "Try again";
+    again.addEventListener("click", () => {
+      this.chunks.failures.delete(`${this.resource.id}|${chapterKey}`);
+      this.open(chapterKey, options);
+    });
+    p.appendChild(again);
+    this.text.appendChild(p);
+    console.warn(`${chapterKey} could not be loaded`, error);
+  }
+
+  openNow(chapterKey, { segmentId, scalar = 0, mark = this.mark, flash = false } = {}) {
+    clearTimeout(this.waitTimer);
     this.mark = mark;
-    for (const b of this.blocks) b.section.remove();
+    this.text.textContent = "";
+    this.blocks = [];
     const first = this.load(chapterKey);
     this.blocks = [first];
     this.text.appendChild(first.section);
     // One each side straight away so the jump has text above and below; fill() does the rest.
-    if (first.prev) { const b = this.load(first.prev); this.blocks.unshift(b); this.text.insertBefore(b.section, first.section); }
-    if (first.next) { const b = this.load(first.next); this.blocks.push(b); this.text.appendChild(b.section); }
+    if (first.prev && this.ready(first.prev)) { const b = this.load(first.prev); this.blocks.unshift(b); this.text.insertBefore(b.section, first.section); }
+    if (first.next && this.ready(first.next)) { const b = this.load(first.next); this.blocks.push(b); this.text.appendChild(b.section); }
     this.scrollToSegment(segmentId || first.data.verses[0].segment_id, scalar);
     // The rest of the window comes on the next frame (tick → fill), so opening paints the
     // passage with one chapter each side first.
@@ -208,11 +290,18 @@ export class ReadingStream {
     return true;
   }
 
-  /** The rendered verse whose `number…last_number` holds a verse (a bridge), else null. */
+  /** The rendered verse that stands for a verse this edition does not number that way: the
+   *  one whose `number…last_number` holds it (a bridge), else the last verse of its chapter
+   *  numbered at or below it (a verse the edition does not print, B071), else the chapter's
+   *  first; null when the chapter is not rendered. */
   holding(segmentId) {
     const p = versePoint(segmentId);
     const block = p && this.blocks.find((b) => b.key === `${p[0]}.${p[1]}`);
-    const v = block && block.data.verses.find((x) => x.number <= p[2] && p[2] <= x.last_number);
+    if (!block) return null;
+    const verses = block.data.verses;
+    const v = verses.find((x) => x.number <= p[2] && p[2] <= x.last_number)
+      || [...verses].reverse().find((x) => x.number <= p[2])
+      || verses[0];
     return v ? this.verseEl(v.segment_id) : null;
   }
 
@@ -220,9 +309,10 @@ export class ReadingStream {
    *  reported. */
   follow(segmentId) {
     if (this.top && this.top.segment_id === segmentId) return;
-    if (!this.verseEl(segmentId)) {
+    if (!this.verseEl(segmentId) && !this.holding(segmentId)) {
       const key = chapterOfSegment(segmentId);
-      if (!key) return;
+      // A chapter this edition does not have: it stays where it is.
+      if (!key || !this.chunks.has(this.resource.id, key)) return;
       this.open(key, { segmentId });
     } else {
       this.scrollToSegment(segmentId);
@@ -270,6 +360,7 @@ export class ReadingStream {
       const first = this.blocks[0];
       if (!first.prev || this.blocks.length >= WINDOW.cap) break;
       if (i >= WINDOW.eachSide && box.top - topOf(first.section) >= WINDOW.reach * view) break;
+      if (!this.ready(first.prev)) { this.want(first.prev); break; }
       const b = this.load(first.prev);
       this.text.insertBefore(b.section, first.section);
       this.blocks.unshift(b); i += 1; this.stats.prepends += 1; changed = true;
@@ -278,10 +369,12 @@ export class ReadingStream {
       const last = this.blocks[this.blocks.length - 1];
       if (!last.next || this.blocks.length >= WINDOW.cap) break;
       if (this.blocks.length - 1 - i >= WINDOW.eachSide && textBottom() - box.bottom >= WINDOW.reach * view) break;
+      if (!this.ready(last.next)) { this.want(last.next); break; }
       const b = this.load(last.next);
       this.text.appendChild(b.section);
       this.blocks.push(b); this.stats.appends += 1; changed = true;
     }
+    this.prefetch();
     if (!changed) return;
     const shift = anchor.getBoundingClientRect().top - before;
     if (shift) {

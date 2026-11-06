@@ -33,11 +33,13 @@ in_shell() {
 web() {
   local tailnet=0
   [[ "${1:-}" == --tailnet ]] && tailnet=1
-  if [[ ! -f apps/web/core-host/pkg/openlogos_ffi_bg.wasm ]]; then
+  # B071: a module from before text search has to be rebuilt too.
+  if ! grep -q useEditionSearch apps/web/core-host/pkg/openlogos_ffi.js 2>/dev/null; then
     in_shell web web "$@"
-    echo "▸ wasm core missing, building it (just wasm-build)"
+    echo "▸ wasm core missing or older than text search, building it (just wasm-build)"
     scripts/wasm-bindings.sh
   fi
+  local pack="${OPENLOGOS_PREVIEW_PACK:-$HOME/.cache/openlogos/preview-pack}"
   if [[ -f "$state/web.pid" ]] && kill -0 "$(cat "$state/web.pid")" 2>/dev/null; then
     echo "  ✓ already serving on port $port"
   elif lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
@@ -48,21 +50,39 @@ web() {
     # no-cache keeps a reload honest after a rebuild.
     nohup /usr/bin/python3 -c '
 import http.server, sys
+PACK = "/preview-pack"
 class Handler(http.server.SimpleHTTPRequestHandler):
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
                       ".wasm": "application/wasm", ".js": "text/javascript", ".mjs": "text/javascript"}
+    def in_pack(self):
+        return self.path == PACK or self.path.startswith(PACK + "/")
+    # The preview pack lives outside the repository (docs/preview-pack.md).
+    def translate_path(self, path):
+        if not self.in_pack():
+            return super().translate_path(path)
+        web, self.directory = self.directory, sys.argv[3]
+        try:
+            return super().translate_path(path[len(PACK):] or "/")
+        finally:
+            self.directory = web
     def end_headers(self):
-        self.send_header("Cache-Control", "no-store")
+        # A pack is large and does not change under a reload: revalidate rather than refetch.
+        self.send_header("Cache-Control", "no-cache" if self.in_pack() else "no-store")
         super().end_headers()
 http.server.ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])),
     lambda *a, **k: Handler(*a, directory=sys.argv[2], **k)).serve_forever()
-' "$port" "$root/apps/web" >"$state/web.log" 2>&1 &
+' "$port" "$root/apps/web" "$pack" >"$state/web.log" 2>&1 &
     echo $! >"$state/web.pid"
     for _ in $(seq 1 50); do
       curl -fsS -o /dev/null "http://127.0.0.1:$port/" 2>/dev/null && break
       sleep 0.1
     done
     echo "  ✓ serving apps/web on http://127.0.0.1:$port (log: artifacts/preview/web.log)"
+  fi
+  if [[ -f "$pack/packs/bsb/manifest.json" ]]; then
+    echo "  ✓ preview pack: $pack"
+  else
+    echo "  ▸ no preview pack at $pack: every edition is its placeholder. Build one with: just preview-pack"
   fi
   local base="http://127.0.0.1:$port"
   if [[ $tailnet == 1 ]]; then
