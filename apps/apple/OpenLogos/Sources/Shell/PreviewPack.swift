@@ -36,7 +36,7 @@ struct PreviewPack {
             return nil
         }
         if let path = environment[environmentKey], !path.isEmpty { return url(path) }
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".cache/openlogos/preview-pack", isDirectory: true)
+        return URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).appendingPathComponent(".cache/openlogos/preview-pack", isDirectory: true)
     }
 
     /// The pack at `root`, or nil when it holds no edition (a missing directory is the normal
