@@ -77,7 +77,7 @@ case "${1:-shots}" in
       -OPENLOGOS_STORE_DEMO 1 -OPENLOGOS_SNAPSHOT "$out_dir/mac-store-on-placeholder.png" -OPENLOGOS_SNAPSHOT_DELAY 1
     shot mac-store-restored-on-pack -OPENLOGOS_STORE "$store" -OPENLOGOS_SNAPSHOT_DELAY 1.5
     du -sh "$out_dir"
-    ls "$out_dir" | wc -l
+    find "$out_dir" -name "mac-*.png" | wc -l
     ;;
   measure)
     app="${OPENLOGOS_B071_APP:-$work/release/Build/Products/Release/OpenLogos.app}"
