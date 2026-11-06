@@ -449,16 +449,23 @@ const CASES = {
     await load(PACK("__synthetic-pack"));
     await settled();
     await click(...(await centre('#columns > .column[data-number="1"] .pane-menu')));
-    await click(...(await js("const b = [...document.querySelectorAll('.menu button')].find((x) => x.textContent === 'About this edition'); const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]")));
+    const menuRow = "const b = [...document.querySelectorAll('.menu button')].find((x) => x.textContent.startsWith('About this edition')); const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]";
+    await click(...(await js(menuRow)));
     const about = await js("const m = document.querySelector('.menu.about'); return m && { text: m.innerText, role: m.getAttribute('role'), href: m.querySelector('a') && m.querySelector('a').href }");
     expect(p, about && about.text.includes("Made-up credit for the BSB pack") && about.text.includes("bsb-synthetic-1"), `about ${JSON.stringify(about)}`);
     expect(p, about && about.href === "https://example.org/licence/", `the address is a link: ${about && about.href}`);
     await chord("Escape");
     expect(p, !(await js("return !!document.querySelector('.menu.about')")), "Escape closes it");
+    // The palette lists it; off a reading tab it says why not.
+    const listed = await js("return window.openlogosShell.host.handle.paletteQuery('>about this', { platform: 'web' }).groups.flatMap((g) => g.items.map((i) => i.invocation.command_id))");
+    expect(p, listed.includes("view.about_edition"), `palette ${listed}`);
+    await js("window.openlogosShell.run({ command_id: 'view.about_edition' })");
+    expect(p, await js("return !!document.querySelector('.menu.about')"), "the command opens it");
+    await chord("Escape");
     // On the placeholder it says what it is.
     await load("?theme=light&autotest=1");
     await click(...(await centre('#columns > .column[data-number="1"] .pane-menu')));
-    await click(...(await js("const b = [...document.querySelectorAll('.menu button')].find((x) => x.textContent === 'About this edition'); const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]")));
+    await click(...(await js(menuRow)));
     expect(p, (await js("return document.querySelector('.menu.about').innerText")).includes("Placeholder text — this edition is not installed"), "the placeholder's panel");
   },
 
@@ -522,6 +529,55 @@ const CASES = {
     expect(p, s.reading[0].top.segment_id === row[1], `hit ${row[1]} opened at ${JSON.stringify(s.reading[0].top)}`);
     const [line, top] = await readingLine(1, row[1]);
     expect(p, Math.abs(top - line) <= 2, `on the reading line (${top} vs ${line})`);
+  },
+
+  async "pack-real-a-hit-opens-what-was-hit"(p) {
+    await load(PACK("__real-pack"));
+    await settled();
+    for (let i = 0; i < 200 && (await snap()).pack.search.state !== "ready"; i++) await sleep(50);
+    const before = (await snap()).reading[0].top.segment_id;
+    // A Hebrew hit with the BSB tab focused: its own edition, its own verse, the BSB left alone.
+    await chord("Meta", "k");
+    await js("const f = document.getElementById('palette-field'); f.value = '#בראשית'; f.dispatchEvent(new Event('input'))");
+    await sleep(200);
+    await chord("Enter"); // the first row, Gen 1:1
+    await settled();
+    await sleep(100);
+    let s = await snap();
+    const wlc = await js("return window.openlogosShell.activeTab()");
+    expect(p, wlc.content_id === "wlc" && wlc.reference === "Gen.1.1", `opened ${wlc.content_id} ${wlc.reference}`);
+    expect(p, s.reading[0].top.segment_id === "Gen.1.1", `on it: ${JSON.stringify(s.reading[0].top)}`);
+    const bsb = await js("const ws = window.openlogosShell.activeWorkspace(); return ws.columns[0].tabs.find((t) => t.content_id === 'bsb').reference");
+    expect(p, bsb === before, `the BSB tab stayed at ${before}: ${bsb}`);
+    // A bad target is disabled in the core's words, decided on this session.
+    await chord("Meta", "k");
+    await js("const f = document.getElementById('palette-field'); f.value = '#love @9'; f.dispatchEvent(new Event('input'))");
+    await sleep(200);
+    const row = await js("const r = window.openlogosShell.host.palette.rows.find((x) => x.section === 'text'); return r && [!!r.item.disabled, r.item.disabled_text]");
+    expect(p, row && row[0] && /9/.test(row[1]), `@9: ${JSON.stringify(row)}`);
+    await chord("Escape");
+    // `@2` is a good target here though the worker's own session has one column.
+    await chord("Meta", "k");
+    await js("const f = document.getElementById('palette-field'); f.value = '#ἀγάπη @2'; f.dispatchEvent(new Event('input'))");
+    await sleep(200);
+    const good = await js("const r = window.openlogosShell.host.palette.rows.find((x) => x.section === 'text'); return r && !r.item.disabled");
+    expect(p, good === true, "@2 is enabled");
+    await chord("Escape");
+    // Enter pressed straight after typing runs on that keystroke's answer, not the last one's.
+    const firstRow = (text) => jsAsync(`const [t] = arguments; const done = arguments[arguments.length - 1]; const f = document.getElementById('palette-field'); f.value = t; f.dispatchEvent(new Event('input'));
+      setTimeout(() => done(window.openlogosShell.host.palette.rows.find((x) => x.section === 'text').item.invocation.args), 250)`, text);
+    await chord("Meta", "k");
+    const stale = await firstRow("#love");
+    const current = await firstRow("#love one another");
+    expect(p, stale.reference !== current.reference, `the two answers differ: ${stale.reference} ${current.reference}`);
+    await js("const f = document.getElementById('palette-field'); f.value = '#love'; f.dispatchEvent(new Event('input'))");
+    await sleep(200);
+    await type(" one another");
+    await chord("Enter");
+    await settled();
+    await sleep(150);
+    const opened = await js("const t = window.openlogosShell.activeTab(); return [document.getElementById('palette-results').hidden, t.content_id, t.reference]");
+    expect(p, opened[0] && opened[1] === current.resource_id && opened[2] === current.reference, `Enter ran the current answer ${JSON.stringify(current)}: ${opened}`);
   },
 
   async "pack-real-awkward-places"(p) {
@@ -2231,7 +2287,11 @@ async function packBench() {
   // Polled: a single driver call of many minutes outlives the HTTP client's timeout.
   await js("window.__pack = null; window.openlogosShell.benchPack(arguments[0]).then((r) => { window.__pack = r; }, (e) => { window.__pack = { error: String(e && e.stack || e) }; })", { samples, queries });
   let inPage = null;
-  while (!inPage) { await sleep(1000); inPage = await js("return window.__pack"); }
+  for (let polls = 0; !inPage; polls++) {
+    await sleep(1000);
+    inPage = await js("return window.__pack");
+    if (polls % 30 === 29) console.log(JSON.stringify({ bench: "pack", progress: await js("return window.openlogosShell.host.benchProgress") }));
+  }
   if (inPage.error) { failures += 1; console.log(JSON.stringify({ bench: "pack", error: inPage.error })); return inPage; }
   for (const row of inPage.rows) console.log(JSON.stringify({ bench: "pack", ...row }));
   for (const row of inPage.scroll) console.log(JSON.stringify({ bench: "pack", ...row, stats: undefined }));

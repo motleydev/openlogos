@@ -247,6 +247,7 @@ window.addEventListener("pagehide", saveOnHide);
 function perform({ command_id: id, args }) {
   switch (id) {
     case "palette.focus": focusPalette(); break;
+    case "view.about_edition": openAbout(); break;
     case "view.focus_mode": host.focusMode = !host.focusMode; break;
     case "view.tool_palette":
       // Collapse to the grip where it is, so the grip stays under the pointer.
@@ -1927,23 +1928,18 @@ function openSwatchMenu(button) {
   });
 }
 
-/** B071: "About this edition": the edition's name, revision and the attribution its licence
- *  asks a reader to be shown (`Edition.attribution`), one menu row away from the text. */
-function aboutItem(menu, button) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.setAttribute("role", "menuitem");
-  b.textContent = "About this edition";
-  b.addEventListener("click", () => {
-    const tab = activeTab();
-    closeMenu(false);
-    openMenu(button, (panel) => {
-      panel.classList.add("about");
-      panel.setAttribute("aria-label", "About this edition");
-      fillAbout(panel, tab.content_id);
-    }, "dialog");
-  });
-  menu.appendChild(b);
+/** B071: `view.about_edition`: the edition's name, revision and the attribution its licence
+ *  asks a reader to be shown (`Edition.attribution`), under the active column's … button. */
+function openAbout() {
+  const tab = activeTab();
+  const view = host.views.get(`${activeWorkspace().id}/${activeColumn().id}`);
+  if (!view) return;
+  closeMenu(false);
+  openMenu(view.section.querySelector(".pane-menu"), (panel) => {
+    panel.classList.add("about");
+    panel.setAttribute("aria-label", "About this edition");
+    fillAbout(panel, tab.content_id);
+  }, "dialog");
 }
 
 function fillAbout(panel, contentId) {
@@ -1984,10 +1980,8 @@ function openPaneMenu(button) {
   openMenu(button, (menu) => {
     const states = commandStates();
     const ws = activeWorkspace();
-    if (isStream(activeTab())) {
-      aboutItem(menu, button);
-      menu.appendChild(document.createElement("hr"));
-    }
+    commandItem(menu, "About this edition", { command_id: "view.about_edition" }, states, { noKey: true });
+    menu.appendChild(document.createElement("hr"));
     commandItem(menu, "Link to group 1", { command_id: "tab.link", args: { group: "1" } }, states);
     commandItem(menu, "Pin tab", { command_id: "tab.pin" }, states);
     commandItem(menu, "Follow active passage", { command_id: "tab.follow" }, states);
@@ -2414,6 +2408,7 @@ function closePalette(restore) {
   host.palette.textGroup = null;
   host.palette.textWanted = false;
   host.palette.textPending = false;
+  if (host.palette.enterWaiting) { clearTimeout(host.palette.enterWaiting.timer); host.palette.enterWaiting = null; }
   if (host.search) host.search.seq += 1;
   renderScopeChip();
   if (restore) {
@@ -2430,6 +2425,7 @@ function closePalette(restore) {
 /** Every keystroke asks the core; nothing is debounced (specs/22 §7: one frame). */
 export function queryPalette() {
   const text = field.value;
+  if (host.palette.enterWaiting) { clearTimeout(host.palette.enterWaiting.timer); host.palette.enterWaiting = null; }
   // A scoped search (B077) asks for every text row and keeps those of the scope's editions.
   const expanded = host.palette.expanded || (host.palette.scope ? "text" : null);
   const result = host.handle.paletteQuery(text, { platform: "web", ...context(), expanded });
@@ -2472,6 +2468,15 @@ function scopeText(result) {
 function textAnswered(group) {
   host.palette.textPending = false;
   if (results.hidden || !host.palette.result) return;
+  // The worker's session is not the shell's: whether a row can run (`@9`) is decided here.
+  if (group) {
+    const ctx = context();
+    for (const item of group.items) {
+      const why = host.handle.disabledText(item.invocation, ctx);
+      item.disabled = why ? { kind: "unavailable" } : null;
+      item.disabled_text = why;
+    }
+  }
   host.palette.textGroup = group;
   const result = host.palette.result;
   result.groups = result.groups.filter((g) => g.section !== "text");
@@ -2483,6 +2488,16 @@ function textAnswered(group) {
   renderPalette(result, keep);
   results.scrollTop = top;
   if (host.textLatency) host.textLatency(group);
+  runWaitingEnter();
+}
+
+/** B071: Enter pressed while the current answer was on its way, now that it is here. */
+function runWaitingEnter() {
+  const waiting = host.palette.enterWaiting;
+  if (!waiting) return;
+  host.palette.enterWaiting = null;
+  clearTimeout(waiting.timer);
+  activate(host.palette.index, waiting.options);
 }
 
 /** B071: the search's state changed; if the palette is waiting on it, it asks or says so. */
@@ -2588,6 +2603,13 @@ field.addEventListener("keydown", (e) => {
     select((host.palette.index + d + rows.length) % rows.length);
   } else if (e.key === "Enter") {
     e.preventDefault();
+    // B071: Enter runs on the current keystroke's answer, as on the Mac. A worker that never
+    // answers does not swallow the key.
+    if (host.palette.textPending) {
+      e.preventDefault();
+      if (!host.palette.enterWaiting) host.palette.enterWaiting = { options: { expandSection: e.altKey }, timer: setTimeout(runWaitingEnter, 1000) };
+      return;
+    }
     activate(host.palette.index, { expandSection: e.altKey });
   } else if (e.key === "Tab" && !e.shiftKey && rows[host.palette.index]) {
     const row = rows[host.palette.index];
@@ -2757,24 +2779,25 @@ export async function benchPack({ samples = 200, queries = [] } = {}) {
   const strokes = queries.flatMap((q) => [...q].slice(1).map((_, i) => [...q].slice(0, i + 2).join("")));
   const field = $("palette-field");
   focusPalette("");
-  const painted = [], handler = [], answered = [];
+  const painted = [], handler = [], answered = [], missed = [];
   let longTasks = 0;
   const observer = new PerformanceObserver((list) => { longTasks += list.getEntries().length; });
   observer.observe({ entryTypes: ["longtask"] });
   for (let i = 0; i < Math.max(samples, strokes.length); i++) {
     await new Promise((ok) => setTimeout(ok, Math.random() * 16));
     const t0 = performance.now();
-    const answer = new Promise((ok) => { host.textLatency = ok; });
+    const answer = new Promise((ok) => { host.textLatency = () => ok(true); setTimeout(() => ok(false), 3000); });
     field.value = strokes[i % strokes.length];
     field.dispatchEvent(new Event("input"));
     handler.push(performance.now() - t0);
-    await answer;
+    host.benchProgress = { row: "keys", i, stroke: i % strokes.length, of: strokes.length };
+    if (!(await answer)) { missed.push(strokes[i % strokes.length]); continue; }
     answered.push(performance.now() - t0);
     painted.push((await textPainted()) - t0);
   }
   observer.disconnect();
   host.textLatency = null;
-  row("keystroke → text results painted (script-driven; budget 50)", painted, { long_tasks_over_50ms: longTasks });
+  row("keystroke → text results painted (script-driven; budget 50)", painted, { long_tasks_over_50ms: longTasks, unanswered: missed.length });
   row("  of which the page's own handler per keystroke (main thread)", handler);
   row("  of which keystroke → worker's answer rendered", answered);
   closePalette(false);
@@ -2790,6 +2813,7 @@ export async function benchPack({ samples = 200, queries = [] } = {}) {
   for (const r of warmRefs) await openOnce(r);
   await new Promise((ok) => setTimeout(ok, 200)); // what was fetched ahead
   const warm = [];
+  host.benchProgress = { row: "warm" };
   for (let i = 0; i < samples; i++) warm.push(await openOnce(warmRefs[i % warmRefs.length]));
   row("open a chapter, warm: chunks already in the core, across the canon (budget 100)", warm);
   // A chapter not yet visited: its chunks come from the server (localhost here).
@@ -2797,10 +2821,12 @@ export async function benchPack({ samples = 200, queries = [] } = {}) {
   const books = host.reading.editions().length && JSON.parse(await (await fetch(`${packBase(params)}packs/bsb/manifest.json`)).text()).books;
   for (const b of books) for (const c of b.chapters) if (!host.chunks.supplied.has(`bsb|${b.book}.${c.chapter}`)) chapters.push(`${b.book}.${c.chapter}`);
   const first = [];
+  host.benchProgress = { row: "first" };
   for (let i = 0; i < samples && i * 4 < chapters.length; i++) first.push(await openOnce(chapters[i * 4]));
   row("open a chapter on first visit: chunk fetched from localhost (budget 100 is for warm)", first);
   // Workspace switch.
   const switches = [];
+  host.benchProgress = { row: "switch" };
   for (let i = 0; i < samples; i++) {
     const t0 = performance.now();
     run({ command_id: "workspace.next" });
@@ -2812,6 +2838,7 @@ export async function benchPack({ samples = 200, queries = [] } = {}) {
   run({ command_id: "nav.navigate", args: { reference: "Isa.1.1" } });
   await textPainted();
   const view = activeView();
+  host.benchProgress = { row: "scroll" };
   const scroll = view && view.stream ? await scrollRun(view, Math.max(samples * 3, 600), 90) : [];
   return { user_agent: navigator.userAgent, viewport: [innerWidth, innerHeight], rows: out, scroll, chunks: { ...host.chunks.stats }, search: { timing: host.search.timing, bytes: host.search.bytes } };
 }
