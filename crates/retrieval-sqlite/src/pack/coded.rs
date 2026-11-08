@@ -411,6 +411,56 @@ mod tests {
     }
 
     #[test]
+    fn every_reader_refuses_an_edge_storage_it_does_not_read() {
+        let path = temp_path("edges-unknown-storage");
+        let mut b = PackBuilder::create_coded_edges(&path, &manifest(), &[]).unwrap();
+        for e in edges() {
+            b.add_edge(&e).unwrap();
+        }
+        b.connection()
+            .execute(
+                "UPDATE manifest SET value = 'coded-9' WHERE key = ?1",
+                [EDGE_STORAGE_KEY],
+            )
+            .unwrap();
+        b.finish().unwrap();
+        let refused = |e: String| assert!(e.contains("edge storage coded-9"), "{e}");
+        refused(
+            LinkIndex::in_memory()
+                .unwrap()
+                .install_pack("p", &path)
+                .unwrap_err()
+                .to_string(),
+        );
+        refused(
+            crate::catalog::Catalog::in_memory()
+                .unwrap()
+                .install_pack("p", &path, crate::catalog::Access::Open)
+                .unwrap_err()
+                .to_string(),
+        );
+        refused(
+            crate::engine::Engine::new()
+                .unwrap()
+                .attach_pack(&path)
+                .unwrap_err()
+                .to_string(),
+        );
+        refused(
+            crate::edition_search::EditionSearch::new()
+                .unwrap()
+                .attach_file(&path)
+                .unwrap_err()
+                .to_string(),
+        );
+        // A link index left nothing behind.
+        let mut index = LinkIndex::in_memory().unwrap();
+        assert!(index.install_pack("p", &path).is_err());
+        assert!(index.installed().unwrap().is_empty());
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
     fn locators_are_numbers_only_when_they_read_back_the_same() {
         assert_eq!(
             StoredLocator::of("43003016"),

@@ -525,6 +525,149 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
+    /// The coded pack answers exactly as the rows themselves do (the in-memory source over the
+    /// same rows), for lists holding partial, reverse-derived, unmapped and not-in-edition items;
+    /// and a default-layout pack of the same edges gives the link index identical rows.
+    #[test]
+    fn the_coded_pack_is_equivalent_to_its_rows_and_to_the_default_layout() {
+        use openlogos_core::canon::BookOrder;
+        use openlogos_core::versification::MappingStatus;
+        use openlogos_text::reading::{
+            Availability, CrossReferenceDirection, CrossReferenceOptions, Edition,
+            MemoryCrossReferences, PlaceholderPack, ReadingLibrary,
+        };
+        let published = vec![
+            row(2, "Gen.1.1", "John.1.1", "John.1.3", 384),
+            row(3, "Gen.1.1", "Heb.11.3", "Heb.11.3", -2),
+            row(4, "Heb.11.3", "Gen.1.1", "Gen.1.1", 0),
+            row(5, "Ps.33.6", "Gen.1.1", "Gen.1.3", 12),
+            row(6, "Eph.3.20", "Acts.19.23", "Acts.19.41", 2),
+            row(7, "Eph.3.20", "2Cor.13.14", "2Cor.13.14", 1),
+            row(8, "Eph.3.20", "Rom.16.25", "Rom.16.27", 4),
+            row(9, "Eph.3.20", "Jer.32.17", "Jer.32.17", 134),
+            row(10, "Acts.19.30", "Eph.3.20", "Eph.3.20", 3),
+        ];
+        let mut info = info();
+        info.rows = published.len() as u64;
+        let coded = crate::pack::fixture::temp_path("xref-equivalence-coded");
+        write_cross_reference_pack(&coded, &manifest(), &info, &[], &published).unwrap();
+
+        // The same edges in the default layout.
+        let plain = crate::pack::fixture::temp_path("xref-equivalence-plain");
+        let mut b = PackBuilder::create(&plain, &manifest(), &[]).unwrap();
+        for r in &published {
+            let src = verse_id(&r.from).0.to_string();
+            let dst = target_locator(&r.to_start, &r.to_end);
+            b.add_edge_at(
+                i64::from(r.line),
+                &EdgeRow {
+                    src_work: BIBLE_WORK,
+                    src_locator: &src,
+                    rel: RELATION,
+                    dst_work: BIBLE_WORK,
+                    dst_locator: &dst,
+                    weight: r.votes as f32,
+                    source_work: "S09",
+                    method: "S09:votes",
+                    provenance: ProvenanceKind::Curated,
+                    review_state: ReviewState::SourceAttested,
+                    context: None,
+                },
+            )
+            .unwrap();
+        }
+        b.finish().unwrap();
+        let dump = |path: &std::path::Path| {
+            let mut index = LinkIndex::in_memory().unwrap();
+            index.install_pack("xref", path).unwrap();
+            let conn = index.connection();
+            let mut out = Vec::new();
+            for sql in [
+                "SELECT * FROM link ORDER BY rowid",
+                "SELECT * FROM work ORDER BY id",
+                "SELECT * FROM rel ORDER BY id",
+                "SELECT * FROM cited_count ORDER BY 1, 2, 3",
+            ] {
+                let mut stmt = conn.prepare(sql).unwrap();
+                let n = stmt.column_count();
+                let rows: Vec<Vec<rusqlite::types::Value>> = stmt
+                    .query_map([], |r| (0..n).map(|i| r.get(i)).collect())
+                    .unwrap()
+                    .map(Result::unwrap)
+                    .collect();
+                out.push(rows);
+            }
+            out
+        };
+        assert_eq!(dump(&plain), dump(&coded));
+
+        let library = |source: Box<dyn CrossReferenceSource>| {
+            let mut lib = ReadingLibrary::new();
+            let edition = |id: &str, scheme: &str| Edition {
+                resource_id: id.to_owned(),
+                content_revision: format!("{id}-test"),
+                title: id.to_uppercase(),
+                name: id.to_owned(),
+                language: "en".to_owned(),
+                direction: "ltr".to_owned(),
+                scheme: scheme.to_owned(),
+                book_order: BookOrder::Protestant,
+                placeholder: true,
+                attribution: None,
+            };
+            let nt: Vec<BookId> = BookId::all()
+                .into_iter()
+                .filter(|b| *b >= BookId::Matt)
+                .collect();
+            lib.insert(Box::new(
+                PlaceholderPack::new(edition("bsb", "eng"), &BookId::all(), Vec::new()).unwrap(),
+            ));
+            lib.insert(Box::new(
+                PlaceholderPack::new(edition("sblgnt", "org"), &nt, Vec::new()).unwrap(),
+            ));
+            lib.set_cross_references(source);
+            lib
+        };
+        let from_pack = library(Box::new(CrossReferencePack::open(&coded).unwrap()));
+        let from_rows = library(Box::new(MemoryCrossReferences::new(
+            CrossReferencePack::open(&coded).unwrap().info().clone(),
+            published.clone(),
+        )));
+        let mut seen = (false, false, false, false);
+        for (edition, passage) in [
+            ("bsb", "Gen 1:1"),
+            ("bsb", "John 1:2"),
+            ("bsb", "Gen 1:2"),
+            ("sblgnt", "Heb 11:3"),
+            ("sblgnt", "Eph 3:20"),
+            ("sblgnt", "Acts 19:30"),
+            ("bsb", "Acts 19:41"),
+        ] {
+            for include_reverse in [false, true] {
+                let options = CrossReferenceOptions {
+                    include_reverse,
+                    ..CrossReferenceOptions::default()
+                };
+                let a = from_pack
+                    .cross_references(edition, passage, &options)
+                    .unwrap();
+                let b = from_rows
+                    .cross_references(edition, passage, &options)
+                    .unwrap();
+                assert_eq!(a, b, "{edition} {passage} reverse {include_reverse}");
+                for item in &a.items {
+                    seen.0 |= item.mapping == MappingStatus::Partial;
+                    seen.1 |= item.direction == CrossReferenceDirection::ReverseDerived;
+                    seen.2 |= item.availability == Availability::Unmapped;
+                    seen.3 |= item.availability == Availability::BookNotInEdition;
+                }
+            }
+        }
+        assert_eq!(seen, (true, true, true, true));
+        std::fs::remove_file(&plain).unwrap();
+        std::fs::remove_file(&coded).unwrap();
+    }
+
     #[test]
     fn verses_between_crosses_chapters_and_books() {
         let v = verses_between("eng", &r("2Chr.36.22"), &r("Ezra.1.2")).unwrap();

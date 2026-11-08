@@ -3165,6 +3165,12 @@ pub(crate) mod tests {
                 .any(|t| t.content_id == "bsb" && t.reference.as_deref() == Some("Rom.5.8"))
         );
 
+        // Restoring the user store keeps the layers the host registered, as it keeps the
+        // resource maps.
+        let json = shell.export_store_json();
+        shell.import_store_json(&json).unwrap();
+        assert!(shell.apply(&invocation, &context).is_ok());
+
         shell.set_data_layers(std::collections::BTreeSet::new());
         assert!(shell.apply(&invocation, &context).is_err());
     }

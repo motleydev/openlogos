@@ -630,6 +630,32 @@ impl PackBuilder {
     }
 }
 
+/// The edge storages this engine reads besides the default `edge` table (manifest key
+/// [`coded::EDGE_STORAGE_KEY`]; absent means the default table).
+pub const SUPPORTED_EDGE_STORAGE: &[&str] = &[coded::CODED_EDGES];
+
+/// Refuses a pack attached as `schema` whose manifest names an edge storage this engine does not
+/// read, so a later layout is never misread as the default `edge` table.
+pub fn check_edge_storage(conn: &Connection, schema: &str) -> Result<(), String> {
+    use rusqlite::OptionalExtension;
+    let storage: Option<String> = conn
+        .query_row(
+            &format!("SELECT value FROM \"{schema}\".manifest WHERE key = ?1"),
+            params![coded::EDGE_STORAGE_KEY],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    match storage.as_deref() {
+        None => Ok(()),
+        Some(s) if SUPPORTED_EDGE_STORAGE.contains(&s) => Ok(()),
+        Some(s) => Err(format!(
+            "pack edge storage {s} is not one this engine reads ({})",
+            SUPPORTED_EDGE_STORAGE.join(", ")
+        )),
+    }
+}
+
 /// Opens an existing pack file read-only for inspection (tests and the bench harness).
 pub fn open_read_only(path: &Path) -> PackResult<Connection> {
     install_vec_extension();
