@@ -11,8 +11,10 @@
 //! - [`vectors`]: sqlite-vec registration and k-nearest-neighbour queries.
 //! - [`engine`]: the [`engine::Engine`] that implements the five traits over attached packs.
 //! - [`edition_search`]: text search over the installed editions for the palette (B071).
+//! - [`cross_references`]: the cross-reference relation pack, written and read (B057).
 
 pub mod catalog;
+pub mod cross_references;
 pub mod edition_search;
 pub mod engine;
 pub mod fts;
@@ -24,6 +26,7 @@ pub mod tokenizer;
 pub mod vectors;
 
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
+pub use cross_references::{CrossReferencePack, write_cross_reference_pack};
 pub use edition_search::EditionSearch;
 pub use engine::Engine;
 pub use links::{LinkIndex, UserEdge};

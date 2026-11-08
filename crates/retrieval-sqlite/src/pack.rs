@@ -328,6 +328,23 @@ impl PackBuilder {
     /// so is any `user` edge: user material lives in the device's link index and user
     /// database and never enters a pack (specs/19 item 9).
     pub fn add_edge(&mut self, edge: &EdgeRow<'_>) -> PackResult<()> {
+        self.insert_edge(None, edge)
+    }
+
+    /// Adds one edge with a chosen `rowid`, so a curated row can name its place in the
+    /// published source (B057: the line of the file). Refuses what [`PackBuilder::add_edge`]
+    /// refuses.
+    pub fn add_edge_at(&mut self, rowid: i64, edge: &EdgeRow<'_>) -> PackResult<()> {
+        self.insert_edge(Some(rowid), edge)
+    }
+
+    /// The writer's connection, for a pack kind's own tables (B057's `xref_cover`) and
+    /// manifest keys. The transaction is open; [`PackBuilder::finish`] commits it.
+    pub fn connection(&self) -> &Connection {
+        &self.conn
+    }
+
+    fn insert_edge(&mut self, rowid: Option<i64>, edge: &EdgeRow<'_>) -> PackResult<()> {
         if edge.provenance == ProvenanceKind::ModelSimilarity
             && CURATED_ONLY_RELATIONS.contains(&edge.rel)
         {
@@ -341,10 +358,11 @@ impl PackBuilder {
                 "user edges never enter a pack; they belong to the link index".to_owned(),
             ));
         }
-        self.conn.execute(
-            "INSERT INTO edge(src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method, provenance_kind, review_state, context)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            params![
+        self.conn.prepare_cached(
+            "INSERT INTO edge(rowid, src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method, provenance_kind, review_state, context)
+             VALUES (?12, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        )?
+        .execute(params![
                 edge.src_work,
                 edge.src_locator,
                 edge.rel,
@@ -355,9 +373,9 @@ impl PackBuilder {
                 edge.method,
                 provenance_name(edge.provenance),
                 edge.review_state.name(),
-                edge.context
-            ],
-        )?;
+                edge.context,
+                rowid
+            ])?;
         Ok(())
     }
 
