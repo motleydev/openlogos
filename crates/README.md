@@ -18,7 +18,7 @@ lists them together.
 | `sync` | encrypted operation log and conflict resolution (B021: `keys`, `envelope`, `log`, `enrollment`, `recovery`; docs/adr/0004-vault-identity-and-sync.md) |
 | `ffi` | UniFFI and wasm-bindgen surfaces, versioned API (B061, B064) |
 | `conformance` | cross-platform fixtures and expected results |
-| `retrieval-sqlite` | the SQLite implementation of the ADR 0002 traits (B064), and `EditionSearch`, the palette's text search (B071) |
+| `retrieval-sqlite` | the SQLite implementation of the ADR 0002 traits (B064), `EditionSearch`, the palette's text search (B071), the morphology layers (B026) and the alignment layers (B067) |
 | `preview-pack` | the B071 importer: the NAS artifacts into text packs and search packs outside the repository (docs/preview-pack.md) |
 
 ## Core API (B061)

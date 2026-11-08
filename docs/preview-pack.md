@@ -41,3 +41,6 @@ A test that needs the corpus never runs in `just ci`: `just preview-pack-verify`
 
 The MACULA morphology layers over the SBLGNT and WLC tokens are built after the pack, into their
 own directory: docs/morphology.md (B026).
+
+Clear's manual BSB alignments over the BSB, SBLGNT and WLC tokens are built after the morphology
+layers, into their own directory: docs/alignments.md (B067).

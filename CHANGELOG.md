@@ -1,5 +1,6 @@
 # B026 — 8 November 2026
 
+- Adds Clear's manual BSB alignments: `just preview-pack-alignment` joins Clear's SBLGNT–BSB and WLCM–BSB records (S55) to the preview pack's BSB, SBLGNT and WLC tokens through the morphology layers and writes one layer per testament outside the repository (docs/alignments.md, docs/evidence/B067.md). New calls `use_alignments`, `token_alignment`, `lemma_renderings` (UniFFI) and `useAlignments`, `tokenAlignment`, `lemmaRenderings` (wasm); the API version is left for the merge.
 - Adds the MACULA morphology layers: `just preview-pack-morphology` joins MACULA Greek and Hebrew (S47) to the preview pack's SBLGNT and WLC tokens and writes one layer per edition outside the repository (docs/morphology.md, docs/evidence/B026.md). The Louw-Nida and SDBH columns the rights records restrict never enter a layer.
 - The core's API is 0.1.6: `use_morphology`, `token_analysis`, `lemma_search` and `lemma_search_token` (UniFFI) and `useMorphology`, `tokenAnalysis`, `lemmaSearch`, `lemmaSearchToken` (wasm). Search lemma is enabled on the words of an edition with a layer installed.
 
