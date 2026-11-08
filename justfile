@@ -134,6 +134,11 @@ preview-pack-morphology *args:
 preview-pack-morphology-bench *args:
     cargo run --release -p openlogos-preview-pack -- morphology-bench {{ args }}
 
+# B026: the same morphology latency in a dedicated worker in headless Chrome (web shell), replaying the native bench's samples; prints one `B026 wasm:` line
+[group('6 · web')]
+preview-pack-morphology-bench-wasm *args:
+    @scripts/preview-pack-morphology-bench-wasm.sh {{ args }}
+
 # Build crates/ffi for macOS, iOS and the simulator, generate the Swift bindings and assemble artifacts/apple/OpenLogosCoreFFI.xcframework (apple shell)
 [group('5 · bindings')]
 bindings-swift:

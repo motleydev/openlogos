@@ -34,6 +34,19 @@ pub struct Row {
     pub slowest: String,
 }
 
+/// The inputs the bench used, written beside the layers so the wasm bench replays the same
+/// samples (`just preview-pack-morphology-bench-wasm`).
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Samples {
+    /// Token ids.
+    pub tokens: Vec<String>,
+    /// `(edition, lemma as spelled, its search key)`.
+    pub lemmas: Vec<(String, String, String)>,
+}
+
+/// The file the samples are written to, beside `layers/`.
+pub const SAMPLES_FILE: &str = "bench-samples.json";
+
 /// The bench's answer.
 #[derive(Debug, Clone, Serialize)]
 pub struct Report {
@@ -45,6 +58,9 @@ pub struct Report {
     pub budget_ms: f64,
     /// Spot checks: query → (matched_by, total, lemmas).
     pub spot: Vec<(String, String, u64, Vec<String>)>,
+    /// The inputs.
+    #[serde(skip)]
+    pub samples: Samples,
 }
 
 fn row(group: &str, mut samples: Vec<(f64, String)>) -> Row {
@@ -75,6 +91,7 @@ pub fn run(layers_dir: &Path, rounds: usize) -> Result<Report, ImportError> {
     let mut by_key = Vec::new();
     let mut exact = Vec::new();
     let mut by_token = Vec::new();
+    let mut samples = Samples::default();
     for edition in layers.editions() {
         let (_, _, columns) = layers.columns(&edition).expect("listed");
         // Tokens: 250 evenly spaced positions' tokens.
@@ -107,6 +124,12 @@ pub fn run(layers_dir: &Path, rounds: usize) -> Result<Report, ImportError> {
             .map(|id| lemma.values[id].clone())
             .collect();
         let editions = vec![edition.clone()];
+        samples.tokens.extend(tokens.iter().cloned());
+        samples.lemmas.extend(
+            picks
+                .iter()
+                .map(|l| (edition.clone(), l.clone(), normalize(l))),
+        );
         for round in 0..rounds {
             // Round 0 is cold for every posting; later rounds hit the cache.
             let tag = if round == 0 { "cold" } else { "warm" };
@@ -165,5 +188,6 @@ pub fn run(layers_dir: &Path, rounds: usize) -> Result<Report, ImportError> {
         ],
         budget_ms: BUDGET_MS,
         spot,
+        samples,
     })
 }

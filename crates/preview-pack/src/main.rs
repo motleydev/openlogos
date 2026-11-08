@@ -158,6 +158,13 @@ fn run() -> Result<(), ImportError> {
         }
         "morphology-bench" => {
             let report = morphology::bench::run(&morphology_out.join("layers"), rounds)?;
+            let samples = morphology_out.join(morphology::bench::SAMPLES_FILE);
+            let text = serde_json::to_string(&report.samples)
+                .map_err(|e| ImportError::Pack(e.to_string()))?;
+            std::fs::write(&samples, text).map_err(|error| ImportError::Io {
+                path: samples.display().to_string(),
+                error,
+            })?;
             println!("loaded in {:.2} s", report.load_seconds);
             println!("group | samples | p50 ms | p95 ms | max ms | slowest");
             for r in &report.rows {
