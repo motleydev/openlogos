@@ -102,8 +102,13 @@ default table, 17.2 MB coded; docs/evidence/B057.md). The pack's `manifest` tabl
 
 **A reader refuses an `edge_storage` value it does not know; it never reads it as the default
 table.** The link index, the catalog, the engine, edition search and the cross-reference reader
-check the key against `SUPPORTED_EDGE_STORAGE` when they open or attach a pack. A new layout gets
-a new value. The JSON package manifest (`schemas/package-manifest.schema.json`) describes
+check the key against `SUPPORTED_EDGE_STORAGE` (`pack::check_edge_storage`) when they open or attach
+a pack, and fail with `pack edge storage <value> is not one this engine reads (coded-1)`. The
+cross-reference reader also refuses a pack in the default layout, because it reads the postings.
+A new layout gets a new value. A pack may use `coded-1` when it holds only edges, or when its
+edges dominate its size; text, token and vector tables are unaffected either way. Tests
+`every_reader_refuses_an_edge_storage_it_does_not_read` and
+`a_pack_with_an_edge_storage_this_engine_does_not_read_is_refused` use `coded-2`. The JSON package manifest (`schemas/package-manifest.schema.json`) describes
 distribution artifacts, not the SQLite manifest table, so it has no field for this key.
 
 ## Graph engines: offline options re-evaluated

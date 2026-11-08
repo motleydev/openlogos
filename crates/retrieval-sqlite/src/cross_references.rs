@@ -278,10 +278,13 @@ impl CrossReferencePack {
                 "pack schema {version} is not the supported {PACK_SCHEMA_VERSION}"
             ));
         }
-        let storage = value(EDGE_STORAGE_KEY)?;
+        // An edge storage this engine does not read is refused first, with the shared words;
+        // a pack in the default layout is refused too, since this reader needs the postings.
+        crate::pack::check_edge_storage(&conn, "main")?;
+        let storage = value(EDGE_STORAGE_KEY).unwrap_or_else(|_| "default".to_owned());
         if storage != CODED_EDGES {
             return Err(format!(
-                "edge storage {storage} is not the supported {CODED_EDGES}; rebuild with just preview-pack-xrefs"
+                "a cross-reference pack needs edge storage {CODED_EDGES}, not {storage}; rebuild with just preview-pack-xrefs"
             ));
         }
         let code = |kind: &str, term: &str| -> Result<i64, String> {
@@ -506,6 +509,29 @@ mod tests {
             vec![rows()[3].clone()]
         );
         assert!(CrossReferencePack::from_bytes(b"not a pack").is_err());
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn a_pack_with_an_edge_storage_this_engine_does_not_read_is_refused() {
+        let path = write("xref-coded-2");
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute(
+                "UPDATE manifest SET value = 'coded-2' WHERE key = ?1",
+                [EDGE_STORAGE_KEY],
+            )
+            .unwrap();
+        }
+        let words = "pack edge storage coded-2 is not one this engine reads (coded-1)";
+        assert_eq!(CrossReferencePack::open(&path).unwrap_err(), words);
+        let bytes = std::fs::read(&path).unwrap();
+        assert_eq!(CrossReferencePack::from_bytes(&bytes).unwrap_err(), words);
+        let error = LinkIndex::in_memory()
+            .unwrap()
+            .install_pack("xref", &path)
+            .unwrap_err();
+        assert!(error.to_string().contains(words), "{error}");
         std::fs::remove_file(&path).unwrap();
     }
 

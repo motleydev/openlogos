@@ -412,19 +412,24 @@ mod tests {
 
     #[test]
     fn every_reader_refuses_an_edge_storage_it_does_not_read() {
-        let path = temp_path("edges-unknown-storage");
+        let path = temp_path("edges-coded-2");
         let mut b = PackBuilder::create_coded_edges(&path, &manifest(), &[]).unwrap();
         for e in edges() {
             b.add_edge(&e).unwrap();
         }
         b.connection()
             .execute(
-                "UPDATE manifest SET value = 'coded-9' WHERE key = ?1",
+                "UPDATE manifest SET value = 'coded-2' WHERE key = ?1",
                 [EDGE_STORAGE_KEY],
             )
             .unwrap();
         b.finish().unwrap();
-        let refused = |e: String| assert!(e.contains("edge storage coded-9"), "{e}");
+        let refused = |e: String| {
+            assert!(
+                e.contains("pack edge storage coded-2 is not one this engine reads"),
+                "{e}"
+            )
+        };
         refused(
             LinkIndex::in_memory()
                 .unwrap()
