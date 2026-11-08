@@ -57,6 +57,7 @@ pub enum Reading {
 }
 
 impl Reading {
+    #[cfg(not(target_arch = "wasm32"))]
     fn code(self) -> i64 {
         match self {
             Reading::Written => 0,
@@ -86,13 +87,15 @@ impl Reading {
 
 /// The language of a morpheme, as a BCP 47 tag.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub enum Language {
     /// Koine Greek, `grc`.
+    #[serde(rename = "grc")]
     Greek,
     /// Biblical Hebrew, `hbo`.
+    #[serde(rename = "hbo")]
     Hebrew,
     /// Biblical Aramaic, `arc`.
+    #[serde(rename = "arc")]
     Aramaic,
 }
 
@@ -202,6 +205,7 @@ pub struct MorphemeRow {
     pub transliteration: String,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 const EXTRA_SCHEMA: &str = "
 CREATE TABLE analysis(pos INTEGER PRIMARY KEY, morpheme INTEGER NOT NULL, morphemes INTEGER NOT NULL,
     word_start INTEGER NOT NULL, span_start INTEGER, span_end INTEGER, reading INTEGER NOT NULL, join_class INTEGER NOT NULL,
