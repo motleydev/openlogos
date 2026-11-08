@@ -785,6 +785,9 @@ pub fn show(out: &Path, limit: usize, with_preview: bool) -> Result<String, Impo
     Ok(text)
 }
 
+/// The page a host asks for first.
+pub const PAGE: usize = 25;
+
 /// The list latency: one call per verse for a deterministic spread of verses in each edition,
 /// default options (published only, three verses of preview), then with reverse links, then
 /// whole chapters.
@@ -819,14 +822,24 @@ pub fn bench(out: &Path, stride: usize) -> Result<Vec<Row>, ImportError> {
         ] {
             sample.push(extra.to_owned());
         }
-        for (label, reverse, list) in [
-            ("verse", false, &sample),
-            ("verse, with reverse links", true, &sample),
+        for (label, reverse, preview_verses, limit) in [
+            ("verse, first page of 25", false, 3, Some(PAGE)),
+            ("verse, whole list", false, 3, None),
+            ("verse, whole list, no preview text", false, 0, None),
+            (
+                "verse with reverse links, first page of 25",
+                true,
+                3,
+                Some(PAGE),
+            ),
+            ("verse with reverse links, whole list", true, 3, None),
         ] {
             let mut samples = Vec::new();
-            for verse in list {
+            for verse in &sample {
                 let options = CrossReferenceOptions {
                     include_reverse: reverse,
+                    preview_verses,
+                    limit,
                     ..CrossReferenceOptions::default()
                 };
                 let started = Instant::now();
@@ -843,13 +856,20 @@ pub fn bench(out: &Path, stride: usize) -> Result<Vec<Row>, ImportError> {
         let mut samples = Vec::new();
         for chapter in chapters.iter().step_by(stride.div_ceil(25).max(1)) {
             let started = Instant::now();
-            let result = library.cross_references(&id, chapter, &CrossReferenceOptions::default());
+            let options = CrossReferenceOptions {
+                limit: Some(PAGE),
+                ..CrossReferenceOptions::default()
+            };
+            let result = library.cross_references(&id, chapter, &options);
             let ms = started.elapsed().as_secs_f64() * 1000.0;
             if let Ok(l) = result {
                 samples.push((ms, format!("{chapter} ({} items)", l.total)));
             }
         }
-        rows.push(row(&format!("{id}: whole chapter"), samples));
+        rows.push(row(
+            &format!("{id}: whole chapter, first page of 25"),
+            samples,
+        ));
     }
     Ok(rows)
 }

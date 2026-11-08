@@ -227,7 +227,7 @@ pub struct CrossReferenceList {
     pub source_verses: Vec<String>,
     /// How the passage maps into the source's scheme: the worst of its verses.
     pub mapping: MappingStatus,
-    /// Items before `limit`.
+    /// The page asked for (`offset`, `limit`), in order.
     pub items: Vec<CrossReference>,
     /// Items in all.
     pub total: usize,
@@ -244,9 +244,13 @@ pub struct CrossReferenceOptions {
     /// [`Direction::ReverseDerived`].
     #[serde(default)]
     pub include_reverse: bool,
-    /// At most this many items; `None` for all.
+    /// At most this many items; `None` for all. A host asks for a page (25 fills a panel)
+    /// and the next with `offset`: preview text is read only for the items returned.
     #[serde(default)]
     pub limit: Option<usize>,
+    /// Items to skip before the first returned, in the list's order.
+    #[serde(default)]
+    pub offset: usize,
     /// Verses of preview text per item (0 for none).
     #[serde(default = "default_preview_verses")]
     pub preview_verses: usize,
@@ -261,6 +265,7 @@ impl Default for CrossReferenceOptions {
         CrossReferenceOptions {
             include_reverse: false,
             limit: None,
+            offset: 0,
             preview_verses: default_preview_verses(),
         }
     }
@@ -701,8 +706,8 @@ impl ReadingLibrary {
             .iter()
             .filter(|p| p.pack.edition().resource_id != resource_id)
             .collect();
-        let mut cache = ChapterCache::new();
-        let mut items: Vec<(Reference, CrossReference)> = Vec::with_capacity(merged.len());
+        let mut items: Vec<(Reference, Option<ReferenceRange>, CrossReference)> =
+            Vec::with_capacity(merged.len());
         for (placed, group) in merged {
             let first = &group[0];
             let mut assertions: Vec<CrossReferenceAssertion> =
@@ -717,13 +722,6 @@ impl ReadingLibrary {
             let votes = assertions[0].votes;
             let source_target = osis_range(&first.source_start, &first.source_end);
             let source_label = human_range(&first.source_start, &first.source_end);
-            let (preview_text, preview_truncated, preview_chunk) =
-                match (&placed.range, placed.availability) {
-                    (Some(range), Availability::Printed | Availability::PartlyPrinted) => {
-                        preview(installed, &mut cache, range, options.preview_verses)
-                    }
-                    _ => (None, false, None),
-                };
             let available_in = others
                 .iter()
                 .filter(|o| {
@@ -736,8 +734,13 @@ impl ReadingLibrary {
                 .range
                 .as_ref()
                 .map_or_else(|| first.source_start.clone(), |r| r.start.clone());
+            let printed = matches!(
+                placed.availability,
+                Availability::Printed | Availability::PartlyPrinted
+            );
             items.push((
                 order,
+                placed.range.clone().filter(|_| printed),
                 CrossReference {
                     target: placed.range.as_ref().map(ReferenceRange::to_osis),
                     label: placed
@@ -748,9 +751,9 @@ impl ReadingLibrary {
                     source_label,
                     mapping: placed.mapping,
                     availability: placed.availability,
-                    preview: preview_text,
-                    preview_truncated,
-                    preview_chunk,
+                    preview: None,
+                    preview_truncated: false,
+                    preview_chunk: None,
                     relation: info.relation.clone(),
                     kind: info.kind.clone(),
                     direction,
@@ -761,7 +764,7 @@ impl ReadingLibrary {
                 },
             ));
         }
-        items.sort_by(|(oa, a), (ob, b)| {
+        items.sort_by(|(oa, _, a), (ob, _, b)| {
             a.direction
                 .cmp(&b.direction)
                 .then(b.votes.cmp(&a.votes))
@@ -770,12 +773,21 @@ impl ReadingLibrary {
         let total = items.len();
         let published = items
             .iter()
-            .filter(|(_, i)| i.direction == Direction::AsPublished)
+            .filter(|(_, _, i)| i.direction == Direction::AsPublished)
             .count();
+        // Preview text only for the page returned: reading a chapter is what costs.
+        let mut cache = ChapterCache::new();
         let items = items
             .into_iter()
-            .map(|(_, i)| i)
+            .skip(options.offset)
             .take(options.limit.unwrap_or(usize::MAX))
+            .map(|(_, range, mut item)| {
+                if let Some(range) = range {
+                    (item.preview, item.preview_truncated, item.preview_chunk) =
+                        preview(installed, &mut cache, &range, options.preview_verses);
+                }
+                item
+            })
             .collect();
         Ok(CrossReferenceList {
             resource_id: resource_id.to_owned(),

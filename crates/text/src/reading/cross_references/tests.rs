@@ -293,6 +293,24 @@ fn a_long_range_preview_is_cut_and_says_so() {
         .unwrap();
     assert_eq!(limited.items.len(), 2);
     assert_eq!(limited.total, 5);
+    let next = lib
+        .cross_references(
+            "bsb",
+            "Gen 1:1",
+            &CrossReferenceOptions {
+                limit: Some(2),
+                offset: 2,
+                ..CrossReferenceOptions::default()
+            },
+        )
+        .unwrap();
+    let page: Vec<&str> = next
+        .items
+        .iter()
+        .map(|i| i.source_target.as_str())
+        .collect();
+    assert_eq!(page, ["Ps.33.6", "Job.38.4"]);
+    assert_eq!(next.items[0].preview.as_deref(), Some("[bsb:Ps.33.6]"));
 }
 
 #[test]
