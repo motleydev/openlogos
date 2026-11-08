@@ -10,6 +10,11 @@
 //!
 //! The struct holds a `Connection` and nothing else that is tied to a thread, so a host can keep
 //! it behind its own lock; [`crate::Engine`] cannot move between threads.
+//!
+//! A work pack (B016, [`crate::work_pack`]) attaches the same way. Its rows are sections, not
+//! verses: a hit names `scheme:locator` (`institutes:3.2.7`) instead of an OSIS verse, its
+//! snippet has the section's paragraph breaks as spaces, and the verse-shaped [`TextIndex`]
+//! leaves it out.
 
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -36,6 +41,8 @@ pub struct EditionSearch {
     conn: Connection,
     /// `(schema, edition)` in attach order, which is the tie-break order of hits.
     packs: Vec<(String, String)>,
+    /// Per pack in `packs`, the locator scheme of a work pack (B016); `None` for an edition.
+    works: Vec<Option<String>>,
 }
 
 impl std::fmt::Debug for EditionSearch {
@@ -75,6 +82,7 @@ impl EditionSearch {
         Ok(EditionSearch {
             conn,
             packs: Vec::new(),
+            works: Vec::new(),
         })
     }
 
@@ -143,7 +151,7 @@ impl EditionSearch {
 
     /// Checks the attached pack's manifest and records it, or detaches it again.
     fn adopt(&mut self, schema: String) -> Result<String> {
-        let read = || -> Result<String> {
+        let read = || -> Result<(String, Option<String>)> {
             let value = |key: &str| -> Result<String> {
                 self.conn
                     .query_row(
@@ -171,11 +179,25 @@ impl EditionSearch {
                     "edition `{edition}` is already attached"
                 )));
             }
-            Ok(edition)
+            // B016: a work pack names its format and its locator scheme.
+            let work = match value("work_format") {
+                Ok(format) if format == crate::work_pack::WORK_FORMAT => {
+                    Some(value("locator_scheme")?)
+                }
+                Ok(format) => {
+                    return Err(RetrievalError::Storage(format!(
+                        "work format `{format}` is not {}",
+                        crate::work_pack::WORK_FORMAT
+                    )));
+                }
+                Err(_) => None,
+            };
+            Ok((edition, work))
         };
         match read() {
-            Ok(edition) => {
+            Ok((edition, work)) => {
                 self.packs.push((schema, edition.clone()));
+                self.works.push(work);
                 Ok(edition)
             }
             Err(error) => {
@@ -250,6 +272,9 @@ impl EditionSearch {
 
     fn hit(&self, index: usize, rowid: i64, terms: &QueryTerms) -> Result<TextHit> {
         let (schema, edition) = &self.packs[index];
+        if let Some(scheme) = &self.works[index] {
+            return self.work_hit(schema, edition, scheme, rowid, terms);
+        }
         let body: String = self
             .conn
             .prepare_cached(&format!(
@@ -270,6 +295,34 @@ impl EditionSearch {
     }
 }
 
+impl EditionSearch {
+    /// A hit in a work pack: the section's `scheme:locator` and a snippet on one line.
+    fn work_hit(
+        &self,
+        schema: &str,
+        edition: &str,
+        scheme: &str,
+        rowid: i64,
+        terms: &QueryTerms,
+    ) -> Result<TextHit> {
+        let (locator, body): (String, String) = self
+            .conn
+            .prepare_cached(&format!(
+                "SELECT s.locator, t.body FROM \"{schema}\".work_section s
+                 JOIN \"{schema}\".text t ON t.verse_id = s.ordinal WHERE s.ordinal = ?1"
+            ))
+            .map_err(storage)?
+            .query_row(params![rowid], |r| Ok((r.get(0)?, r.get(1)?)))
+            .map_err(storage)?;
+        let flat = body.split_whitespace().collect::<Vec<_>>().join(" ");
+        Ok(TextHit {
+            edition_id: edition.to_owned(),
+            reference: format!("{scheme}:{locator}"),
+            snippet: snippet(&flat, terms),
+        })
+    }
+}
+
 impl TextIndex for EditionSearch {
     fn search_text(&self, query: &TextQuery) -> Result<Vec<IndexHit>> {
         let terms = QueryTerms::parse(&query.text);
@@ -280,7 +333,9 @@ impl TextIndex for EditionSearch {
         Ok(rows
             .into_iter()
             .filter(|(_, index, _)| {
-                query.editions.is_empty() || query.editions.contains(&self.packs[*index].1)
+                // Verse hits only: a work pack's rows are sections (B016).
+                self.works[*index].is_none()
+                    && (query.editions.is_empty() || query.editions.contains(&self.packs[*index].1))
             })
             .filter(|(_, _, rowid)| {
                 query

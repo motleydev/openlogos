@@ -11,6 +11,8 @@
 //! - [`vectors`]: sqlite-vec registration and k-nearest-neighbour queries.
 //! - [`engine`]: the [`engine::Engine`] that implements the five traits over attached packs.
 //! - [`edition_search`]: text search over the installed editions for the palette (B071).
+//! - [`work_pack`]: a non-Bible work in one pack, read section by section, with its citations
+//!   (B016).
 
 pub mod catalog;
 pub mod edition_search;
@@ -22,12 +24,14 @@ pub mod pack;
 pub mod token_engine;
 pub mod tokenizer;
 pub mod vectors;
+pub mod work_pack;
 
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
 pub use edition_search::EditionSearch;
 pub use engine::Engine;
 pub use links::{LinkIndex, UserEdge};
 pub use pack::{PackBuilder, PackManifest};
+pub use work_pack::{WorkPack, WorkPackError};
 
 /// The SQLite library version compiled into this engine (`3.54.1`).
 #[must_use]
