@@ -2,7 +2,7 @@
 
 Recorded 6–7 November 2026 on the Mac mini (Apple M1, macOS 26.4, Xcode 26.6) by a Claude Code
 subagent, in the worktree `openlogos-b071mac`, branch `b071-mac` (core `b071-preview-pack` plus
-`b074-mac-store`, PR #38). Nothing was pushed or merged. Measured and pictured at commit e0d8333.
+`b074-mac-store`, PR #38). Nothing was pushed or merged. Measured and pictured at commit eb6bc7f (the code is unchanged after it).
 What the packs hold and every text decision: B071.md. No text decision was changed. No corpus
 byte is in the repository or the app bundle, though the pictures here show verses on screen.
 
@@ -16,6 +16,8 @@ byte is in the repository or the app bundle, though the pictures here show verse
 | A hit opens the verse | The core's rule (lead's ruling, cherry-picked from `b071-web`): the row carries `resource_id`. A tab already showing that edition moves; otherwise a new tab of it opens and the shown tab is left alone | `testAHitFromAnotherEdition…`, `testAWLCHitOnABSBTab…`, `testASearchHitOpens…` |
 | Swift test the core evidence asked for | `CoreHostTests` calls `use_edition_search` over `fixtures/search` (made-up sentences; `crates/preview-pack/tests/search_fixture.rs` fails when they go stale) | `testUseEditionSearch…`, `testADirectoryWithoutSearchPacks…` |
 | Attribution | `view.about_edition` (the core's command, the web's panel): first row of a column's … menu, and the palette (`>licence`). Shows name, revision and `Edition.attribution` word for word, addresses followable. Nothing is added under chapters. Disabled by the core off a reading tab. An edition with no pack shows the placeholder words | `testAttributionComes…`, `testAboutThisEdition…` |
+| Search packs that do not open | "Text search could not load." under the Text heading, the web's words (lead's ruling), when the editions are installed but `search/` is missing or refused and the field asks for text (`#`, or two characters). No loading line: the packs open within the launch's 4.6 ms. A Text answer still on its way no longer shows "No results" | `testSearchPacksThatDoNotOpen…`, `testNothingIsAnAnswer…` |
+| Sticky header order | "BSB · Jn 3", the tab label's order and the web's (lead's lockstep fix, its own commit 2376fe2; B078-mac's pictures show the old "Jn 3 · BSB") | `ReadingTests` |
 | Absent verses | A follower lands on the last verse numbered at or below the mapped one: BSB Mk 9:44 → SBLGNT 9:43; 9:46 → 9:45 | `testAFollowerLandsBeside…` |
 | Past the chapter's end | BSB Rom 16:25 → the linked SBLGNT stays on Rom 16 at 16:24. Only a passage typed in that tab gets the not-in-edition state. Also true after a restore | `testAFollowerPast…`, `testARestoredFollower…`, `testFollowersOnTheEditions…` |
 | WLC | `tanakh_bhs`: Mal 3 → Ps 1, ends at 2 Chr 36; right to left | `testTheWLCReads…` |
@@ -41,26 +43,35 @@ specs/24 §2.2). Nothing shipped can reach that case until an edition changes re
 
 Release build, window 1440 × 900, the 10 × 3 × 4 session on real text, ≥ 200 samples, p95 against
 specs/22 §7. "Drawn" stops after the window is laid out and drawn synchronously. Other agents were
-working on this machine during the runs (load average 2–4.5). `scripts/b071-mac-shots.sh measure`.
+working on this machine during the runs. `scripts/b071-mac-shots.sh measure`.
 
 | Budget | Budget ms | Samples | p50 | p95 | max | |
 |---|---:|---:|---:|---:|---:|---|
-| **Keystroke → painted text results**, three editions, `bench-queries.json` from the second character | 50 | 464 | 10.79 | **28.18** | 64.67 | met |
-| The keystroke on the main thread: passage, commands, tabs, drawn | 16 | 464 | 4.44 | **10.79** | 29.15 | met |
-| **Open a chapter, warm**: typed jump, already laid out, long chapters included, two followers | 100 | 240 | 29.69 | **47.66** | 55.96 | met |
-| Open a chapter never shown yet: read, hash, layout, two followers | 100 | 240 | 21.84 | **26.73** | 42.61 | met |
-| **Workspace switch**, real text | 100 | 240 | 39.47 | **42.40** | 72.50 | met |
-| **Cold launch to restored text**: process start → first frame, acceptance store (20 launches) | 1000 | 20 | 547.0 | **567.9** | 575.5 | met, under its 200 samples |
-| The same from before `open` (LaunchServices included) | 1000 | 20 | 911.7 | **937.8** | 940.6 | met, by 62 ms |
-| Restore: file read → text laid out | 100 | 20 | 155.3 | **164.4** | 171.0 | **missed** |
-| Restore: file read → first frame | 100 | 20 | 301.6 | **314.7** | 321.5 | **missed** |
+| **Keystroke → painted text results for that keystroke** (not the first paint; stale rows do not count), three editions, `bench-queries.json` from the second character | 50 | 464 | 10.67 | **29.58** | 66.82 | met |
+| The keystroke on the main thread: passage, commands, tabs, drawn | 16 | 464 | 4.47 | **10.93** | 27.07 | met |
+| **Open a chapter, warm**: typed jump, already laid out, long chapters included, two followers | 100 | 240 | 29.83 | **46.81** | 54.51 | met |
+| Open a chapter never shown yet: read, hash, layout, two followers | 100 | 240 | 22.01 | **27.47** | 47.14 | met |
+| **Workspace switch**, real text | 100 | 240 | 40.73 | **50.70** | 86.40 | met |
+| **Cold launch to restored text**: process start → first frame, acceptance store (20 launches) | 1000 | 20 | 554.9 | **570.3** | 571.2 | met, under its 200 samples |
+| The same from before `open` (LaunchServices included) | 1000 | 20 | 923.5 | **940.1** | 942.4 | met, by 60 ms |
+| Restore: file read → text laid out | 100 | 20 | 154.7 | **157.6** | 158.1 | **missed** |
+| Restore: file read → first frame | 100 | 20 | 302.2 | **304.9** | 305.8 | **missed** |
+
+Load average during that run: 4.5 at the start, 3.1 at the end (other agents, `b071web` among them, working).
 
 - All 464 keystroke samples saw the list body render with the answer before the clock stopped; 463
   had text rows. The clock starts at the model's `paletteTextChanged`, not at a physical key event.
-- **Single keystrokes do exceed a frame.** The worst main-thread keystroke was 29 ms and the worst
-  end-to-end sample 65 ms. Typing 240 keystrokes at 90 ms gave 48 frames over one refresh and 28
-  over two. The same run on the placeholder library, with no search packs, gave 47 and 29, so
-  search adds no measurable hitch, but the hitches themselves remain: the palette's own rendering.
+- **Single keystrokes do exceed a frame.** The worst main-thread keystroke was 27 ms and the worst
+  end-to-end sample 67 ms. Typing 240 keystrokes at 90 ms, frames over one refresh / over two:
+
+  | Run | Load avg | Over one | Over two |
+  |---|---:|---:|---:|
+  | Pack (four runs, 6–7 Nov) | 2.8–4.7 | 137, 35, 98, 48, 140, 51 | 15, 20, 30, 28, 18, 30 |
+  | Placeholder library, no search (two runs) | about 3–4 | 50, 47 | 31, 29 |
+
+  The spread within the pack runs is wider than the difference to the placeholder, so I cannot say
+  whether search adds hitches. An alternating comparison (four pairs) was started and lost when the
+  session went idle; only its first pack run (51 / 30, load 2.8) was recorded.
 - **The restore row was already missed** (B074, 137.9 ms laid out, owner decision pending). It is now
   about 26 ms later on the same store. 4.6 ms is opening the packs; I did not break down the rest.
 - **The launch was not truly cold.** I cannot drop the page cache without root, so the files were in
@@ -99,7 +110,7 @@ working on this machine during the runs (load average 2–4.5). `scripts/b071-ma
 
 ## Tests
 
-`just test-reader mac` (Debug, in the app): 109 tests, 0 failures, including `PreviewPackTests` over a
+`just test-reader mac` (Debug, in the app): 111 tests, 0 failures, including `PreviewPackTests` over a
 made-up pack the test writes and `RealPackTests` over the built pack. `RealPackTests` skips with
 `SKIPPED: no built preview pack` where none exists, so on such a machine those rows do not run.
 `just test-swift`: 13 XCTests, 0 failures; conformance 1,844 of 1,844. The iOS app target builds
@@ -107,7 +118,7 @@ made-up pack the test writes and `RealPackTests` over the built pack. `RealPackT
 
 ## Pictures
 
-`docs/evidence/B071/mac-*.png` (17 files, 5.6 MB): the app draws its own window; `scripts/b071-mac-shots.sh`.
+`docs/evidence/B071/mac-*.png` (17 files, 5.6 MB, retaken at eb6bc7f; `mac-search-failed.png` added, the WLC right-to-left picture dropped for the cap: `mac-about-wlc.png` shows the same text): the app draws its own window; `scripts/b071-mac-shots.sh`.
 In the About pictures the panel's backdrop and arrow come out plain white, an artefact of the app
 drawing its own popover (Liquid Glass does not draw that way, as in B077).
 

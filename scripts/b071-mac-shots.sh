@@ -46,7 +46,6 @@ case "${1:-shots}" in
   shots)
     # The three editions: the seed session (BSB and SBLGNT), the WLC right to left, its order.
     shot mac-real-john-3
-    shot mac-real-wlc-rtl -OPENLOGOS_RUN "column.focus:1,tab.next" -OPENLOGOS_TYPE "Gen 1:1"
     shot mac-real-wlc-mal-psalms -OPENLOGOS_RUN "column.focus:1,tab.next" -OPENLOGOS_TYPE "Mal 3:22"
     # Search: words in each language, on the real packs.
     shot mac-search-english -OPENLOGOS_PALETTE "#loved the world"
@@ -59,6 +58,14 @@ case "${1:-shots}" in
     shot mac-about-sblgnt -OPENLOGOS_RUN "column.focus:2,view.about_edition"
     shot mac-about-wlc -OPENLOGOS_RUN "column.focus:1,tab.next,view.about_edition"
     shot mac-palette-about -OPENLOGOS_PALETTE ">licence"
+    # Search packs that do not open: the editions without search/.
+    nosearch="$(fresh no-search)"
+    ln -s "$pack/packs" "$nosearch/packs"
+    rm -f "$out_dir/mac-search-failed.png"
+    pkill -f "$debug_app/Contents/MacOS/OpenLogos" 2>/dev/null || true
+    sleep 0.3
+    open -n -W "$debug_app" --args -OPENLOGOS_WINDOW 1440x900 -OPENLOGOS_PREVIEW_PACK "$nosearch" -OPENLOGOS_PALETTE "#loved" \
+      -OPENLOGOS_SNAPSHOT "$out_dir/mac-search-failed.png" -OPENLOGOS_SNAPSHOT_DELAY 1
     # A hit from another edition: its own verse in its own tab.
     shot mac-hit-other-edition -OPENLOGOS_TYPE "#בראשית ברא"
     # Texts the owner has not ruled on, as the packs hold them.
