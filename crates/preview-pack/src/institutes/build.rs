@@ -568,7 +568,7 @@ pub const BENCH_QUERIES: [&str; 22] = [
     "christ",
     "free will",
     "transubstantiation",
-    "melancthon",
+    "servetus",
 ];
 
 fn row(group: &str, mut samples: Vec<(f64, String)>) -> Row {
@@ -685,15 +685,75 @@ pub fn bench(pack: &Path, rounds: usize) -> Result<InstitutesBench, ImportError>
         }
         rows.push(row(name, samples));
     }
-    let spot_hits = [
-        "predestination",
-        "transubstantiation",
-        "faith",
-        "melancthon",
-    ]
-    .iter()
-    .map(|q| ((*q).to_owned(), provider.search(q, 50).len()))
-    .collect();
+    // The palette's whole answer with text results: the conformance session with the work
+    // registered, so citation rows and work hits are both in play.
+    let mut shell =
+        openlogos_workspaces::commands::Shell::new(openlogos_conformance::fixture_session())
+            .map_err(|e| err(&e))?;
+    shell.set_resource_schemes([(RESOURCE_ID.to_owned(), "institutes".to_owned())].into());
+    shell.set_resource_titles([(RESOURCE_ID.to_owned(), "Institutes (Allen)".to_owned())].into());
+    let index = openlogos_workspaces::palette::PaletteIndex::new(&shell.session);
+    let context = openlogos_workspaces::palette::PaletteContext::default();
+    let palette = |typed: &str, provider: &dyn TextProvider| {
+        ms(|| {
+            std::hint::black_box(
+                openlogos_workspaces::palette::palette_query_indexed(
+                    &shell,
+                    &index,
+                    typed,
+                    &context,
+                    Some(provider),
+                )
+                .groups
+                .len(),
+            );
+        })
+    };
+    let palette_rows = |provider: &dyn TextProvider| {
+        let mut samples = Vec::new();
+        for _ in 0..rounds {
+            for stroke in &strokes {
+                samples.push((palette(stroke, provider), stroke.clone()));
+            }
+        }
+        samples
+    };
+    rows.push(row(
+        "palette with text results, the work alone",
+        palette_rows(provider),
+    ));
+    // With the three editions of a preview pack beside it, when one is built.
+    let editions = pack
+        .parent()
+        .and_then(Path::parent)
+        .map(|cache| cache.join("preview-pack/search"))
+        .filter(|dir| dir.join("bsb.sqlite").exists());
+    if let Some(dir) = editions {
+        let mut all = EditionSearch::open_directory(&dir).map_err(|e| err(&e))?;
+        all.attach_file(pack).map_err(|e| err(&e))?;
+        rows.push(row(
+            "palette with text results, BSB + SBLGNT + WLC + the work",
+            palette_rows(&all),
+        ));
+    }
+    let mut citation_samples = Vec::new();
+    for _ in 0..rounds {
+        for query in ["Inst. 3.2.7", "Institutes III.ii.7", "inst 4.20.32"] {
+            let chars: Vec<char> = query.chars().collect();
+            for n in 2..=chars.len() {
+                let typed: String = chars[..n].iter().collect();
+                citation_samples.push((palette(&typed, provider), typed));
+            }
+        }
+    }
+    rows.push(row(
+        "palette, typing a citation of the work",
+        citation_samples,
+    ));
+    let spot_hits = ["predestination", "transubstantiation", "faith", "servetus"]
+        .iter()
+        .map(|q| ((*q).to_owned(), provider.search(q, 50).len()))
+        .collect();
     Ok(InstitutesBench {
         budgets_ms: (100.0, 50.0),
         rows,
