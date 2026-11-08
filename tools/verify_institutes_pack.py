@@ -475,6 +475,8 @@ def main():
           f"({100 * len(both) / max(1, len(index_keys)):.1f} % of the index, {100 * len(both) / max(1, len(linked_keys)):.1f} % of the pack)")
     lowered = " ".join(b.lower() for (_, _, _, _, b) in rows) + " ".join(t.lower() for t in pack_notes.values())
     failures.equal("the digitizer named anywhere in the text", "gutenberg" in lowered, False)
+    # The lead's ruling (B016): no byte of what ships names the digitizer, in any case.
+    failures.equal("the digitizer named in any byte of the pack", b"gutenberg" in pack.read_bytes().lower(), False)
     if failures.items:
         print(f"FAILED: {len(failures.items)} differences")
         for f in failures.items[:60]:

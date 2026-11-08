@@ -8,7 +8,7 @@ use std::time::Instant;
 use openlogos_retrieval_sqlite::EditionSearch;
 use openlogos_retrieval_sqlite::work_pack::{
     CitationRow, CitationStatus, NoteKind, WorkBibliography, WorkContent, WorkInfo, WorkPack,
-    WorkVolume, write_work_pack,
+    write_work_pack,
 };
 use openlogos_workspaces::palette::{DEFAULT_SECTION_LIMIT, EXPANDED_SECTION_LIMIT, TextProvider};
 use serde::Serialize;
@@ -31,6 +31,45 @@ pub const RESOURCE_ID: &str = "institutes-allen";
 
 /// What produced the citation links; stored on every edge.
 pub const CITATION_METHOD: &str = "b016-allen-notes@1 (core reference parser, grammar b068-1)";
+
+/// The pack's attribution, from the work's own title page. The rights record's sentence names
+/// the digitizer; the lead's reading of the digitizer's licence (1.C, 1.E) keeps every such
+/// reference out of what ships, so it stays in the rights record and the build report.
+pub const PACK_ATTRIBUTION: &str = "John Calvin, Institutes of the Christian Religion, translated by John Allen. \
+     Sixth American Edition, Revised and Corrected. Philadelphia: Presbyterian Board of Publication. \
+     Public domain in the United States.";
+
+/// The pack's licence field: the text's status, without the digitizer's licence name.
+pub const PACK_LICENSE: &str = "LicenseRef-public-domain-US";
+
+/// Whether bytes name the digitizer, in any case: the build refuses a pack that does.
+#[must_use]
+pub fn names_the_digitizer(bytes: &[u8]) -> bool {
+    const NAME: &[u8] = b"gutenberg";
+    bytes
+        .windows(NAME.len())
+        .any(|w| w.eq_ignore_ascii_case(NAME))
+}
+
+/// The digitizer's provenance of one volume, from its record page and the gate: kept in the
+/// build report, never in the pack.
+#[derive(Debug, Clone, Serialize)]
+pub struct DigitizedVolume {
+    /// The file.
+    pub file: String,
+    /// Its SHA-256 as the manifest lists it and the gate checked it.
+    pub sha256: String,
+    /// The record's title.
+    pub title: String,
+    /// The record's eBook number.
+    pub ebook: String,
+    /// Release date.
+    pub release_date: String,
+    /// Last update.
+    pub last_update: String,
+    /// Credits.
+    pub credits: String,
+}
 
 const VOLUMES: [(&str, &str); 2] = [
     ("pg45001.txt", "pg45001-record.html"),
@@ -134,8 +173,12 @@ pub struct InstitutesReport {
     pub notes_per_volume: [usize; 2],
     /// Citations.
     pub citations: CitationReport,
-    /// The catalog's evidence.
+    /// The catalog's evidence, as the pack carries it.
     pub bibliography: WorkBibliography,
+    /// The digitizer's provenance per volume (not in the pack).
+    pub digitized: Vec<DigitizedVolume>,
+    /// The rights record's attribution and licence, as recorded (not in the pack).
+    pub rights_attribution: (String, String),
     /// Lines of the files that ended in CR LF.
     pub crlf_lines: usize,
     /// Seconds reading and checking the sources.
@@ -255,8 +298,22 @@ pub fn build(
         .iter()
         .map(|(_, record)| text(record).map(record_rows))
         .collect::<Result<_, _>>()?;
-    let bibliography = bibliography(&records, &v1.header, &v2.header);
-    let (content, citations) = assemble(&parsed, &source, bibliography.clone())?;
+    let digitized: Vec<DigitizedVolume> = VOLUMES
+        .iter()
+        .zip(&records)
+        .map(|((file, _), rows)| DigitizedVolume {
+            file: (*file).to_owned(),
+            sha256: sha256_hex(source.files.get(*file).map_or(&[][..], Vec::as_slice)),
+            title: first(rows, "Title"),
+            ebook: first(rows, "eBook-No."),
+            release_date: first(rows, "Release Date"),
+            last_update: first(rows, "Last Update"),
+            credits: first(rows, "Credits"),
+        })
+        .collect();
+    let index_dated_1852 = text(VOLUMES[1].0)?.contains("MDCCCLII");
+    let bibliography = title_page_bibliography(&parsed, index_dated_1852)?;
+    let (content, citations) = assemble(&parsed, bibliography.clone())?;
 
     std::fs::create_dir_all(&out).map_err(|e| io(&out, e))?;
     let building = out.join(format!("{RESOURCE_ID}.building.sqlite"));
@@ -279,6 +336,11 @@ pub fn build(
     }
     drop(check);
     let pack_bytes = std::fs::read(&building).map_err(|e| io(&building, e))?;
+    if names_the_digitizer(&pack_bytes) {
+        return Err(ImportError::Pack(
+            "the pack's bytes name the digitizer; nothing that ships may".to_owned(),
+        ));
+    }
     let final_path = out.join(format!("{RESOURCE_ID}.sqlite"));
 
     let mut sections_by_division = BTreeMap::new();
@@ -333,6 +395,8 @@ pub fn build(
         notes_per_volume: parsed.notes_per_volume,
         citations,
         bibliography,
+        digitized,
+        rights_attribution: (source.attribution.clone(), source.license.clone()),
         crlf_lines: v1.crlf_lines + v2.crlf_lines,
         verify_seconds,
         total_seconds: started.elapsed().as_secs_f64(),
@@ -345,52 +409,87 @@ pub fn build(
     Ok(report)
 }
 
-fn bibliography(
-    records: &[Vec<(String, String)>],
-    h1: &BTreeMap<String, String>,
-    h2: &BTreeMap<String, String>,
-) -> WorkBibliography {
-    let _ = (h1, h2);
-    let volumes = records
+/// The text of one place, paragraphs joined, and its chapter title.
+fn place_text(parsed: &ParsedWork, locator: &str) -> String {
+    let mut text: String = parsed
+        .sections
         .iter()
-        .enumerate()
-        .map(|(i, rows)| WorkVolume {
-            volume: i as u32 + 1,
-            title: first(rows, "Title"),
-            identifier: format!("eBook #{}", first(rows, "eBook-No.")),
-            release_date: first(rows, "Release Date"),
-            last_update: first(rows, "Last Update"),
-            credits: first(rows, "Credits"),
-        })
-        .collect();
-    let subjects = records[0]
-        .iter()
-        .filter(|(k, _)| k == "Subject")
-        .map(|(_, v)| v.clone())
-        .collect();
-    WorkBibliography {
-        author: first(&records[0], "Author"),
-        translator: first(&records[0], "Translator"),
+        .filter(|s| s.locator == locator)
+        .flat_map(|s| s.paragraphs.iter().map(|p| p.text.as_str()))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for division in &parsed.structure {
+        for chapter in &division.chapters {
+            if chapter.locator == locator
+                && let Some(title) = &chapter.title
+            {
+                text.push('\n');
+                text.push_str(title);
+            }
+        }
+    }
+    text
+}
+
+/// The catalog's bibliography from the work's own pages, each fact checked to be printed where
+/// it is said to be: the title pages of both volumes, the translator's preface (signed and
+/// dated) and the author's preface heading. The build stops if one is missing.
+pub fn title_page_bibliography(
+    parsed: &ParsedWork,
+    index_dated_1852: bool,
+) -> Result<WorkBibliography, ImportError> {
+    let facts: [(&str, &str); 11] = [
+        ("title.1", "John Calvin"),
+        ("title.1", "by John Allen"),
+        ("title.1", "Sixth American Edition, Revised and Corrected."),
+        ("title.1", "In Two Volumes."),
+        ("title.1", "Philadelphia:"),
+        ("title.1", "Presbyterian Board of Publication"),
+        ("title.1", "1813"),
+        ("title.2", "SIXTH AMERICAN EDITION, REVISED AND CORRECTED."),
+        ("title.2", "PHILADELPHIA:"),
+        ("translator-preface", "LONDON, _May 12, 1813_."),
+        ("author-preface", "IN THE YEAR 1559"),
+    ];
+    for (place, fact) in facts {
+        if !place_text(parsed, place).contains(fact) {
+            return Err(parse_error(
+                "",
+                format!("{place} does not print `{fact}`; the catalog would not be the work's own"),
+            ));
+        }
+    }
+    let printing = if index_dated_1852 {
+        "The printing is not dated: volume I's title page prints 1813, the translation's year, and \
+         the Scripture index bound at the end of volume II is dated MDCCCLII (1852), so this \
+         printing is no earlier than 1852."
+    } else {
+        "The printing is not dated."
+    };
+    Ok(WorkBibliography {
+        author: "John Calvin".to_owned(),
+        translator: "John Allen".to_owned(),
         edition: "Sixth American Edition, Revised and Corrected. In Two Volumes.".to_owned(),
         place: "Philadelphia".to_owned(),
         publisher: "Presbyterian Board of Publication".to_owned(),
-        date_printed: "1813".to_owned(),
+        title_page_date: "1813".to_owned(),
+        translation_date: "1813".to_owned(),
+        printing_date: None,
         original_date: "1559".to_owned(),
-        subjects,
-        volumes,
-        note: "Edition, place, publisher and date are read from the volume I title page as the \
-               digitized text prints it; the record does not date the printing. Volume II's title \
-               page prints no date, and the Scripture index bound at its end is dated MDCCCLII \
-               (1852), so this printing is not of 1813, the year the title page prints. The \
-               original date is the Latin edition the author's preface names."
-            .to_owned(),
-    }
+        volumes: 2,
+        note: format!(
+            "Author, translator, edition, place, publisher and the title-page date are printed on \
+             volume I's title page; edition and place again on volume II's. The translation's \
+             date is the Translator's Preface's signature, London, May 12, 1813. {printing} The \
+             original's date is the author's final Latin edition, 1559, as the heading of the \
+             author's preface names it."
+        ),
+    })
 }
 
 /// Citations and note kinds; the pack's content.
 fn assemble(
     parsed: &ParsedWork,
-    source: &crate::rights::VerifiedSource,
     bibliography: WorkBibliography,
 ) -> Result<(WorkContent, CitationReport), ImportError> {
     let table = alias_table();
@@ -507,13 +606,10 @@ fn assemble(
         title: "Institutes of the Christian Religion".to_owned(),
         short_title: "Institutes (Allen)".to_owned(),
         language: "en".to_owned(),
-        source_id: source.source_id.clone(),
-        license: source.license.clone(),
-        attribution: source.attribution.clone(),
-        source: format!(
-            "rights {}: pg45001.txt and pg64392.txt, MANIFEST.sha256 {}",
-            source.source_id, source.manifest_sha256
-        ),
+        source_id: SOURCE_ID.to_owned(),
+        license: PACK_LICENSE.to_owned(),
+        attribution: PACK_ATTRIBUTION.to_owned(),
+        source: format!("rights record {SOURCE_ID}"),
         bibliography,
         sections: sections.len() as u32,
         notes: sections.iter().map(|s| s.notes.len() as u32).sum(),
@@ -811,6 +907,49 @@ mod tests {
         assert_eq!(first(&rows, "Release Date"), "Feb 24, 2014");
         assert_eq!(first(&rows, "Subject"), "A & B");
         assert!(record_rows("<html></html>").is_empty());
+    }
+
+    #[test]
+    fn the_digitizer_is_found_in_any_case_and_the_pack_constants_do_not_name_it() {
+        assert!(names_the_digitizer(b"xx GUTENBERG yy"));
+        assert!(names_the_digitizer(b"Project Gutenberg"));
+        assert!(names_the_digitizer("ab gUtEnBeRg".as_bytes()));
+        assert!(!names_the_digitizer(b"Gutenburg Guten berg"));
+        for text in [PACK_ATTRIBUTION, PACK_LICENSE, CITATION_METHOD] {
+            assert!(!names_the_digitizer(text.as_bytes()), "{text}");
+        }
+    }
+
+    /// The test volumes of the parser through the whole writer: no output byte names the
+    /// digitizer, though both test files have its header and end lines.
+    #[test]
+    fn no_byte_of_a_written_pack_names_the_digitizer() {
+        let (v1, v2) = super::super::tests::volumes();
+        let parsed = parse_volumes(&v1, &v2).unwrap();
+        let (content, _) = assemble(&parsed, WorkBibliography::default()).unwrap();
+        let dir = std::env::temp_dir().join(format!("openlogos-b016-bytes-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("pack.sqlite");
+        write_work_pack(&path, &content).unwrap();
+        let bytes = std::fs::read(&path).unwrap();
+        assert!(!names_the_digitizer(&bytes));
+        assert!(
+            bytes
+                .windows(PACK_ATTRIBUTION.len())
+                .any(|w| w == PACK_ATTRIBUTION.as_bytes())
+        );
+    }
+
+    #[test]
+    fn the_bibliography_needs_every_fact_printed_where_it_is_said_to_be() {
+        let (v1, v2) = super::super::tests::volumes();
+        let parsed = parse_volumes(&v1, &v2).unwrap();
+        let error = title_page_bibliography(&parsed, true).unwrap_err();
+        assert!(
+            error.to_string().contains("title.1 does not print"),
+            "{error}"
+        );
     }
 
     #[test]

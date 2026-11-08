@@ -62,7 +62,7 @@ pub use works::{
     WorkCallError, WorkCatalogEntry, WorkChapterKind, WorkChapterOutline, WorkChapterRecord,
     WorkCitationRecord, WorkCitationState, WorkCitingSection, WorkDivisionKind,
     WorkDivisionOutline, WorkHandle, WorkNoteKind, WorkNoteRecord, WorkParagraphStyle,
-    WorkParagraphText, WorkSectionRecord, WorkVolumeRecord,
+    WorkParagraphText, WorkSectionRecord,
 };
 
 /// The core API version the bindings were generated against: [`openlogos_core::API_VERSION`].

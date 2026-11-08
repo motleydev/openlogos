@@ -70,48 +70,33 @@ CREATE TABLE cite_span(first INTEGER NOT NULL, last INTEGER NOT NULL, citation I
     PRIMARY KEY(first, citation)) WITHOUT ROWID;
 ";
 
-/// One printed volume behind the edition, from its digitizer's record.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct WorkVolume {
-    /// `1`, `2`.
-    pub volume: u32,
-    /// The record's title.
-    pub title: String,
-    /// The digitizer's identifier (`eBook #45001`).
-    pub identifier: String,
-    /// Release date as the record gives it.
-    pub release_date: String,
-    /// Last update as the record gives it.
-    pub last_update: String,
-    /// Who produced the digital text, as the record credits them; empty when it names no one.
-    pub credits: String,
-}
-
-/// The bibliographic evidence of an edition: what B016's catalog entry shows offline.
+/// The bibliographic evidence of an edition, as the work's own pages print it: what B016's
+/// catalog entry shows offline. Nothing here comes from a digitizer's record; that provenance
+/// stays in the rights record and the build report, outside the pack.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct WorkBibliography {
-    /// Author, as the record names them (`Calvin, Jean, 1509-1564`).
+    /// Author as the title page names them (`John Calvin`).
     pub author: String,
-    /// Translator, as the record names them (`Allen, John, 1771-1839`).
+    /// Translator as the title page names them (`John Allen`).
     pub translator: String,
     /// The edition statement of the title page.
     pub edition: String,
-    /// Place of publication as printed.
+    /// Place of publication as the title page prints it.
     pub place: String,
-    /// Publisher as printed.
+    /// Publisher as the title page prints it.
     pub publisher: String,
-    /// The date the title page prints, as printed.
-    pub date_printed: String,
-    /// The date of the original the translation follows, as the edition names it (the
-    /// author's last Latin edition, 1559), kept apart from the printing's date (specs/04).
-    /// Empty in a pack written before the field existed.
-    #[serde(default)]
+    /// The date the title page prints, as printed; not necessarily the printing's date.
+    pub title_page_date: String,
+    /// The translation's date and what the work says to support it (`1813`).
+    pub translation_date: String,
+    /// The printing's date when the work states it; `None` when it does not.
+    pub printing_date: Option<String>,
+    /// The date of the original the translation follows (`1559`, the author's final Latin
+    /// edition), kept apart from the translation's and the printing's (specs/04).
     pub original_date: String,
-    /// Subjects from the record.
-    pub subjects: Vec<String>,
-    /// The volumes.
-    pub volumes: Vec<WorkVolume>,
-    /// Anything a reader of the evidence should know about these fields.
+    /// Printed volumes.
+    pub volumes: u32,
+    /// Where each fact comes from, and what is not known.
     pub note: String,
 }
 

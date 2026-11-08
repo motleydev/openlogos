@@ -1212,7 +1212,7 @@ fn reorder_front(structure: &mut [WorkDivision]) {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     #[test]
@@ -1232,7 +1232,7 @@ mod tests {
     }
 
     /// Two hand-written volumes in the source's format; none of this is the work's text.
-    fn volumes() -> (DigitizedFile, DigitizedFile) {
+    pub(crate) fn volumes() -> (DigitizedFile, DigitizedFile) {
         let v1 = "Header\r\nTitle: Test (Vol. 1 of 2)\r\nTranslator: Someone\r\n\r\n*** START OF THE PROJECT GUTENBERG EBOOK TEST ***\r\n\r\n                 A Title\r\n\r\n\r\nCONTENTS\r\n\r\nBook I.\r\n\r\n                [Cover Art]\r\n\r\n[Transcriber’s Note: a note.]\r\n\r\n\r\nADVERTISEMENT.\r\n\r\n\r\nAn advert with a note.(1)\r\n\r\n\r\nTHE TRANSLATOR’S PREFACE.\r\n\r\nPreface.\r\n\r\n\r\nTHE AUTHOR’S PREFACE TO AN EDITION PUBLISHED IN THE YEAR 1559, WITH HIS\r\nLAST CORRECTIONS AND ADDITIONS.\r\n\r\nAuthor.\r\n\r\n\r\nDEDICATION.\r\n\r\n    _To the King_,\r\n    greeting.\r\n\r\nSire, a self‐\r\nexistent letter.\r\n\r\n\r\nGENERAL SYLLABUS.\r\n\r\nI. Not a section here.\r\n\r\n\r\nBOOK I. ON ONE THING.\r\n\r\n\r\nArgument.\r\n\r\nThe argument.\r\n\r\n\r\nChapter I. The First\r\nChapter.\r\n\r\nFirst section, which cites.(2)\r\n\r\nStill the first section.\r\n\r\nII. Second section.(3) And (7) stays.\r\n\r\n\r\n\r\nA Heading.\r\n\r\n    _A quoted block._\r\n\r\nIII. Third section.\r\n\r\n\r\nBOOK III. ON ANOTHER.\r\n\r\n\r\nArgument.\r\n\r\nThird argument.\r\n\r\n\r\nChapter I. Only.\r\n\r\nOne.\r\n\r\nIII. Three, skipping two.\r\n\r\n\r\nFOOTNOTES\r\n\r\n\r\n    1 An editor's comment.\r\n\r\n    2 Rom. viii. 32.\r\n\r\n    3 Jude 9. Ibid.\r\n\r\n*** END OF THE PROJECT GUTENBERG EBOOK TEST ***\r\nLicence.\r\n";
         let v2 = "Header\n*** START OF THE PROJECT GUTENBERG EBOOK TEST 2 ***\n\n                  TITLE TWO.\n\n\n                               BOOK III.\n\n\n                              CHAPTER II.\n       A CENTRED\nTITLE.\n\n\nFirst of two.[1]\n\nII. Second of two.\n\nFootnote 1:\n\n  Psalm cxix. 105.\n\n\n                                BOOK IV.\nON THE LAST.\n\n\n                               ARGUMENT.\n\n\nI. Not a section either.\n\n\n                               CHAPTER I.\n                    ONE.\n\n\nIn chapter one.[2]\n\n                             CONFIRMATION.\n\nII. After the heading.\n\nFootnote 2:\n\n  Like viii. 5.\n\n\n                 INDEX OF THE PRINCIPAL MATTERS.\n\nAn index.\n\n ● Transcriber’s Notes:\n    ○ Italics are underscored.\n\n*** END OF THE PROJECT GUTENBERG EBOOK TEST 2 ***\nLicence.\n";
         (

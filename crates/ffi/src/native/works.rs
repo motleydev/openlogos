@@ -40,23 +40,6 @@ impl From<core::WorkPackError> for WorkCallError {
     }
 }
 
-/// One printed volume (`WorkVolume`).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct WorkVolumeRecord {
-    /// `1`, `2`.
-    pub volume: u32,
-    /// The record's title.
-    pub title: String,
-    /// `eBook #45001`.
-    pub identifier: String,
-    /// Release date as the record gives it.
-    pub release_date: String,
-    /// Last update as the record gives it.
-    pub last_update: String,
-    /// Who produced the digital text; empty when the record names no one.
-    pub credits: String,
-}
-
 /// The catalog entry of a work edition (`WorkInfo` with its bibliography flattened).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct WorkCatalogEntry {
@@ -82,24 +65,26 @@ pub struct WorkCatalogEntry {
     pub attribution: String,
     /// Where the text came from.
     pub source: String,
-    /// Author as the record names them.
+    /// Author as the title page names them.
     pub author: String,
-    /// Translator as the record names them.
+    /// Translator as the title page names them.
     pub translator: String,
-    /// Edition statement.
+    /// Edition statement of the title page.
     pub edition: String,
-    /// Place as printed.
+    /// Place as the title page prints it.
     pub place: String,
-    /// Publisher as printed.
+    /// Publisher as the title page prints it.
     pub publisher: String,
-    /// Date as the title page prints it.
-    pub date_printed: String,
+    /// The date the title page prints, as printed.
+    pub title_page_date: String,
+    /// The translation's date.
+    pub translation_date: String,
+    /// The printing's date, when the work states it.
+    pub printing_date: Option<String>,
     /// Date of the original the translation follows.
     pub original_date: String,
-    /// Subjects.
-    pub subjects: Vec<String>,
-    /// Volumes.
-    pub volumes: Vec<WorkVolumeRecord>,
+    /// Printed volumes.
+    pub volumes: u32,
     /// What to know about these fields.
     pub bibliography_note: String,
     /// Sections and units.
@@ -132,21 +117,11 @@ impl From<core::WorkInfo> for WorkCatalogEntry {
             edition: b.edition,
             place: b.place,
             publisher: b.publisher,
-            date_printed: b.date_printed,
+            title_page_date: b.title_page_date,
+            translation_date: b.translation_date,
+            printing_date: b.printing_date,
             original_date: b.original_date,
-            subjects: b.subjects,
-            volumes: b
-                .volumes
-                .into_iter()
-                .map(|v| WorkVolumeRecord {
-                    volume: v.volume,
-                    title: v.title,
-                    identifier: v.identifier,
-                    release_date: v.release_date,
-                    last_update: v.last_update,
-                    credits: v.credits,
-                })
-                .collect(),
+            volumes: b.volumes,
             bibliography_note: b.note,
             sections: i.sections,
             notes: i.notes,
