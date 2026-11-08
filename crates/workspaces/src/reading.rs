@@ -136,6 +136,28 @@ pub fn holds(reference: Option<&str>, verse: &Reference) -> bool {
     })
 }
 
+/// The locator scheme of a work's resource (B016): the registered scheme when it is a work
+/// grammar's (`institutes`), not a versification. A host registers a work pack's
+/// `locator_scheme` with [`crate::commands::Shell::set_resource_schemes`] as it registers an
+/// edition's versification; `None` for a Bible edition or an unregistered resource.
+#[must_use]
+pub fn work_scheme<'a>(schemes: &'a BTreeMap<String, String>, content_id: &str) -> Option<&'a str> {
+    static TABLE: std::sync::OnceLock<openlogos_core::locator::GrammarTable> =
+        std::sync::OnceLock::new();
+    let table = TABLE.get_or_init(openlogos_core::locator::GrammarTable::builtin);
+    schemes
+        .get(content_id)
+        .map(String::as_str)
+        .filter(|s| table.grammar(s).is_some())
+}
+
+/// Whether a tab of `follower` can follow a tab of `driver` (B016): both Bible resources (or
+/// unregistered), or both of one work's scheme.
+#[must_use]
+pub fn same_family(schemes: &BTreeMap<String, String>, driver: &str, follower: &str) -> bool {
+    work_scheme(schemes, driver) == work_scheme(schemes, follower)
+}
+
 fn scheme_of(schemes: &BTreeMap<String, String>, content_id: &str) -> Option<SchemeId> {
     schemes.get(content_id).map(|s| SchemeId::new(s))
 }

@@ -42,7 +42,15 @@
 //!
 //! **Text** comes from a [`TextProvider`]; B071 supplies the edition search, the conformance
 //! crate a fixture provider over its fixture texts.
+//!
+//! **Works** (B016). A resource whose registered scheme ([`Shell::set_resource_schemes`]) is a
+//! work's locator scheme (`institutes-allen` → `institutes`) is a work. A query that is a
+//! citation of that work (`Inst. 3.2.7`, `Institutes III.ii.7`) gives one Passage row per such
+//! resource, "Institutes 3.2.7" at 1000, and a text hit in a work (`institutes:3.2.7`) is a Text
+//! row "Institutes (Allen) · Institutes 3.2.7". Both open the place with `tab.open_edition`
+//! (`resource_id`, `reference` = `scheme:locator`), beside the passage the reader is in.
 
+use openlogos_core::locator::{GrammarTable, parse_work_citation};
 use openlogos_core::reference::{
     AliasTable, BookId, Reference, ReferenceRange, ReferenceSet, ReviewFlag, parse,
 };
@@ -251,6 +259,30 @@ impl PaletteResult {
     pub fn items(&self) -> impl Iterator<Item = &PaletteItem> {
         self.groups.iter().flat_map(|g| g.items.iter())
     }
+}
+
+fn grammars() -> &'static GrammarTable {
+    static TABLE: OnceLock<GrammarTable> = OnceLock::new();
+    TABLE.get_or_init(GrammarTable::builtin)
+}
+
+/// A work's place as a text hit or tab names it (`institutes:3.2.7`): its scheme, and the
+/// human form (`Institutes 3.2.7`), or the bare locator for a place outside the grammar
+/// (`dedication`). `None` for anything else, a Bible passage included.
+#[must_use]
+pub fn work_place(reference: &str) -> Option<(String, String)> {
+    let (scheme, locator) = reference.split_once(':')?;
+    grammars().grammar(scheme)?;
+    let human = parse_work_citation(reference, grammars())
+        .map_or_else(|_| locator.to_owned(), |c| c.to_human(grammars()));
+    Some((scheme.to_owned(), human))
+}
+
+/// `tab.open_edition` of a work's place, with the column target.
+fn open_work(target: Option<ColumnTarget>, resource_id: &str, reference: String) -> Invocation {
+    let mut args = target_args(target, reference);
+    args.resource_id = Some(resource_id.to_owned());
+    Invocation::with("tab.open_edition", args)
 }
 
 fn english() -> &'static AliasTable {
@@ -1046,6 +1078,51 @@ pub fn palette_query_indexed(
         }
     }
 
+    // B016: a citation of a work the host registered opens it.
+    if matches!(mode, PaletteMode::All | PaletteMode::Passage)
+        && parsed.is_none()
+        && !blank
+        && let Ok(citation) = parse_work_citation(&query.text, grammars())
+        && let Some(range) = citation.ranges.first()
+    {
+        let reference = format!("{}:{}", citation.scheme, range.start);
+        let title = citation.to_human(grammars());
+        let items: Vec<(PaletteItem, usize)> = shell
+            .session
+            .resource_schemes
+            .iter()
+            .filter(|(_, scheme)| **scheme == citation.scheme)
+            .enumerate()
+            .map(|(i, (resource, _))| {
+                let invocation = open_work(query.target, resource, reference.clone());
+                let disabled = shell.enabled(&invocation, &command_context).err();
+                let name = shell.session.resource_title(resource);
+                let subtitle = match query.target {
+                    None => name.to_owned(),
+                    target => format!("{name} · {}", target_subtitle(target)),
+                };
+                (
+                    PaletteItem {
+                        section: PaletteSection::Passage,
+                        title: title.clone(),
+                        subtitle: Some(subtitle),
+                        score: 1000,
+                        invocation,
+                        disabled_text: disabled.as_ref().map(ToString::to_string),
+                        disabled,
+                        shortcut: None,
+                    },
+                    i,
+                )
+            })
+            .collect();
+        if !items.is_empty() {
+            notice = None;
+            groups.retain(|g| g.section != PaletteSection::Passage);
+            groups.extend(group(PaletteSection::Passage, items, context));
+        }
+    }
+
     if mode == PaletteMode::Commands || (mode == PaletteMode::All && !blank) {
         groups.extend(group(
             PaletteSection::Commands,
@@ -1079,13 +1156,21 @@ pub fn palette_query_indexed(
             .into_iter()
             .enumerate()
             .map(|(i, hit)| {
-                let short = osis_verse(&hit.reference)
-                    .or_else(|| parse(&hit.reference, english()).ok())
-                    .map_or_else(|| hit.reference.clone(), |set| set.to_short());
-                let invocation = Invocation::with(
-                    "nav.navigate",
-                    target_args(query.target, hit.reference.clone()),
-                );
+                let work = work_place(&hit.reference);
+                let short = match &work {
+                    Some((_, human)) => human.clone(),
+                    None => osis_verse(&hit.reference)
+                        .or_else(|| parse(&hit.reference, english()).ok())
+                        .map_or_else(|| hit.reference.clone(), |set| set.to_short()),
+                };
+                let invocation = if work.is_some() {
+                    open_work(query.target, &hit.edition_id, hit.reference.clone())
+                } else {
+                    Invocation::with(
+                        "nav.navigate",
+                        target_args(query.target, hit.reference.clone()),
+                    )
+                };
                 let disabled = shell.enabled(&invocation, &command_context).err();
                 (
                     PaletteItem {
@@ -1209,6 +1294,130 @@ mod tests {
             assert_eq!(first.invocation.command_id, spec.id, "{}", spec.title);
             assert_eq!(first.score, 1000);
         }
+    }
+
+    /// A provider that answers every query with the same hits.
+    struct Hits(Vec<TextHit>);
+
+    impl TextProvider for Hits {
+        fn search(&self, _query: &str, limit: usize) -> Vec<TextHit> {
+            self.0.iter().take(limit).cloned().collect()
+        }
+    }
+
+    #[test]
+    fn a_work_citation_and_a_work_hit_open_the_work_beside_the_passage() {
+        let mut shell = Shell::new(fixture_session()).unwrap();
+        let context = PaletteContext::default();
+        let opens_work = |r: &PaletteResult| {
+            r.items()
+                .any(|i| i.invocation.command_id == "tab.open_edition")
+        };
+        // No work registered: a citation is not a row.
+        assert!(!opens_work(&palette_query(
+            &shell,
+            "Inst. 3.2.7",
+            &context,
+            None
+        )));
+        shell.set_resource_schemes(
+            [("institutes-allen", "institutes"), ("bsb", "eng")]
+                .map(|(a, b)| (a.to_owned(), b.to_owned()))
+                .into(),
+        );
+        shell.set_resource_titles(
+            [(
+                "institutes-allen".to_owned(),
+                "Institutes (Allen)".to_owned(),
+            )]
+            .into(),
+        );
+        for typed in [
+            "Inst. 3.2.7",
+            "Institutes III.ii.7",
+            ":inst 3.2.7",
+            "institutes:3.2.7",
+        ] {
+            let result = palette_query(&shell, typed, &context, None);
+            let first = result.items().next().unwrap();
+            assert_eq!(first.section, PaletteSection::Passage, "{typed}");
+            assert_eq!(first.title, "Institutes 3.2.7", "{typed}");
+            assert_eq!(first.subtitle.as_deref(), Some("Institutes (Allen)"));
+            assert_eq!(first.invocation.command_id, "tab.open_edition");
+            assert_eq!(
+                first.invocation.args.resource_id.as_deref(),
+                Some("institutes-allen")
+            );
+            assert_eq!(
+                first.invocation.args.reference.as_deref(),
+                Some("institutes:3.2.7")
+            );
+            assert!(first.disabled.is_none(), "{typed}");
+            assert!(result.notice.is_none(), "{typed}");
+        }
+        let column = palette_query(&shell, "Inst. 3.2.7 @new", &context, None);
+        assert!(column.items().next().unwrap().invocation.args.new_column);
+        // A Scripture passage is still a passage.
+        let john = palette_query(&shell, "Jn 3:16", &context, None);
+        assert_eq!(
+            john.items().next().unwrap().invocation.command_id,
+            "nav.navigate"
+        );
+
+        let hits = Hits(vec![
+            TextHit {
+                edition_id: "institutes-allen".to_owned(),
+                reference: "institutes:3.2.7".to_owned(),
+                snippet: "a firm and certain knowledge".to_owned(),
+            },
+            TextHit {
+                edition_id: "institutes-allen".to_owned(),
+                reference: "institutes:dedication".to_owned(),
+                snippet: "a letter".to_owned(),
+            },
+        ]);
+        let text = palette_query(&shell, "#knowledge", &context, Some(&hits));
+        let rows: Vec<&PaletteItem> = text.items().collect();
+        assert_eq!(rows[0].title, "Institutes (Allen) · Institutes 3.2.7");
+        assert_eq!(rows[0].invocation.command_id, "tab.open_edition");
+        assert_eq!(
+            rows[0].invocation.args.reference.as_deref(),
+            Some("institutes:3.2.7")
+        );
+        assert_eq!(rows[1].title, "Institutes (Allen) · dedication");
+
+        // Enter opens the work; the passage tab navigating later leaves the work where it is.
+        let commands = CommandContext::default();
+        let open = palette_query(&shell, "Inst. 3.2.7", &context, None)
+            .items()
+            .next()
+            .unwrap()
+            .invocation
+            .clone();
+        shell.apply(&open, &commands).unwrap();
+        let work_tab = |shell: &Shell| {
+            shell
+                .session
+                .active()
+                .tabs()
+                .find(|t| t.content_id == "institutes-allen")
+                .map(|t| t.reference.clone())
+        };
+        assert_eq!(work_tab(&shell), Some(Some("institutes:3.2.7".to_owned())));
+        shell
+            .apply(
+                &Invocation::with("nav.navigate", target_args(None, "Rom.8.28".to_owned())),
+                &commands,
+            )
+            .unwrap();
+        assert_eq!(work_tab(&shell), Some(Some("institutes:3.2.7".to_owned())));
+        assert!(
+            shell
+                .session
+                .active()
+                .tabs()
+                .any(|t| t.reference.as_deref() == Some("Rom.8.28"))
+        );
     }
 
     #[test]

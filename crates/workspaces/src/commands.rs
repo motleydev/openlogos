@@ -1881,6 +1881,27 @@ fn carried(ws: &Workspace, driver: &str, follow_mode: bool) -> Vec<String> {
     followed
 }
 
+/// The carried tabs that can follow `driver` (B016): a Bible tab follows a Bible tab and a
+/// work's tab follows a tab of the same work, never one the other, since a verse is not a place
+/// in the *Institutes* nor a section a place in the Bible ([`crate::reading::same_family`]).
+fn same_family(
+    ws: &Workspace,
+    schemes: &std::collections::BTreeMap<String, String>,
+    driver: &str,
+    carried: Vec<String>,
+) -> Vec<String> {
+    let content = |id: &str| {
+        ws.tabs()
+            .find(|t| t.id == id)
+            .map_or_else(String::new, |t| t.content_id.clone())
+    };
+    let from = content(driver);
+    carried
+        .into_iter()
+        .filter(|id| crate::reading::same_family(schemes, &from, &content(id)))
+        .collect()
+}
+
 /// A deliberate navigation in `driver`: the driver moves, then the tabs it carries
 /// ([`carried`]). Followers land on the reference mapped into their resource's scheme
 /// ([`map_reference`]); each tab marks the verses it landed on (B078).
@@ -1891,7 +1912,7 @@ fn navigate(
     reference: &str,
 ) -> (Vec<String>, Vec<TabPosition>) {
     let transaction = ws.mint_id("nav");
-    let followed = carried(ws, driver, true);
+    let followed = same_family(ws, schemes, driver, carried(ws, driver, true));
     let workspace_id = ws.id.clone();
     let tab = tab_mut(ws, driver);
     let from = tab.content_id.clone();
@@ -1958,7 +1979,7 @@ fn scroll(
         true,
         FollowMapping::Same,
     )];
-    for id in carried(ws, tab_id, active) {
+    for id in same_family(ws, schemes, tab_id, carried(ws, tab_id, active)) {
         let tab = tab_mut(ws, &id);
         let (mapped, mapping) = map_reference(schemes, &reference, &from, &tab.content_id);
         let Some(target) =
