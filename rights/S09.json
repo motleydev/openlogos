@@ -4,7 +4,7 @@
   "source_id": "S09",
   "artifact_sha256": "0f385bd7aeaf0af40970222de6cf6924587f893eb2ae817c3909121237f68ecf",
   "edition_id": "openbible-cross-references:2026-10-26",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "CC-BY-4.0",
   "evidence_url": "https://www.openbible.info/labs/cross-references/",
   "license_artifact_sha256": "6674984c69a81692978007f81e48f0df1120bde8d594985e8440a460070e873e",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-11-08",
   "acquisition": {
     "upstream_url": "https://a.openbible.info/data/cross-references.zip",
     "commit": null,

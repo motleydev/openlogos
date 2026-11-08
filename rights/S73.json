@@ -4,7 +4,7 @@
   "source_id": "S73",
   "artifact_sha256": "9cd47904aa3cae073b035791c6c7b2bff2b1c6c29814004db2e8ee765b273c6c",
   "edition_id": "n1904-tf:1.0.0:2024-07-28",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "MIT AND CC-BY-4.0",
   "evidence_url": "https://github.com/CenterBLC/N1904/blob/def0fd230b9ab77c11c371b273d020b1a573c884/LICENSE.md",
   "license_artifact_sha256": "aff0eb9dcff124e15a20fef85424267047e3712123cfec52743eb0ab60a96459",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-11-08",
   "acquisition": {
     "upstream_url": "https://github.com/CenterBLC/N1904",
     "commit": "def0fd230b9ab77c11c371b273d020b1a573c884",
