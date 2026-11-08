@@ -14,6 +14,7 @@
 //! - [`morphology`]: morphology layers keyed to the text packs' tokens: analyses and lemma
 //!   search (B026).
 
+pub mod alignment;
 pub mod catalog;
 pub mod edition_search;
 pub mod engine;
@@ -26,6 +27,7 @@ pub mod token_engine;
 pub mod tokenizer;
 pub mod vectors;
 
+pub use alignment::AlignmentLayers;
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
 pub use edition_search::EditionSearch;
 pub use engine::Engine;

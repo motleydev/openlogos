@@ -590,6 +590,36 @@ pub struct LemmaSearch {
     pub unavailable: Vec<String>,
 }
 
+/// One lemma's positions in one layer ([`MorphologyLayers::lemma_positions`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LemmaGroup {
+    /// The edition.
+    pub edition: String,
+    /// The revision of the layer the positions belong to.
+    pub layer_revision: String,
+    /// The lemma as the source spells it.
+    pub lemma: String,
+    /// Strong's number of its first occurrence, as the source gives it.
+    pub strong: String,
+    /// Its language.
+    pub language: Language,
+    /// Layer positions (morphemes), in reading order.
+    pub positions: Vec<u32>,
+}
+
+/// Every position of the lemmas a query matched.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LemmaPositions {
+    /// What was asked.
+    pub query: String,
+    /// `exact` or `key`, as in [`LemmaSearch`].
+    pub matched_by: String,
+    /// Per lemma and layer, most frequent first.
+    pub lemmas: Vec<LemmaGroup>,
+    /// Editions asked for that have no layer installed.
+    pub unavailable: Vec<String>,
+}
+
 /// Per matched lemma: count, its first position, and counts per Strong's value id.
 type LemmaTally = (u64, usize, BTreeMap<u32, u64>);
 
@@ -1223,6 +1253,86 @@ impl MorphologyLayers {
             });
         }
         Ok(result)
+    }
+
+    /// Every position of a lemma in the editions asked for (all with a layer when empty),
+    /// grouped by lemma, matched as [`Self::lemma_search`] matches (exact when spelled as a
+    /// lemma, else by search key). B067 counts renderings over these positions.
+    pub fn lemma_positions(&self, editions: &[String], query: &str) -> Result<LemmaPositions> {
+        let query = query.trim();
+        let key = normalize(query);
+        let mut result = LemmaPositions {
+            query: query.to_owned(),
+            matched_by: "key".to_owned(),
+            lemmas: Vec::new(),
+            unavailable: editions
+                .iter()
+                .filter(|e| !self.has_edition(e))
+                .cloned()
+                .collect(),
+        };
+        if key.is_empty() {
+            return Ok(result);
+        }
+        let layers: Vec<&Layer> = self
+            .layers
+            .iter()
+            .filter(|l| editions.is_empty() || editions.contains(&l.info.edition))
+            .collect();
+        let exact = layers.iter().any(|l| {
+            l.columns
+                .feature("lemma")
+                .is_some_and(|c| c.lookup.contains_key(&feature_key(query)))
+        });
+        let (feature, value) = if exact {
+            result.matched_by = "exact".to_owned();
+            ("lemma", query.to_owned())
+        } else {
+            ("lemma_key", key)
+        };
+        for layer in layers {
+            let bitmap = layer
+                .columns
+                .posting(&self.conn, &layer.schema, feature, &value)?;
+            let lemma = layer.columns.feature("lemma").expect("checked on attach");
+            let mut groups: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+            for pos in bitmap.iter() {
+                groups.entry(lemma.ids[pos as usize]).or_default().push(pos);
+            }
+            for (_, positions) in groups {
+                let first = positions[0] as usize;
+                let display = self.morphemes(layer, first..first + 1)?;
+                result.lemmas.push(LemmaGroup {
+                    edition: layer.info.edition.clone(),
+                    layer_revision: layer.info.revision.clone(),
+                    lemma: display
+                        .first()
+                        .map(|m| m.0.lemma.clone())
+                        .unwrap_or_default(),
+                    strong: Self::value(layer, "strong", first),
+                    language: Self::language(layer, first),
+                    positions,
+                });
+            }
+        }
+        result.lemmas.sort_by(|a, b| {
+            b.positions
+                .len()
+                .cmp(&a.positions.len())
+                .then(a.lemma.cmp(&b.lemma))
+        });
+        Ok(result)
+    }
+
+    /// The verse and text pack word number of a position of an edition's first layer.
+    #[must_use]
+    pub fn place_of(&self, edition: &str, pos: u32) -> Option<(VerseId, u32)> {
+        let layer = self.layers.iter().find(|l| l.info.edition == edition)?;
+        let pos = pos as usize;
+        Some((
+            VerseId(*layer.columns.verse.get(pos)?),
+            u32::from(*layer.word.get(pos)?),
+        ))
     }
 
     /// The lemma a token is searched by: its last morpheme that is not a suffix (`רֵאשִׁית`
