@@ -17,6 +17,7 @@ use std::sync::OnceLock;
 
 #[cfg(feature = "retrieval")]
 pub mod alignment;
+pub mod cross_references;
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
 

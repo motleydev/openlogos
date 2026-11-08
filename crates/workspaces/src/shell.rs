@@ -452,6 +452,11 @@ pub struct Session {
     /// words only. Runtime state, not persisted.
     #[serde(skip)]
     pub morphology_editions: std::collections::BTreeSet<String>,
+    /// Data layers the host has installed beside its editions (B057: `cross_references`,
+    /// [`crate::commands::CROSS_REFERENCES_LAYER`]); a command that needs one is disabled with
+    /// its reason until the host registers it. Runtime state, not persisted.
+    #[serde(skip)]
+    pub data_layers: std::collections::BTreeSet<String>,
 }
 
 impl Session {
@@ -1017,6 +1022,7 @@ impl Session {
             resource_languages: BTreeMap::new(),
             morphology_editions: std::collections::BTreeSet::new(),
             resource_schemes: BTreeMap::new(),
+            data_layers: std::collections::BTreeSet::new(),
         }
     }
 
@@ -1139,6 +1145,7 @@ impl Session {
             resource_languages: BTreeMap::new(),
             morphology_editions: std::collections::BTreeSet::new(),
             resource_schemes: BTreeMap::new(),
+            data_layers: std::collections::BTreeSet::new(),
         };
         session.check()?;
         Ok(session)

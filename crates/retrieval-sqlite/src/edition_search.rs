@@ -159,6 +159,8 @@ impl EditionSearch {
                     "pack schema {version} is not the supported {PACK_SCHEMA_VERSION}"
                 )));
             }
+            crate::pack::check_edge_storage(&self.conn, &schema)
+                .map_err(RetrievalError::Storage)?;
             let mode = value("normalization_mode")?;
             if mode != NORMALIZATION_MODE {
                 return Err(RetrievalError::Storage(format!(

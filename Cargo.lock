@@ -819,6 +819,7 @@ version = "0.1.0"
 dependencies = [
  "openlogos-core",
  "openlogos-retrieval",
+ "openlogos-text",
  "openlogos-workspaces",
  "roaring",
  "rusqlite",

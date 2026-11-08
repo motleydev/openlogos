@@ -119,6 +119,31 @@ preview-pack-verify *args:
 preview-pack-bench *args:
     cargo run --release -p openlogos-preview-pack -- bench {{ args }}
 
+# B057: the OpenBible cross references (S09) into <out>/relations/openbible-xrefs.sqlite beside the preview pack, after the same rights and hash gate; prints the fidelity counts and writes openbible-xrefs.json (docs/preview-pack.md)
+[group('2 · core')]
+preview-pack-xrefs *args:
+    cargo run --release -p openlogos-preview-pack -- xrefs {{ args }}
+
+# B057: check the built cross-reference pack against the NAS source with a second reader (zipfile, sqlite3): every line one edge, votes and ranges as published; needs the corpus and says SKIPPED without it; `--show` prints the source's rows for the spread
+[group('2 · core')]
+preview-pack-xrefs-verify *args:
+    python3 tools/verify_xrefs.py {{ args }}
+
+# B057: the spread of docs/evidence/B057.md through the core API over the built packs; `--limit N` items per passage, `--preview` adds the edition's text
+[group('2 · core')]
+preview-pack-xrefs-show *args:
+    cargo run --release -p openlogos-preview-pack -- xrefs-show {{ args }}
+
+# B057: a verse's cross-reference list latency natively, against the next frame (16 ms p95); `--stride N` samples every Nth verse
+[group('2 · core')]
+preview-pack-xrefs-bench *args:
+    cargo run --release -p openlogos-preview-pack -- xrefs-bench {{ args }}
+
+# B057: the same list latency in a dedicated worker in headless Chrome (web shell); prints one `B057 wasm:` line
+[group('6 · web')]
+preview-pack-xrefs-bench-wasm *args:
+    @scripts/preview-pack-xrefs-bench-wasm.sh {{ args }}
+
 # B071: the same latency in a dedicated worker in headless Chrome (web shell); prints one `B071 wasm:` line
 [group('6 · web')]
 preview-pack-bench-wasm *args:

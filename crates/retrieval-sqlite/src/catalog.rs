@@ -344,6 +344,7 @@ impl Catalog {
                 "pack schema {version} is not the supported {PACK_SCHEMA_VERSION}"
             )));
         }
+        crate::pack::check_edge_storage(&pack, "main").map_err(RetrievalError::Storage)?;
         let edition = manifest("edition")?.unwrap_or_default();
         let work = manifest("work")?;
         let locator_scheme = manifest("locator_scheme")?;

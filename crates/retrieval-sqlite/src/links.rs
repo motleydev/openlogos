@@ -215,6 +215,10 @@ impl LinkIndex {
             .execute("ATTACH DATABASE ?1 AS installing", params![uri])
             .map_err(storage)?;
         let result = (|| -> Result<u64> {
+            // A pack whose edges are stored in a layout this engine does not read is refused,
+            // never read as the default `edge` table (B057).
+            crate::pack::check_edge_storage(&self.conn, "installing")
+                .map_err(RetrievalError::Storage)?;
             let tx = self.conn.unchecked_transaction().map_err(storage)?;
             tx.execute(
                 "INSERT INTO pack(pack_id, path, edges) VALUES (?1, ?2, 0)",

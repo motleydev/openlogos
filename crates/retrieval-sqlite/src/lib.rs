@@ -13,9 +13,11 @@
 //! - [`edition_search`]: text search over the installed editions for the palette (B071).
 //! - [`morphology`]: morphology layers keyed to the text packs' tokens: analyses and lemma
 //!   search (B026).
+//! - [`cross_references`]: the cross-reference relation pack, written and read (B057).
 
 pub mod alignment;
 pub mod catalog;
+pub mod cross_references;
 pub mod edition_search;
 pub mod engine;
 pub mod fts;
@@ -29,6 +31,7 @@ pub mod vectors;
 
 pub use alignment::AlignmentLayers;
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
+pub use cross_references::{CrossReferencePack, write_cross_reference_pack};
 pub use edition_search::EditionSearch;
 pub use engine::Engine;
 pub use links::{LinkIndex, UserEdge};
