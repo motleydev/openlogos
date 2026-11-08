@@ -124,6 +124,11 @@ preview-pack-bench *args:
 preview-pack-xrefs *args:
     cargo run --release -p openlogos-preview-pack -- xrefs {{ args }}
 
+# B057: check the built cross-reference pack against the NAS source with a second reader (zipfile, sqlite3): every line one edge, votes and ranges as published; needs the corpus and says SKIPPED without it; `--show` prints the source's rows for the spread
+[group('2 · core')]
+preview-pack-xrefs-verify *args:
+    python3 tools/verify_xrefs.py {{ args }}
+
 # B057: the spread of docs/evidence/B057.md through the core API over the built packs; `--limit N` items per passage, `--preview` adds the edition's text
 [group('2 · core')]
 preview-pack-xrefs-show *args:
