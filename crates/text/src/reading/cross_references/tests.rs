@@ -322,6 +322,21 @@ fn reverse_links_are_derived_labelled_and_merged_with_published_ones() {
     assert_eq!(john.items[0].votes, 384);
     assert_eq!(john.published, 0);
     assert!(ask(&library(), "bsb", "John 1:2", false).items.is_empty());
+
+    // Published items come first even when a derived one has more votes.
+    let ps = ask(&library(), "bsb", "Ps 33:6", true);
+    let order: Vec<(&str, Direction, i32)> = ps
+        .items
+        .iter()
+        .map(|i| (i.source_target.as_str(), i.direction, i.votes))
+        .collect();
+    assert_eq!(
+        order,
+        [
+            ("Gen.1.1-Gen.1.3", Direction::AsPublished, 12),
+            ("Gen.1.1", Direction::ReverseDerived, 50)
+        ]
+    );
 }
 
 #[test]
@@ -392,6 +407,8 @@ fn a_target_the_edition_does_not_print_is_kept_and_labelled() {
         rows(&[
             "Eph.3.20\tRom.16.25-Rom.16.27\t4",
             "Eph.3.20\tRom.16.24-Rom.16.25\t1",
+            "Eph.3.20\tActs.19.23-Acts.19.41\t2",
+            "Eph.3.20\t2Cor.13.14\t1",
         ]),
     )));
     let list = ask(&only_nt, "sblgnt", "Eph 3:20", false);
@@ -404,6 +421,19 @@ fn a_target_the_edition_does_not_print_is_kept_and_labelled() {
     assert_eq!(partly.availability, Availability::PartlyPrinted);
     assert_eq!(partly.preview.as_deref(), Some("[sblgnt:Rom.16.24]"));
 
+    // `eng` Acts 19:41 has no `org` verse: the range keeps what maps and says it is partial.
+    let acts = find(&list, "Acts.19.23-Acts.19.41");
+    assert_eq!(acts.target.as_deref(), Some("Acts.19.23-Acts.19.40"));
+    assert_eq!(acts.mapping, MappingStatus::Partial);
+    assert_eq!(acts.availability, Availability::Printed);
+    // A single verse with no counterpart is kept, unmapped, under its published label.
+    let grace = find(&list, "2Cor.13.14");
+    assert_eq!(grace.target, None);
+    assert_eq!(grace.mapping, MappingStatus::Unmapped);
+    assert_eq!(grace.availability, Availability::Unmapped);
+    assert_eq!(grace.label, "2 Cor 13:14");
+    assert_eq!(grace.preview, None);
+
     // BSB omits Matt 17:21: a range over it is partly printed and its preview skips it.
     let matt = ask(&lib, "bsb", "Matt 17:20", false);
     let range = find(&matt, "Matt.17.20-Matt.17.22");
@@ -412,6 +442,15 @@ fn a_target_the_edition_does_not_print_is_kept_and_labelled() {
         range.preview.as_deref(),
         Some("[bsb:Matt.17.20] [bsb:Matt.17.22]")
     );
+    // A verse the edition omits still has the links listed under it.
+    let mut omitted = library();
+    omitted.set_cross_references(Box::new(MemoryCrossReferences::new(
+        info(),
+        rows(&["Matt.17.21\tMark.9.29\t5"]),
+    )));
+    let list = ask(&omitted, "bsb", "Matt 17:21", false);
+    assert_eq!(list.source_verses, ["Matt.17.21"]);
+    assert_eq!(list.items[0].label, "Mark 9:29");
 }
 
 #[test]

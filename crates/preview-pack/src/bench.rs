@@ -74,7 +74,7 @@ pub fn percentile(sorted: &[f64], p: f64) -> f64 {
     sorted[rank.clamp(1, sorted.len()) - 1]
 }
 
-fn row(group: &str, mut samples: Vec<(f64, String)>) -> Row {
+pub(crate) fn row(group: &str, mut samples: Vec<(f64, String)>) -> Row {
     samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     let values: Vec<f64> = samples.iter().map(|s| s.0).collect();
     Row {

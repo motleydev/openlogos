@@ -7,6 +7,8 @@
 //! - [`build`]: the edition definitions, the versification reconciliation against the canon table,
 //!   the publisher's second form as an oracle (BSB), the pack and search writers.
 //! - [`bench`]: text search latency against the 50 ms budget of specs/22 §7.
+//! - [`xrefs`]: B057, the OpenBible cross references into a relation pack beside the text packs,
+//!   with the fidelity report, a spread to read by eye and the list latency.
 
 pub mod bench;
 pub mod build;
@@ -15,3 +17,4 @@ pub mod oshb;
 pub mod rights;
 pub mod sblgnt;
 pub mod usfm;
+pub mod xrefs;

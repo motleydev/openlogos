@@ -17,8 +17,9 @@
 //!    that does not map is kept, with its [`Availability`] and [`MappingStatus`] saying so.
 //! 4. Equal visible targets are merged into one [`CrossReference`]; every assertion behind it
 //!    is kept in `assertions` with its own votes and source line.
-//! 5. Items are ordered by the published votes (the best assertion's), then published before
-//!    derived, then canonical order of the target. Votes are not accuracy scores (S09).
+//! 5. Published items come first, best first by their published votes (the best assertion's),
+//!    then derived ones the same way, then canonical order of the target. Votes are not
+//!    accuracy scores (S09).
 //!
 //! Preview text comes only from the edition asked about. A target it does not print shows no
 //! text and lists the installed editions that do print it ([`CrossReference::available_in`]);
@@ -379,13 +380,67 @@ fn walk(
     }
 }
 
+/// Every verse of a scheme the canon table knows from `start` to `end` inclusive, crossing
+/// chapters and books (`2Chr.36.22-Ezra.1.3`); `None` when an end is not in the scheme or the
+/// range runs backwards.
+#[must_use]
+pub fn scheme_verses(scheme: &str, start: &Reference, end: &Reference) -> Option<Vec<Reference>> {
+    let scheme = SchemeId::new(scheme);
+    if !canon::contains(&scheme, start) || !canon::contains(&scheme, end) || end < start {
+        return None;
+    }
+    let mut out = Vec::new();
+    let mut book = start.book;
+    let mut chapter = start.chapter;
+    let mut verse = start.verse?;
+    loop {
+        let at_end = book == end.book && chapter == end.chapter;
+        let stop = if at_end {
+            end.verse?
+        } else {
+            canon::last_verse(&scheme, book, chapter)?
+        };
+        out.extend((verse..=stop).map(|v| Reference::verse(book, chapter, v)));
+        if at_end {
+            return Some(out);
+        }
+        if chapter < canon::chapter_count(&scheme, book)? {
+            chapter += 1;
+        } else {
+            book = BookId::all()
+                .into_iter()
+                .find(|b| b.canonical_index() == book.canonical_index() + 1)?;
+            chapter = 1;
+        }
+        verse = canon::first_verse(&scheme, book, chapter)?;
+    }
+}
+
 /// The longest target walked for its availability; a published range is far shorter.
 const WALK_CAP: usize = 2_000;
 
 fn place(installed: &Installed, source_scheme: &str, start: &Reference, end: &Reference) -> Placed {
     let scheme = installed.pack.edition().scheme.as_str();
-    let (s_status, s_targets) = map_verse(start, source_scheme, scheme);
-    let (e_status, e_targets) = map_verse(end, source_scheme, scheme);
+    let (mut s_status, mut s_targets) = map_verse(start, source_scheme, scheme);
+    let (mut e_status, mut e_targets) = map_verse(end, source_scheme, scheme);
+    // A range whose end (or start) has no counterpart, as `eng` Acts 19:41 has none in `org`,
+    // keeps the part that maps and says it is partial; a single verse stays unmapped.
+    if start != end && (s_targets.is_empty() || e_targets.is_empty()) {
+        let inner = scheme_verses(source_scheme, start, end).unwrap_or_default();
+        let mapped: Vec<(MappingStatus, Vec<Reference>)> = inner
+            .iter()
+            .map(|v| map_verse(v, source_scheme, scheme))
+            .filter(|(_, t)| !t.is_empty())
+            .collect();
+        if let (Some(first), Some(last)) = (mapped.first(), mapped.last()) {
+            if s_targets.is_empty() {
+                (s_status, s_targets) = (MappingStatus::Partial, first.1.clone());
+            }
+            if e_targets.is_empty() {
+                (e_status, e_targets) = (MappingStatus::Partial, last.1.clone());
+            }
+        }
+    }
     let (Some(first), Some(last)) = (s_targets.first(), e_targets.last()) else {
         return Placed {
             range: None,
@@ -498,6 +553,25 @@ impl ReadingLibrary {
         self.cross_references = None;
     }
 
+    /// Where a target published in `source_scheme` lands in an edition: its OSIS range in the
+    /// edition's numbering (`None` when it does not map), the mapping status and what the
+    /// edition prints of it. What [`ReadingLibrary::cross_references`] labels each item with;
+    /// the importer counts it over every published row.
+    pub fn place_cross_reference(
+        &self,
+        resource_id: &str,
+        source_scheme: &str,
+        start: &Reference,
+        end: &Reference,
+    ) -> Result<(Option<String>, MappingStatus, Availability), ReadingError> {
+        let placed = place(self.installed(resource_id)?, source_scheme, start, end);
+        Ok((
+            placed.range.as_ref().map(ReferenceRange::to_osis),
+            placed.mapping,
+            placed.availability,
+        ))
+    }
+
     /// What the installed cross-reference source is, if one is installed.
     #[must_use]
     pub fn cross_reference_info(&self) -> Option<&CrossReferenceInfo> {
@@ -540,10 +614,9 @@ impl ReadingLibrary {
         // The passage in the source's scheme.
         let mut mapping = MappingStatus::Exact;
         let mut source_verses: Vec<Reference> = Vec::new();
-        for (verse, printed) in &passage {
-            if !printed {
-                continue;
-            }
+        // Every verse of the passage, printed or not: a verse the edition omits (BSB Matt 17:21)
+        // still has the links the source lists under it.
+        for (verse, _) in &passage {
             let (status, targets) = map_verse(verse, &edition_scheme, &info.scheme);
             mapping = worst(mapping, status);
             for t in targets {
@@ -689,9 +762,9 @@ impl ReadingLibrary {
             ));
         }
         items.sort_by(|(oa, a), (ob, b)| {
-            b.votes
-                .cmp(&a.votes)
-                .then(a.direction.cmp(&b.direction))
+            a.direction
+                .cmp(&b.direction)
+                .then(b.votes.cmp(&a.votes))
                 .then(oa.cmp(ob))
         });
         let total = items.len();

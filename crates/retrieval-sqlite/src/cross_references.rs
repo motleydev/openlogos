@@ -20,9 +20,7 @@ use std::io::Cursor;
 use std::path::Path;
 use std::sync::Mutex;
 
-use openlogos_core::canon;
 use openlogos_core::reference::{BookId, Reference};
-use openlogos_core::versification::SchemeId;
 use openlogos_retrieval::{ProvenanceKind, ReviewState, VerseId};
 use openlogos_text::reading::{CrossReferenceInfo, CrossReferenceRow, CrossReferenceSource};
 use rusqlite::{Connection, OpenFlags, params};
@@ -85,35 +83,7 @@ fn parse_target(locator: &str) -> Option<(Reference, Reference)> {
 /// canon table; `None` when an end is not in the scheme or the range runs backwards.
 #[must_use]
 pub fn verses_between(scheme: &str, start: &Reference, end: &Reference) -> Option<Vec<Reference>> {
-    let scheme = SchemeId::new(scheme);
-    if !canon::contains(&scheme, start) || !canon::contains(&scheme, end) || end < start {
-        return None;
-    }
-    let mut out = Vec::new();
-    let mut book = start.book;
-    let mut chapter = start.chapter;
-    let mut verse = start.verse?;
-    loop {
-        let last = canon::last_verse(&scheme, book, chapter)?;
-        let at_end = book == end.book && chapter == end.chapter;
-        let stop = if at_end { end.verse? } else { last };
-        for v in verse..=stop {
-            out.push(Reference::verse(book, chapter, v));
-        }
-        if at_end {
-            return Some(out);
-        }
-        if chapter < canon::chapter_count(&scheme, book)? {
-            chapter += 1;
-        } else {
-            let next = BookId::all()
-                .into_iter()
-                .find(|b| b.canonical_index() == book.canonical_index() + 1)?;
-            book = next;
-            chapter = 1;
-        }
-        verse = canon::first_verse(&scheme, book, chapter)?;
-    }
+    openlogos_text::reading::scheme_verses(scheme, start, end)
 }
 
 /// What a written pack holds.
@@ -397,6 +367,7 @@ impl CrossReferenceSource for CrossReferencePack {
 mod tests {
     use super::*;
     use crate::links::LinkIndex;
+    use openlogos_core::canon;
 
     fn r(osis: &str) -> Reference {
         canon::segment_reference(osis).unwrap()

@@ -31,7 +31,7 @@ pub mod placeholder;
 pub use cross_references::{
     Availability, CrossReference, CrossReferenceAssertion, CrossReferenceError, CrossReferenceInfo,
     CrossReferenceList, CrossReferenceOptions, CrossReferenceRow, CrossReferenceSource,
-    Direction as CrossReferenceDirection, MemoryCrossReferences,
+    Direction as CrossReferenceDirection, MemoryCrossReferences, scheme_verses,
 };
 
 pub use pack::{
