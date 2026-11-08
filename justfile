@@ -104,6 +104,21 @@ clean:
     cargo clean
     rm -rf result result-*
 
+# B016: build the Institutes work pack (Calvin, Allen's translation, rights S75) from the NAS after the rights and hash gate; output ~/.cache/openlogos/works/institutes-allen.sqlite and its report unless OPENLOGOS_WORKS or --out says otherwise (docs/works.md)
+[group('2 · core')]
+institutes-pack *args:
+    cargo run --release -p openlogos-preview-pack --bin openlogos-institutes-pack -- build {{ args }}
+
+# B016: check the built Institutes pack against the NAS volumes with a second reader and the print edition's Scripture index; says SKIPPED without the corpus or pack; `--show` prints the by-eye spread
+[group('2 · core')]
+institutes-pack-verify *args:
+    python3 tools/verify_institutes_pack.py {{ args }}
+
+# B016: chapter, section, citation, reverse-index and search latency over the built Institutes pack, against specs/22 §7; e.g. `--rounds 5 --json target/b016.json`
+[group('2 · core')]
+institutes-pack-bench *args:
+    cargo run --release -p openlogos-preview-pack --bin openlogos-institutes-pack -- bench {{ args }}
+
 # B071: build the preview pack (BSB, SBLGNT, WLC text packs and search packs) from the NAS, after checking the rights records and every hash; output ~/.cache/openlogos/preview-pack unless OPENLOGOS_PREVIEW_PACK or --out says otherwise (docs/preview-pack.md)
 [group('2 · core')]
 preview-pack *args:
