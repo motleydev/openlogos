@@ -125,6 +125,7 @@ fn session() -> Session {
         resource_titles: Default::default(),
         resource_languages: Default::default(),
         resource_schemes: Default::default(),
+        data_layers: Default::default(),
     };
     session.check().expect("the bench session is valid");
     session

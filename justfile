@@ -134,6 +134,11 @@ preview-pack-xrefs-show *args:
 preview-pack-xrefs-bench *args:
     cargo run --release -p openlogos-preview-pack -- xrefs-bench {{ args }}
 
+# B057: the same list latency in a dedicated worker in headless Chrome (web shell); prints one `B057 wasm:` line
+[group('6 · web')]
+preview-pack-xrefs-bench-wasm *args:
+    @scripts/preview-pack-xrefs-bench-wasm.sh {{ args }}
+
 # B071: the same latency in a dedicated worker in headless Chrome (web shell); prints one `B071 wasm:` line
 [group('6 · web')]
 preview-pack-bench-wasm *args:

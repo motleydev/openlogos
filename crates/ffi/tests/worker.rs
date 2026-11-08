@@ -500,3 +500,188 @@ async fn edition_search_latency_over_the_preview_pack() {
     assert!(samples.len() >= 200);
     assert!(with_hits > 200, "{with_hits}");
 }
+
+/// B057: without a cross-reference pack the list throws `not_installed` and the shell keeps the
+/// row disabled; registering the layer enables it.
+#[wasm_bindgen_test]
+fn cross_references_need_their_layer() {
+    let reading = openlogos_ffi::wasm::ReadingHandle::placeholder();
+    let error = reading
+        .cross_references("bsb", "John 3:16", JsValue::UNDEFINED)
+        .unwrap_err();
+    assert_eq!(
+        property(&error, "kind").as_string().unwrap(),
+        "not_installed"
+    );
+    assert!(reading.cross_reference_source().unwrap().is_null());
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    let state = |shell: &openlogos_ffi::wasm::ShellHandle| -> String {
+        js_sys::JSON::stringify(&shell.commands(JsValue::UNDEFINED).unwrap())
+            .unwrap()
+            .as_string()
+            .unwrap()
+    };
+    let before = state(&shell);
+    shell.set_data_layers(vec!["cross_references".to_owned()]);
+    let after = state(&shell);
+    assert_ne!(before, after);
+    assert!(before.contains("Needs cross-reference data"));
+}
+
+/// B057: bytes that are no cross-reference pack are refused.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+fn cross_references_refuse_bytes_that_are_no_pack() {
+    let mut reading = openlogos_ffi::wasm::ReadingHandle::placeholder();
+    let garbage = js_sys::Uint8Array::from(&b"not a database"[..]);
+    let error = reading.use_cross_references(garbage).unwrap_err();
+    assert_eq!(property(&error, "kind").as_string().unwrap(), "source");
+}
+
+/// B057: a verse's cross-reference list in this worker, against the next frame (16 ms p95),
+/// over the real relation pack and BSB text pack. They are corpus-derived and never in the
+/// repository, so `just preview-pack-xrefs-bench-wasm` serves them and names the URL when it
+/// builds this test; without it the test says so and passes.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+async fn cross_reference_latency_over_the_relation_pack() {
+    let Some(base) = option_env!("OPENLOGOS_XREF_BENCH_URL") else {
+        console_log!(
+            "SKIPPED cross_reference_latency: OPENLOGOS_XREF_BENCH_URL is not set (just preview-pack-xrefs-bench-wasm)"
+        );
+        return;
+    };
+    let global = js_sys::global();
+    let performance = property(&global, "performance");
+    let now = js_sys::Function::from(property(&performance, "now"));
+    let clock = || now.call0(&performance).unwrap().as_f64().unwrap();
+    let fetch = js_sys::Function::from(property(&global, "fetch"));
+    let get = |path: String| {
+        let fetch = fetch.clone();
+        let global = global.clone();
+        async move {
+            let url = format!("{base}/{path}");
+            let response = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                fetch.call1(&global, &JsValue::from_str(&url)).unwrap(),
+            ))
+            .await
+            .unwrap();
+            let read = js_sys::Function::from(property(&response, "arrayBuffer"));
+            let buffer = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                read.call0(&response).unwrap(),
+            ))
+            .await
+            .unwrap();
+            js_sys::Uint8Array::new(&buffer)
+        }
+    };
+
+    let started = clock();
+    let pack = get("relations/openbible-xrefs.sqlite".to_owned()).await;
+    let pack_bytes = pack.length();
+    let fetched = clock();
+    let mut reading = openlogos_ffi::wasm::ReadingHandle::new();
+    reading.use_cross_references(pack).unwrap();
+    let installed = clock();
+    let manifest = get("packs/bsb/manifest.json".to_owned()).await.to_vec();
+    reading
+        .add_pack_manifest(std::str::from_utf8(&manifest).unwrap())
+        .unwrap();
+
+    // Every 40th verse of the BSB plus the spread: 780 or so verses.
+    let books = js_sys::JSON::stringify(&reading.editions().unwrap()).unwrap();
+    assert!(books.as_string().unwrap().contains("bsb"));
+    let manifest: serde_json::Value = serde_json::from_slice(&manifest).unwrap();
+    let mut verses = Vec::new();
+    for book in manifest["books"].as_array().unwrap() {
+        let id = book["book"].as_str().unwrap();
+        for chapter in book["chapters"].as_array().unwrap() {
+            let c = chapter["chapter"].as_u64().unwrap();
+            let last = chapter["last_verse"].as_u64().unwrap();
+            for v in 1..=last {
+                verses.push(format!("{id}.{c}.{v}"));
+            }
+        }
+    }
+    let mut sample: Vec<String> = verses.iter().step_by(40).cloned().collect();
+    for extra in ["Gen.1.1", "John.3.16", "Rom.8.28", "Ps.23.1", "Isa.53.5"] {
+        sample.push(extra.to_owned());
+    }
+    let page = |reverse: bool| {
+        serde_wasm_bindgen::to_value(&serde_json::json!({
+            "limit": 25, "include_reverse": reverse, "preview_verses": 3
+        }))
+        .unwrap()
+    };
+    let ask = |reading: &openlogos_ffi::wasm::ReadingHandle, verse: &str, reverse: bool| {
+        let start = clock();
+        let list = reading
+            .cross_references("bsb", verse, page(reverse))
+            .unwrap();
+        (clock() - start, list)
+    };
+
+    // Cold: no chunk supplied, so every item names the chunk its preview needs.
+    let mut cold = Vec::new();
+    let mut needed = std::collections::BTreeSet::new();
+    for verse in &sample {
+        let (ms, list) = ask(&reading, verse, false);
+        cold.push((ms, verse.clone()));
+        let items = property(&list, "items");
+        for item in js_sys::Array::from(&items).iter() {
+            let chunk = property(&item, "preview_chunk");
+            if !chunk.is_null() {
+                needed.insert((
+                    property(&chunk, "chapter_key").as_string().unwrap(),
+                    property(&chunk, "path").as_string().unwrap(),
+                ));
+            }
+        }
+    }
+    // What a page does next: fetch those chunks and supply them.
+    let supplying = clock();
+    for (key, path) in &needed {
+        let bytes = get(format!("packs/bsb/{path}")).await.to_vec();
+        reading.supply_chunk("bsb", key, &bytes).unwrap();
+    }
+    let supplied = clock();
+    let mut warm = Vec::new();
+    let mut reverse = Vec::new();
+    let mut previews = 0;
+    for verse in &sample {
+        let (ms, list) = ask(&reading, verse, false);
+        warm.push((ms, verse.clone()));
+        for item in js_sys::Array::from(&property(&list, "items")).iter() {
+            if !property(&item, "preview").is_null() {
+                previews += 1;
+            }
+        }
+        let (ms, _) = ask(&reading, verse, true);
+        reverse.push((ms, verse.clone()));
+    }
+    let summary = |name: &str, mut samples: Vec<(f64, String)>| {
+        samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let rank =
+            |p: f64| samples[((p / 100.0 * samples.len() as f64).ceil() as usize).max(1) - 1].0;
+        let (max, slowest) = samples.last().unwrap();
+        format!(
+            "{name}: {} samples, p50 {:.2} ms, p95 {:.2} ms, max {max:.2} ms ({slowest})",
+            samples.len(),
+            rank(50.0),
+            rank(95.0)
+        )
+    };
+    let samples = sample.len();
+    console_log!(
+        "B057 wasm: {}; {}; {}; {previews} previews; relation pack {pack_bytes} bytes fetched in {:.0} ms, installed in {:.0} ms; {} chunks supplied in {:.0} ms",
+        summary("first page of 25, no chunks yet", cold),
+        summary("first page of 25, chunks supplied", warm),
+        summary("with reverse links, chunks supplied", reverse),
+        fetched - started,
+        installed - fetched,
+        needed.len(),
+        supplied - supplying,
+    );
+    assert!(samples >= 200);
+    assert!(previews > 1000, "{previews}");
+}

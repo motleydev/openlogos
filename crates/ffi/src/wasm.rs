@@ -15,6 +15,7 @@
 
 use std::sync::OnceLock;
 
+pub mod cross_references;
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
 
