@@ -144,6 +144,26 @@ preview-pack-morphology-bench *args:
 preview-pack-morphology-bench-wasm *args:
     @scripts/preview-pack-morphology-bench-wasm.sh {{ args }}
 
+# B067: build the alignment layers from Clear's manual BSB alignments (S55) over the preview pack's BSB, SBLGNT and WLC tokens, after the rights gate; output ~/.cache/openlogos/alignments unless OPENLOGOS_ALIGNMENTS or --alignments says otherwise; needs `just preview-pack` and `just preview-pack-morphology` first (docs/alignments.md)
+[group('2 · core')]
+preview-pack-alignment *args:
+    cargo run --release -p openlogos-preview-pack -- alignment {{ args }}
+
+# B067: check the built alignment layers against Clear's files and the text packs with a second reader (Python standard library); needs the corpus and says SKIPPED without it
+[group('2 · core')]
+preview-pack-alignment-verify *args:
+    python3 -I tools/verify_alignments.py {{ args }}
+
+# B067: token lookup (16 ms) and lemma rendering table (50 ms) latency over the built layers, natively; writes the samples the wasm bench replays; e.g. `--rounds 2 --json target/b067.json`
+[group('2 · core')]
+preview-pack-alignment-bench *args:
+    cargo run --release -p openlogos-preview-pack -- alignment-bench {{ args }}
+
+# B067: the same alignment latency in a dedicated worker in headless Chrome (web shell), replaying the native bench's samples; prints one `B067 wasm:` line
+[group('6 · web')]
+preview-pack-alignment-bench-wasm *args:
+    @scripts/preview-pack-alignment-bench-wasm.sh {{ args }}
+
 # Build crates/ffi for macOS, iOS and the simulator, generate the Swift bindings and assemble artifacts/apple/OpenLogosCoreFFI.xcframework (apple shell)
 [group('5 · bindings')]
 bindings-swift:

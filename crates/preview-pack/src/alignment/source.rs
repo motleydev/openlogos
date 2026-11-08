@@ -14,6 +14,8 @@
 //! - `movable_letter_omitted`: Clear has `οὐ` where the layer has `οὐκ` or `οὐχ`.
 //! - `elision_omitted`: Clear has `ἐπ` where the layer has `ἐπ᾿` (the elision mark, and any
 //!   punctuation after it, which MACULA keeps with the word).
+//! - `punctuation_omitted`: Clear has the layer's letters without the punctuation MACULA
+//!   keeps after them (`εἰσιν` for `εἰσιν;;`, John 8:10).
 //! - `no_pack_token`: the layer holds the morpheme but no pack token does (a qere with
 //!   nothing written; a MACULA word B026 could not join).
 //! - `surface_differs`: none of the above; not joined, listed.
@@ -212,6 +214,9 @@ pub fn letters_class(clear: &str, layer: &str) -> &'static str {
         {
             return "elision_omitted";
         }
+        if !rest.is_empty() && rest.chars().all(|c| !c.is_alphanumeric() && !is_accent(c)) {
+            return "punctuation_omitted";
+        }
     }
     "surface_differs"
 }
@@ -340,6 +345,10 @@ mod tests {
             "elision_omitted"
         );
         assert_eq!(letters_class("ἀλλ", "ἀλλά"), "surface_differs");
+        assert_eq!(
+            letters_class("εἰσιν", "εἰσιν;\u{37e}"),
+            "punctuation_omitted"
+        );
     }
 
     #[test]
