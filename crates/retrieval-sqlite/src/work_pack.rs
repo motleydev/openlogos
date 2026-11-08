@@ -500,7 +500,6 @@ fn locator_of_span(first: u32, last: u32) -> String {
 }
 
 /// Writes `content` as a new pack file at `path` (which must not exist).
-#[cfg(not(target_arch = "wasm32"))]
 pub fn write_work_pack(path: &Path, content: &WorkContent) -> WorkResult<()> {
     use crate::pack::{EdgeRow, PackBuilder, PackManifest};
     use openlogos_retrieval::{ProvenanceKind, ReviewState};

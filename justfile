@@ -119,6 +119,11 @@ institutes-pack-verify *args:
 institutes-pack-bench *args:
     cargo run --release -p openlogos-preview-pack --bin openlogos-institutes-pack -- bench {{ args }}
 
+# B016: the Institutes pack in a dedicated worker in headless Chrome (web shell): chapters, a section, the reverse index and palette text results; prints one `B016 wasm:` line
+[group('6 · web')]
+institutes-pack-bench-wasm *args:
+    @scripts/institutes-pack-bench-wasm.sh {{ args }}
+
 # B071: build the preview pack (BSB, SBLGNT, WLC text packs and search packs) from the NAS, after checking the rights records and every hash; output ~/.cache/openlogos/preview-pack unless OPENLOGOS_PREVIEW_PACK or --out says otherwise (docs/preview-pack.md)
 [group('2 · core')]
 preview-pack *args:

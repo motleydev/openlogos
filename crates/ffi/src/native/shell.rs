@@ -1081,6 +1081,20 @@ impl ShellHandle {
         self.lock().text = Some(Box::new(search));
         Ok(())
     }
+
+    /// Answers the Text section from these search packs (B016): edition search packs and work
+    /// packs alike, attached read-only in the order given (the tie-break order of hits). A
+    /// work's hits name `scheme:locator` and open it with `tab.open_edition`.
+    pub fn use_search_packs(&self, paths: Vec<String>) -> Result<(), ShellCommandError> {
+        let mut search = openlogos_retrieval_sqlite::EditionSearch::new().map_err(invalid)?;
+        for path in &paths {
+            search
+                .attach_file(std::path::Path::new(path))
+                .map_err(invalid)?;
+        }
+        self.lock().text = Some(Box::new(search));
+        Ok(())
+    }
 }
 
 #[uniffi::export]

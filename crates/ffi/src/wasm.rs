@@ -17,6 +17,8 @@ use std::sync::OnceLock;
 
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
+#[cfg(feature = "retrieval")]
+pub mod works;
 
 use openlogos_conformance::{ConformanceReport, Fixture};
 use openlogos_core::anchor::{Anchor, Revision, Segment, TokenId, split_selection};

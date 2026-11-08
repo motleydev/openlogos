@@ -500,3 +500,140 @@ async fn edition_search_latency_over_the_preview_pack() {
     assert!(samples.len() >= 200);
     assert!(with_hits > 200, "{with_hits}");
 }
+
+/// B016: bytes that are no work pack are refused with the core's kind.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+fn work_handle_refuses_bytes_that_are_no_pack() {
+    let garbage = js_sys::Uint8Array::from(&b"not a database"[..]);
+    let Err(error) = openlogos_ffi::wasm::works::WorkHandle::new(garbage) else {
+        panic!("garbage opened as a work pack");
+    };
+    let kind = js_sys::Reflect::get(&error, &JsValue::from_str("kind")).unwrap();
+    assert_eq!(kind.as_string().as_deref(), Some("not_a_work_pack"));
+}
+
+/// B016: the Institutes pack in this worker: open a chapter and a section, the reverse index,
+/// and keystroke to text results through the palette, against specs/22 §7. The pack is
+/// corpus-derived and never in the repository, so `just institutes-pack-bench-wasm` serves it
+/// and names the URL when it builds this test; without it the test says so and passes.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+async fn work_pack_over_the_built_institutes_pack() {
+    let Some(base) = option_env!("OPENLOGOS_WORK_BENCH_URL") else {
+        console_log!(
+            "SKIPPED work_pack_over_the_built_institutes_pack: OPENLOGOS_WORK_BENCH_URL is not set (just institutes-pack-bench-wasm)"
+        );
+        return;
+    };
+    let global = js_sys::global();
+    let performance = property(&global, "performance");
+    let now = js_sys::Function::from(property(&performance, "now"));
+    let clock = || now.call0(&performance).unwrap().as_f64().unwrap();
+    let started = clock();
+    let fetch = js_sys::Function::from(property(&global, "fetch"));
+    let url = format!("{base}/institutes-allen.sqlite");
+    let response = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+        fetch.call1(&global, &JsValue::from_str(&url)).unwrap(),
+    ))
+    .await
+    .unwrap();
+    let read = js_sys::Function::from(property(&response, "arrayBuffer"));
+    let buffer =
+        wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(read.call0(&response).unwrap()))
+            .await
+            .unwrap();
+    let pack = js_sys::Uint8Array::new(&buffer);
+    let bytes = pack.length();
+    let fetched = clock();
+    let work = openlogos_ffi::wasm::works::WorkHandle::new(pack.clone()).unwrap();
+    let opened = clock();
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    shell.use_edition_search(vec![pack]).unwrap();
+    let attached = clock();
+
+    let stringify = |v: &JsValue| js_sys::JSON::stringify(v).unwrap().as_string().unwrap();
+    let structure = stringify(&work.structure().unwrap());
+    let mut chapters = Vec::new();
+    for piece in structure.split("\"locator\":\"").skip(1) {
+        let locator = &piece[..piece.find('"').unwrap()];
+        if locator.contains('.') && !locator.starts_with("title") && locator.split('.').count() == 2
+        {
+            chapters.push(locator.to_owned());
+        }
+    }
+    let mut chapter_ms = Vec::new();
+    for chapter in &chapters {
+        let start = clock();
+        let value = work.chapter(chapter).unwrap();
+        chapter_ms.push(clock() - start);
+        assert!(!value.is_undefined());
+    }
+    let section = stringify(&work.section("Inst. 3.2.7").unwrap());
+    assert!(section.contains("\"locator\":\"3.2.7\""));
+    let cited = stringify(&work.cited_by("Rom 8:28", None).unwrap());
+    assert!(cited.contains("\"section\":"), "{cited}");
+
+    let queries = [
+        "faith",
+        "justification by faith",
+        "the knowledge of god",
+        "predestination",
+        "election",
+        "sacraments",
+        "the lord's supper",
+        "baptism of infants",
+        "the holy spirit",
+        "trinity",
+        "three persons",
+        "repentance",
+        "providence",
+        "the church",
+        "civil government",
+        "augustine",
+        "the",
+        "and of the",
+        "christ",
+        "free will",
+        "transubstantiation",
+        "melancthon",
+    ];
+    let mut strokes = Vec::new();
+    for query in queries {
+        let chars: Vec<char> = query.chars().collect();
+        for n in 2..=chars.len() {
+            strokes.push(chars[..n].iter().collect::<String>());
+        }
+    }
+    let mut samples = Vec::new();
+    let mut with_hits = 0;
+    for _round in 0..3 {
+        for stroke in &strokes {
+            let start = clock();
+            let answer = shell.palette_query(stroke, JsValue::UNDEFINED).unwrap();
+            samples.push((clock() - start, stroke.clone()));
+            if stringify(&answer).contains("institutes:") {
+                with_hits += 1;
+            }
+        }
+    }
+    let rank = |values: &mut Vec<f64>, p: f64| {
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        values[((p / 100.0 * values.len() as f64).ceil() as usize).max(1) - 1]
+    };
+    let mut search: Vec<f64> = samples.iter().map(|s| s.0).collect();
+    let (p50, p95) = (rank(&mut search, 50.0), rank(&mut search, 95.0));
+    let max = search.last().copied().unwrap();
+    let chapter_p95 = rank(&mut chapter_ms, 95.0);
+    let chapter_max = chapter_ms.last().copied().unwrap();
+    console_log!(
+        "B016 wasm: {} palette samples, {with_hits} with work hits; p50 {p50:.2} ms, p95 {p95:.2} ms, max {max:.2} ms; {} chapters opened, p95 {chapter_p95:.2} ms, max {chapter_max:.2} ms; {bytes} pack bytes fetched in {:.0} ms, opened in {:.0} ms, attached for search in {:.0} ms",
+        samples.len(),
+        chapters.len(),
+        fetched - started,
+        opened - fetched,
+        attached - opened,
+    );
+    assert!(samples.len() >= 200);
+    assert!(with_hits > 200, "{with_hits}");
+}
