@@ -66,7 +66,7 @@ Load average during that run: 4.5 at the start, 3.1 at the end (other agents, `b
 
   | Run | Load avg | Over one | Over two |
   |---|---:|---:|---:|
-  | Pack (four runs, 6–7 Nov) | 2.8–4.7 | 137, 35, 98, 48, 140, 51 | 15, 20, 30, 28, 18, 30 |
+  | Pack (six runs, 6–8 Nov) | 2.8–4.7 | 137, 35, 98, 48, 140, 51 | 15, 20, 30, 28, 18, 30 |
   | Placeholder library, no search (two runs) | about 3–4 | 50, 47 | 31, 29 |
 
   The spread within the pack runs is wider than the difference to the placeholder, so I cannot say
