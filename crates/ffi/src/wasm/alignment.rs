@@ -28,8 +28,9 @@ fn err(e: openlogos_retrieval::RetrievalError) -> JsValue {
 
 #[wasm_bindgen(js_class = ShellHandle)]
 impl ShellHandle {
-    /// B067: attaches the alignment layers a page fetched, each as a `Uint8Array`. Returns
-    /// the layers, whose attribution a host shows with their answers.
+    /// B067: attaches the alignment layers a page fetched, each as a `Uint8Array`, and adds
+    /// `alignments` to the session's data layers (others stay), which enables "Original
+    /// word". Returns the layers, whose attribution a host shows with their answers.
     #[wasm_bindgen(js_name = useAlignments, unchecked_return_type = "AlignmentLayer[]")]
     pub fn use_alignments(&mut self, layers: Vec<js_sys::Uint8Array>) -> Result<JsValue, JsValue> {
         let mut attached = openlogos_retrieval_sqlite::AlignmentLayers::new().map_err(err)?;
@@ -37,6 +38,9 @@ impl ShellHandle {
             attached.attach_bytes(&layer.to_vec()).map_err(err)?;
         }
         let infos = attached.layers();
+        let mut registered = self.shell.session.data_layers.clone();
+        registered.insert(openlogos_workspaces::commands::ALIGNMENTS_LAYER.to_owned());
+        self.shell.set_data_layers(registered);
         self.alignments = Some(attached);
         to_js(&infos)
     }

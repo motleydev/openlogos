@@ -262,6 +262,12 @@ pub struct CommandContext {
 /// `tab.open_edition`, which leaves the main passage where it is.
 pub const CROSS_REFERENCES_LAYER: &str = "cross_references";
 
+/// The data layer `nav.original_word` needs (B067): registered with
+/// [`Shell::set_data_layers`] when alignment layers are installed. The command is
+/// host-performed: the host finds the word's token in the verse it rendered and shows what the
+/// alignment says (`token_alignment`).
+pub const ALIGNMENTS_LAYER: &str = "alignments";
+
 /// Why a command cannot run now. The `Display` text is what a palette row or menu shows:
 /// plain words, never an argument's field name (the `shell-commands` fixture asserts no
 /// reason contains `_`); the serde tag (`kind`) is for code.
@@ -1296,6 +1302,19 @@ const DEFS: &[Def] = &[
         &["drag tab", "reorder tab"],
         &["drop", "position", "rearrange"],
     ),
+    // B067: the Greek or Hebrew a translation word renders, from token-keyed alignments.
+    def(
+        "nav.original_word",
+        "Original word",
+        S::Tab,
+        A::Text,
+        false,
+        false,
+    )
+    .names(
+        &["aligned original", "greek or hebrew word"],
+        &["alignment", "interlinear", "greek", "hebrew", "translation"],
+    ),
 ];
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -1516,6 +1535,17 @@ pub fn enabled(
                     ),
                 });
             }
+            non_empty(&args.text)
+                .map(|_| ())
+                .ok_or_else(|| need("text"))
+        }
+        "nav.original_word" if !session.data_layers.contains(ALIGNMENTS_LAYER) => {
+            Err(DisabledReason::Unavailable {
+                needs: "the alignment import".to_owned(),
+            })
+        }
+        "nav.original_word" => {
+            non_empty(&args.reference).ok_or_else(|| need("reference"))?;
             non_empty(&args.text)
                 .map(|_| ())
                 .ok_or_else(|| need("text"))
@@ -3066,7 +3096,10 @@ pub(crate) mod tests {
                 shell.apply(&Invocation::new("tab.new"), &context).unwrap();
             }
             // Features whose data is not installed yet are registered, always disabled.
-            if matches!(spec.id.as_str(), "search.lemma" | "nav.cross_references") {
+            if matches!(
+                spec.id.as_str(),
+                "search.lemma" | "nav.cross_references" | "nav.original_word"
+            ) {
                 assert!(matches!(
                     shell.apply(&invocation, &context),
                     Err(CommandError::Disabled {
@@ -3146,6 +3179,41 @@ pub(crate) mod tests {
         let revision = shell.revision;
         shell.apply(&Invocation::new("tool.pen"), &context).unwrap();
         assert_eq!(shell.revision, revision + 1);
+    }
+
+    #[test]
+    fn original_word_needs_the_alignment_layer_and_is_host_performed() {
+        let context = CommandContext::default();
+        let mut shell = Shell::new(fixture_session()).unwrap();
+        let invocation = Invocation::with(
+            "nav.original_word",
+            CommandArgs {
+                text: Some("loved".into()),
+                reference: Some("John.3.16".into()),
+                resource_id: Some("bsb".into()),
+                ..CommandArgs::default()
+            },
+        );
+        assert_eq!(
+            shell.apply(&invocation, &context).unwrap_err().to_string(),
+            "nav.original_word is disabled: Needs the alignment import"
+        );
+        let revision = shell.revision;
+        shell.set_data_layers([ALIGNMENTS_LAYER.to_owned()].into());
+        assert!(shell.revision > revision);
+        let outcome = shell.apply(&invocation, &context).unwrap();
+        assert!(
+            !outcome.handled,
+            "the host asks token_alignment and shows it"
+        );
+        let without_passage = Invocation::with(
+            "nav.original_word",
+            CommandArgs {
+                text: Some("loved".into()),
+                ..CommandArgs::default()
+            },
+        );
+        assert!(shell.apply(&without_passage, &context).is_err());
     }
 
     #[test]

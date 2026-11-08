@@ -256,7 +256,7 @@
     "nav.paste_passage",
     "selection.highlight_in",
     "note.remove_link",
-    "tab.move"
+    "tab.move", "nav.original_word"
   ],
   "scenarios": [
     {

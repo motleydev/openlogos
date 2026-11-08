@@ -10,6 +10,7 @@ use std::path::Path;
 
 use openlogos_retrieval_sqlite::AlignmentLayers;
 use openlogos_retrieval_sqlite::alignment as a;
+use openlogos_workspaces::commands::ALIGNMENTS_LAYER;
 
 use super::morphology::MorphologyMorpheme;
 use super::shell::{ShellCommandError, ShellHandle, invalid};
@@ -367,15 +368,20 @@ pub(crate) fn open(directory: &Path) -> Result<AlignmentLayers, ShellCommandErro
 #[uniffi::export]
 impl ShellHandle {
     /// B067: attaches the alignment layers under `directory` (a `just
-    /// preview-pack-alignment` output, or its `layers/`), read-only. Returns the layers,
-    /// whose attribution a host shows with their answers.
+    /// preview-pack-alignment` output, or its `layers/`), read-only, and adds `alignments` to
+    /// the session's data layers (others stay), which enables "Original word". Returns the
+    /// layers, whose attribution a host shows with their answers.
     pub fn use_alignments(
         &self,
         directory: String,
     ) -> Result<Vec<AlignmentLayer>, ShellCommandError> {
         let layers = open(Path::new(&directory))?;
         let infos = layers.layers();
-        self.lock().alignments = Some(layers);
+        let mut state = self.lock();
+        let mut registered = state.shell.session.data_layers.clone();
+        registered.insert(ALIGNMENTS_LAYER.to_owned());
+        state.shell.set_data_layers(registered);
+        state.alignments = Some(layers);
         Ok(infos.into_iter().map(Into::into).collect())
     }
 
@@ -546,9 +552,34 @@ mod tests {
                 .lemma_renderings(vec![], "ἀγαπάω".into(), None)
                 .is_err()
         );
+        let args = crate::native::shell::ShellCommandArgs {
+            text: Some("loved".into()),
+            reference: Some("John.3.16".into()),
+            resource_id: Some("bsb".into()),
+            ..Default::default()
+        };
+        assert!(
+            handle
+                .apply("nav.original_word".into(), args.clone(), true)
+                .is_err()
+        );
+        handle.set_data_layers(vec!["cross_references".into()]);
         let layers = handle
             .use_alignments(dir.join("alignments").display().to_string())
             .unwrap();
+        let outcome = handle
+            .apply("nav.original_word".into(), args, true)
+            .unwrap();
+        assert!(!outcome.handled, "the host shows the alignment");
+        assert!(
+            handle
+                .lock()
+                .shell
+                .session
+                .data_layers
+                .contains("cross_references"),
+            "other layers stay registered"
+        );
         assert_eq!(layers[0].origin, "curated:clear-alignments@c99bd0a");
         handle
             .use_morphology(dir.join("morphology").display().to_string())

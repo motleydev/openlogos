@@ -66,6 +66,11 @@ for lemma and gloss. Then:
   Every answer carries the note that renderings are evidence of translation choices, not
   definitions.
 
+`use_alignments` / `useAlignments` also add `alignments` to the session's data layers, which
+enables the registered command `nav.original_word` ("Original word": `text`, `reference`,
+`resource_id` of a translation word; host-performed: the host finds the token and calls
+`token_alignment`). Without the layers it is disabled with "Needs the alignment import".
+
 Show the attribution with any answer: CC BY 4.0 requires it.
 
 Every decision, count, mismatch and measurement: docs/evidence/B067.md.
