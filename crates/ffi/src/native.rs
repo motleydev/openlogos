@@ -13,6 +13,7 @@ uniffi::setup_scaffolding!();
 
 pub mod anchor;
 pub mod conformance;
+pub mod cross_references;
 pub mod ink;
 pub mod reading;
 pub mod reference;
@@ -27,6 +28,10 @@ pub use anchor::{
     TextQuoteSelector, TokenSpan, Utf16Range, anchor_to_utf16, reanchor, selection_to_anchors,
 };
 pub use conformance::{CaseResult, ConformanceReport, conformance_fixtures_json, run_conformance};
+pub use cross_references::{
+    ReadingCrossReference, ReadingCrossReferenceAssertion, ReadingCrossReferenceAvailability,
+    ReadingCrossReferenceDirection, ReadingCrossReferenceList, ReadingCrossReferenceSource,
+};
 pub use ink::{
     InkDocument, InkError, InkOutlineOptions, InkPoint, InkStroke, InkTaper, InkTool,
     InkViewportTransform, ink_document_json, ink_outline,

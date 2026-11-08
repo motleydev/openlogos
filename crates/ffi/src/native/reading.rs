@@ -293,7 +293,7 @@ pub struct ReadingHandle {
 }
 
 impl ReadingHandle {
-    fn lock(&self) -> std::sync::MutexGuard<'_, ReadingLibrary> {
+    pub(crate) fn lock(&self) -> std::sync::MutexGuard<'_, ReadingLibrary> {
         self.library
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
