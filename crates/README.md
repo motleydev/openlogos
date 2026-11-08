@@ -18,8 +18,8 @@ lists them together.
 | `sync` | encrypted operation log and conflict resolution (B021: `keys`, `envelope`, `log`, `enrollment`, `recovery`; docs/adr/0004-vault-identity-and-sync.md) |
 | `ffi` | UniFFI and wasm-bindgen surfaces, versioned API (B061, B064) |
 | `conformance` | cross-platform fixtures and expected results |
-| `retrieval-sqlite` | the SQLite implementation of the ADR 0002 traits (B064), and `EditionSearch`, the palette's text search (B071) |
-| `preview-pack` | the B071 importer: the NAS artifacts into text packs and search packs outside the repository (docs/preview-pack.md) |
+| `retrieval-sqlite` | the SQLite implementation of the ADR 0002 traits (B064), `EditionSearch`, the palette's text search (B071), and `work_pack`, a non-Bible work read by section with its citations (B016) |
+| `preview-pack` | the B071 importer: the NAS artifacts into text packs and search packs outside the repository (docs/preview-pack.md); the B016 importer of Calvin's *Institutes* into a work pack (docs/works.md) |
 
 ## Core API (B061)
 
@@ -44,9 +44,10 @@ the crate version; its doc comment states the bump rule. The modules so far:
 | `workspaces::shell` (B070) | `Session`, `SessionRecord`, `Workspace` (2.0), `Column`, `Tab`, `NotesDock`, `ColumnProfile(s)`, `LinkMode`, `Tool`, `ShellError` | `Workspace::from_v1` / `to_v1`, `Session::from_records` / `to_records`, `check`; `migrate_workspace_to_2(value)` (1.x → 2.0, the MAJOR step) |
 | `workspaces::commands` (B070) | `CommandSpec`, `Scope`, `ArgumentShape`, `Shortcuts`, `Platform`, `CommandArgs`, `Invocation`, `CommandContext`, `DisabledReason`, `CommandError`, `UndoRecord`, `Effects`, `Shell`, `Outcome` | `registry()`, `command(id)`, `enabled(...)`, `apply(&session, &invocation, &context)`, `Shell::apply`/`undo`/`redo`/`commands` |
 | `workspaces::palette` (B070) | `ParsedQuery`, `PaletteMode`, `ColumnTarget`, `PaletteContext`, `PaletteSection`, `PaletteItem`, `PaletteGroup`, `PaletteResult`, `PaletteIndex`, `TextProvider`, `TextHit` | `parse_query(text)`, `palette_query(&shell, text, &context, provider)`, `palette_query_indexed(...)` |
-| `workspaces::reading` (B078) | `TabPosition`, `FollowMapping` | `map_reference(&schemes, reference, from, to)`, `highlight_of`, `holds`; `Shell::set_resource_schemes`, `Effects::positions`, `Tab::highlight_range` |
+| `workspaces::reading` (B078) | `TabPosition`, `FollowMapping` | `map_reference(&schemes, reference, from, to)`, `highlight_of`, `holds`; `Shell::set_resource_schemes`, `Effects::positions`, `Tab::highlight_range`; `work_scheme`, `same_family` (B016: a work's tabs and Bible tabs do not follow each other) |
 | `workspaces::navigation` (B040) | `PaneIdentityError`, `Visit`, `PaneHistory`, `NavigationKind`, `NavigationEvent`, `Propagation`, `ReferenceHistoryEntry`, `WorkspaceNavigation`, `NavigationError` | `is_pane_id`, `check_pane_identity(&workspace)`, `link_groups(&workspace)`, `followers(&workspace, driver)`, `WorkspaceNavigation::apply`/`back_target`/`go_back` |
 | `notes` (B040) | `NoteBinding`, `Authority`, `SyncState`, `ConflictCause`, `OperationRecord`, `OperationKind`, `BindingEvent`, `Resolution`, `Effect`, `Transition`, `BindingError` | `apply(&binding, &event)`, `NoteBinding::validate`/`app_owned`/`vault_owned`, `is_note_id`, `is_relative_vault_path`, `is_sha256_hex`; `credentials::find_credential_shaped(&value)`, `is_credential_shaped_key`, `is_credential_shaped_value` |
+| `retrieval_sqlite::work_pack` (B016) | `WorkPack`, `WorkInfo`, `WorkBibliography`, `WorkVolume`, `WorkDivision`, `DivisionKind`, `WorkChapterInfo`, `ChapterKind`, `WorkChapter`, `WorkSection`, `WorkParagraph`, `ParagraphStyle`, `WorkNote`, `NoteKind`, `WorkCitationLink`, `CitationStatus`, `CitingSection`, `WorkContent`, `CitationRow`, `WorkPackError` | `WorkPack::open(path)`/`from_bytes`, `info`, `structure`, `canonical_locator`, `section`, `section_at`, `chapter`, `citations`, `all_citations`, `cited_by(passage, scheme)`, `cited_count`; `write_work_pack(path, &content)`, `verse_spans(&set)` |
 
 Everything public is plain data (owned `String`s and `Vec`s, no lifetimes or generics),
 `serde`-serializable, and each module has one `thiserror` enum, so the UniFFI and wasm-bindgen

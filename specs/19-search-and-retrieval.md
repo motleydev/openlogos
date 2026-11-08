@@ -79,6 +79,13 @@ Where the contract above is silent, B068 fixed these points in code (`crates/cor
 - **User edges** are rows with no pack and a `user_source` (the note or item id); the pack writer refuses `user` provenance; a rebuild from packs snapshots them first and re-adds them in sorted order.
 - **Chains.** A hop's basis is documented when the edge is not model similarity, its method names a source, rule or version, and its review state is source-attested, reviewed, published or disputed. An undocumented hop is not followed; the chain it would extend ends with `basis not documented` and the edge that was not taken. Chains at the depth limit say so when a further documented hop exists; the start itself appears as an empty chain when one of its own hops is undocumented.
 - **Display status.** A cited target is `in your library` when it maps (not absent) in an installed edition whose text the user may read; otherwise it is `cited, not in your library` with the reason (`not_installed`, `restricted`, `unresolved`, `unknown_work`), the locator, the citing locator and the citing context the pack carries in `edge.context`. The packager's report (`schemas/resolution-report.schema.json`) counts resolved, unresolved-known-work and unparsed per scheme (unparsed under the extractor's scheme hint, else `unknown`) and applies a minimum resolved rate per scheme.
+- **Work packs (B016).** The first work, Calvin's *Institutes* (Allen), is such a pack with its
+  text, an FTS5 index through the shared tokenizer, a `section_map` row per numbered section
+  (`equal`, segment = locator) and one `explicitly_cites` edge per resolved Scripture range of its
+  notes (`src` = `institutes` and the section, `dst` = `bible` and a verse id or `first-last` in
+  `eng`, `extracted`, `source_attested`, `context` = the citation as printed). Unresolved
+  citations stay in the pack's `work_citation` table with their class; a `cite_span` table finds
+  the sections citing a verse inside a range (docs/works.md, docs/evidence/B016.md).
 - **Crate placement.** The link index and catalog stay in `crates/retrieval-sqlite` rather than `crates/package`: they are SQLite artifacts behind the `RelationStore` trait, and `crates/package` carries no engine dependency. Moving them is a file move once the package crate gains the archive and signature code; the device layout (one mutable database beside the user database) is as this spec says.
 
 ## Graph engines: offline options re-evaluated
