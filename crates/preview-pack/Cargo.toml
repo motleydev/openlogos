@@ -25,6 +25,8 @@ sha2 = { workspace = true }
 thiserror = { workspace = true }
 # The error type of the B064 pack writer.
 rusqlite = { workspace = true }
+# B026: the join compares letters with and without NFC and diacritics.
+unicode-normalization = { workspace = true }
 
 [lints]
 workspace = true

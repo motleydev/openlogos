@@ -124,6 +124,16 @@ preview-pack-bench *args:
 preview-pack-bench-wasm *args:
     @scripts/preview-pack-bench-wasm.sh {{ args }}
 
+# B026: build the MACULA morphology layers over the built preview pack's SBLGNT and WLC tokens, after the rights gate (S47 Greek and Hebrew, S07 for the ketiv/qere markup); output ~/.cache/openlogos/morphology unless OPENLOGOS_MORPHOLOGY or --morphology says otherwise; needs `just preview-pack` first (docs/morphology.md)
+[group('2 · core')]
+preview-pack-morphology *args:
+    cargo run --release -p openlogos-preview-pack -- morphology {{ args }}
+
+# B026: token lookup and lemma search latency over the built morphology layers, natively, against the 50 ms of specs/22 §7; e.g. `--rounds 3 --json target/b026.json`
+[group('2 · core')]
+preview-pack-morphology-bench *args:
+    cargo run --release -p openlogos-preview-pack -- morphology-bench {{ args }}
+
 # Build crates/ffi for macOS, iOS and the simulator, generate the Swift bindings and assemble artifacts/apple/OpenLogosCoreFFI.xcframework (apple shell)
 [group('5 · bindings')]
 bindings-swift:

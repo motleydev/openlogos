@@ -205,8 +205,8 @@ pub struct MorphemeRow {
 const EXTRA_SCHEMA: &str = "
 CREATE TABLE analysis(pos INTEGER PRIMARY KEY, morpheme INTEGER NOT NULL, morphemes INTEGER NOT NULL,
     word_start INTEGER NOT NULL, span_start INTEGER, span_end INTEGER, reading INTEGER NOT NULL, join_class INTEGER NOT NULL,
-    external_id TEXT NOT NULL, lemma TEXT NOT NULL, gloss TEXT NOT NULL, english TEXT NOT NULL,
-    transliteration TEXT NOT NULL);
+    external_id TEXT NOT NULL, lemma INTEGER, gloss INTEGER, english INTEGER, transliteration INTEGER);
+CREATE TABLE string(id INTEGER PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE join_class(id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
 CREATE TABLE absence(verse_id INTEGER NOT NULL, word INTEGER NOT NULL, reason TEXT NOT NULL,
     PRIMARY KEY(verse_id, word)) WITHOUT ROWID;
@@ -357,7 +357,21 @@ impl LayerWriter {
                      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 )
                 .map_err(storage)?;
+            // Repeated text (glosses, renderings, transliterations, a lemma whose bytes are not
+            // its NFC dictionary key) is stored once; NULL is empty, or for the lemma, the key.
+            let mut strings: std::collections::HashMap<String, i64> =
+                std::collections::HashMap::new();
+            let mut id_of = |text: &str| -> Option<i64> {
+                if text.is_empty() {
+                    return None;
+                }
+                let next = strings.len() as i64 + 1;
+                Some(*strings.entry(text.to_owned()).or_insert(next))
+            };
             for r in &rows {
+                let lemma = (feature_key(&r.lemma) != r.lemma)
+                    .then(|| id_of(&r.lemma))
+                    .flatten();
                 insert
                     .execute(params![
                         i64::from(r.pos),
@@ -369,12 +383,18 @@ impl LayerWriter {
                         r.reading.code(),
                         r.join,
                         r.external_id,
-                        r.lemma,
-                        r.gloss,
-                        r.english,
-                        r.transliteration
+                        lemma,
+                        id_of(&r.gloss),
+                        id_of(&r.english),
+                        id_of(&r.transliteration)
                     ])
                     .map_err(storage)?;
+            }
+            let mut insert = tx
+                .prepare("INSERT INTO string(id, value) VALUES (?1, ?2)")
+                .map_err(storage)?;
+            for (value, id) in &strings {
+                insert.execute(params![id, value]).map_err(storage)?;
             }
             let mut insert = tx
                 .prepare("INSERT INTO join_class(id, name) VALUES (?1, ?2)")
@@ -406,6 +426,10 @@ impl LayerWriter {
                 insert.execute(params![key, value]).map_err(storage)?;
             }
         }
+        // The engine reads `token` by position only; the verse index is the B064 writer's, for
+        // packs whose text it serves, and a layer has none.
+        tx.execute_batch("DROP INDEX token_verse")
+            .map_err(storage)?;
         tx.commit().map_err(storage)?;
         conn.execute_batch("VACUUM").map_err(storage)?;
         conn.close().map_err(|(_, e)| storage(e))
@@ -880,10 +904,14 @@ impl MorphologyLayers {
             .conn
             .prepare_cached(&format!(
                 "SELECT t.verse_id, t.word, t.surface, a.morpheme, a.morphemes | (a.word_start << 8), a.span_start,
-                        a.span_end, a.reading, j.name, a.external_id, a.lemma, a.gloss, a.english,
-                        a.transliteration
+                        a.span_end, a.reading, j.name, a.external_id, coalesce(l.value, ''),
+                        coalesce(g.value, ''), coalesce(e.value, ''), coalesce(x.value, '')
                  FROM \"{s}\".token t JOIN \"{s}\".analysis a ON a.pos = t.pos
                  JOIN \"{s}\".join_class j ON j.id = a.join_class
+                 LEFT JOIN \"{s}\".string l ON l.id = a.lemma
+                 LEFT JOIN \"{s}\".string g ON g.id = a.gloss
+                 LEFT JOIN \"{s}\".string e ON e.id = a.english
+                 LEFT JOIN \"{s}\".string x ON x.id = a.transliteration
                  WHERE t.pos >= ?1 AND t.pos < ?2 ORDER BY t.pos",
                 s = layer.schema
             ))
@@ -945,6 +973,12 @@ impl MorphologyLayers {
                 .collect();
             let description = describe(language, &pos_name, &features);
             let implied = surface.is_empty();
+            // Stored only when its bytes are not its dictionary key.
+            let lemma = if lemma.is_empty() {
+                Self::value(layer, "lemma", pos)
+            } else {
+                lemma
+            };
             out.push((
                 Morpheme {
                     id: (word != 0).then(|| {
@@ -1211,6 +1245,16 @@ impl MorphologyLayers {
             .principal_lemma(token)?
             .ok_or_else(|| RetrievalError::LayerUnavailable(format!("no analysis of `{token}`")))?;
         self.lemma_search(&[edition], &lemma, limit)
+    }
+
+    /// The text pack word number of a position of an edition's first layer (0: none).
+    #[must_use]
+    pub fn word_of(&self, edition: &str, pos: usize) -> Option<u32> {
+        self.layers
+            .iter()
+            .find(|l| l.info.edition == edition)
+            .and_then(|l| l.word.get(pos))
+            .map(|w| u32::from(*w))
     }
 
     /// The B064 token columns of an edition's first layer, for the engine's slot queries.

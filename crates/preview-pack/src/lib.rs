@@ -7,10 +7,12 @@
 //! - [`build`]: the edition definitions, the versification reconciliation against the canon table,
 //!   the publisher's second form as an oracle (BSB), the pack and search writers.
 //! - [`bench`]: text search latency against the 50 ms budget of specs/22 §7.
+//! - [`morphology`]: B026, the MACULA morphology layers joined to the SBLGNT and WLC tokens.
 
 pub mod bench;
 pub mod build;
 pub mod model;
+pub mod morphology;
 pub mod oshb;
 pub mod rights;
 pub mod sblgnt;
