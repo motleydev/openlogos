@@ -1042,6 +1042,9 @@ pub(crate) struct State {
     /// B026: the morphology layers `use_morphology` attached.
     #[cfg(feature = "retrieval")]
     pub(crate) morphology: Option<openlogos_retrieval_sqlite::MorphologyLayers>,
+    /// B067: the alignment layers `use_alignments` attached.
+    #[cfg(feature = "retrieval")]
+    pub(crate) alignments: Option<openlogos_retrieval_sqlite::AlignmentLayers>,
 }
 
 /// A session with its undo history, owned by the core. One per window.
@@ -1060,6 +1063,8 @@ impl ShellHandle {
                 text: None,
                 #[cfg(feature = "retrieval")]
                 morphology: None,
+                #[cfg(feature = "retrieval")]
+                alignments: None,
             }),
         }))
     }
