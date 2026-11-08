@@ -4,7 +4,7 @@
   "source_id": "S55",
   "artifact_sha256": "a0bf7f774b2f8d0be9cee185f0f80ba1e57e3b0b8d80e3f7cf08543b07d6a9d1",
   "edition_id": "clear-alignments:c99bd0a",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "CC-BY-4.0 AND MIT",
   "evidence_url": "https://github.com/Clear-Bible/Alignments/blob/c99bd0ae6946775f932517656308ca19fc706921/LICENSE.md",
   "license_artifact_sha256": "cfc25147479bacd15acd353836202d4ffde3ebb17640ac123228a49807e3d4a0",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-11-08",
   "acquisition": {
     "upstream_url": "https://github.com/Clear-Bible/Alignments",
     "commit": "c99bd0ae6946775f932517656308ca19fc706921",
