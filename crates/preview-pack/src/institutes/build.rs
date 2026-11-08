@@ -375,11 +375,14 @@ fn bibliography(
         place: "Philadelphia".to_owned(),
         publisher: "Presbyterian Board of Publication".to_owned(),
         date_printed: "1813".to_owned(),
+        original_date: "1559".to_owned(),
         subjects,
         volumes,
         note: "Edition, place, publisher and date are read from the volume I title page as the \
-               digitized text prints it; the date is the one printed there, which the record does not \
-               confirm or date further. Volume II's title page prints no date."
+               digitized text prints it; the record does not date the printing. Volume II's title \
+               page prints no date, and the Scripture index bound at its end is dated MDCCCLII \
+               (1852), so this printing is not of 1813, the year the title page prints. The \
+               original date is the Latin edition the author's preface names."
             .to_owned(),
     }
 }

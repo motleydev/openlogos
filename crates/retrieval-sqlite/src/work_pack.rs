@@ -102,6 +102,11 @@ pub struct WorkBibliography {
     pub publisher: String,
     /// The date the title page prints, as printed.
     pub date_printed: String,
+    /// The date of the original the translation follows, as the edition names it (the
+    /// author's last Latin edition, 1559), kept apart from the printing's date (specs/04).
+    /// Empty in a pack written before the field existed.
+    #[serde(default)]
+    pub original_date: String,
     /// Subjects from the record.
     pub subjects: Vec<String>,
     /// The volumes.

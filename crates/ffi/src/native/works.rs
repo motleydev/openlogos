@@ -94,6 +94,8 @@ pub struct WorkCatalogEntry {
     pub publisher: String,
     /// Date as the title page prints it.
     pub date_printed: String,
+    /// Date of the original the translation follows.
+    pub original_date: String,
     /// Subjects.
     pub subjects: Vec<String>,
     /// Volumes.
@@ -131,6 +133,7 @@ impl From<core::WorkInfo> for WorkCatalogEntry {
             place: b.place,
             publisher: b.publisher,
             date_printed: b.date_printed,
+            original_date: b.original_date,
             subjects: b.subjects,
             volumes: b
                 .volumes

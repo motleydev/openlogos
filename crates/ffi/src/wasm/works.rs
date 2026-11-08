@@ -15,7 +15,7 @@ const TYPES: &str = r#"
 /** One printed volume behind a work edition (B016). */
 export interface WorkVolume { volume: number; title: string; identifier: string; release_date: string; last_update: string; credits: string }
 /** The bibliographic evidence of a work edition: what its catalog entry shows offline. */
-export interface WorkBibliography { author: string; translator: string; edition: string; place: string; publisher: string; date_printed: string; subjects: string[]; volumes: WorkVolume[]; note: string }
+export interface WorkBibliography { author: string; translator: string; edition: string; place: string; publisher: string; date_printed: string; original_date: string; subjects: string[]; volumes: WorkVolume[]; note: string }
 /** A work edition's identity, rights, bibliography and counts. */
 export interface WorkInfo { resource_id: string; work: string; locator_scheme: string; content_revision: string; title: string; short_title: string; language: string; source_id: string; license: string; attribution: string; source: string; bibliography: WorkBibliography; sections: number; notes: number; citations: number; resolved: number }
 /** A chapter-level unit: a numbered chapter (`3.2`), a book's argument (`1.argument`) or a front-matter piece (`dedication`). */
