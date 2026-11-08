@@ -615,3 +615,150 @@ async fn morphology_latency_over_the_layers() {
     );
     assert!(lookups.len() >= 200 && searches.len() >= 200);
 }
+
+/// B067: bytes that are no alignment layer are refused, and with none installed a token is
+/// `no_layer`.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+fn alignments_refuse_bytes_that_are_no_layer() {
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    let garbage = js_sys::Uint8Array::from(&b"not a database"[..]);
+    assert!(shell.use_alignments(vec![garbage]).is_err());
+    let answer = shell
+        .token_alignment(vec!["bsb:44003016004".to_owned()])
+        .unwrap();
+    let text = js_sys::JSON::stringify(&answer)
+        .unwrap()
+        .as_string()
+        .unwrap();
+    assert!(text.contains("\"status\":\"no_layer\""), "{text}");
+    assert!(shell.lemma_renderings(vec![], "λόγος", None).is_err());
+}
+
+/// B067: token lookups (BSB to Greek or Hebrew and back, with morphology) against one frame
+/// (16 ms) and lemma rendering tables against 50 ms, in this worker over the real layers,
+/// replaying the samples the native bench wrote. The layers are corpus-derived and never in
+/// the repository, so `just preview-pack-alignment-bench-wasm` serves them and names the URL
+/// when it builds this test; without it the test says so.
+#[cfg(feature = "retrieval")]
+#[wasm_bindgen_test]
+async fn alignment_latency_over_the_layers() {
+    let Some(base) = option_env!("OPENLOGOS_ALIGNMENT_BENCH_URL") else {
+        console_log!(
+            "SKIPPED alignment_latency: OPENLOGOS_ALIGNMENT_BENCH_URL is not set (just preview-pack-alignment-bench-wasm)"
+        );
+        return;
+    };
+    let global = js_sys::global();
+    let performance = property(&global, "performance");
+    let now = js_sys::Function::from(property(&performance, "now"));
+    let clock = || now.call0(&performance).unwrap().as_f64().unwrap();
+    let fetch = js_sys::Function::from(property(&global, "fetch"));
+    let get = |path: String| {
+        let fetch = fetch.clone();
+        let global = global.clone();
+        async move {
+            let response = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                fetch.call1(&global, &JsValue::from_str(&path)).unwrap(),
+            ))
+            .await
+            .unwrap();
+            let read = js_sys::Function::from(property(&response, "arrayBuffer"));
+            let buffer = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                read.call0(&response).unwrap(),
+            ))
+            .await
+            .unwrap();
+            js_sys::Uint8Array::new(&buffer)
+        }
+    };
+    let started = clock();
+    let mut morphology = Vec::new();
+    let mut alignments = Vec::new();
+    let mut bytes = 0;
+    for name in ["sblgnt.macula-greek", "wlc.macula-hebrew"] {
+        let layer = get(format!("{base}/morphology/layers/{name}.sqlite")).await;
+        bytes += layer.length();
+        morphology.push(layer);
+    }
+    for name in ["sblgnt-bsb.clear", "wlc-bsb.clear"] {
+        let layer = get(format!("{base}/alignments/layers/{name}.sqlite")).await;
+        bytes += layer.length();
+        alignments.push(layer);
+    }
+    let samples: serde_json::Value = serde_json::from_slice(
+        &get(format!("{base}/alignments/bench-samples.json"))
+            .await
+            .to_vec(),
+    )
+    .unwrap();
+    let fetched = clock();
+    let mut shell = openlogos_ffi::wasm::ShellHandle::fixture();
+    shell.use_morphology(morphology).unwrap();
+    let morphology_attached = clock();
+    shell.use_alignments(alignments).unwrap();
+    let attached = clock();
+
+    let list = |key: &str| -> Vec<String> {
+        samples[key]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t.as_str().unwrap().to_owned())
+            .collect()
+    };
+    let (targets, sources) = (list("target_tokens"), list("source_tokens"));
+    let lemmas: Vec<(String, String)> = serde_json::from_value(samples["lemmas"].clone()).unwrap();
+    let mut to_source = Vec::new();
+    let mut to_target = Vec::new();
+    let mut tables = Vec::new();
+    for _round in 0..2 {
+        for t in &targets {
+            let start = clock();
+            shell.token_alignment(vec![t.clone()]).unwrap();
+            to_source.push((clock() - start, t.clone()));
+        }
+        for t in &sources {
+            let start = clock();
+            shell.token_alignment(vec![t.clone()]).unwrap();
+            to_target.push((clock() - start, t.clone()));
+        }
+        for (edition, lemma) in &lemmas {
+            let start = clock();
+            shell
+                .lemma_renderings(vec![edition.clone()], lemma, None)
+                .unwrap();
+            tables.push((clock() - start, lemma.clone()));
+        }
+    }
+    let summary = |samples: &mut Vec<(f64, String)>| {
+        samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let rank =
+            |p: f64| samples[((p / 100.0 * samples.len() as f64).ceil() as usize).max(1) - 1].0;
+        let (max, slowest) = samples.last().unwrap();
+        (
+            rank(95.0),
+            format!(
+                "{} samples, p50 {:.3} ms, p95 {:.3} ms, max {max:.3} ms ({slowest})",
+                samples.len(),
+                rank(50.0),
+                rank(95.0)
+            ),
+        )
+    };
+    let (p95_source, a) = summary(&mut to_source);
+    let (p95_target, b) = summary(&mut to_target);
+    let (p95_tables, c) = summary(&mut tables);
+    console_log!(
+        "B067 wasm: BSB token → original {a}; original token → BSB {b}; lemma rendering table {c}; {bytes} layer bytes fetched in {:.0} ms, morphology attached in {:.0} ms, alignments attached in {:.0} ms",
+        fetched - started,
+        morphology_attached - fetched,
+        attached - morphology_attached,
+    );
+    assert!(to_source.len() >= 200 && to_target.len() >= 200 && tables.len() >= 200);
+    assert!(
+        p95_source <= 16.0 && p95_target <= 16.0,
+        "{p95_source} {p95_target}"
+    );
+    assert!(p95_tables <= 50.0, "{p95_tables}");
+}

@@ -415,6 +415,7 @@ impl AlignmentWriter {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn manifest_pairs(info: &AlignmentInfo) -> Vec<(&'static str, String)> {
     vec![
         ("alignment_format", ALIGNMENT_FORMAT.to_owned()),
