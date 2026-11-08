@@ -3183,7 +3183,7 @@ async function preloadShown() {
 }
 
 async function main() {
-  await init();
+  host.wasmMemory = (await init()).memory;
   host.text = fixtureTextSource(core);
   // B071: the preview pack's manifests, over the placeholder editions of the same ids. Where a
   // pack is not found the placeholder stays, and says so on every block.

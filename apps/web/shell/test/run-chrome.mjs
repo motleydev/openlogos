@@ -2282,6 +2282,8 @@ async function packBench() {
   const bench = `${PACK("__real-pack")}&session=bench`;
   const queriesJson = JSON.parse(await readFile(join(repoRoot, "crates/preview-pack/bench-queries.json"), "utf8"));
   const queries = ["en", "grc", "hbo"].flatMap((k) => queriesJson[k]);
+  // `--launch-only`: just the cold launches and first loads below.
+  if (args.includes("--launch-only")) return packLaunch(out);
   // Script-driven rows, then chapters, workspaces and scrolling, on the bench session.
   await load(bench);
   // Polled: a single driver call of many minutes outlives the HTTP client's timeout.
@@ -2325,6 +2327,10 @@ async function packBench() {
   console.log(JSON.stringify({ bench: "pack", name: "trusted keystroke → text results painted (budget 50)", ...out.trusted }));
   if (sorted.length < samples) { failures += 1; console.log(JSON.stringify({ bench: "pack", error: `only ${sorted.length} trusted samples` })); }
 
+  return packLaunch(out);
+}
+
+async function packLaunch(out) {
   // Cold launch: a new navigation with the saved store, each time; a page cold start in a warm
   // browser (the server sends the module no-store and the pack no-cache).
   const store = uniqueStore("packlaunch");
@@ -2333,7 +2339,7 @@ async function packBench() {
   await js("const s = window.openlogosShell; s.run({ command_id: 'nav.navigate', args: { reference: 'Ps.119.105' } })");
   await sleep(300);
   await jsAsync("const done = arguments[arguments.length - 1]; window.openlogosShell.saveNow().then(done)");
-  const painted = [];
+  const painted = [], restores = [];
   let resources = null;
   for (let i = 0; i < samples; i++) {
     await load(launchQuery);
@@ -2341,11 +2347,17 @@ async function packBench() {
     for (let k = 0; k < 200; k++) { l = await js("return window.openlogosShell.host.launch"); if (l && l.painted_ms != null) break; await sleep(10); }
     painted.push(l.painted_ms);
     resources = l.resources;
+    const r = await js("const r = window.openlogosShell.host.restore; const l = window.openlogosShell.host.launch; return r && r.found ? { to_text: l.painted_ms - r.t0 } : null");
+    if (r) restores.push(r.to_text); else failures += 1;
   }
   const ps = painted.slice().sort((a, b) => a - b);
   const pq = (x) => +ps[Math.min(ps.length - 1, Math.floor(x * ps.length))].toFixed(1);
   out.cold_launch = { n: ps.length, p50: pq(0.5), p95: pq(0.95), max: +ps[ps.length - 1].toFixed(1), last_resources: resources };
   console.log(JSON.stringify({ bench: "pack", name: "cold launch → restored text painted (budget 1000)", n: ps.length, p50: pq(0.5), p95: pq(0.95), max: out.cold_launch.max }));
+  const rs = restores.slice().sort((a, b) => a - b);
+  const rq = (x) => +rs[Math.min(rs.length - 1, Math.floor(x * rs.length))].toFixed(1);
+  out.restore = { n: rs.length, p50: rq(0.5), p95: rq(0.95), max: +rs[rs.length - 1].toFixed(1) };
+  console.log(JSON.stringify({ bench: "pack", name: "restore: store read → restored text painted, chunk fetches included (budget 100)", ...out.restore }));
 
   // First load: a browser with nothing cached, then the same over an emulated network.
   const first = async (label, throttle) => {
@@ -2360,8 +2372,9 @@ async function packBench() {
       await sleep(50);
     }
     const r = await js(`const s = window.openlogosShell; const e = performance.getEntriesByType('resource');
-      const sum = (f) => e.filter((x) => f.test(x.name)).reduce((a, x) => a + x.decodedBodySize, 0);
-      return { label: arguments[0], painted_ms: s.host.launch.painted_ms, search_ready_after_painted_ms: s.host.search.timing.first_load_ms, search_timing: s.host.search.timing, search_bytes: s.host.search.bytes, module_bytes: sum(/_bg\.wasm/), manifest_bytes: sum(/manifest\.json/), chunk_bytes: sum(/chapters\//), chunks: s.host.chunks.stats.fetched };`, label);
+      const sum = (part) => e.filter((x) => x.name.includes(part)).reduce((a, x) => a + x.decodedBodySize, 0);
+      const wire = (part) => e.filter((x) => x.name.includes(part)).reduce((a, x) => a + x.transferSize, 0);
+      return { label: arguments[0], painted_ms: s.host.launch.painted_ms, search_ready_after_painted_ms: s.host.search.timing.first_load_ms, search_timing: s.host.search.timing, search_bytes: s.host.search.bytes, module_bytes: sum('_bg.wasm'), module_wire: wire('_bg.wasm'), manifest_bytes: sum('manifest.json'), manifest_wire: wire('manifest.json'), chunk_bytes: sum('chapters/'), chunks: s.host.chunks.stats.fetched, page_wasm_memory: s.host.wasmMemory && s.host.wasmMemory.buffer.byteLength, worker_wasm_memory: s.host.search.memory };`, label);
     console.log(JSON.stringify({ bench: "pack", name: "first load", ...r }));
     await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.emulateNetworkConditions", params: { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 } });
     await wd("POST", `${S}/chromium/send_command`, { cmd: "Network.setCacheDisabled", params: { cacheDisabled: false } });

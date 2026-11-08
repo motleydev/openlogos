@@ -22,7 +22,7 @@ const SESSION = {
 
 async function load({ urls, titles }) {
   const t0 = performance.now();
-  await init();
+  const wasm = await init();
   const t1 = performance.now();
   const sizes = urls.map(() => ({ loaded: 0, total: 0 }));
   const progress = () => postMessage({ type: "progress", loaded: sizes.reduce((a, s) => a + s.loaded, 0), total: sizes.reduce((a, s) => a + s.total, 0) });
@@ -53,6 +53,7 @@ async function load({ urls, titles }) {
     type: "ready",
     timing: { module_ms: t1 - t0, fetch_ms: t2 - t1, attach_ms: t3 - t2, total_ms: t3 - t0 },
     bytes: packs.reduce((a, p) => a + p.length, 0),
+    memory: wasm.memory.buffer.byteLength,
   });
 }
 

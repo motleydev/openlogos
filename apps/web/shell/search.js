@@ -55,6 +55,7 @@ export class TextSearch {
       this.state = "ready";
       this.timing = { ...data.timing, first_load_ms: performance.now() - this.started };
       this.bytes = data.bytes;
+      this.memory = data.memory;
       this.onChange();
     } else if (data.type === "failed") {
       this.fail(data.reason);
