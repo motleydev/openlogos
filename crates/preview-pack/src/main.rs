@@ -44,6 +44,7 @@ fn run() -> Result<(), ImportError> {
     let mut morphology_out = default_morphology();
     let mut rounds = 3usize;
     let mut json: Option<PathBuf> = None;
+    let mut shown: Vec<String> = Vec::new();
     while let Some(flag) = args.next() {
         match flag.as_str() {
             "--corpora" => corpora = PathBuf::from(value(&mut args, &flag)?),
@@ -56,6 +57,9 @@ fn run() -> Result<(), ImportError> {
             }
             "--json" => json = Some(PathBuf::from(value(&mut args, &flag)?)),
             "--morphology" => morphology_out = PathBuf::from(value(&mut args, &flag)?),
+            other if command == "morphology-show" && !other.starts_with("--") => {
+                shown.push(other.to_owned());
+            }
             other => return Err(ImportError::Usage(format!("unknown argument {other}"))),
         }
     }
@@ -156,6 +160,73 @@ fn run() -> Result<(), ImportError> {
             );
             Ok(())
         }
+        "morphology-show" => {
+            // `morphology-show Gen.1.1 Dan.2.4`: every token of each verse with what the
+            // layers say, to read against the source by eye.
+            let layers = openlogos_retrieval_sqlite::MorphologyLayers::open_directory(
+                &morphology_out.join("layers"),
+            )
+            .map_err(|e| ImportError::Pack(e.to_string()))?;
+            for place in &shown {
+                // `Book.C.V`, or `Book.C` for every verse of a chapter.
+                let mut parts = place.split('.');
+                let book = parts
+                    .next()
+                    .and_then(openlogos_core::reference::BookId::from_osis)
+                    .ok_or_else(|| ImportError::Usage(format!("not an OSIS place: {place}")))?;
+                let chapter: u16 = parts
+                    .next()
+                    .and_then(|c| c.parse().ok())
+                    .ok_or_else(|| ImportError::Usage(format!("no chapter in {place}")))?;
+                let only: Option<u16> = parts.next().and_then(|v| v.parse().ok());
+                let edition = if book.number() >= 40 { "sblgnt" } else { "wlc" };
+                let pack = morphology::read_text_pack(&out.join("packs").join(edition))?;
+                let ids: Vec<openlogos_retrieval::VerseId> = pack
+                    .verses
+                    .keys()
+                    .filter(|v| {
+                        v.book() == book.number()
+                            && v.chapter() == chapter
+                            && only.is_none_or(|o| v.verse() == o)
+                    })
+                    .copied()
+                    .collect();
+                for id in ids {
+                let verse = format!("{}.{}.{}", book.as_osis(), id.chapter(), id.verse());
+                println!("== {verse} ({edition})");
+                for (word, text) in pack.verses.get(&id).into_iter().flatten() {
+                    let token = format!(
+                        "{edition}:{:02}{:03}{:03}{word:03}",
+                        id.book(),
+                        id.chapter(),
+                        id.verse()
+                    );
+                    let a = layers.analyze(&token).map_err(|e| ImportError::Pack(e.to_string()))?;
+                    println!("{token} {text} [{:?}{}]", a.status, a.absent_reason.map(|r| format!(" {r}")).unwrap_or_default());
+                    for x in &a.analyses {
+                        println!("  {} reading={} join={} text={}", x.layer_id, x.reading.as_str(), x.join, x.text);
+                        for m in &x.morphemes {
+                            println!(
+                                "    {} {:?} {}..{} {} lemma={} strong={} {} {} = {} | {}",
+                                m.id.as_deref().unwrap_or("-"),
+                                m.surface,
+                                m.start.map_or("-".to_owned(), |s| s.to_string()),
+                                m.end.map_or("-".to_owned(), |s| s.to_string()),
+                                m.language.tag(),
+                                m.lemma,
+                                m.strong,
+                                m.morph_code,
+                                m.external_id,
+                                m.description,
+                                m.gloss
+                            );
+                        }
+                    }
+                }
+                }
+            }
+            Ok(())
+        }
         "morphology-bench" => {
             let report = morphology::bench::run(&morphology_out.join("layers"), rounds)?;
             let samples = morphology_out.join(morphology::bench::SAMPLES_FILE);
@@ -188,7 +259,7 @@ fn run() -> Result<(), ImportError> {
             Ok(())
         }
         _ => Err(ImportError::Usage(
-            "usage: openlogos-preview-pack build [--corpora DIR] [--rights DIR] [--out DIR]\n       openlogos-preview-pack bench [--out DIR] [--rounds N] [--json FILE]\n       openlogos-preview-pack morphology [--corpora DIR] [--rights DIR] [--out PREVIEW_PACK] [--morphology DIR]\n       openlogos-preview-pack morphology-bench [--morphology DIR] [--rounds N] [--json FILE]"
+            "usage: openlogos-preview-pack build [--corpora DIR] [--rights DIR] [--out DIR]\n       openlogos-preview-pack bench [--out DIR] [--rounds N] [--json FILE]\n       openlogos-preview-pack morphology [--corpora DIR] [--rights DIR] [--out PREVIEW_PACK] [--morphology DIR]\n       openlogos-preview-pack morphology-bench [--morphology DIR] [--rounds N] [--json FILE]\n       openlogos-preview-pack morphology-show OSIS... [--out PREVIEW_PACK] [--morphology DIR]"
                 .to_owned(),
         )),
     }

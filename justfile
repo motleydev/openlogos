@@ -129,6 +129,11 @@ preview-pack-bench-wasm *args:
 preview-pack-morphology *args:
     cargo run --release -p openlogos-preview-pack -- morphology {{ args }}
 
+# B026: check the built morphology layers against MACULA's TSVs and the text packs with a second reader (Python standard library); needs the corpus and says SKIPPED without it
+[group('2 · core')]
+preview-pack-morphology-verify *args:
+    python3 tools/verify_morphology.py {{ args }}
+
 # B026: token lookup and lemma search latency over the built morphology layers, natively, against the 50 ms of specs/22 §7; e.g. `--rounds 3 --json target/b026.json`
 [group('2 · core')]
 preview-pack-morphology-bench *args:
