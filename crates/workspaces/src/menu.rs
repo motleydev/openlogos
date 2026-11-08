@@ -1253,6 +1253,26 @@ mod tests {
     ];
 
     #[test]
+    fn the_cross_references_row_follows_the_installed_layer() {
+        let mut shell = shell();
+        let row = |shell: &Shell| {
+            let menu = shell
+                .context_menu(&target(TARGETS[0]), &CommandContext::default())
+                .unwrap();
+            find(&menu, "Cross references").clone()
+        };
+        assert_eq!(
+            row(&shell).disabled_text.as_deref(),
+            Some("Needs cross-reference data")
+        );
+        shell.set_data_layers([crate::commands::CROSS_REFERENCES_LAYER.to_owned()].into());
+        let enabled = row(&shell);
+        assert_eq!(enabled.disabled_text, None);
+        assert_eq!(enabled.command_id, "nav.cross_references");
+        assert_eq!(enabled.args.reference.as_deref(), Some("John.3.16"));
+    }
+
+    #[test]
     fn every_row_is_a_registered_command_with_a_known_icon_and_words() {
         let shell = shell();
         let mut kinds = Vec::new();

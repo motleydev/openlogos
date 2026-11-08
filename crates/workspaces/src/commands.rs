@@ -256,6 +256,12 @@ pub struct CommandContext {
     pub focus: Focus,
 }
 
+/// The data layer `nav.cross_references` needs (B057): registered with
+/// [`Shell::set_data_layers`] when a cross-reference pack is installed. The command itself is
+/// host-performed: the host shows the list from the reading core and opens an item with
+/// `tab.open_edition`, which leaves the main passage where it is.
+pub const CROSS_REFERENCES_LAYER: &str = "cross_references";
+
 /// Why a command cannot run now. The `Display` text is what a palette row or menu shows:
 /// plain words, never an argument's field name (the `shell-commands` fixture asserts no
 /// reason contains `_`); the serde tag (`kind`) is for code.
@@ -1496,9 +1502,17 @@ pub fn enabled(
         "search.lemma" => Err(DisabledReason::Unavailable {
             needs: "the lexicon import".to_owned(),
         }),
-        "nav.cross_references" => Err(DisabledReason::Unavailable {
-            needs: "cross-reference data".to_owned(),
-        }),
+        "nav.cross_references" if !session.data_layers.contains(CROSS_REFERENCES_LAYER) => {
+            Err(DisabledReason::Unavailable {
+                needs: "cross-reference data".to_owned(),
+            })
+        }
+        "nav.cross_references" => {
+            if non_empty(&args.reference).is_none() && tab.reference.is_none() {
+                return Err(need("reference"));
+            }
+            Ok(())
+        }
         "search.text" => {
             non_empty(&args.text).ok_or_else(|| need("query"))?;
             match non_empty(&args.scope) {
@@ -2797,6 +2811,14 @@ impl Shell {
         self.revision += 1;
     }
 
+    /// Registers the data layers the host has installed (B057: [`CROSS_REFERENCES_LAYER`] once
+    /// a cross-reference pack is open), replacing any registered before. Bumps the revision,
+    /// since palette and menu rows are enabled by them.
+    pub fn set_data_layers(&mut self, layers: std::collections::BTreeSet<String>) {
+        self.session.data_layers = layers;
+        self.revision += 1;
+    }
+
     /// Swaps the session with a record's snapshot and returns the record that swaps back.
     fn swap(&mut self, record: UndoRecord) -> UndoRecord {
         let mut touched: Vec<String> = record
@@ -3098,6 +3120,53 @@ pub(crate) mod tests {
         let revision = shell.revision;
         shell.apply(&Invocation::new("tool.pen"), &context).unwrap();
         assert_eq!(shell.revision, revision + 1);
+    }
+
+    #[test]
+    fn cross_references_are_enabled_by_the_installed_layer_and_open_beside_the_passage() {
+        let context = CommandContext::default();
+        let mut shell = Shell::new(fixture_session()).unwrap();
+        let invocation = Invocation {
+            command_id: "nav.cross_references".into(),
+            args: CommandArgs {
+                reference: Some("John.3.16".into()),
+                ..CommandArgs::default()
+            },
+        };
+        let unavailable = shell.apply(&invocation, &context).unwrap_err();
+        assert_eq!(
+            unavailable.to_string(),
+            "nav.cross_references is disabled: Needs cross-reference data"
+        );
+        let revision = shell.revision;
+        shell.set_data_layers([CROSS_REFERENCES_LAYER.to_owned()].into());
+        assert_eq!(shell.revision, revision + 1);
+        let outcome = shell.apply(&invocation, &context).unwrap();
+        // The host shows the list; nothing in the session moves.
+        assert!(!outcome.handled);
+
+        // Opening an item beside the passage leaves the main tab where it was.
+        let before = shell.session.active().active_tab().clone();
+        let open = Invocation {
+            command_id: "tab.open_edition".into(),
+            args: CommandArgs {
+                resource_id: Some("bsb".into()),
+                reference: Some("Rom.5.8".into()),
+                ..CommandArgs::default()
+            },
+        };
+        shell.apply(&open, &context).unwrap();
+        let ws = shell.session.active();
+        let after = ws.active_tab();
+        assert_eq!(after.id, before.id);
+        assert_eq!(after.reference, before.reference);
+        assert!(
+            ws.tabs()
+                .any(|t| t.content_id == "bsb" && t.reference.as_deref() == Some("Rom.5.8"))
+        );
+
+        shell.set_data_layers(std::collections::BTreeSet::new());
+        assert!(shell.apply(&invocation, &context).is_err());
     }
 
     #[test]
