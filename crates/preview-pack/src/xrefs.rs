@@ -234,8 +234,8 @@ pub struct PackReport {
     pub edges: u64,
     /// Range targets.
     pub ranges: u64,
-    /// `xref_cover` rows.
-    pub cover_rows: u64,
+    /// `xref_range` rows.
+    pub range_rows: u64,
 }
 
 /// The whole report, `openbible-xrefs.json`.
@@ -672,7 +672,7 @@ pub fn build(options: &XrefOptions, repository: &Path) -> Result<XrefReport, Imp
             sha256: sha256_hex(&pack_bytes),
             edges: written.edges,
             ranges: written.ranges,
-            cover_rows: written.cover_rows,
+            range_rows: written.range_rows,
         },
         attribution,
         seconds: started.elapsed().as_secs_f64(),

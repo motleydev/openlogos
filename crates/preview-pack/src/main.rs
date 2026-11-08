@@ -166,10 +166,10 @@ fn run() -> Result<(), ImportError> {
                 );
             }
             println!(
-                "pack {} bytes ({} edges, {} cover rows) in {:.1} s: {}",
+                "pack {} bytes ({} edges, {} range rows) in {:.1} s: {}",
                 report.pack.bytes,
                 report.pack.edges,
-                report.pack.cover_rows,
+                report.pack.range_rows,
                 report.seconds,
                 report.pack.path
             );

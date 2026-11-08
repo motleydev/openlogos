@@ -55,10 +55,11 @@ Input, read-only: `S09-openbible-xrefs/` under the corpora, through the same rig
 (`rights/S09.json`). Output, written in place and kept by later `just preview-pack` runs:
 
 ```
-relations/openbible-xrefs.sqlite    a B064 pack: one curated `cross_reference` edge per published
-                                    line (rowid = line, weight = votes as published, a range
-                                    target as `first-last`), `xref_cover` for reverse lookups
-                                    into ranges, `xref_*` manifest keys (kind, direction, votes,
+relations/openbible-xrefs.sqlite    a B064 pack with coded edge storage: one curated
+                                    `cross_reference` edge per published line (id = line, weight =
+                                    votes as published, a range target as `first-last`), read
+                                    through the `edge` view; `xref_range` for reverse lookups into
+                                    ranges; `xref_*` manifest keys (kind, direction, votes,
                                     coverage, the source file's hash)
 relations/openbible-xrefs.json      the fidelity report: scheme check, duplicates, reversed
                                     pairs, ranges, votes, every target placed in each text pack

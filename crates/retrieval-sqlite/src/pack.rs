@@ -19,6 +19,8 @@ use crate::fts::register_tokenizer;
 use crate::tokenizer::{NORMALIZATION_MODE, feature_key, normalize};
 use crate::vectors::install_vec_extension;
 
+pub mod coded;
+
 /// Schema version written to every pack; readers refuse other versions.
 pub const PACK_SCHEMA_VERSION: &str = "b068-1";
 
@@ -167,6 +169,8 @@ pub struct PackBuilder {
     /// container id − 1; `None` means the container is its hull span.
     container_slots: Vec<Option<Vec<u32>>>,
     vector_dims: HashMap<String, (u32, Quantization)>,
+    /// The coded edge storage's dictionaries and postings ([`coded`]), when the pack uses it.
+    coded: Option<coded::CodedEdges>,
 }
 
 impl PackBuilder {
@@ -226,7 +230,26 @@ impl PackBuilder {
             containers: Vec::new(),
             container_slots: Vec::new(),
             vector_dims: HashMap::new(),
+            coded: None,
         })
+    }
+
+    /// Like [`PackBuilder::create`], with the coded edge storage of [`coded`] (B057): the same
+    /// `edge` relation for every reader, in a fraction of the bytes when edges are many and
+    /// alike. The manifest says `edge_storage = coded-1`.
+    pub fn create_coded_edges(
+        path: &Path,
+        manifest: &PackManifest,
+        features: &[&str],
+    ) -> PackResult<PackBuilder> {
+        let mut builder = PackBuilder::create(path, manifest, features)?;
+        builder.conn.execute_batch(coded::CODED_SCHEMA)?;
+        builder.conn.execute(
+            "INSERT INTO manifest(key, value) VALUES (?1, ?2)",
+            params![coded::EDGE_STORAGE_KEY, coded::CODED_EDGES],
+        )?;
+        builder.coded = Some(coded::CodedEdges::default());
+        Ok(builder)
     }
 
     /// Adds the display text of one verse.
@@ -338,7 +361,7 @@ impl PackBuilder {
         self.insert_edge(Some(rowid), edge)
     }
 
-    /// The writer's connection, for a pack kind's own tables (B057's `xref_cover`) and
+    /// The writer's connection, for a pack kind's own tables (B057's `xref_range`) and
     /// manifest keys. The transaction is open; [`PackBuilder::finish`] commits it.
     pub fn connection(&self) -> &Connection {
         &self.conn
@@ -357,6 +380,9 @@ impl PackBuilder {
             return Err(rusqlite::Error::InvalidParameterName(
                 "user edges never enter a pack; they belong to the link index".to_owned(),
             ));
+        }
+        if let Some(coded) = &mut self.coded {
+            return coded.insert(&self.conn, rowid, edge);
         }
         self.conn.prepare_cached(
             "INSERT INTO edge(rowid, src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method, provenance_kind, review_state, context)
@@ -490,8 +516,12 @@ impl PackBuilder {
             container_kinds,
             containers,
             container_slots,
+            coded,
             ..
         } = self;
+        if let Some(coded) = coded {
+            coded.finish(&conn)?;
+        }
         let n_tokens = verses_of_tokens.len() as u32;
 
         // Dictionaries, dense columns and postings.

@@ -2,10 +2,12 @@
 """B057: checks a built cross-reference pack against the NAS source with a reader written apart
 from the importer's (the standard library's zipfile and sqlite3). `just preview-pack-xrefs-verify`.
 
-Every published line must be one `edge` row with that line as its rowid, the same source verse,
-the same target (a range as `first-last`), the published votes as its weight, the constant
-relation, provenance and review state; nothing more, nothing less. Every verse inside a range
-must be in `xref_cover`. The manifest must carry the attribution and the source file's hash.
+The pack uses the coded edge storage (`edge_storage = coded-1`). This reader decodes `edge_row`
+through `edge_term` itself: every published line must be one row with that line as its id, the
+same source verse, the same target (a range as `first-last`), the published votes as its weight,
+the constant relation, provenance and review state; nothing more, nothing less. The `edge` view
+must hold the same rows. Every range must be covered by its `xref_range` segments, first to last.
+The manifest must carry the attribution and the source file's hash.
 
 Read-only on the NAS and the pack. Needs the corpus, so it is not part of `just ci`; it says
 so and exits 2 when the corpus or the pack is not there. With --show it prints, for the spread
@@ -97,11 +99,19 @@ def main():
     if manifest.get("xref_rows") != str(len(rows)):
         failures.append(f"manifest xref_rows {manifest.get('xref_rows')} != {len(rows)}")
 
+    if manifest.get("edge_storage") != "coded-1":
+        failures.append(f"manifest edge_storage {manifest.get('edge_storage')!r}")
+    terms = {(kind, i): value for kind, i, value in db.execute("SELECT kind, id, value FROM edge_term")}
     edges = {}
-    for rowid, src_work, src, rel, dst_work, dst, weight, source_work, method, provenance, review in db.execute(
-        "SELECT rowid, src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method,"
-        " provenance_kind, review_state FROM edge"
+    decoded = []
+    for rowid, sw, src, rl, dw, dst, weight, ow, me, pr, rv in db.execute(
+        "SELECT id, src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method,"
+        " provenance_kind, review_state FROM edge_row"
     ):
+        src_work, rel, dst_work, source_work = terms[("work", sw)], terms[("rel", rl)], terms[("work", dw)], terms[("work", ow)]
+        method, provenance, review = terms[("method", me)], terms[("provenance", pr)], terms[("review", rv)]
+        src, dst = str(src), str(dst)
+        decoded.append((src_work, src, rel, dst_work, dst, weight, source_work, method, provenance, review))
         edges[rowid] = (src, dst, weight)
         constant = (src_work, rel, dst_work, source_work, method, provenance, review)
         if constant != ("bible", "cross_reference", "bible", "S09", "S09:votes", "curated", "source_attested"):
@@ -115,9 +125,15 @@ def main():
             mismatched += 1
             if mismatched <= 10:
                 failures.append(f"line {number}: source {source}\t{target}\t{votes}, pack {edge}")
+    view = db.execute(
+        "SELECT src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method,"
+        " provenance_kind, review_state FROM edge"
+    ).fetchall()
+    if sorted(view) != sorted(decoded):
+        failures.append("the edge view does not hold the decoded rows")
     cover = {}
-    for verse, edge in db.execute("SELECT verse, edge FROM xref_cover"):
-        cover.setdefault(edge, set()).add(verse)
+    for first, last, edge in db.execute("SELECT first, last, edge FROM xref_range"):
+        cover.setdefault(edge, set()).update({first, last})
     ranges = {n: r for n, r in rows.items() if "-" in r[1]}
     for number, (_, target, _) in ranges.items():
         first, last = (verse_id(t) for t in target.split("-"))
@@ -125,11 +141,11 @@ def main():
         if min(covered, default=None) != first or max(covered, default=None) != last:
             failures.append(f"line {number}: {target} covered {sorted(covered)[:3]}…")
     if set(cover) != set(ranges):
-        failures.append(f"xref_cover names {len(set(cover) - set(ranges))} edges that are not ranges")
+        failures.append(f"xref_range names {len(set(cover) - set(ranges))} edges that are not ranges")
 
     print(
         f"S09: {len(rows)} lines, {len(edges)} edges, {len(ranges)} ranges, "
-        f"{sum(len(v) for v in cover.values())} cover rows; {mismatched} rows differ"
+        f"{db.execute('SELECT count(*) FROM xref_range').fetchone()[0]} range rows; {mismatched} rows differ"
     )
     if args.show:
         for verse in SPREAD:

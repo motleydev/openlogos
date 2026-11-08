@@ -2,15 +2,19 @@
 //! `cross_reference` row per published link, read back as an
 //! [`openlogos_text::reading::CrossReferenceSource`].
 //!
-//! Layout, all in the pack's own scheme (the manifest's `scheme`, `eng` for OpenBible):
+//! Layout, all in the pack's own scheme (the manifest's `scheme`, `eng` for OpenBible), with
+//! the coded edge storage of [`crate::pack::coded`] (`edge_storage = coded-1`): readers see the
+//! `edge` relation below; it is stored as dictionary codes, integer locators and roaring
+//! postings, which keeps 344,799 OpenBible rows under 20 MB.
 //!
 //! - `edge`: `src_work = dst_work = "bible"`; `src_locator` is the source verse as a decimal
 //!   [`VerseId`]; `dst_locator` is the target verse, or `first-last` for a range (specs/19's
 //!   `locator[-locator]`); `weight` is the votes exactly as published (negative and zero
 //!   kept); `provenance_kind = curated`, `review_state = source_attested`; the `rowid` is
 //!   the line of the published file, so every row names its source locator.
-//! - `xref_cover(verse, edge)`: every verse inside a range target, for the derived reverse
-//!   lookup; a single-verse target is found through `edge_dst`.
+//! - `xref_range(first, last, edge)`: each range target cut at chapter ends, as verse ids, for
+//!   the derived reverse lookup into ranges (`first` within 999 of the verse asked about); a
+//!   single-verse target is found through the destination postings.
 //! - `manifest`: the pack keys plus `xref_*` keys stating the relation kind, the direction
 //!   rule, what the votes are, coverage and the source's file and hash.
 //!
@@ -25,6 +29,7 @@ use openlogos_retrieval::{ProvenanceKind, ReviewState, VerseId};
 use openlogos_text::reading::{CrossReferenceInfo, CrossReferenceRow, CrossReferenceSource};
 use rusqlite::{Connection, OpenFlags, params};
 
+use crate::pack::coded::{CODED_EDGES, EDGE_STORAGE_KEY, posted_rowids, term_id};
 use crate::pack::{EdgeRow, PACK_SCHEMA_VERSION, PackBuilder, PackManifest};
 
 /// The work both ends of a Bible cross reference belong to; the locators are in the pack's
@@ -37,9 +42,9 @@ pub const RELATION: &str = "cross_reference";
 /// Manifest key: the pack holds cross references (`xref_format` = this value).
 pub const XREF_FORMAT: &str = "openlogos-xref-1";
 
-const COVER_SCHEMA: &str = "
-CREATE TABLE xref_cover(verse INTEGER NOT NULL, edge INTEGER NOT NULL,
-    PRIMARY KEY (verse, edge)) WITHOUT ROWID;
+const RANGE_SCHEMA: &str = "
+CREATE TABLE xref_range(first INTEGER NOT NULL, last INTEGER NOT NULL, edge INTEGER NOT NULL,
+    PRIMARY KEY (first, edge)) WITHOUT ROWID;
 ";
 
 /// A verse as its locator.
@@ -93,8 +98,8 @@ pub struct WrittenCrossReferences {
     pub edges: u64,
     /// Of them, range targets.
     pub ranges: u64,
-    /// `xref_cover` rows.
-    pub cover_rows: u64,
+    /// `xref_range` rows (a range across chapters is one row per chapter).
+    pub range_rows: u64,
 }
 
 /// Writes a cross-reference pack. `manifest.scheme` is the rows' scheme; `info` goes into the
@@ -107,9 +112,9 @@ pub fn write_cross_reference_pack(
     extra: &[(&str, &str)],
     rows: &[CrossReferenceRow],
 ) -> rusqlite::Result<WrittenCrossReferences> {
-    let mut builder = PackBuilder::create(path, manifest, &[])?;
+    let mut builder = PackBuilder::create_coded_edges(path, manifest, &[])?;
     let conn = builder.connection();
-    conn.execute_batch(COVER_SCHEMA)?;
+    conn.execute_batch(RANGE_SCHEMA)?;
     let rows_text = rows.len().to_string();
     let entries: Vec<(&str, &str)> = [
         ("xref_format", XREF_FORMAT),
@@ -174,11 +179,24 @@ pub fn write_cross_reference_pack(
                     ))
                 })?;
             let conn = builder.connection();
-            let mut insert =
-                conn.prepare_cached("INSERT INTO xref_cover(verse, edge) VALUES (?1, ?2)")?;
+            let mut insert = conn
+                .prepare_cached("INSERT INTO xref_range(first, last, edge) VALUES (?1, ?2, ?3)")?;
+            let mut segment: Option<(u32, u32)> = None;
             for v in verses {
-                insert.execute(params![i64::from(verse_id(&v).0), i64::from(row.line)])?;
-                written.cover_rows += 1;
+                let id = verse_id(&v).0;
+                segment = match segment {
+                    Some((first, _)) if first / 1000 == id / 1000 => Some((first, id)),
+                    Some((first, last)) => {
+                        insert.execute(params![first, last, row.line])?;
+                        written.range_rows += 1;
+                        Some((id, id))
+                    }
+                    None => Some((id, id)),
+                };
+            }
+            if let Some((first, last)) = segment {
+                insert.execute(params![first, last, row.line])?;
+                written.range_rows += 1;
             }
         }
     }
@@ -190,6 +208,9 @@ pub fn write_cross_reference_pack(
 pub struct CrossReferencePack {
     conn: Mutex<Connection>,
     info: CrossReferenceInfo,
+    /// The codes of `bible` and `cross_reference` in the pack's dictionaries.
+    bible: i64,
+    relation: i64,
 }
 
 impl std::fmt::Debug for CrossReferencePack {
@@ -257,6 +278,19 @@ impl CrossReferencePack {
                 "pack schema {version} is not the supported {PACK_SCHEMA_VERSION}"
             ));
         }
+        let storage = value(EDGE_STORAGE_KEY)?;
+        if storage != CODED_EDGES {
+            return Err(format!(
+                "edge storage {storage} is not the supported {CODED_EDGES}; rebuild with just preview-pack-xrefs"
+            ));
+        }
+        let code = |kind: &str, term: &str| -> Result<i64, String> {
+            term_id(&conn, kind, term)
+                .map_err(read_error)?
+                .ok_or_else(|| format!("the pack has no {kind} {term}"))
+        };
+        let bible = code("work", BIBLE_WORK)?;
+        let relation = code("rel", RELATION)?;
         let format = value("xref_format")?;
         if format != XREF_FORMAT {
             return Err(format!(
@@ -281,6 +315,8 @@ impl CrossReferencePack {
         Ok(CrossReferencePack {
             conn: Mutex::new(conn),
             info,
+            bible,
+            relation,
         })
     }
 
@@ -290,17 +326,25 @@ impl CrossReferencePack {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
+    /// The rows with these rowids, in rowid (line) order.
     fn rows(
         &self,
-        sql: &str,
-        verse: &dyn rusqlite::ToSql,
+        conn: &Connection,
+        mut rowids: Vec<u32>,
     ) -> Result<Vec<CrossReferenceRow>, String> {
-        let conn = self.lock();
-        let mut stmt = conn.prepare_cached(sql).map_err(read_error)?;
-        let mapped = stmt.query_map([verse], row_of).map_err(read_error)?;
-        let mut out = Vec::new();
-        for row in mapped {
-            let (line, src, dst, votes) = row.map_err(read_error)?;
+        rowids.sort_unstable();
+        rowids.dedup();
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT CAST(src_locator AS TEXT), CAST(dst_locator AS TEXT), weight
+                 FROM edge_row WHERE id = ?1",
+            )
+            .map_err(read_error)?;
+        let mut out = Vec::with_capacity(rowids.len());
+        for line in rowids {
+            let (src, dst, votes): (String, String, f64) = stmt
+                .query_row([line], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+                .map_err(read_error)?;
             let from = src
                 .parse()
                 .ok()
@@ -313,22 +357,11 @@ impl CrossReferencePack {
                 from,
                 to_start,
                 to_end,
-                votes,
+                votes: votes as i32,
             });
         }
         Ok(out)
     }
-}
-
-type RawRow = (u32, String, String, i32);
-
-fn row_of(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawRow> {
-    Ok((
-        row.get(0)?,
-        row.get(1)?,
-        row.get(2)?,
-        row.get::<_, f64>(3)? as i32,
-    ))
 }
 
 impl CrossReferenceSource for CrossReferencePack {
@@ -337,29 +370,29 @@ impl CrossReferenceSource for CrossReferencePack {
     }
 
     fn outgoing(&self, verse: &Reference) -> Result<Vec<CrossReferenceRow>, String> {
-        self.rows(
-            "SELECT rowid, src_locator, dst_locator, weight FROM edge
-             WHERE src_work = 'bible' AND src_locator = ?1 AND rel = 'cross_reference'
-             ORDER BY rowid",
-            &verse_id(verse).0.to_string(),
-        )
+        let conn = self.lock();
+        let id = verse_id(verse).0.to_string();
+        let rowids = posted_rowids(&conn, 0, self.bible, &id, self.relation).map_err(read_error)?;
+        self.rows(&conn, rowids)
     }
 
     fn incoming(&self, verse: &Reference) -> Result<Vec<CrossReferenceRow>, String> {
+        let conn = self.lock();
         let id = verse_id(verse).0;
-        let mut out = self.rows(
-            "SELECT rowid, src_locator, dst_locator, weight FROM edge
-             WHERE dst_work = 'bible' AND dst_locator = ?1 AND rel = 'cross_reference'",
-            &id.to_string(),
-        )?;
-        out.extend(self.rows(
-            "SELECT e.rowid, e.src_locator, e.dst_locator, e.weight
-             FROM xref_cover c JOIN edge e ON e.rowid = c.edge
-             WHERE c.verse = ?1",
-            &i64::from(id),
-        )?);
-        out.sort_by_key(|r| r.line);
-        Ok(out)
+        let mut rowids = posted_rowids(&conn, 1, self.bible, &id.to_string(), self.relation)
+            .map_err(read_error)?;
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT edge FROM xref_range WHERE first BETWEEN ?1 - 999 AND ?1 AND last >= ?1",
+            )
+            .map_err(read_error)?;
+        let ranges = stmt
+            .query_map([i64::from(id)], |r| r.get::<_, u32>(0))
+            .map_err(read_error)?;
+        for edge in ranges {
+            rowids.push(edge.map_err(read_error)?);
+        }
+        self.rows(&conn, rowids)
     }
 }
 
@@ -434,7 +467,7 @@ mod tests {
         assert_eq!(written.edges, 4);
         assert_eq!(written.ranges, 2);
         // John 1:1–3, and 2 Chr 36:22–23 plus Ezra 1:1–3.
-        assert_eq!(written.cover_rows, 3 + 5);
+        assert_eq!(written.range_rows, 1 + 2);
         path
     }
 
@@ -445,7 +478,7 @@ mod tests {
         assert_eq!(pack.info(), &info());
         let out = pack.outgoing(&r("Gen.1.1")).unwrap();
         assert_eq!(out, rows()[..2].to_vec());
-        // Reverse: single-verse targets through edge_dst, ranges through xref_cover.
+        // Reverse: single-verse targets through the postings, ranges through xref_range.
         assert_eq!(
             pack.incoming(&r("Gen.1.1")).unwrap(),
             vec![rows()[2].clone()]
@@ -459,6 +492,12 @@ mod tests {
             vec![rows()[3].clone()]
         );
         assert!(pack.incoming(&r("John.1.4")).unwrap().is_empty());
+        assert_eq!(
+            pack.incoming(&r("Ezra.1.2")).unwrap(),
+            vec![rows()[3].clone()]
+        );
+        assert!(pack.incoming(&r("Ezra.1.4")).unwrap().is_empty());
+        assert!(pack.incoming(&r("2Chr.36.21")).unwrap().is_empty());
 
         let bytes = std::fs::read(&path).unwrap();
         let in_memory = CrossReferencePack::from_bytes(&bytes).unwrap();
