@@ -38,3 +38,38 @@ What each source contributes and every decision about the text: docs/evidence/B0
 
 A test that needs the corpus never runs in `just ci`: `just preview-pack-verify` and
 `just preview-pack-bench-wasm` need the built pack, and say `SKIPPED` without it.
+
+## Cross references (B057)
+
+The OpenBible cross references (S09) go beside the text packs, built on their own:
+
+```sh
+just preview-pack-xrefs             # about 6 s plus the first compile; after just preview-pack
+just preview-pack-xrefs-verify      # a second reader against the NAS; --show prints the spread
+just preview-pack-xrefs-show        # the spread through the core API (--limit N, --preview)
+just preview-pack-xrefs-bench       # a verse's list latency natively, against 16 ms
+just preview-pack-xrefs-bench-wasm  # the same in a Chrome worker (web shell)
+```
+
+Input, read-only: `S09-openbible-xrefs/` under the corpora, through the same rights and hash gate
+(`rights/S09.json`). Output, written in place and kept by later `just preview-pack` runs:
+
+```
+relations/openbible-xrefs.sqlite    a B064 pack: one curated `cross_reference` edge per published
+                                    line (rowid = line, weight = votes as published, a range
+                                    target as `first-last`), `xref_cover` for reverse lookups
+                                    into ranges, `xref_*` manifest keys (kind, direction, votes,
+                                    coverage, the source file's hash)
+relations/openbible-xrefs.json      the fidelity report: scheme check, duplicates, reversed
+                                    pairs, ranges, votes, every target placed in each text pack
+```
+
+The references are in `eng`; each list is mapped into the edition asked about at read time, so
+one pack serves the BSB, SBLGNT and WLC. Hosts: `ReadingHandle.open_cross_references(<out>/
+relations/openbible-xrefs.sqlite)` natively, or `useCrossReferences(Uint8Array)` with the fetched
+file in a browser; then `ShellHandle.set_data_layers(["cross_references"])`, which enables the
+"Cross references" row of the context menu and palette. `cross_references(resource_id, passage,
+…)` returns a page of the list (25 fills a panel); open an item with `tab.open_edition`
+(`resource_id`, the item's `target`), which leaves the main passage where it is. Show each item's
+`attribution` (CC BY 4.0), its `direction` when it is `reverse_derived`, and its `availability`
+when the edition does not print the target. Decisions and counts: docs/evidence/B057.md.

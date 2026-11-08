@@ -37,3 +37,16 @@ B031 later adds multiword alignments, repeated lemma occurrences in one verse, h
 ## Revision 5 engine and query extensions
 
 The engines behind this contract are fixed in specs/19-search-and-retrieval.md: FTS5 with a shared Rust tokenizer for text, a columnar roaring-bitmap engine for lemma/morphology/proximity/agreement/unit queries, typed edge tables for cross references and citations, and optional sqlite-vec semantic layers. Feature predicates (`lemma:`, `morph:`, `domain:`, `referent:`), positional operators (`BEFORE n`, `AFTER n`, `WITHIN n`, `AGREE(...)`) and unit scopes (`IN verse|clause|sentence`) join the bounded AST. B065 moves original-language search into P2 using cleared MACULA/OSHB layers; it was previously P4.
+
+## The OpenBible baseline (B057)
+
+The first cross-reference layer is OpenBible's file [S09], imported as published (docs/evidence/B057.md):
+
+- **Record.** One curated `cross_reference` edge per published line in a relation pack (specs/19 typed edge table): the source verse, the target verse or range (`first-last`), the published vote count as `weight`, `review_state` `source_attested`, the file's line as the source locator. The relation kind is `unspecified`: OpenBible does not say whether a link is a citation, quotation, allusion or theme, so none is claimed.
+- **Scheme.** The file's references are checked against the canon table, not assumed: all are `eng` verses (Malachi 4, Joel 3, 3 John 15 occur; `org` lacks 3,384 of the references). Each list is mapped into the edition asked about when it is read.
+- **Labels.** Each item states its `mapping` (exact, partial, ambiguous, unmapped) and its `availability` in the edition (printed, partly printed, not printed, book not in edition, unmapped). A target the edition does not have or print is listed with no text and the installed editions that print it; a range whose end has no counterpart keeps the part that maps and is `partial`; nothing is dropped.
+- **Direction and deduplication.** Items are published links by default. Reverse links (listed under the target) are optional and labelled `reverse_derived`. Equal visible targets merge into one item that keeps every assertion with its votes and line.
+- **Votes.** Kept as published, zero and negative included; lists order published items by them, then derived ones. They are a popularity signal, not accuracy, relevance or textual dependence.
+- **Preview.** Text comes only from the edition asked about, for the page of items returned.
+
+Human review of representative links and of the published coverage (the B057 gate) is still the steward's.
