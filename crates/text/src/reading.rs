@@ -24,8 +24,15 @@ use openlogos_core::reference::{AliasTable, BookId, Reference, parse};
 use openlogos_core::versification::SchemeId;
 use serde::{Deserialize, Serialize};
 
+pub mod cross_references;
 pub mod pack;
 pub mod placeholder;
+
+pub use cross_references::{
+    Availability, CrossReference, CrossReferenceAssertion, CrossReferenceError, CrossReferenceInfo,
+    CrossReferenceList, CrossReferenceOptions, CrossReferenceRow, CrossReferenceSource,
+    Direction as CrossReferenceDirection, MemoryCrossReferences,
+};
 
 pub use pack::{
     ChapterChunk, ChunkRef, ChunkSource, DirSource, FilePack, MemorySource, PACK_FORMAT,
@@ -388,10 +395,12 @@ impl Installed {
     }
 }
 
-/// The installed editions, each one pack.
+/// The installed editions, each one pack, and the cross-reference source if one is installed
+/// (B057, [`cross_references`]).
 #[derive(Default)]
 pub struct ReadingLibrary {
     packs: Vec<Installed>,
+    cross_references: Option<Box<dyn CrossReferenceSource>>,
 }
 
 impl std::fmt::Debug for ReadingLibrary {
