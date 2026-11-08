@@ -206,6 +206,8 @@
                 {
                   "active": false,
                   "args": {
+                    "reference": "John.3.16",
+                    "resource_id": "bsb",
                     "text": "loved"
                   },
                   "command_id": "search.lemma",

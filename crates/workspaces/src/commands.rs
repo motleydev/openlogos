@@ -1493,9 +1493,27 @@ pub fn enabled(
                 })
             }
         }
-        "search.lemma" => Err(DisabledReason::Unavailable {
-            needs: "the lexicon import".to_owned(),
-        }),
+        "search.lemma" => {
+            // B026: a word of an edition with a morphology layer. Until any layer is
+            // installed the reason stays the one hosts already show.
+            let resource = non_empty(&args.resource_id).unwrap_or(tab.content_id.as_str());
+            if session.morphology_editions.is_empty() {
+                return Err(DisabledReason::Unavailable {
+                    needs: "the lexicon import".to_owned(),
+                });
+            }
+            if !session.morphology_editions.contains(resource) {
+                return Err(DisabledReason::Unavailable {
+                    needs: format!(
+                        "a morphology layer for {}",
+                        session.resource_title(resource)
+                    ),
+                });
+            }
+            non_empty(&args.text)
+                .map(|_| ())
+                .ok_or_else(|| need("text"))
+        }
         "nav.cross_references" => Err(DisabledReason::Unavailable {
             needs: "cross-reference data".to_owned(),
         }),
@@ -2794,6 +2812,14 @@ impl Shell {
     /// [`crate::reading`] host takes them from its installed packs. Bumps the revision.
     pub fn set_resource_schemes(&mut self, schemes: std::collections::BTreeMap<String, String>) {
         self.session.resource_schemes = schemes;
+        self.revision += 1;
+    }
+
+    /// Registers the editions a morphology layer is installed for (B026), replacing any
+    /// registered before; `search.lemma` is enabled on their words. Bumps the revision, since
+    /// palette rows and menus carry whether it is.
+    pub fn set_morphology_editions(&mut self, editions: std::collections::BTreeSet<String>) {
+        self.session.morphology_editions = editions;
         self.revision += 1;
     }
 

@@ -447,6 +447,11 @@ pub struct Session {
     /// them ([`crate::reading`]). Runtime state, not persisted.
     #[serde(skip)]
     pub resource_schemes: BTreeMap<String, String>,
+    /// Editions with a morphology layer installed (B026: `sblgnt`, `wlc`), registered by the
+    /// host or by the binding that attached the layers; `search.lemma` is enabled on their
+    /// words only. Runtime state, not persisted.
+    #[serde(skip)]
+    pub morphology_editions: std::collections::BTreeSet<String>,
 }
 
 impl Session {
@@ -1010,6 +1015,7 @@ impl Session {
             ink: InkSettings::default(),
             resource_titles: BTreeMap::new(),
             resource_languages: BTreeMap::new(),
+            morphology_editions: std::collections::BTreeSet::new(),
             resource_schemes: BTreeMap::new(),
         }
     }
@@ -1131,6 +1137,7 @@ impl Session {
             ink: record.ink,
             resource_titles: BTreeMap::new(),
             resource_languages: BTreeMap::new(),
+            morphology_editions: std::collections::BTreeSet::new(),
             resource_schemes: BTreeMap::new(),
         };
         session.check()?;
