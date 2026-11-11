@@ -1,0 +1,204 @@
+{
+  "schema_version": "1.0",
+  "kind": "backlog_status",
+  "as_of": "2026-11-11",
+  "tasks": [
+    {
+      "id": "B002",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B002.md"
+      ]
+    },
+    {
+      "id": "B003",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B003.md"
+      ]
+    },
+    {
+      "id": "B004",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B004.md"
+      ]
+    },
+    {
+      "id": "B005",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B005.md"
+      ],
+      "open": "Met on the Mac and in the iPad simulator. Not run on a physical iPad, in Safari or with VoiceOver: no device was available."
+    },
+    {
+      "id": "B006",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B006.md"
+      ]
+    },
+    {
+      "id": "B016",
+      "status": "in_review",
+      "evidence": [],
+      "branches": [
+        "b016-calvin"
+      ],
+      "open": "Calvin's Institutes (Allen) as a work pack in the core and bindings; no host screen yet."
+    },
+    {
+      "id": "B021",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B021.md"
+      ]
+    },
+    {
+      "id": "B026",
+      "status": "in_review",
+      "evidence": [],
+      "branches": [
+        "b026-morphology"
+      ],
+      "open": "MACULA Greek and Hebrew morphology layers in the core and bindings; no host screen yet."
+    },
+    {
+      "id": "B039",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B039.md"
+      ],
+      "open": "Stylus latency and palm rejection were measured with synthesized pen input only: no stylus or device was available."
+    },
+    {
+      "id": "B040",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B040.md"
+      ]
+    },
+    {
+      "id": "B057",
+      "status": "in_review",
+      "evidence": [],
+      "branches": [
+        "b057-xrefs"
+      ],
+      "open": "OpenBible cross references in the core and bindings; the steward review of coverage and the host screens remain."
+    },
+    {
+      "id": "B061",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B061-bindings.md",
+        "docs/evidence/B061-core.md",
+        "docs/evidence/B061-wasm.md"
+      ]
+    },
+    {
+      "id": "B062",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B062.md"
+      ]
+    },
+    {
+      "id": "B063",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B063.md"
+      ]
+    },
+    {
+      "id": "B064",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B064.md"
+      ],
+      "open": "Sizes and timings are from the Mac mini and simulators. Not measured on a physical iPad or iPhone, or on Android (no NDK)."
+    },
+    {
+      "id": "B067",
+      "status": "in_review",
+      "evidence": [],
+      "branches": [
+        "b067-alignments"
+      ],
+      "open": "Clear alignments between the BSB and the Greek and Hebrew in the core and bindings; the statistical aligner evaluation and host screens remain."
+    },
+    {
+      "id": "B068",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B068.md"
+      ]
+    },
+    {
+      "id": "B070",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B070.md"
+      ]
+    },
+    {
+      "id": "B071",
+      "status": "in_review",
+      "evidence": [],
+      "branches": [
+        "b071-preview-pack",
+        "b071-web",
+        "b071-mac"
+      ],
+      "open": "Full BSB, SBLGNT and WLC text and search in the web and Mac shells; several text presentation decisions wait for the owner."
+    },
+    {
+      "id": "B072",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B072-mac.md",
+        "docs/evidence/B072-web.md"
+      ]
+    },
+    {
+      "id": "B074",
+      "status": "partly_merged",
+      "evidence": [
+        "docs/evidence/B074-core.md",
+        "docs/evidence/B074-web.md"
+      ],
+      "branches": [
+        "b074-mac-store"
+      ],
+      "open": "Core and web are on main. The Mac part is in review; its session restore measured 305 ms against the 100 ms budget of specs/22 §7."
+    },
+    {
+      "id": "B076",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B076-core.md",
+        "docs/evidence/B076-mac.md",
+        "docs/evidence/B076-web.md"
+      ]
+    },
+    {
+      "id": "B077",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B077-core.md",
+        "docs/evidence/B077-mac.md",
+        "docs/evidence/B077-web.md"
+      ]
+    },
+    {
+      "id": "B078",
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B078-core.md",
+        "docs/evidence/B078-mac.md",
+        "docs/evidence/B078-web.md"
+      ]
+    }
+  ]
+}
