@@ -1,7 +1,9 @@
 # The same checks as `just check` and `just ci`, through the flake, on both platforms the
 # project develops on. Linux-only checks (nix/checks) run on the Ubuntu job and are named
 # and skipped on macOS; Apple and Android builds need SDKs Nix cannot provide and belong to
-# the self-hosted Mac lane in specs/20-orchestration-and-build-hosts.md.
+# the self-hosted Mac lane in specs/20-orchestration-and-build-hosts.md; until that lane exists,
+# `just ci-hosts` on the Mac mini is what runs them. The `web` job runs the browser tests,
+# which need no SDK.
 name: ci
 
 on:
@@ -36,3 +38,28 @@ jobs:
 
       - name: nix flake check (rustfmt, clippy, tests, wasm, nixfmt, shellcheck, actionlint, justfmt, blueprint)
         run: nix flake check --print-build-logs
+
+      # Outside the flake check because the advisory database comes from the network.
+      - name: Dependency audit (advisories, licences, sources)
+        if: matrix.os == 'ubuntu-latest'
+        run: nix develop .#core --command just audit
+
+  # The WebAssembly build and the browser tests of apps/web. The runner image's Google Chrome
+  # drives them; scripts/wasm-test.sh fetches the matching chromedriver.
+  web:
+    name: web (wasm build, Node host, web shell)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Added on 11 November 2026 without a first run on GitHub (pushing was not possible that
+    # day). It reports without blocking a merge; delete this line once the job has passed.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Build the wasm core and run the Node test host
+        run: nix develop .#web --command just test-web
+
+      - name: Web shell cases in headless Chrome
+        run: nix develop .#web --command just test-shell-web

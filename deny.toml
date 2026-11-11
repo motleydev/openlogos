@@ -1,0 +1,41 @@
+# `just audit` (cargo-deny): known vulnerabilities, licences and sources of every crate in
+# Cargo.lock. Versions are pinned exactly in Cargo.toml, so nothing here changes until a
+# reviewed `cargo update`; this check is what says a pinned version has since gone bad.
+# CI runs it on the Ubuntu job (.github/workflows/ci.yml).
+
+[advisories]
+version = 2
+# RustSec advisories for vulnerabilities, unmaintained and yanked crates all fail the check.
+# To accept one, add its ID here with the reason and the date it was reviewed.
+ignore = []
+
+[licenses]
+version = 2
+# What the third-party crates in Cargo.lock use today (11 November 2026). A new licence is a
+# reviewed decision (specs/08-quality-governance.md), not something `cargo update` brings in.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-1-Clause",
+  "BSD-3-Clause",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+[licenses.private]
+# The workspace's own crates are `publish = false` and carry no `license` field until the
+# owner chooses the project's licence.
+ignore = true
+
+[bans]
+# Two versions of one crate cost binary size (specs/01 budgets) but are not an error.
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

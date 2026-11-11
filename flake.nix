@@ -105,6 +105,7 @@
           rustTools = [
             toolchain
             pkgs.cargo-nextest # `just test`: parallel runner with JUnit output for evidence
+            pkgs.cargo-deny # `just audit`: advisories, licences and sources of Cargo.lock (deny.toml)
           ];
 
           # Rust links through `cc`. On Linux that compiler comes from nixpkgs so a fresh

@@ -58,6 +58,16 @@ lint:
 [group('2 · core')]
 ci: lint test check-wasm
 
+# Check every crate in Cargo.lock against the RustSec advisory database, the licence allowlist and the allowed sources (deny.toml); needs the network for the advisory database
+[group('2 · core')]
+audit:
+    cargo deny check
+
+# Every host lane GitHub's check does not run, each in its own dev shell: web (wasm, Node, web shell), kotlin, swift and mac-app; name lanes to run only those, e.g. `just ci-hosts web kotlin`. Run from outside a dev shell or inside one
+[group('2 · core')]
+ci-hosts *lanes:
+    @scripts/ci-hosts.sh {{ lanes }}
+
 # B064 retrieval benchmarks (docs/evidence/B064.md): R5 vectors and R9 relations on synthetic data under `dir`, R6 if `tf` names an N1904 Text-Fabric folder (tf/1.0.0); extra arguments go to every subcommand
 [group('2 · core')]
 bench-retrieval dir="target/bench-retrieval" tf="" *args:
