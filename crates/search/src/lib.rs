@@ -4,8 +4,11 @@
 //! columnar token engine of dictionary-encoded columns and roaring bitmaps, modeled on
 //! Text-Fabric's slot, feature and edge model rather than Lucene. Faceted concordances and
 //! prose full text share the same query planner so results are identical on every platform and
-//! well inside the specs/01 offline budgets. The engine lands with B064; this crate currently
-//! only reserves the name.
+//! well inside the specs/01 offline budgets.
+//!
+//! That engine was built in B064 as `openlogos-retrieval-sqlite` (its `fts`, `tokenizer` and
+//! `token_engine` modules) behind the traits of `openlogos-retrieval`. This crate holds no
+//! code and only reserves the name for the query planner that will sit above both.
 
 /// The crate's package name, as Cargo records it.
 ///

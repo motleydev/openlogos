@@ -1,9 +1,9 @@
 # apps/apple
 
 One SwiftUI application for iPadOS, macOS and iOS with a TextKit 2 reading surface
-(docs/adr/0001-rust-core-native-ui.md, specs/18-platform-capabilities.md). What exists today is
-the **app shell** in `OpenLogos/` (B063): enough app to prove the simulator and signed-build
-lanes, not the reader. B062 builds the reader in its place.
+(docs/adr/0001-rust-core-native-ui.md, specs/18-platform-capabilities.md). `OpenLogos/` began as the app shell that proved the simulator and signed-build lanes (B063) and
+now holds the reader and ink prototypes (B005, B039) and, on the Mac, the workspace shell of
+specs/22 (`Sources/Shell`, B072 to B078).
 
 ## Environment
 

@@ -8,14 +8,14 @@ lists them together.
 |---|---|
 | `core` | references, versification mappings, anchors, typed claims; builds for wasm |
 | `text` | render-ready attributed runs, normalization, offset adapters; builds for wasm |
-| `search` | corpus query engine and prose full text (specs/19) |
+| `search` | reserved name, no code: the query planner above the engine; the engine itself is `retrieval-sqlite` |
 | `retrieval` | vector and hybrid retrieval; the ADR 0002 storage traits |
-| `package` | signed content-addressed packs, hashes, index layers, link index |
-| `collections` | study collections, export receipts, Markdown/JSON export |
+| `package` | reserved name, no code: pack signature verification (not built); the pack schema, file hashes and link index are in `retrieval-sqlite`, chapter hash checks in `text` |
+| `collections` | study collections, export receipts, Markdown/JSON export; not yet used by an app |
 | `workspaces` | pane trees, link groups, layout profiles; the workspace shell (sessions, numbered columns of tabs, command registry, palette query) |
 | `ink` | portable stroke geometry and snapshot contracts |
 | `notes` | app/vault note authority and merge contracts |
-| `sync` | encrypted operation log and conflict resolution (B021: `keys`, `envelope`, `log`, `enrollment`, `recovery`; docs/adr/0004-vault-identity-and-sync.md) |
+| `sync` | not yet used by an app; encrypted operation log and conflict resolution (B021: `keys`, `envelope`, `log`, `enrollment`, `recovery`; docs/adr/0004-vault-identity-and-sync.md) |
 | `ffi` | UniFFI and wasm-bindgen surfaces, versioned API (B061, B064) |
 | `conformance` | cross-platform fixtures and expected results |
 

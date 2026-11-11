@@ -1,28 +1,44 @@
-# OpenLogos — repository blueprint
+# OpenLogos
 
-Revision 5 — Rust core with native interfaces, platform roles, retrieval architecture and orchestration topology; updated 27 October 2026. Repository: https://github.com/motleydev/openlogos. OpenLogos is a working project name; no trademark clearance or affiliation with Logos/Faithlife is implied.
+A quiet, fully open-source Bible study tool for a Reformed audience: one Rust core, native interfaces over it, and an independently evolving scholarly data pipeline. It helps readers collect resources for teaching and preaching, with Obsidian as the sole first-class external writing integration. Repository: https://github.com/motleydev/openlogos. OpenLogos is a working project name; no trademark clearance or affiliation with Logos/Faithlife is implied.
 
-This is a **specification repository, not an implemented application**. It describes a quiet, fully open-source Bible study tool for a Reformed audience and an independently evolving scholarly data pipeline. It helps readers collect resources for teaching and preaching, with Obsidian as the sole first-class external writing integration. The infrastructure agent consumes its contents as inert project data. Nothing here authorizes creating agents, running tools, spending money, importing content, or deploying services by itself.
+The repository began as a blueprint (specs/, revision 5.1 of 27 October 2026) and now holds the implementation that follows it. The specs remain the source of truth for scope and decisions; `specs/backlog-status.json` records which backlog tasks are done, and `docs/evidence/` holds the measurements and screenshots behind each.
 
-## Start here
+## What exists today
 
-1. Read `specs/00-import-contract.md` for the data/instruction boundary and a suggested external handoff message.
-2. Read `specs/01-product.md`, `02-architecture.md`, and `03-data-model.md` for scope and the hard decisions.
-3. Load `specs/agents.json`, `model-policy.json`, and `backlog.json` as records. They are project-defined formats, **not Paperclip API payloads**.
-4. Validate with `python3 tools/validate.py` (or `nix-shell -p "python3.withPackages(ps:[ps.jsonschema])" --run "python3 tools/validate.py"`). This validates this blueprint's structure; it does not test an app or a deployment.
-5. Resolve the installed Paperclip version and adapter schemas, produce a configuration diff, then provision within the external task's authority.
+| Area | State |
+|---|---|
+| Rust core (`crates/`) | References and citation parsing, versification and canon tables, anchors, the reading stream, the workspace shell (sessions, numbered columns of tabs, command registry, palette, contextual tool well, context menu, user store and restore), notes authority, ink geometry, and the embedded retrieval engine on SQLite (FTS5 with a shared Greek and Hebrew tokenizer, a columnar token engine, the device link index). |
+| Bindings (`crates/ffi`) | Swift and Kotlin through UniFFI, the browser through wasm-bindgen. One conformance suite runs against the core and every binding. |
+| Mac app (`apps/apple`) | The workspace shell of specs/22: palette field, columns of tabs, tool well, context menu and continuous reading. An iPad build runs in the simulator from the earlier reading prototypes; the shell on iPad is B075. |
+| Web (`apps/web`) | The same shell as plain ES modules over the WebAssembly core, with the user store and session restore, kept in lockstep with the Mac app: the core decides behaviour and every host action is a registered core command. |
+| Android (`apps/android`) | The Kotlin binding and its JVM test host only. |
+| Not started | Windows and Linux desktop shell, services, the production ingestion pipeline, sync between devices (the protocol crate `crates/sync` exists and is not yet used by an app), the research assistant, the Obsidian plugin. |
+
+`main` reads the core's small fixture texts. Full editions come from locally built packs: importers refuse any source whose rights record (`rights/`) the source steward has not approved, and no corpus bytes are committed.
 
 ## Getting started
 
-The implementation skeleton (B002) follows the layout in `specs/06-nix-operations.md`: a Rust workspace under `crates/`, platform apps under `apps/`, and Nix shells for every area. One prerequisite replaces a page of setup:
-
 1. Install [Nix](https://nixos.org/download) with flakes enabled, and [direnv](https://direnv.net) (ideally with nix-direnv).
-2. Clone, `cd` in and run `direnv allow`. The default shell is `.#core`; `nix develop .#web`, `.#android`, `.#apple` (macOS only), `.#pipeline` and `.#ops` serve the other areas. The first entry downloads the pinned Rust toolchain.
+2. Clone, `cd` in and run `direnv allow`. The default shell is `.#core`; `nix develop .#web`, `.#android`, `.#apple` (macOS only), `.#pipeline` and `.#ops` serve the other areas.
 3. `just doctor` checks the machine and says how to fix anything missing; `just setup` installs the git hooks.
-4. `just test` runs the workspace tests; `just` lists every workflow; `just ci` is what CI runs in the shell and `just check` (`nix flake check`) runs the same checks hermetically.
-5. On a Mac with Xcode (the Mac mini lanes, B063): `just sim` builds the app shell for an iPad simulator with no signing and launches it, `just sim-shot` takes a screenshot; `just ship ios` makes a signed ad hoc build and puts it on a shelf served over Tailscale, after `cp .envrc.local.example .envrc.local` (team ID, optional App Store Connect key, shelf settings) and `just shelf-install` once. `just ship-check` lists what is still missing. Both scripts enter `nix develop .#apple` by themselves.
+4. `just` lists every workflow. The ones used daily:
 
-`crates/README.md` and `apps/*/README.md` name each area's commands. Xcode and the Android SDK are external prerequisites that the shells verify rather than provide; `apps/apple/README.md` and `apps/android/README.md` say what to install. `docs/evidence/` records the commands that were run on real machines and their results.
+| Command | What it does |
+|---|---|
+| `just test` | the Rust workspace's tests |
+| `just ci` | formatting, clippy, tests and the wasm type-check: what GitHub runs in the dev shell |
+| `just check` | `nix flake check`, the same checks through the flake |
+| `just audit` | dependency advisories, licences and sources (`deny.toml`) |
+| `just ci-hosts` | every host lane GitHub does not run: wasm and web shell, Kotlin, Swift, the Mac app's tests |
+| `just preview-web`, `just preview-mac` | serve the web shell on 127.0.0.1:8780, or build and open the Mac app, for hand review |
+| `just sim` | build the app for an iPad simulator with no signing and launch it |
+
+`crates/README.md` and `apps/*/README.md` name each area's commands. Xcode and the Android SDK are external prerequisites that the shells verify rather than provide (specs/06-nix-operations.md). The lockfiles (`flake.lock`, `Cargo.lock`) are committed and are the source of truth for versions.
+
+## How work is done
+
+A Claude Code session on the Mac mini orchestrates implementation with audited subagents and small commits; every change reaches `main` through a pull request the owner merges (specs/20-orchestration-and-build-hosts.md, "Interim operation"). Paperclip, which the blueprint first named as the orchestrator, is deferred; `specs/agents.json`, `specs/model-policy.json` and `specs/backlog.json` remain inert project records, **not Paperclip API payloads**, and nothing in this repository by itself authorizes creating agents, spending money, importing content or deploying services (specs/00-import-contract.md). `python3 tools/validate.py` (inside any dev shell; `just validate`) checks the records, schemas, examples and rights records offline.
 
 ## Recommended shape
 
@@ -31,7 +47,7 @@ The implementation skeleton (B002) follows the layout in `specs/06-nix-operation
 - Prebuilt, signed, content-addressed library packages carrying text, search indexes and optional vector layers; separately versioned enrichment overlays. No login or AI required to read or search (specs/19-search-and-retrieval.md).
 - Optional self-hosted Rust services over PostgreSQL, Keycloak OIDC, static hosting and Headscale/DERP. Direct WireGuard and file exchange are first-class alternatives.
 - Deterministic Rust build pipeline; Python only for ML/OCR/evaluation experiments. No mandatory search cluster, vector service, Kubernetes or paid cloud prerequisite.
-- Nix development shells, build inputs, CI and NixOS services, with the necessary Apple/Xcode/signing exception made explicit. Paperclip directs agent work; a Mac Mini is the agent and Apple build host (specs/20-orchestration-and-build-hosts.md).
+- Nix development shells, build inputs, CI and NixOS services, with the necessary Apple/Xcode/signing exception made explicit. A Mac Mini is the agent and Apple build host (specs/20-orchestration-and-build-hosts.md).
 
 ## What ships first
 
@@ -69,7 +85,11 @@ A reader that opens a reviewed Bible offline, supports three parallel reading pa
 | specs/17-search-and-cross-references.md | Deterministic queries and attributed passage links |
 | specs/18-platform-capabilities.md | Platform roles, capability tiers and lossless degradation |
 | specs/19-search-and-retrieval.md | Corpus query engine, full text, vectors, relations and pipelines |
-| specs/20-orchestration-and-build-hosts.md | Paperclip direction, Mac Mini build host and signing lane |
+| specs/20-orchestration-and-build-hosts.md | Orchestration (Paperclip deferred), Mac Mini build host and signing lane |
+| specs/21-reading-interactions.md | Panes, drawers, capture and handoff interactions |
+| specs/22-workspace-shell.md | Palette-first shell, columns of tabs, tool well, context menu, speed budgets |
+| specs/23-continuous-reading.md | Continuous reading stream and the text pack format |
+| specs/24-persistence.md | User store, parallel workspaces and session restore |
 | docs/adr/ | Architecture decision records |
 | reports/Bible corpus search architecture.md | Revision 5 retrieval research report; notes in research_notes/ |
 | audits/2026-10-26-product-audit.md | Screenshot audit, findings, dispositions and remaining risks |
@@ -78,6 +98,9 @@ A reader that opens a reviewed Bible offline, supports three parallel reading pa
 | specs/agents.json | 14 role records, descriptions and activation rules |
 | specs/model-policy.json | Capability tiers, routing, evaluation and cost controls |
 | specs/backlog.json | Dependency-ordered tasks with acceptance criteria |
+| specs/backlog-status.json | Which tasks are done, partly done or in review, with their evidence |
+| rights/*.json | One rights record per source; the steward's approval gates every import |
+| docs/evidence/ | Measurements and screenshots per task |
 | schemas/*.json | Machine-readable blueprint and package/claim contracts |
 | examples/*.json | Synthetic records, never production data |
 | tools/validate.py | Offline structural, dependency and safety validation |
@@ -86,4 +109,4 @@ A reader that opens a reviewed Bible offline, supports three parallel reading pa
 
 English UI and translation research first; German UI/reader coverage included early. Initial library navigation uses the 66-book Protestant canon, and acquisition prioritizes resources useful to the Reformed study audience. These are scope choices, not an interpretive stance or AI persona. Data schemas preserve imported works’ native canons and numbering for accurate historical study; this is not an all-faiths product mandate. There is no chosen production budget, publisher permission, scholarly review team, app-store account, domain, or installed Paperclip version in this brief. Human language reviewers and security review are required release resources, not roles an LLM can impersonate.
 
-See `specs/10-sources.md` for verified primary sources. All version-sensitive selections must be pinned and rechecked during implementation. The numerical performance and schedule figures are proposed targets and planning estimates, not measured results.
+See `specs/10-sources.md` for verified primary sources. All version-sensitive selections must be pinned and rechecked during implementation. The schedule figures are planning estimates. Performance budgets are targets; `docs/evidence/` holds what has been measured against them.

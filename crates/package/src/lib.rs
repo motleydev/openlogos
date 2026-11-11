@@ -6,6 +6,12 @@
 //! index and enrichment layers, and the device-local link index and catalog database that
 //! merge outbound edges across installed packs. The same code runs in the build pipeline and
 //! in every reader, so a shipped index is byte-identical to the one produced at build time.
+//!
+//! Not built yet: this crate holds no code. The pack schema, its writer, the device catalog and
+//! the link index exist in `openlogos-retrieval-sqlite` (B064, B068), which records each pack
+//! file's SHA-256; the text pack reader in `openlogos-text` checks every chapter file against
+//! its manifest hash. Signatures are not checked anywhere yet, and must be before any pack is
+//! distributed (specs/05-sharing-security.md).
 //! See specs/03-data-model.md, specs/05-sharing-security.md and specs/08-quality-governance.md.
 
 /// The crate's package name, as Cargo records it.
