@@ -2949,8 +2949,15 @@ async function main() {
   window.openlogosReady = true;
 }
 
+// Anything the page's Content-Security-Policy refused (index.html). The page keeps working
+// without it, so the cases of test/run-chrome.mjs read this list and fail on an entry.
+window.openlogosCspViolations = [];
+document.addEventListener("securitypolicyviolation", (e) => {
+  window.openlogosCspViolations.push(`${e.violatedDirective} ${e.blockedURI || "inline"} ${e.sourceFile || ""}:${e.lineNumber || 0}`);
+});
+
 main().catch((error) => {
   console.error(error);
   window.openlogosError = String(error && error.stack || error);
-  document.body.insertAdjacentHTML("beforeend", `<p style="position:fixed;bottom:0;left:0;right:0;padding:12px;background:#fee;color:#900;font:13px system-ui">failed: ${escapeHtml(error.message || error)}</p>`);
+  document.body.insertAdjacentHTML("beforeend", `<p class="startup-error" role="alert">failed: ${escapeHtml(error.message || error)}</p>`);
 });

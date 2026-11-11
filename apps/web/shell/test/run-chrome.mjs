@@ -1940,6 +1940,12 @@ try {
     } catch (error) {
       problems.push(`threw: ${String(error).slice(0, 300)}`);
     }
+    // The page's Content-Security-Policy (index.html) must never have to refuse anything.
+    try {
+      for (const v of await js("return window.openlogosCspViolations || []")) problems.push(`content security policy refused: ${v}`);
+    } catch (error) {
+      problems.push(`could not read the policy violations: ${String(error).slice(0, 200)}`);
+    }
     const passed = problems.length === 0;
     if (!passed) failures += 1;
     console.log(JSON.stringify({ name, passed, problems }));

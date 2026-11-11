@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Scripts, styles and fetches only from this origin; 'wasm-unsafe-eval' is what lets the core's
+  WebAssembly module compile, and nothing else is evaluated. No inline scripts or style
+  attributes (element.style from script is unaffected). Notes hold pasted text, so this is the
+  second line of defence behind escapeHtml and the note form (note-form.js).
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>OpenLogos workspace shell (B072)</title>
 <!--
   The workspace shell of specs/22 on the web (B072): the palette field, numbered columns of tabs
