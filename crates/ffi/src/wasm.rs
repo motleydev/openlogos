@@ -126,6 +126,15 @@ export type ReanchorResult =
 export interface CaseResult { fixture: string; name: string; passed: boolean; expected: string; actual: string }
 export interface ConformanceReport { api_version: string; passed: number; failed: number; cases: CaseResult[] }
 /** What a failing call throws: an Error with the variant tag and the whole error object. */
+export interface MorphologyLayer { layer_id: string; edition: string; title: string; revision: string; license: string; attribution: string; source: string; text_content_revision: string; text_manifest_sha256: string; excluded_columns: string[] }
+export interface MorphologyFeature { name: string; value: string }
+export interface MorphologyMorpheme { id: string | null; external_id: string; surface: string; start: number | null; end: number | null; implied: boolean; language: "grc" | "hbo" | "arc"; lemma: string; strong: string; pos: string; morph_code: string; features: MorphologyFeature[]; description: string; gloss: string; english: string; transliteration: string }
+export type MorphologyReading = "written" | "qere" | "qere_without_ketiv";
+export interface MorphologyAnalysis { layer_id: string; layer_title: string; attribution: string; reading: MorphologyReading; join: string; text: string; morphemes: MorphologyMorpheme[] }
+export interface MorphologyTokenAnalysis { token_id: string; edition: string; status: "analyzed" | "conflicting" | "absent"; absent_reason: string | null; analyses: MorphologyAnalysis[] }
+export interface MorphologyLemmaCount { edition: string; lemma: string; strong: string; language: "grc" | "hbo" | "arc"; count: number }
+export interface MorphologyLemmaHit { edition: string; reference: string; token_id: string | null; morpheme_id: string | null; surface: string; lemma: string; reading: MorphologyReading }
+export interface MorphologyLemmaSearch { query: string; matched_by: "exact" | "key"; lemmas: MorphologyLemmaCount[]; total: number; hits: MorphologyLemmaHit[]; unavailable: string[] }
 export interface CoreError extends Error { kind: string; details: unknown; /** B070: for a disabled shell command, the reason in words ("Choose a tab"). */ reason_text?: string }
 /** perfect-freehand options for `inkOutline` (B039); every field optional, upstream defaults. `taper*`: false/absent none, true full, a number a distance. */
 export interface InkOutlineOptions { size?: number; thinning?: number; smoothing?: number; streamline?: number; simulatePressure?: boolean; last?: boolean; capStart?: boolean; capEnd?: boolean; taperStart?: boolean | number; taperEnd?: boolean | number }
@@ -658,6 +667,9 @@ pub struct ShellHandle {
     shell: Shell,
     index: Option<(u64, PaletteIndex)>,
     text: Option<Box<dyn TextProvider>>,
+    /// B026: the morphology layers `useMorphology` attached.
+    #[cfg(feature = "retrieval")]
+    morphology: Option<openlogos_retrieval_sqlite::MorphologyLayers>,
 }
 
 fn shell_of(session: Session) -> Result<ShellHandle, JsValue> {
@@ -665,6 +677,8 @@ fn shell_of(session: Session) -> Result<ShellHandle, JsValue> {
         shell: Shell::new(session).map_err(throw)?,
         index: None,
         text: None,
+        #[cfg(feature = "retrieval")]
+        morphology: None,
     })
 }
 
@@ -731,6 +745,72 @@ impl ShellHandle {
         }
         self.text = Some(Box::new(search));
         Ok(())
+    }
+
+    /// B026: attaches the morphology layers a page fetched (`layers/*.sqlite` of a
+    /// morphology build), each as a `Uint8Array`, and enables Search lemma on the words of
+    /// their editions. Returns the layers, whose attribution a host shows with their
+    /// analyses. Needs the `retrieval` feature.
+    #[cfg(feature = "retrieval")]
+    #[wasm_bindgen(js_name = useMorphology, unchecked_return_type = "MorphologyLayer[]")]
+    pub fn use_morphology(&mut self, layers: Vec<js_sys::Uint8Array>) -> Result<JsValue, JsValue> {
+        let err = |e: openlogos_retrieval::RetrievalError| JsValue::from_str(&e.to_string());
+        let mut attached = openlogos_retrieval_sqlite::MorphologyLayers::new().map_err(err)?;
+        for layer in layers {
+            attached.attach_bytes(&layer.to_vec()).map_err(err)?;
+        }
+        let infos = attached.layers();
+        self.shell
+            .set_morphology_editions(attached.editions().into_iter().collect());
+        self.morphology = Some(attached);
+        to_js(&infos)
+    }
+
+    /// What the installed layers say about a token (`wlc:01001001001`); `absent` with
+    /// `no_layer` when none analyses its edition.
+    #[cfg(feature = "retrieval")]
+    #[wasm_bindgen(js_name = tokenAnalysis, unchecked_return_type = "MorphologyTokenAnalysis")]
+    pub fn token_analysis(&self, token_id: &str) -> Result<JsValue, JsValue> {
+        let err = |e: openlogos_retrieval::RetrievalError| JsValue::from_str(&e.to_string());
+        let answer = match &self.morphology {
+            Some(layers) => layers.analyze(token_id),
+            None => openlogos_retrieval_sqlite::MorphologyLayers::new()
+                .and_then(|l| l.analyze(token_id)),
+        };
+        to_js(&answer.map_err(err)?)
+    }
+
+    /// Every occurrence of a lemma in `editions` (all with a layer when empty).
+    #[cfg(feature = "retrieval")]
+    #[wasm_bindgen(js_name = lemmaSearch, unchecked_return_type = "MorphologyLemmaSearch")]
+    pub fn lemma_search(
+        &self,
+        editions: Vec<String>,
+        query: &str,
+        limit: u32,
+    ) -> Result<JsValue, JsValue> {
+        let err = |e: openlogos_retrieval::RetrievalError| JsValue::from_str(&e.to_string());
+        let answer = match &self.morphology {
+            Some(layers) => layers.lemma_search(&editions, query, limit as usize),
+            None => openlogos_retrieval_sqlite::MorphologyLayers::new()
+                .and_then(|l| l.lemma_search(&editions, query, limit as usize)),
+        };
+        to_js(&answer.map_err(err)?)
+    }
+
+    /// Search lemma for a word: the token's principal lemma in its edition.
+    #[cfg(feature = "retrieval")]
+    #[wasm_bindgen(js_name = lemmaSearchToken, unchecked_return_type = "MorphologyLemmaSearch")]
+    pub fn lemma_search_token(&self, token_id: &str, limit: u32) -> Result<JsValue, JsValue> {
+        let layers = self
+            .morphology
+            .as_ref()
+            .ok_or_else(|| JsValue::from_str("no morphology layer is installed"))?;
+        to_js(
+            &layers
+                .lemma_search_token(token_id, limit as usize)
+                .map_err(|e| JsValue::from_str(&e.to_string()))?,
+        )
     }
 
     /// Registers the short names resources are shown under (`{ bsb: "BSB" }`); palette

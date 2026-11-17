@@ -999,6 +999,7 @@ impl Shell {
             session.resource_titles = std::mem::take(&mut old.resource_titles);
             session.resource_languages = std::mem::take(&mut old.resource_languages);
             session.resource_schemes = std::mem::take(&mut old.resource_schemes);
+            session.morphology_editions = std::mem::take(&mut old.morphology_editions);
             self.session = session;
         }
         self.annotations = annotations;

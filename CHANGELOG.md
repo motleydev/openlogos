@@ -1,3 +1,8 @@
+# B026 — 8 November 2026
+
+- Adds the MACULA morphology layers: `just preview-pack-morphology` joins MACULA Greek and Hebrew (S47) to the preview pack's SBLGNT and WLC tokens and writes one layer per edition outside the repository (docs/morphology.md, docs/evidence/B026.md). The Louw-Nida and SDBH columns the rights records restrict never enter a layer.
+- The core's API is 0.1.6: `use_morphology`, `token_analysis`, `lemma_search` and `lemma_search_token` (UniFFI) and `useMorphology`, `tokenAnalysis`, `lemmaSearch`, `lemmaSearchToken` (wasm). Search lemma is enabled on the words of an edition with a layer installed.
+
 # B071 — 6 November 2026
 
 - Adds the preview pack: `just preview-pack` builds the BSB, SBLGNT and WLC from the NAS into text packs and FTS5 search packs outside the repository, after the rights records and every hash (docs/preview-pack.md, docs/evidence/B071.md).

@@ -14,6 +14,8 @@ uniffi::setup_scaffolding!();
 pub mod anchor;
 pub mod conformance;
 pub mod ink;
+#[cfg(feature = "retrieval")]
+pub mod morphology;
 pub mod reading;
 pub mod reference;
 #[cfg(feature = "retrieval")]
@@ -30,6 +32,11 @@ pub use conformance::{CaseResult, ConformanceReport, conformance_fixtures_json, 
 pub use ink::{
     InkDocument, InkError, InkOutlineOptions, InkPoint, InkStroke, InkTaper, InkTool,
     InkViewportTransform, ink_document_json, ink_outline,
+};
+#[cfg(feature = "retrieval")]
+pub use morphology::{
+    MorphologyAnalysis, MorphologyFeature, MorphologyLayer, MorphologyLemmaCount,
+    MorphologyLemmaHit, MorphologyLemmaSearch, MorphologyMorpheme, MorphologyTokenAnalysis,
 };
 pub use reading::{
     ReadingCallError, ReadingChapter, ReadingChunk, ReadingEdition, ReadingHandle, ReadingHeading,

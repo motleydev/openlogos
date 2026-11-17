@@ -2,8 +2,8 @@
 //! per edition, roaring postings read from the pack per `(feature, value)`, and a join over
 //! slots for proximity, agreement and structural constraints (specs/19 item 3).
 
-use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use openlogos_retrieval::{
     Constraint, Facet, Result, RetrievalError, TokenHits, TokenMatch, TokenPos, TokenQuery, Unit,
@@ -37,7 +37,7 @@ pub struct ContainerLayer {
     /// Innermost container id per position (0 = none).
     pub innermost: Vec<u32>,
     /// Kind of every container id − 1 (indexes `ContainerLayer`s by kind id − 1).
-    pub kind_of: std::rc::Rc<Vec<u32>>,
+    pub kind_of: Arc<Vec<u32>>,
 }
 
 /// Everything the engine keeps in memory for one edition's token layer.
@@ -49,8 +49,10 @@ pub struct TokenColumns {
     pub features: Vec<(String, FeatureColumn)>,
     /// Container layers by kind name.
     pub containers: HashMap<String, ContainerLayer>,
-    /// Postings cache: `(feature id, value id)` → bitmap.
-    postings: RefCell<HashMap<(i64, u32), std::rc::Rc<RoaringBitmap>>>,
+    /// Postings cache: `(feature id, value id)` → bitmap. Behind a mutex rather than a
+    /// `RefCell` so the columns can move between threads (B026: the morphology layers live
+    /// behind a host's lock, as the edition search does).
+    postings: Mutex<HashMap<(i64, u32), Arc<RoaringBitmap>>>,
 }
 
 fn u32s(blob: &[u8]) -> Vec<u32> {
@@ -149,9 +151,8 @@ impl TokenColumns {
                 nodes.push((parent, first, last));
                 all.push((id, kind, first, last));
             }
-            let kind_of =
-                std::rc::Rc::new(all.iter().map(|(_, kind, _, _)| *kind).collect::<Vec<_>>());
-            let nodes = std::rc::Rc::new(nodes);
+            let kind_of = Arc::new(all.iter().map(|(_, kind, _, _)| *kind).collect::<Vec<_>>());
+            let nodes = Arc::new(nodes);
             let mut kinds = conn
                 .prepare(&format!(
                     "SELECT k.id, k.name, m.container_ids FROM \"{schema}\".container_kind k
@@ -184,7 +185,7 @@ impl TokenColumns {
             verse,
             features,
             containers,
-            postings: RefCell::new(HashMap::new()),
+            postings: Mutex::new(HashMap::new()),
         })
     }
 
@@ -213,16 +214,16 @@ impl TokenColumns {
         schema: &str,
         feature: &str,
         value: &str,
-    ) -> Result<std::rc::Rc<RoaringBitmap>> {
+    ) -> Result<Arc<RoaringBitmap>> {
         let column = self
             .feature(feature)
             .ok_or_else(|| RetrievalError::LayerUnavailable(format!("feature `{feature}`")))?;
         let Some(value_id) = column.lookup.get(&crate::tokenizer::feature_key(value)) else {
-            return Ok(std::rc::Rc::new(RoaringBitmap::new()));
+            return Ok(Arc::new(RoaringBitmap::new()));
         };
         let key = (column.id, *value_id);
-        if let Some(b) = self.postings.borrow().get(&key) {
-            return Ok(b.clone());
+        if let Some(b) = self.cached(key) {
+            return Ok(b);
         }
         let blob: Vec<u8> = conn
             .query_row(
@@ -233,9 +234,20 @@ impl TokenColumns {
             .map_err(storage)?;
         let bitmap = RoaringBitmap::deserialize_from(&blob[..])
             .map_err(|e| RetrievalError::Storage(format!("posting bitmap: {e}")))?;
-        let bitmap = std::rc::Rc::new(bitmap);
-        self.postings.borrow_mut().insert(key, bitmap.clone());
+        let bitmap = Arc::new(bitmap);
+        self.postings
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(key, bitmap.clone());
         Ok(bitmap)
+    }
+
+    fn cached(&self, key: (i64, u32)) -> Option<Arc<RoaringBitmap>> {
+        self.postings
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&key)
+            .cloned()
     }
 
     /// The scope key of a position for a unit; `None` when the token is outside every
