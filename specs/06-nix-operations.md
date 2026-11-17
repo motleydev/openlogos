@@ -9,6 +9,7 @@ crates/core/              references, versification mappings, anchors, typed cla
 crates/text/              render-ready attributed runs, normalization, offset adapters
 crates/search/            corpus query engine and prose full-text (specs/19)
 crates/retrieval/         optional vector and hybrid retrieval (specs/19)
+crates/preview-pack/      importer: approved NAS artifacts to local text and search packs (B071)
 crates/package/           safe archive, hashes, signature verification, index layers
 crates/collections/       study collections, export receipts, Markdown/JSON export
 crates/workspaces/        pane trees, link groups, layout profiles

@@ -38,7 +38,7 @@ unicode-segmentation = "=1.13.3"
 # compiled from the amalgamation that libsqlite3-sys bundles (FTS5 on); sqlite-vec is the
 # vector extension's C source compiled and linked statically; roaring is the posting-list
 # format of the token engine; unicode-normalization feeds the shared Greek/Hebrew tokenizer.
-rusqlite = { version = "=0.41.0", features = ["bundled"] }
+rusqlite = { version = "=0.41.0", features = ["bundled", "serialize"] }
 libsqlite3-sys = { version = "=0.39.1", features = ["bundled"] }
 sqlite-vec = "=0.1.9"
 roaring = "=0.11.5"

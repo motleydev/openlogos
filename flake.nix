@@ -135,6 +135,9 @@
                 # wasm32 target rejects (-fzero-call-used-regs) and Xcode's clang has no
                 # wasm32 back end. The `cc` crate reads this variable for that target only.
                 CC_wasm32_unknown_unknown = "${pkgs.llvmPackages.clang-unwrapped}/bin/clang";
+                # The `ar` a macOS shell finds writes an empty archive from wasm objects, and
+                # the link then misses every sqlite3_* symbol (found in B071).
+                AR_wasm32_unknown_unknown = "${pkgs.llvmPackages.llvm}/bin/llvm-ar";
                 shellHook = ''
                   ${lib.optionalString pkgs.stdenv.isDarwin darwinHook}
                   ${hook}

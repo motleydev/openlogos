@@ -10,8 +10,10 @@
 //!   (B068), which resolves cited targets and writes the packager's resolution report.
 //! - [`vectors`]: sqlite-vec registration and k-nearest-neighbour queries.
 //! - [`engine`]: the [`engine::Engine`] that implements the five traits over attached packs.
+//! - [`edition_search`]: text search over the installed editions for the palette (B071).
 
 pub mod catalog;
+pub mod edition_search;
 pub mod engine;
 pub mod fts;
 pub mod ingest;
@@ -22,6 +24,7 @@ pub mod tokenizer;
 pub mod vectors;
 
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
+pub use edition_search::EditionSearch;
 pub use engine::Engine;
 pub use links::{LinkIndex, UserEdge};
 pub use pack::{PackBuilder, PackManifest};

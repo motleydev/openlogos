@@ -43,3 +43,7 @@ Measured on the owner's Mac mini (Apple M1, macOS 26.4, Xcode 26.6, iOS 26.5 sim
 
 Replacements named by B064: none of the stack components failed outright. The int8 brute-force path at 500k × 768 exceeds the budget on the Mac, so the plan of specs/19 item 5 stands (binary coarse scan with int8 rescoring of a short list; USearch as the ANN escalation). No graph-engine escalation is warranted by R9's numbers; the link index's library-relative aggregate (`most_cited`) should be materialized per install rather than computed per query.
 
+
+## B071 (6 November 2026)
+
+Text search runs on this stack on every host: one B064 pack per edition, FTS5 with the shared tokenizer. On the web the engine stays inside the one Rust module (the wasm32 path B064 chose) rather than a second module loaded later, because the palette asks for text results synchronously inside the core; the packs arrive as bytes through `sqlite3_deserialize`, so R7 (`opfs-sahpool`) stays open and blocks nothing. Measurements: docs/evidence/B071.md.

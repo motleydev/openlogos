@@ -58,12 +58,17 @@
       "type": "string",
       "minLength": 1
     },
+    "attribution": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The attribution the licence asks a reader to be shown, with any change made to the text (format 1.1)."
+    },
     "fixture_only": {
       "type": "boolean"
     },
     "complete": {
       "type": "boolean",
-      "description": "Whether every chapter has every verse of the scheme; false for an excerpt."
+      "description": "Whether every chapter has every verse the edition prints; false for an excerpt. Verses the edition leaves out are in a chapter's absent, or past its last_verse."
     },
     "books": {
       "type": "array",
@@ -98,6 +103,14 @@
                 "last_verse": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "absent": {
+                  "type": "array",
+                  "description": "Verse numbers between first_verse and last_verse that the edition does not print: no segment exists for them (format 1.1).",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
                 },
                 "path": {
                   "type": "string",

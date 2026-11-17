@@ -351,6 +351,10 @@ On the Mac the context menu's own work (hit test, core, NSMenu) is held to the f
 p95, B077); the menu window's appearance is bounded by AppKit's NSMenu presentation (about
 50 ms for an 18-row menu on the Mac mini), accepted as a platform cost of the native menu.
 
+Text results are measured over the real editions by `just preview-pack-bench` and
+`just preview-pack-bench-wasm` (B071); end to end in each host, with a repaint, is the host
+phase's measurement.
+
 ## 8. Lockstep on web and Mac
 
 Each sprint lands on both the web shell (apps/web) and the Mac app (apps/apple) from the same

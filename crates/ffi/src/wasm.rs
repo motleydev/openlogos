@@ -191,7 +191,7 @@ export interface ShellContextMenuItem { command_id: string; args: ShellCommandAr
 export interface ShellContextMenuSection { label: string | null; items: ShellContextMenuItem[] }
 export interface ShellContextMenu { target_kind: ShellContextTargetKind; title: string | null; focus: ShellInvocation | null; context: { has_selection: boolean; focus: ShellFocus }; sections: ShellContextMenuSection[] }
 /** B078 continuous reading (specs/23). */
-export interface ReadingEdition { resource_id: string; content_revision: string; title: string; name: string; language: string; direction: "ltr" | "rtl"; scheme: string; book_order: "protestant" | "tanakh_bhs"; placeholder: boolean }
+export interface ReadingEdition { resource_id: string; content_revision: string; title: string; name: string; language: string; direction: "ltr" | "rtl"; scheme: string; book_order: "protestant" | "tanakh_bhs"; placeholder: boolean; attribution?: string }
 export interface ReadingLocation { resource_id: string; chapter_key: string; segment_id: string; reference: string; verse_start: string; verse_end: string; highlight_range: string | null; granularity: "verse" | "chapter" | "book" }
 export interface ReadingNeighbors { chapter_key: string; prev: string | null; next: string | null }
 export interface ReadingVerse { segment_id: string; number: number; last_number: number; label: string; text: string; paragraph_start: boolean; poetry: boolean; superscription: boolean; placeholder: boolean; tokens: { id: string; start: number; end: number }[] }
@@ -657,7 +657,7 @@ pub fn conformance_fixtures_json() -> String {
 pub struct ShellHandle {
     shell: Shell,
     index: Option<(u64, PaletteIndex)>,
-    text: Option<openlogos_conformance::FixtureTextProvider>,
+    text: Option<Box<dyn TextProvider>>,
 }
 
 fn shell_of(session: Session) -> Result<ShellHandle, JsValue> {
@@ -705,7 +705,7 @@ impl ShellHandle {
     pub fn fixture() -> ShellHandle {
         let session = openlogos_conformance::fixture_session();
         let mut handle = shell_of(session).expect("the fixture session checks");
-        handle.text = Some(openlogos_conformance::FixtureTextProvider::new());
+        handle.text = Some(Box::new(openlogos_conformance::FixtureTextProvider::new()));
         // Set directly, so a fresh fixture handle is still at revision 0.
         handle.shell.session.resource_languages =
             openlogos_conformance::fixture_resource_languages();
@@ -715,7 +715,22 @@ impl ShellHandle {
     /// Answers the Text section from the conformance fixture texts (until B071's search).
     #[wasm_bindgen(js_name = useFixtureText)]
     pub fn use_fixture_text(&mut self) {
-        self.text = Some(openlogos_conformance::FixtureTextProvider::new());
+        self.text = Some(Box::new(openlogos_conformance::FixtureTextProvider::new()));
+    }
+
+    /// Answers the Text section from the search packs a page fetched (`search/*.sqlite` of a
+    /// preview pack, B071), each as a `Uint8Array`, copied into SQLite's memory. Needs the
+    /// `retrieval` feature.
+    #[cfg(feature = "retrieval")]
+    #[wasm_bindgen(js_name = useEditionSearch)]
+    pub fn use_edition_search(&mut self, packs: Vec<js_sys::Uint8Array>) -> Result<(), JsValue> {
+        let err = |e: openlogos_retrieval::RetrievalError| JsValue::from_str(&e.to_string());
+        let mut search = openlogos_retrieval_sqlite::EditionSearch::new().map_err(err)?;
+        for pack in packs {
+            search.attach_bytes(&pack.to_vec()).map_err(err)?;
+        }
+        self.text = Some(Box::new(search));
+        Ok(())
     }
 
     /// Registers the short names resources are shown under (`{ bsb: "BSB" }`); palette
@@ -974,7 +989,7 @@ impl ShellHandle {
             self.index = Some((revision, PaletteIndex::new(&self.shell.session)));
         }
         let index = &self.index.as_ref().expect("built above").1;
-        let provider = self.text.as_ref().map(|p| p as &dyn TextProvider);
+        let provider = self.text.as_ref().map(|p| &**p as &dyn TextProvider);
         to_js(&palette_query_indexed(
             &self.shell,
             index,
