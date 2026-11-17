@@ -4,7 +4,7 @@
   "source_id": "S47",
   "artifact_sha256": "372dc1e049ebd3c7f08b51b59f2e185b97acaa7a6df180d2e061cd51e69b0d7a",
   "edition_id": "macula-greek:sblgnt-trees:8423afe",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "CC-BY-4.0",
   "evidence_url": "https://github.com/Clear-Bible/macula-greek/blob/8423afe47b9e8f24b7772e808af45c7159a6fe7e/LICENSE.md",
   "license_artifact_sha256": "41b49a2387b628a7bc772ddfae3a8af9dd8f4d4470b27b6132f6da6c73e4a557",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-11-08",
   "acquisition": {
     "upstream_url": "https://github.com/Clear-Bible/macula-greek",
     "commit": "8423afe47b9e8f24b7772e808af45c7159a6fe7e",

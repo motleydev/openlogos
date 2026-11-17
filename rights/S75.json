@@ -4,7 +4,7 @@
   "source_id": "S75",
   "artifact_sha256": "e2d5df9af4baad9158b1786ff5d2aff42960cec264722c9a1ca7601bcd1324f6",
   "edition_id": "gutenberg:45001+64392:calvin-institutes-allen",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "LicenseRef-Project-Gutenberg-License (public domain in the United States)",
   "evidence_url": "https://www.gutenberg.org/ebooks/45001",
   "license_artifact_sha256": "7318da7684a4b9e9cf55bd7d0eb0da19c16dec59117ff51cda2050f5f601f9e9",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-11-08",
   "acquisition": {
     "upstream_url": "https://www.gutenberg.org/ebooks/45001",
     "commit": null,

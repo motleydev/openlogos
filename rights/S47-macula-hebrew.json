@@ -4,7 +4,7 @@
   "source_id": "S47",
   "artifact_sha256": "443c6cc72b0699fe46b8e85d81b64913c4cdee63aff5b8280593e95dd5cc2068",
   "edition_id": "macula-hebrew:wlc-trees:47db250",
-  "status": "unknown",
+  "status": "approved",
   "license_identifier": "CC-BY-4.0",
   "evidence_url": "https://github.com/Clear-Bible/macula-hebrew/blob/47db250bd55d0d8577f2a94fba114ef16c35b23c/LICENSE.md",
   "license_artifact_sha256": "df45ba3224e7d6f9dba3ec8fd2d0b3f1d2febb2620147c889667886fccd4d8e1",
@@ -21,8 +21,8 @@
     "model_train": "allow",
     "translation_evaluate": "allow"
   },
-  "reviewer": null,
-  "reviewed_at": null,
+  "reviewer": "Jesse Martin (source steward)",
+  "reviewed_at": "2026-11-08",
   "acquisition": {
     "upstream_url": "https://github.com/Clear-Bible/macula-hebrew",
     "commit": "47db250bd55d0d8577f2a94fba114ef16c35b23c",
