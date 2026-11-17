@@ -79,6 +79,8 @@
           ./crates
           # Schema examples that crate tests read (B006 at run time, B039 at compile time).
           ./examples
+          # Rights records the preview-pack tests compare against (B026 restricted columns).
+          ./rights
         ];
       };
 
