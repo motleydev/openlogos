@@ -146,6 +146,25 @@ extension ReaderLayout {
         }
     }
 
+    /// B074: a span as the user store keeps it, in Unicode scalars of the segment's text.
+    func storeSpan(_ span: SegmentSpan) -> StoreSegmentSpan? {
+        guard let text = segmentTexts[span.segmentId] as NSString?, span.start >= 0, span.start + span.length <= text.length else { return nil }
+        let start = text.substring(to: span.start).unicodeScalars.count
+        let end = text.substring(to: span.start + span.length).unicodeScalars.count
+        return end > start ? StoreSegmentSpan(segmentId: span.segmentId, start: UInt32(start), end: UInt32(end)) : nil
+    }
+
+    /// B074: a stored span (Unicode scalars) as UTF-16 in the segment's text; nil when the
+    /// segment is not in this layout or the span runs past its text.
+    func segmentSpan(_ span: StoreSegmentSpan) -> SegmentSpan? {
+        guard let text = segmentTexts[span.segmentId] else { return nil }
+        let scalars = text.unicodeScalars
+        guard span.end > span.start, Int(span.end) <= scalars.count else { return nil }
+        let lo = scalars.index(scalars.startIndex, offsetBy: Int(span.start)), hi = scalars.index(scalars.startIndex, offsetBy: Int(span.end))
+        let start = text.utf16.distance(from: text.utf16.startIndex, to: lo), end = text.utf16.distance(from: text.utf16.startIndex, to: hi)
+        return SegmentSpan(segmentId: span.segmentId, start: start, length: end - start)
+    }
+
     /// The block holding a display offset (the separator before a block counts as its own).
     func block(at offset: Int) -> ReaderBlockSpan? {
         blocks.last { $0.range.location <= offset + 2 } ?? blocks.first
