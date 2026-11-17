@@ -1550,8 +1550,12 @@ mod tests {
     }
 
     fn temp(name: &str) -> PathBuf {
+        // Tests run as threads of one process, so the process id alone is shared: two tests
+        // building the same layer would delete each other's file while it is open.
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let serial = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = std::env::temp_dir().join(format!(
-            "openlogos-morphology-{name}-{}.sqlite",
+            "openlogos-morphology-{name}-{}-{serial}.sqlite",
             std::process::id()
         ));
         let _ = std::fs::remove_file(&path);
