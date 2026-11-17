@@ -44,9 +44,21 @@ just test-ink-web     # the B039 ink prototype's palm cases, latency runs and ex
 just test-ink-web --actions --headed   # plus WebDriver Actions pen and mouse drags (trusted input) in a visible Chrome
 just ink-excalidraw-build && just test-ink-web --page excalidraw   # the Excalidraw comparison page, bundled offline
 just lint-wasm    # clippy for wasm32, including the worker tests
-just preview-web  # serve apps/web on 127.0.0.1:8780 for hand review (index, reader, ink); --tailnet shares it
+just preview-web  # serve apps/web on 127.0.0.1:8780 for hand review; also the preview pack, from outside the repository, at /preview-pack; --tailnet shares it
 just feedback "note"  # drag a region of the screen; shot and note land in ~/OpenLogosFeedback/<utc>/
 ```
+
+## The preview pack in the shell (B071)
+
+`shell/pack.js` installs each edition's `manifest.json` from `../preview-pack/` (`?pack=<url>`,
+`?pack=off` for none) with `addPackManifest`, and fetches a chapter's chunk when a stream needs it
+(`supplyChunk`, hash checked by the core). Without a pack the editions stay the core's
+placeholders, which say so on every block. `shell/search-worker.js` holds a second instance of the
+module and the search packs (`useEditionSearch`); `shell/search.js` puts its Text section into the
+page's palette result. `just test-shell-web` runs on the placeholder, on the committed fixture
+packs and on a small made-up pack; `pack-real-*` need a built pack and say SKIPPED without one.
+`just test-shell-web --pack-bench` measures specs/22 §7 over the real pack. Evidence:
+docs/evidence/B071-web.md.
 
 ## The ink prototype (B039)
 

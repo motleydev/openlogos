@@ -842,6 +842,23 @@ impl ShellHandle {
         to_js(&self.shell.commands(&context))
     }
 
+    /// Why an invocation with its arguments cannot run now, in the words a host shows; `null`
+    /// when it can. For rows built off this session (the web's search worker, B071).
+    #[wasm_bindgen(js_name = disabledText)]
+    pub fn disabled_text(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "ShellInvocation")] invocation: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "ShellCommandContext | undefined")] context: JsValue,
+    ) -> Result<Option<String>, JsValue> {
+        let invocation: Invocation = from_js("invocation", invocation)?;
+        let context: CommandContext = optional("context", context)?;
+        Ok(self
+            .shell
+            .enabled(&invocation, &context)
+            .err()
+            .map(|reason| reason.to_string()))
+    }
+
     /// Runs a command; `handled === false` means the host performs it.
     #[wasm_bindgen(unchecked_return_type = "ShellOutcome")]
     pub fn apply(
