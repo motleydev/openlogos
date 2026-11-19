@@ -7,8 +7,20 @@ also holds the implementation; `specs/backlog-status.json` is the record of what
 - Foundations: Nix shells and the Rust workspace (B002), the first cleared corpus and rights records (B003), v1 identity, anchors and package interfaces (B006), the vault identity and sync protocol crate (B021), workspace and note-authority contracts (B040), platform roles and layout profiles (B062), the Mac mini build host lanes (B063).
 - Core and bindings: the core API with one conformance suite across Swift, Kotlin and WebAssembly (B061), the embedded retrieval engine on SQLite (B064), work locators, section maps and the device link index (B068).
 - Reading and ink spikes: reading interactions (B004), native and DOM text surfaces against core anchors (B005), ink engines (B039).
-- The workspace shell of specs/22 on the web and the Mac in lockstep: core model, command registry and palette (B070), the shell itself (B072), the contextual tool well (B076), the context menu (B077), continuous reading (B078), and the user store with parallel workspaces and session restore in the core and on the web (B074; the Mac part is in review).
+- The workspace shell of specs/22 on the web and the Mac in lockstep: core model, command registry and palette (B070), the shell itself (B072), the contextual tool well (B076), the context menu (B077), continuous reading (B078), and the user store with parallel workspaces and session restore in the core, on the web and on the Mac (B074).
+- The rights steward's approvals of 8 November 2026 (S09, S47, S55, S73, S75); the preview pack and the web About view (B071); the MACULA morphology layers and lemma search (B026).
 - Repository audit of 11 November 2026: `just audit` (cargo-deny) and `just ci-hosts`, a `web` job in CI, a Content-Security-Policy on the web shell, the backlog status record, and a README that describes the implementation.
+# B026 — 8 November 2026
+
+- Adds the MACULA morphology layers: `just preview-pack-morphology` joins MACULA Greek and Hebrew (S47) to the preview pack's SBLGNT and WLC tokens and writes one layer per edition outside the repository (docs/morphology.md, docs/evidence/B026.md). The Louw-Nida and SDBH columns the rights records restrict never enter a layer.
+- The core's API is 0.1.6: `use_morphology`, `token_analysis`, `lemma_search` and `lemma_search_token` (UniFFI) and `useMorphology`, `tokenAnalysis`, `lemmaSearch`, `lemmaSearchToken` (wasm). Search lemma is enabled on the words of an edition with a layer installed.
+
+# B071 — 6 November 2026
+
+- Adds the preview pack: `just preview-pack` builds the BSB, SBLGNT and WLC from the NAS into text packs and FTS5 search packs outside the repository, after the rights records and every hash (docs/preview-pack.md, docs/evidence/B071.md).
+- Text pack format 1.1: `attribution`, and a chapter's `absent` verses. The core's API is 0.1.5 (`Edition.attribution`, `use_edition_search`); `locate` lands beside a verse an edition does not print.
+- The binding scripts build with the `retrieval` feature on every host; text search is real on all of them once a host installs the packs.
+- The WLC pack declares `tanakh_bhs` order; specs/23 §1 no longer says no edition does.
 
 # Blueprint revision 5.1 — 27 October 2026
 

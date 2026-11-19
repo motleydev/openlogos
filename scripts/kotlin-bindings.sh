@@ -52,12 +52,12 @@ fi
 
 step "Building openlogos-ffi (release) for $host_target"
 SECONDS=0
-cargo build -p openlogos-ffi --release --target "$host_target"
+cargo build -p openlogos-ffi --release --target "$host_target" --features retrieval
 printf '   %s: %s bytes (%ss)\n' "$dylib" "$(size_of "$dylib")" "$SECONDS"
 
 if [[ -n "${ANDROID_NDK_HOME:-}" ]]; then
   step "Building openlogos-ffi for aarch64-linux-android with cargo ndk"
-  cargo ndk --target arm64-v8a --platform 26 -- build -p openlogos-ffi --release
+  cargo ndk --target arm64-v8a --platform 26 -- build -p openlogos-ffi --release --features retrieval
   so="$root/target/aarch64-linux-android/release/libopenlogos_ffi.so"
   printf '   %s: %s bytes\n' "$so" "$(size_of "$so")"
 else

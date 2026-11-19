@@ -29,7 +29,7 @@ size() { wc -c <"$1" | tr -d ' '; }
 gzipped() { gzip -9 -c "$1" | wc -c | tr -d ' '; }
 
 echo "wasm-pack $(wasm-pack --version | awk '{print $2}'), wasm-bindgen $cli_version, $(wasm-opt --version)"
-(cd "$root" && wasm-pack build crates/ffi --target web --release --out-dir "$out")
+(cd "$root" && wasm-pack build crates/ffi --target web --release --out-dir "$out" --features retrieval)
 
 before="$(size "$module")"
 before_gz="$(gzipped "$module")"

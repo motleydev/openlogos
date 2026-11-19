@@ -186,7 +186,8 @@ pub struct CommandArgs {
     /// Where `search.text` looks: one of [`SEARCH_SCOPES`] (B077).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
-    /// A resource (edition) id: the edition `tab.open_edition` opens, the edition a search
+    /// A resource (edition) id: the edition a text hit's `nav.navigate` opens (its `reference`
+    /// is in that edition's numbering, B071), the edition `tab.open_edition` opens, the edition a search
     /// or a copied passage reads (B077).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resource_id: Option<String>,
@@ -821,6 +822,18 @@ const DEFS: &[Def] = &[
         true,
     )
     .names(&["notes", "open notes dock"], &["dock"]),
+    def(
+        "view.about_edition",
+        "About this edition",
+        S::Tab,
+        A::None,
+        false,
+        false,
+    )
+    .names(
+        &["edition info", "attribution", "licence"],
+        &["license", "credits", "copyright", "revision"],
+    ),
     def(
         "view.collection_drawer",
         "Toggle collection drawer",
@@ -1493,9 +1506,27 @@ pub fn enabled(
                 })
             }
         }
-        "search.lemma" => Err(DisabledReason::Unavailable {
-            needs: "the lexicon import".to_owned(),
-        }),
+        "search.lemma" => {
+            // B026: a word of an edition with a morphology layer. Until any layer is
+            // installed the reason stays the one hosts already show.
+            let resource = non_empty(&args.resource_id).unwrap_or(tab.content_id.as_str());
+            if session.morphology_editions.is_empty() {
+                return Err(DisabledReason::Unavailable {
+                    needs: "the lexicon import".to_owned(),
+                });
+            }
+            if !session.morphology_editions.contains(resource) {
+                return Err(DisabledReason::Unavailable {
+                    needs: format!(
+                        "a morphology layer for {}",
+                        session.resource_title(resource)
+                    ),
+                });
+            }
+            non_empty(&args.text)
+                .map(|_| ())
+                .ok_or_else(|| need("text"))
+        }
         "nav.cross_references" => Err(DisabledReason::Unavailable {
             needs: "cross-reference data".to_owned(),
         }),
@@ -1544,6 +1575,12 @@ pub fn enabled(
                 column_number(ws, args)?;
             }
             Ok(())
+        }
+        "view.about_edition" if tab.kind != crate::PaneKind::Reading => {
+            Err(DisabledReason::WrongContext {
+                what: "About this edition".to_owned(),
+                place: "on a reading tab".to_owned(),
+            })
         }
         "nav.back" if tab.history.back.is_empty() => Err(DisabledReason::NoBackHistory),
         "nav.forward" if tab.history.forward.is_empty() => Err(DisabledReason::NoForwardHistory),
@@ -1762,6 +1799,28 @@ fn copy_tab(source: &Tab, id: String) -> Tab {
 
 /// Inserts a column at `index` holding `tab`, giving it an equal share and scaling the
 /// others, and makes it active.
+/// A new reading tab of an edition with no passage yet, in no group: moving it moves nothing
+/// else (a text hit, B071).
+fn edition_tab(ws: &Workspace, id: String, resource: &str) -> Tab {
+    Tab {
+        id,
+        kind: crate::PaneKind::Reading,
+        content_id: resource.to_owned(),
+        content_revision: ws
+            .tabs()
+            .find(|t| t.content_id == resource)
+            .map_or_else(|| "0".to_owned(), |t| t.content_revision.clone()),
+        reference: None,
+        scroll_anchor: None,
+        link_group: None,
+        pinned: true,
+        history: Default::default(),
+        lexicon_word: None,
+        lexicon_language: None,
+        highlight_range: None,
+    }
+}
+
 fn insert_column(ws: &mut Workspace, index: usize, tab: Tab) {
     let id = ws.mint_id("c");
     let n = ws.columns.len() as f64 + 1.0;
@@ -2044,11 +2103,17 @@ fn apply_in_place(
         "nav.navigate" => {
             let reference = non_empty(&args.reference).expect("enabled").to_owned();
             let schemes = s.resource_schemes.clone();
+            // A text hit names its edition (B071): the verse opens there, in that edition's
+            // own numbering, never mapped into whatever tab has focus.
+            let edition = non_empty(&args.resource_id).map(str::to_owned);
             let ws = s.active_mut();
             let driver = if args.new_column {
                 let source = ws.active_tab().clone();
                 let tab_id = ws.mint_id("t");
-                let mut tab = copy_tab(&source, tab_id.clone());
+                let mut tab = match &edition {
+                    Some(resource) => edition_tab(ws, tab_id.clone(), resource),
+                    None => copy_tab(&source, tab_id.clone()),
+                };
                 // A tab opened beside the others must not drag their group along.
                 tab.link_group = None;
                 tab.pinned = true;
@@ -2059,7 +2124,22 @@ fn apply_in_place(
                 if let Some(number) = args.column {
                     ws.active_column_id = ws.columns[number as usize - 1].id.clone();
                 }
-                ws.active_tab().id.clone()
+                let shown = ws.active_tab();
+                match edition.filter(|resource| {
+                    shown.kind != crate::PaneKind::Reading || shown.content_id != *resource
+                }) {
+                    // Another edition: its own tab, and the one shown is left alone.
+                    Some(resource) => {
+                        let tab_id = ws.mint_id("t");
+                        let tab = edition_tab(ws, tab_id.clone(), &resource);
+                        let index = ws.active_index();
+                        let column = &mut ws.columns[index];
+                        column.tabs.push(tab);
+                        column.shown_tab_id.clone_from(&tab_id);
+                        tab_id
+                    }
+                    None => shown.id.clone(),
+                }
             };
             (effects.followed_tab_ids, effects.positions) =
                 navigate(ws, &schemes, &driver, &reference);
@@ -2797,6 +2877,14 @@ impl Shell {
         self.revision += 1;
     }
 
+    /// Registers the editions a morphology layer is installed for (B026), replacing any
+    /// registered before; `search.lemma` is enabled on their words. Bumps the revision, since
+    /// palette rows and menus carry whether it is.
+    pub fn set_morphology_editions(&mut self, editions: std::collections::BTreeSet<String>) {
+        self.session.morphology_editions = editions;
+        self.revision += 1;
+    }
+
     /// Swaps the session with a record's snapshot and returns the record that swaps back.
     fn swap(&mut self, record: UndoRecord) -> UndoRecord {
         let mut touched: Vec<String> = record
@@ -2918,6 +3006,93 @@ pub(crate) mod tests {
             args.resource_id = Some("sblgnt".into());
         }
         args
+    }
+
+    #[test]
+    fn a_hit_opens_its_own_edition_and_verse_and_leaves_the_shown_tab_alone() {
+        let mut shell = Shell::new(fixture_session()).unwrap();
+        let context = CommandContext::default();
+        let hit = |resource: &str, column: Option<u32>, new_column: bool| {
+            Invocation::with(
+                "nav.navigate",
+                CommandArgs {
+                    reference: Some("Mal.3.23".into()),
+                    resource_id: Some(resource.into()),
+                    column,
+                    new_column,
+                    ..CommandArgs::default()
+                },
+            )
+        };
+        // Another edition: a new tab in the focused column, the shown tab where it was.
+        let before = shell.session.active().active_tab().clone();
+        let tabs = shell.session.active().tabs().count();
+        shell
+            .apply(&hit("hit-edition", None, false), &context)
+            .unwrap();
+        let ws = shell.session.active();
+        let opened = ws.active_tab().clone();
+        assert_eq!(ws.tabs().count(), tabs + 1);
+        assert_eq!(opened.content_id, "hit-edition");
+        assert_eq!(opened.reference.as_deref(), Some("Mal.3.23"));
+        assert_eq!(opened.highlight_range.as_deref(), Some("Mal.3.23"));
+        let old = ws.tabs().find(|t| t.id == before.id).unwrap();
+        assert_eq!(old.reference, before.reference);
+        // That edition is shown now: the same tab moves, no second one.
+        shell
+            .apply(&hit("hit-edition", None, false), &context)
+            .unwrap();
+        let ws = shell.session.active();
+        assert_eq!(ws.active_tab().id, opened.id);
+        assert_eq!(ws.tabs().count(), tabs + 1);
+        // `@2`: in column 2, whichever edition it shows.
+        shell
+            .apply(&hit("other-edition", Some(2), false), &context)
+            .unwrap();
+        let ws = shell.session.active();
+        assert_eq!(ws.active_column_id, ws.columns[1].id);
+        assert_eq!(ws.active_tab().content_id, "other-edition");
+        // `@new`: a column of that edition.
+        let columns = ws.columns.len();
+        shell
+            .apply(&hit("third-edition", None, true), &context)
+            .unwrap();
+        let ws = shell.session.active();
+        assert_eq!(ws.columns.len(), columns + 1);
+        assert_eq!(ws.active_tab().content_id, "third-edition");
+        // A bad `@N` is the same refusal as any navigation.
+        assert!(
+            shell
+                .apply(&hit("hit-edition", Some(9), false), &context)
+                .is_err()
+        );
+        // Undo takes the new tab away.
+        shell
+            .apply(&Invocation::new("edit.undo"), &context)
+            .unwrap();
+        assert_eq!(shell.session.active().columns.len(), columns);
+    }
+
+    #[test]
+    fn about_this_edition_is_for_a_reading_tab_and_the_host_shows_it() {
+        let session = fixture_session();
+        let context = CommandContext::default();
+        let invocation = Invocation::new("view.about_edition");
+        assert_eq!(
+            enabled(&session, false, false, &invocation, &context),
+            Ok(())
+        );
+        assert!(!command("view.about_edition").unwrap().handled_by_core);
+        let mut notes = session;
+        let ws = notes.active_mut();
+        let id = ws.active_tab().id.clone();
+        tab_mut(ws, &id).kind = crate::PaneKind::Notes;
+        assert_eq!(
+            enabled(&notes, false, false, &invocation, &context)
+                .unwrap_err()
+                .to_string(),
+            "About this edition works on a reading tab"
+        );
     }
 
     #[test]

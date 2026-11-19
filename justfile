@@ -28,6 +28,8 @@ setup:
 [group('2 · core')]
 test *args:
     cargo nextest run --workspace --all-targets {{ args }}
+    # The binding surface as the hosts build it, with the retrieval engine (B071).
+    cargo nextest run -p openlogos-ffi --features retrieval {{ args }}
     # nextest does not run doc tests yet.
     cargo test --workspace --doc
 
@@ -112,6 +114,46 @@ clean:
     cargo clean
     rm -rf result result-*
 
+# B071: build the preview pack (BSB, SBLGNT, WLC text packs and search packs) from the NAS, after checking the rights records and every hash; output ~/.cache/openlogos/preview-pack unless OPENLOGOS_PREVIEW_PACK or --out says otherwise (docs/preview-pack.md)
+[group('2 · core')]
+preview-pack *args:
+    cargo run --release -p openlogos-preview-pack -- build {{ args }}
+
+# B071: check a built preview pack against the NAS sources with a second set of parsers; needs the corpus and says SKIPPED without it; `--show` prints the spread of awkward places
+[group('2 · core')]
+preview-pack-verify *args:
+    python3 tools/verify_preview_pack.py {{ args }}
+
+# B071: text search latency over a built preview pack on this machine, natively, against the 50 ms of specs/22 §7; extra arguments go to the binary, e.g. `--rounds 5 --json target/b071.json`
+[group('2 · core')]
+preview-pack-bench *args:
+    cargo run --release -p openlogos-preview-pack -- bench {{ args }}
+
+# B071: the same latency in a dedicated worker in headless Chrome (web shell); prints one `B071 wasm:` line
+[group('6 · web')]
+preview-pack-bench-wasm *args:
+    @scripts/preview-pack-bench-wasm.sh {{ args }}
+
+# B026: build the MACULA morphology layers over the built preview pack's SBLGNT and WLC tokens, after the rights gate (S47 Greek and Hebrew, S07 for the ketiv/qere markup); output ~/.cache/openlogos/morphology unless OPENLOGOS_MORPHOLOGY or --morphology says otherwise; needs `just preview-pack` first (docs/morphology.md)
+[group('2 · core')]
+preview-pack-morphology *args:
+    cargo run --release -p openlogos-preview-pack -- morphology {{ args }}
+
+# B026: check the built morphology layers against MACULA's TSVs and the text packs with a second reader (Python standard library); needs the corpus and says SKIPPED without it
+[group('2 · core')]
+preview-pack-morphology-verify *args:
+    python3 tools/verify_morphology.py {{ args }}
+
+# B026: token lookup and lemma search latency over the built morphology layers, natively, against the 50 ms of specs/22 §7; e.g. `--rounds 3 --json target/b026.json`
+[group('2 · core')]
+preview-pack-morphology-bench *args:
+    cargo run --release -p openlogos-preview-pack -- morphology-bench {{ args }}
+
+# B026: the same morphology latency in a dedicated worker in headless Chrome (web shell), replaying the native bench's samples; prints one `B026 wasm:` line
+[group('6 · web')]
+preview-pack-morphology-bench-wasm *args:
+    @scripts/preview-pack-morphology-bench-wasm.sh {{ args }}
+
 # Build crates/ffi for macOS, iOS and the simulator, generate the Swift bindings and assemble artifacts/apple/OpenLogosCoreFFI.xcframework (apple shell)
 [group('5 · bindings')]
 bindings-swift:
@@ -141,6 +183,7 @@ wasm-build:
 [group('6 · web')]
 lint-wasm:
     cargo clippy --target wasm32-unknown-unknown -p openlogos-ffi --all-targets -- -D warnings
+    cargo clippy --target wasm32-unknown-unknown -p openlogos-ffi --all-targets --features retrieval -- -D warnings
 
 # Run the wasm-bindgen tests of crates/ffi in a dedicated worker in headless Chrome (installed on the machine; the matching chromedriver is fetched once); extra arguments go to wasm-pack, e.g. `just test-wasm -- --nocapture`
 [group('6 · web')]

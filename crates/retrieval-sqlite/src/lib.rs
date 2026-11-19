@@ -10,20 +10,27 @@
 //!   (B068), which resolves cited targets and writes the packager's resolution report.
 //! - [`vectors`]: sqlite-vec registration and k-nearest-neighbour queries.
 //! - [`engine`]: the [`engine::Engine`] that implements the five traits over attached packs.
+//! - [`edition_search`]: text search over the installed editions for the palette (B071).
+//! - [`morphology`]: morphology layers keyed to the text packs' tokens: analyses and lemma
+//!   search (B026).
 
 pub mod catalog;
+pub mod edition_search;
 pub mod engine;
 pub mod fts;
 pub mod ingest;
 pub mod links;
+pub mod morphology;
 pub mod pack;
 pub mod token_engine;
 pub mod tokenizer;
 pub mod vectors;
 
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
+pub use edition_search::EditionSearch;
 pub use engine::Engine;
 pub use links::{LinkIndex, UserEdge};
+pub use morphology::MorphologyLayers;
 pub use pack::{PackBuilder, PackManifest};
 
 /// The SQLite library version compiled into this engine (`3.54.1`).

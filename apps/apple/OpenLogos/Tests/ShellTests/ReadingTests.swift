@@ -382,9 +382,11 @@ final class ReadingTests: XCTestCase {
         for id in ["selection.highlight", "selection.collect", "selection.note"] {
             XCTAssertEqual(model.well.groups.flatMap(\.items).first { $0.commandId == id }?.disabledText, ShellModel.placeholderReason, id)
         }
-        XCTAssertFalse(model.run("selection.highlight"))
+        // B074: the core refuses it (`placeholder_text`), in the same words.
+        model.run("selection.highlight")
         XCTAssertEqual(model.toast, ShellModel.placeholderReason)
-        XCTAssertNil(model.marks["t1"], "nothing highlighted")
+        XCTAssertTrue(model.highlights("t1").isEmpty, "nothing highlighted")
+        XCTAssertTrue(model.handle.highlightsIn(resourceId: "bsb", chapterKey: "John.3").isEmpty, "nothing stored")
         let tab = try XCTUnwrap(shownTab(model, column: 1)), column = model.activeWorkspace.columns[0]
         let menu = try XCTUnwrap(model.nsMenu(for: .selection(try XCTUnwrap(model.selection)), tab: tab, column: column))
         let highlight = try XCTUnwrap(menu.items.first { $0.title == "Highlight" })
@@ -396,7 +398,8 @@ final class ReadingTests: XCTestCase {
         spin(0.1)
         stream.surface.select(display: layout.runMap.displayRange(fromCore: placeholder))
         stream.surface.dragEnded()
-        XCTAssertNil(model.marks["t1"])
+        XCTAssertTrue(model.highlights("t1").isEmpty)
+        XCTAssertEqual(model.toast, ShellModel.placeholderReason)
     }
 
     func testHighlightsAndInkStayOnTheirVersesAsBlocksComeAndGo() throws {
@@ -412,7 +415,7 @@ final class ReadingTests: XCTestCase {
         stream.surface.select(display: layout.runMap.displayRange(fromCore: try XCTUnwrap(layout.coreRange(ofPhrase: "loved the world"))))
         stream.surface.dragEnded()
         model.run("tool.select")
-        XCTAssertEqual(model.marks["t1"]?.count, 1)
+        XCTAssertEqual(model.highlights("t1").count, 1)
         // A pen stroke under John 3:16's first line.
         model.run("tool.pen")
         spin(0.2)

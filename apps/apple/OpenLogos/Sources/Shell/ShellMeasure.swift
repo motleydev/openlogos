@@ -63,7 +63,7 @@ final class ShellMeasure {
         var slowFrames: [String] = []
     }
 
-    private let model: ShellModel
+    let model: ShellModel
     private let samplesPerInteraction: Int
 
     init(model: ShellModel, samples: Int = 240) {
@@ -406,7 +406,7 @@ final class ShellMeasure {
     }
     #endif
 
-    private static func stat(_ name: String, budget: Double, _ values: [Double]) -> Stat {
+    static func stat(_ name: String, budget: Double, _ values: [Double]) -> Stat {
         func pct(_ p: Double) -> Double {
             guard !values.isEmpty else { return 0 }
             let sorted = values.sorted()
@@ -418,7 +418,7 @@ final class ShellMeasure {
     }
 
     /// `prepare` runs and is drawn before the timer starts (the state an interaction starts from).
-    private func measure(_ name: String, budget: Double, count: Int? = nil, prepare: ((Int) -> Void)? = nil, action: @escaping (Int) -> Void) async -> Stat {
+    func measure(_ name: String, budget: Double, count: Int? = nil, prepare: ((Int) -> Void)? = nil, action: @escaping (Int) -> Void) async -> Stat {
         let n = count ?? samplesPerInteraction
         var work: [Double] = []
         var toFrame: [Double] = []

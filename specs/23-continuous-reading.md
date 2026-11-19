@@ -16,13 +16,14 @@ scrolls on into the chapters before and after without another command.
 - **Chapter key**: `Book.C` (`John.3`), OSIS book ids.
 - **Segment id**: `Book.C.V` (`John.3.16`), a Psalm title `Ps.3.0` in the English scheme, a
   bridge `Num.26.3-4`, a split verse `Num.26.5a` (specs/03, `SegmentTable`).
-- **Book order**: canonical Protestant order for every edition for now. A pack may declare
-  the BHS Tanakh order (`tanakh_bhs`, Torah, Prophets, Writings ending with Chronicles) and
-  the core reads it in that order; no shipped edition does yet (decision D3 in
-  docs/evidence/B078-core.md).
+- **Book order**: canonical Protestant order, except that a pack may declare the BHS Tanakh
+  order (`tanakh_bhs`, Torah, Prophets, Writings ending with Chronicles) and the core reads it
+  in that order. B071's WLC pack declares it; the placeholder WLC stays Protestant (decision D3
+  in docs/evidence/B078-core.md).
 - **Versification**: every reference a tab stores is in its edition's own scheme. BSB is
-  `eng` (English, Psalm titles as verse 0), SBLGNT and WLC are `org` (the original numbering:
-  Hebrew chapter and verse numbers, a Psalm title as verse 1).
+  `eng` (English; a Psalm title is verse 0 where the canon table numbers one, 63 Psalms, and
+  otherwise stays at the start of verse 1, as `org` has it), SBLGNT and WLC are `org` (the
+  original numbering: Hebrew chapter and verse numbers, a Psalm title as verse 1).
 
 ## 2. Canon and versification table
 
@@ -51,8 +52,8 @@ The same calls on every host: Rust (`openlogos_text::reading::ReadingLibrary`), 
 
 | Call | Answer |
 |---|---|
-| `locate(resource_id, input)` | `{chapter_key, segment_id, reference, verse_start, verse_end, highlight_range, granularity}`. Verse ranges (`John 3:16–18`, across chapters `Jn 3:36–4:2`), the first of several ranges (`Rom 8:28, 31`), whole chapters (`Ps 23`, `Gen 1–3`: the first chapter, at its first segment, a titled Psalm at its title), whole books (`John`: chapter 1, verse 1). `highlight_range` only for verses. Errors: `invalid_reference`, `book_not_in_edition`, `chapter_out_of_range`, `verse_out_of_range` (“John 3 has no verse 37”), `unknown_resource`. |
-| `chapter_neighbors(resource_id, chapter_key)` | `{chapter_key, prev, next}` across books and testaments (Malachi 4 → Matthew 1 in the BSB); `null` at either end of the edition (WLC Malachi 3 has no next). |
+| `locate(resource_id, input)` | `{chapter_key, segment_id, reference, verse_start, verse_end, highlight_range, granularity}`. Verse ranges (`John 3:16–18`, across chapters `Jn 3:36–4:2`), the first of several ranges (`Rom 8:28, 31`), whole chapters (`Ps 23`, `Gen 1–3`: the first chapter, at its first segment, a titled Psalm at its title), whole books (`John`: chapter 1, verse 1). `highlight_range` only for verses. Errors: `invalid_reference`, `book_not_in_edition`, `chapter_out_of_range`, `verse_out_of_range` (“John 3 has no verse 37”), `unknown_resource`. A verse inside the chapter that the edition does not print (BSB Matthew 17:21) is no error: `reference` stays as typed, `segment_id` is the first printed verse of the typed range, else the nearest earlier one, and a single absent verse has no `highlight_range`. |
+| `chapter_neighbors(resource_id, chapter_key)` | `{chapter_key, prev, next}` across books and testaments (Malachi 4 → Matthew 1 in the BSB); `null` at either end of the edition (2 Chronicles 36 in the WLC pack, Revelation 22 in the BSB). |
 | `chapter_content(resource_id, chapter_key)` | A `ChapterBlock`: `heading {book_title (first chapter of a book only), chapter_label (“Chapter 3”, “Psalm 23”, the title of a one-chapter book), short_label (“Jn 3”)}`, `verses [{segment_id, number, last_number, label, text, paragraph_start, poetry, superscription, placeholder, tokens}]`, `prev`, `next`, `placeholder`. |
 | `reference_for_segment(segment_id)` | The verse a segment starts at, OSIS; `null` for a segment that names no verse. |
 | `chunk_for` / `supply_chunk` | A file pack's chapter location `{path, offset, length, sha256}`; the bytes handed back, checked against the hash (§4). |
@@ -81,10 +82,14 @@ chapters.bin           every chunk concatenated; each chapter found by offset an
 
 `manifest.json`: `format` `openlogos-text-pack`, `format_version` `1.x` (a reader refuses
 another major), `resource_id`, `content_revision`, `title`, `name`, `language` (BCP 47),
-`direction`, `scheme`, `book_order`, `license`, `source`, `fixture_only`, `complete`, and
-`books` in reading order, each `{book, title, chapters: [{chapter, first_verse, last_verse,
-path, offset?, length, sha256}]}`. Book titles are in the edition's language; the heading
-shows them. A chunk is UTF-8 JSON `{format: "openlogos-text-pack-chapter", resource_id,
+`direction`, `scheme`, `book_order`, `license`, `source`, `attribution?`, `fixture_only`,
+`complete`, and `books` in reading order, each `{book, title, chapters: [{chapter, first_verse,
+last_verse, absent?, path, offset?, length, sha256}]}`. Book titles are in the edition's
+language; the heading shows them. Format 1.1 adds `attribution` (what the licence asks a reader
+to be shown, with any change made to the text; `Edition.attribution`, and a host shows it) and a
+chapter's `absent` (verse numbers between first and last that the edition does not print: no
+segment exists for them, nothing is renumbered and `complete` stays true; a verse past
+`last_verse`, as SBLGNT Romans 16:25–27, is simply not in the chapter). A chunk is UTF-8 JSON `{format: "openlogos-text-pack-chapter", resource_id,
 chapter_key, verses: [ChapterVerse]}` with the text byte-exact, never normalized. Paths are
 relative, without `.` or `..` segments.
 
@@ -96,6 +101,12 @@ bytes=offset-(offset+length-1)` of the bundle) and hands the bytes back (`supply
 `chapterContent` throws `chunk_not_loaded` until then. `PackWriter` writes the format; B071's
 importer calls it. The three fixture packs under `crates/conformance/fixtures/packs/` are
 written from the conformance text fixtures only (one chapter each; WLC as a bundle).
+
+**The preview pack** (B071, docs/preview-pack.md) is the three editions in this format, built
+locally from the NAS, never in the repository. A follower's mapped verse can be one its edition
+does not print (`positions[].segment_id` from the canon table): a host scrolls to the last verse
+of the chapter numbered at or below it. What each edition's verse text is, and why, is in
+docs/evidence/B071.md.
 
 ## 5. Placeholder editions
 

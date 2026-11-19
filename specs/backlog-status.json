@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "kind": "backlog_status",
-  "as_of": "2026-11-11",
+  "as_of": "2026-11-19",
   "tasks": [
     {
       "id": "B002",
@@ -57,12 +57,10 @@
     },
     {
       "id": "B026",
-      "status": "in_review",
-      "evidence": [],
-      "branches": [
-        "b026-morphology"
-      ],
-      "open": "MACULA Greek and Hebrew morphology layers in the core and bindings; no host screen yet."
+      "status": "merged",
+      "evidence": [
+        "docs/evidence/B026.md"
+      ]
     },
     {
       "id": "B039",
@@ -144,14 +142,15 @@
     },
     {
       "id": "B071",
-      "status": "in_review",
-      "evidence": [],
+      "status": "partly_merged",
+      "evidence": [
+        "docs/evidence/B071.md",
+        "docs/evidence/B071-web.md"
+      ],
       "branches": [
-        "b071-preview-pack",
-        "b071-web",
         "b071-mac"
       ],
-      "open": "Full BSB, SBLGNT and WLC text and search in the web and Mac shells; several text presentation decisions wait for the owner."
+      "open": "The preview pack and the web shell are on main (#40, #41). The Mac shell's text and search is on b071-mac, not merged; several text presentation decisions wait for the owner."
     },
     {
       "id": "B072",
@@ -166,12 +165,13 @@
       "status": "partly_merged",
       "evidence": [
         "docs/evidence/B074-core.md",
-        "docs/evidence/B074-web.md"
+        "docs/evidence/B074-web.md",
+        "docs/evidence/B074-mac.md"
       ],
       "branches": [
         "b074-mac-store"
       ],
-      "open": "Core and web are on main. The Mac part is in review; its session restore measured 305 ms against the 100 ms budget of specs/22 §7."
+      "open": "Core, web and the Mac store are on main (#35, #36, #38). The Mac branch holds evidence commits after #38 (070dee7) not yet on main. The restore budget (specs/22 §7, 100 ms) is an owner decision; see docs/evidence/B074-mac.md, decision 1."
     },
     {
       "id": "B076",
