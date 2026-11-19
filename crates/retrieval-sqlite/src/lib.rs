@@ -11,9 +11,11 @@
 //! - [`vectors`]: sqlite-vec registration and k-nearest-neighbour queries.
 //! - [`engine`]: the [`engine::Engine`] that implements the five traits over attached packs.
 //! - [`edition_search`]: text search over the installed editions for the palette (B071).
+//! - [`cross_references`]: the cross-reference relation pack, written and read (B057).
 //! - [`morphology`]: morphology layers keyed to the text packs' tokens: analyses and lemma
 //!   search (B026).
-//! - [`cross_references`]: the cross-reference relation pack, written and read (B057).
+//! - [`alignment`]: alignment layers (B067): Clear's BSB alignments keyed to the text packs'
+//!   tokens, read through the morphology layers.
 
 pub mod alignment;
 pub mod catalog;

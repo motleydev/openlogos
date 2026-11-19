@@ -1082,9 +1082,13 @@ pub fn palette_query_indexed(
                 let short = osis_verse(&hit.reference)
                     .or_else(|| parse(&hit.reference, english()).ok())
                     .map_or_else(|| hit.reference.clone(), |set| set.to_short());
+                // The verse shown, in the edition it was found in (B071).
                 let invocation = Invocation::with(
                     "nav.navigate",
-                    target_args(query.target, hit.reference.clone()),
+                    CommandArgs {
+                        resource_id: Some(hit.edition_id.clone()),
+                        ..target_args(query.target, hit.reference.clone())
+                    },
                 );
                 let disabled = shell.enabled(&invocation, &command_context).err();
                 (

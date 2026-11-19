@@ -44,6 +44,7 @@ own directory: docs/morphology.md (B026).
 
 Clear's manual BSB alignments over the BSB, SBLGNT and WLC tokens are built after the morphology
 layers, into their own directory: docs/alignments.md (B067).
+
 ## Cross references (B057)
 
 The OpenBible cross references (S09) go beside the text packs, built on their own:

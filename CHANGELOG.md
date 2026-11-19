@@ -1,17 +1,18 @@
 # B067 — 8 November 2026
 
-- Adds Clear's manual BSB alignments: `just preview-pack-alignment` joins Clear's SBLGNT–BSB and WLCM–BSB records (S55) to the preview pack's BSB, SBLGNT and WLC tokens through the morphology layers and writes one layer per testament outside the repository (docs/alignments.md, docs/evidence/B067.md). New calls `use_alignments`, `token_alignment`, `lemma_renderings` (UniFFI) and `useAlignments`, `tokenAlignment`, `lemmaRenderings` (wasm); the API version is left for the merge.
-
-# B026 — 8 November 2026
-
-- Adds the MACULA morphology layers: `just preview-pack-morphology` joins MACULA Greek and Hebrew (S47) to the preview pack's SBLGNT and WLC tokens and writes one layer per edition outside the repository (docs/morphology.md, docs/evidence/B026.md). The Louw-Nida and SDBH columns the rights records restrict never enter a layer.
-- The core's API is 0.1.6: `use_morphology`, `token_analysis`, `lemma_search` and `lemma_search_token` (UniFFI) and `useMorphology`, `tokenAnalysis`, `lemmaSearch`, `lemmaSearchToken` (wasm). Search lemma is enabled on the words of an edition with a layer installed.
+- Adds Clear's manual BSB alignments: `just preview-pack-alignment` joins Clear's SBLGNT–BSB and WLCM–BSB records (S55) to the preview pack's BSB, SBLGNT and WLC tokens through the morphology layers and writes one layer per testament outside the repository (docs/alignments.md, docs/evidence/B067.md). New calls `use_alignments`, `token_alignment`, `lemma_renderings` (UniFFI) and `useAlignments`, `tokenAlignment`, `lemmaRenderings` (wasm). The core's API is 0.1.8 (after B057's 0.1.7).
 
 # B057 — 8 November 2026
 
 - Adds the OpenBible cross references: `just preview-pack-xrefs` builds `relations/openbible-xrefs.sqlite` beside the preview pack from S09, after the rights record and every hash, one typed edge per published line with its votes, ranges and line kept (docs/preview-pack.md, docs/evidence/B057.md).
 - The reading core answers a passage's cross references in any installed edition, mapped from `eng`, labelled when a target does not map or is not printed, published before reverse-derived, a page at a time (`ReadingHandle.cross_references`, `crossReferences`).
 - `ShellHandle.set_data_layers(["cross_references"])` enables the B077 "Cross references" row and palette command; without it they stay disabled with "Needs cross-reference data".
+- The core's API is 0.1.7 (after B026's 0.1.6): `ReadingHandle.cross_references`, `open_cross_references`, `use_cross_references`, `cross_reference_source`, `ShellHandle.set_data_layers` (UniFFI) and the wasm equivalents. The data layers and morphology editions are two registries on the shell (`data_layers`, `morphology_editions`), to unify later.
+
+# B026 — 8 November 2026
+
+- Adds the MACULA morphology layers: `just preview-pack-morphology` joins MACULA Greek and Hebrew (S47) to the preview pack's SBLGNT and WLC tokens and writes one layer per edition outside the repository (docs/morphology.md, docs/evidence/B026.md). The Louw-Nida and SDBH columns the rights records restrict never enter a layer.
+- The core's API is 0.1.6: `use_morphology`, `token_analysis`, `lemma_search` and `lemma_search_token` (UniFFI) and `useMorphology`, `tokenAnalysis`, `lemmaSearch`, `lemmaSearchToken` (wasm). Search lemma is enabled on the words of an edition with a layer installed.
 
 # B071 — 6 November 2026
 

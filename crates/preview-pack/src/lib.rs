@@ -7,10 +7,10 @@
 //! - [`build`]: the edition definitions, the versification reconciliation against the canon table,
 //!   the publisher's second form as an oracle (BSB), the pack and search writers.
 //! - [`bench`]: text search latency against the 50 ms budget of specs/22 §7.
-//! - [`morphology`]: B026, the MACULA morphology layers joined to the SBLGNT and WLC tokens.
-//! - [`alignment`]: B067, Clear's manual BSB alignments joined to the BSB, SBLGNT and WLC tokens.
 //! - [`xrefs`]: B057, the OpenBible cross references into a relation pack beside the text packs,
 //!   with the fidelity report, a spread to read by eye and the list latency.
+//! - [`morphology`]: B026, the MACULA morphology layers joined to the SBLGNT and WLC tokens.
+//! - [`alignment`]: B067, Clear's manual BSB alignments joined to the BSB, SBLGNT and WLC tokens.
 
 pub mod alignment;
 pub mod bench;
