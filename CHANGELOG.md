@@ -9,7 +9,15 @@ also holds the implementation; `specs/backlog-status.json` is the record of what
 - Reading and ink spikes: reading interactions (B004), native and DOM text surfaces against core anchors (B005), ink engines (B039).
 - The workspace shell of specs/22 on the web and the Mac in lockstep: core model, command registry and palette (B070), the shell itself (B072), the contextual tool well (B076), the context menu (B077), continuous reading (B078), and the user store with parallel workspaces and session restore in the core, on the web and on the Mac (B074).
 - The rights steward's approvals of 8 November 2026 (S09, S47, S55, S73, S75); the preview pack and the web About view (B071); the MACULA morphology layers and lemma search (B026).
+- Cross references (B057): OpenBible cross references and coded-1 edge storage, merged 19 November 2026.
 - Repository audit of 11 November 2026: `just audit` (cargo-deny) and `just ci-hosts`, a `web` job in CI, a Content-Security-Policy on the web shell, the backlog status record, and a README that describes the implementation.
+# B057 — 8 November 2026
+
+- Adds the OpenBible cross references: `just preview-pack-xrefs` builds `relations/openbible-xrefs.sqlite` beside the preview pack from S09, after the rights record and every hash, one typed edge per published line with its votes, ranges and line kept (docs/preview-pack.md, docs/evidence/B057.md).
+- The reading core answers a passage's cross references in any installed edition, mapped from `eng`, labelled when a target does not map or is not printed, published before reverse-derived, a page at a time (`ReadingHandle.cross_references`, `crossReferences`).
+- `ShellHandle.set_data_layers(["cross_references"])` enables the B077 "Cross references" row and palette command; without it they stay disabled with "Needs cross-reference data".
+- The core's API is 0.1.7 (after B026's 0.1.6): `ReadingHandle.cross_references`, `open_cross_references`, `use_cross_references`, `cross_reference_source`, `ShellHandle.set_data_layers` (UniFFI) and the wasm equivalents. The data layers and morphology editions are two registries on the shell (`data_layers`, `morphology_editions`), to unify later.
+
 # B026 — 8 November 2026
 
 - Adds the MACULA morphology layers: `just preview-pack-morphology` joins MACULA Greek and Hebrew (S47) to the preview pack's SBLGNT and WLC tokens and writes one layer per edition outside the repository (docs/morphology.md, docs/evidence/B026.md). The Louw-Nida and SDBH columns the rights records restrict never enter a layer.

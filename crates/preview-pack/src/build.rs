@@ -104,7 +104,7 @@ pub struct BuildReport {
     pub editions: Vec<EditionReport>,
 }
 
-fn io(path: &Path, error: std::io::Error) -> ImportError {
+pub(crate) fn io(path: &Path, error: std::io::Error) -> ImportError {
     ImportError::Io {
         path: path.display().to_string(),
         error,
@@ -124,7 +124,7 @@ fn utf8<'a>(source: &'a VerifiedSource, path: &str) -> Result<&'a str, ImportErr
 /// The entries of a zip, through the OS's `unzip` (scripts/wasm-test.sh already relies on it):
 /// the zip is the artifact the manifest hashes, and a new dependency to read it once is not worth
 /// having. The bytes come from the checked copy, not the NAS.
-fn unzip_entry(zip: &Path, entry: &str) -> Result<String, ImportError> {
+pub(crate) fn unzip_entry(zip: &Path, entry: &str) -> Result<String, ImportError> {
     let output = std::process::Command::new("unzip")
         .arg("-p")
         .arg(zip)
@@ -442,7 +442,7 @@ pub fn reconcile(scheme: &str, books: &[ImportedBook]) -> Vec<Mismatch> {
 
 // --- Writing
 
-fn size_of(path: &Path) -> Result<u64, ImportError> {
+pub(crate) fn size_of(path: &Path) -> Result<u64, ImportError> {
     let meta = std::fs::metadata(path).map_err(|e| io(path, e))?;
     if meta.is_file() {
         return Ok(meta.len());
@@ -644,7 +644,7 @@ fn write_search_pack(
     builder.finish().map_err(sql)
 }
 
-fn refuse_inside(out: &Path, parent: &Path, what: &str) -> Result<(), ImportError> {
+pub(crate) fn refuse_inside(out: &Path, parent: &Path, what: &str) -> Result<(), ImportError> {
     if out.starts_with(parent) {
         return Err(ImportError::Usage(format!(
             "the output {} is inside {what}; a preview pack never goes there",
@@ -654,7 +654,7 @@ fn refuse_inside(out: &Path, parent: &Path, what: &str) -> Result<(), ImportErro
     Ok(())
 }
 
-fn absolute(path: &Path) -> Result<PathBuf, ImportError> {
+pub(crate) fn absolute(path: &Path) -> Result<PathBuf, ImportError> {
     std::path::absolute(path).map_err(|e| io(path, e))
 }
 
@@ -747,6 +747,12 @@ pub fn build(options: &BuildOptions, repository: &Path) -> Result<BuildReport, I
         serde_json::to_string_pretty(&report).map_err(|e| ImportError::Pack(e.to_string()))?;
     let report_path = work.join(REPORT_FILE);
     std::fs::write(&report_path, json + "\n").map_err(|e| io(&report_path, e))?;
+    // The cross-reference pack (B057, `just preview-pack-xrefs`) is built on its own and kept.
+    let relations = out.join(crate::xrefs::RELATIONS_DIR);
+    if relations.exists() {
+        let kept = work.join(crate::xrefs::RELATIONS_DIR);
+        std::fs::rename(&relations, &kept).map_err(|e| io(&kept, e))?;
+    }
     if out.exists() {
         std::fs::remove_dir_all(&out).map_err(|e| io(&out, e))?;
     }

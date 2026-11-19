@@ -19,6 +19,8 @@ use crate::fts::register_tokenizer;
 use crate::tokenizer::{NORMALIZATION_MODE, feature_key, normalize};
 use crate::vectors::install_vec_extension;
 
+pub mod coded;
+
 /// Schema version written to every pack; readers refuse other versions.
 pub const PACK_SCHEMA_VERSION: &str = "b068-1";
 
@@ -167,6 +169,8 @@ pub struct PackBuilder {
     /// container id − 1; `None` means the container is its hull span.
     container_slots: Vec<Option<Vec<u32>>>,
     vector_dims: HashMap<String, (u32, Quantization)>,
+    /// The coded edge storage's dictionaries and postings ([`coded`]), when the pack uses it.
+    coded: Option<coded::CodedEdges>,
 }
 
 impl PackBuilder {
@@ -226,7 +230,26 @@ impl PackBuilder {
             containers: Vec::new(),
             container_slots: Vec::new(),
             vector_dims: HashMap::new(),
+            coded: None,
         })
+    }
+
+    /// Like [`PackBuilder::create`], with the coded edge storage of [`coded`] (B057): the same
+    /// `edge` relation for every reader, in a fraction of the bytes when edges are many and
+    /// alike. The manifest says `edge_storage = coded-1`.
+    pub fn create_coded_edges(
+        path: &Path,
+        manifest: &PackManifest,
+        features: &[&str],
+    ) -> PackResult<PackBuilder> {
+        let mut builder = PackBuilder::create(path, manifest, features)?;
+        builder.conn.execute_batch(coded::CODED_SCHEMA)?;
+        builder.conn.execute(
+            "INSERT INTO manifest(key, value) VALUES (?1, ?2)",
+            params![coded::EDGE_STORAGE_KEY, coded::CODED_EDGES],
+        )?;
+        builder.coded = Some(coded::CodedEdges::default());
+        Ok(builder)
     }
 
     /// Adds the display text of one verse.
@@ -328,6 +351,23 @@ impl PackBuilder {
     /// so is any `user` edge: user material lives in the device's link index and user
     /// database and never enters a pack (specs/19 item 9).
     pub fn add_edge(&mut self, edge: &EdgeRow<'_>) -> PackResult<()> {
+        self.insert_edge(None, edge)
+    }
+
+    /// Adds one edge with a chosen `rowid`, so a curated row can name its place in the
+    /// published source (B057: the line of the file). Refuses what [`PackBuilder::add_edge`]
+    /// refuses.
+    pub fn add_edge_at(&mut self, rowid: i64, edge: &EdgeRow<'_>) -> PackResult<()> {
+        self.insert_edge(Some(rowid), edge)
+    }
+
+    /// The writer's connection, for a pack kind's own tables (B057's `xref_range`) and
+    /// manifest keys. The transaction is open; [`PackBuilder::finish`] commits it.
+    pub fn connection(&self) -> &Connection {
+        &self.conn
+    }
+
+    fn insert_edge(&mut self, rowid: Option<i64>, edge: &EdgeRow<'_>) -> PackResult<()> {
         if edge.provenance == ProvenanceKind::ModelSimilarity
             && CURATED_ONLY_RELATIONS.contains(&edge.rel)
         {
@@ -341,10 +381,14 @@ impl PackBuilder {
                 "user edges never enter a pack; they belong to the link index".to_owned(),
             ));
         }
-        self.conn.execute(
-            "INSERT INTO edge(src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method, provenance_kind, review_state, context)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            params![
+        if let Some(coded) = &mut self.coded {
+            return coded.insert(&self.conn, rowid, edge);
+        }
+        self.conn.prepare_cached(
+            "INSERT INTO edge(rowid, src_work, src_locator, rel, dst_work, dst_locator, weight, source_work, method, provenance_kind, review_state, context)
+             VALUES (?12, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        )?
+        .execute(params![
                 edge.src_work,
                 edge.src_locator,
                 edge.rel,
@@ -355,9 +399,9 @@ impl PackBuilder {
                 edge.method,
                 provenance_name(edge.provenance),
                 edge.review_state.name(),
-                edge.context
-            ],
-        )?;
+                edge.context,
+                rowid
+            ])?;
         Ok(())
     }
 
@@ -472,8 +516,12 @@ impl PackBuilder {
             container_kinds,
             containers,
             container_slots,
+            coded,
             ..
         } = self;
+        if let Some(coded) = coded {
+            coded.finish(&conn)?;
+        }
         let n_tokens = verses_of_tokens.len() as u32;
 
         // Dictionaries, dense columns and postings.
@@ -579,6 +627,32 @@ impl PackBuilder {
 
         conn.execute_batch("INSERT INTO text_fts(text_fts) VALUES ('rebuild'); COMMIT; VACUUM;")?;
         conn.close().map_err(|(_, e)| e)
+    }
+}
+
+/// The edge storages this engine reads besides the default `edge` table (manifest key
+/// [`coded::EDGE_STORAGE_KEY`]; absent means the default table).
+pub const SUPPORTED_EDGE_STORAGE: &[&str] = &[coded::CODED_EDGES];
+
+/// Refuses a pack attached as `schema` whose manifest names an edge storage this engine does not
+/// read, so a later layout is never misread as the default `edge` table.
+pub fn check_edge_storage(conn: &Connection, schema: &str) -> Result<(), String> {
+    use rusqlite::OptionalExtension;
+    let storage: Option<String> = conn
+        .query_row(
+            &format!("SELECT value FROM \"{schema}\".manifest WHERE key = ?1"),
+            params![coded::EDGE_STORAGE_KEY],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    match storage.as_deref() {
+        None => Ok(()),
+        Some(s) if SUPPORTED_EDGE_STORAGE.contains(&s) => Ok(()),
+        Some(s) => Err(format!(
+            "pack edge storage {s} is not one this engine reads ({})",
+            SUPPORTED_EDGE_STORAGE.join(", ")
+        )),
     }
 }
 
