@@ -11,7 +11,14 @@ also holds the implementation; `specs/backlog-status.json` is the record of what
 - The rights steward's approvals of 8 November 2026 (S09, S47, S55, S73, S75); the preview pack and the web About view (B071); the MACULA morphology layers and lemma search (B026).
 - Cross references (B057): OpenBible cross references and coded-1 edge storage, merged 19 November 2026.
 - Alignments (B067): Clear's BSB alignments and the alignment layers, merged 19 November 2026.
+- Calvin's *Institutes* (B016): the first work pack, merged 19 November 2026.
 - Repository audit of 11 November 2026: `just audit` (cargo-deny) and `just ci-hosts`, a `web` job in CI, a Content-Security-Policy on the web shell, the backlog status record, and a README that describes the implementation.
+# B016 — 8 November 2026
+
+- Adds the first work: `just institutes-pack` builds Calvin's *Institutes* in John Allen's translation (rights S75) from the NAS into one work pack outside the repository: front matter, arguments, 80 chapters and 1,277 numbered sections with the B068 locators, 3,506 notes anchored where their markers stood, and 3,704 Scripture citations from the notes, 3,688 resolved, the rest kept with their class (docs/works.md, docs/evidence/B016.md).
+- Work pack format `openlogos-work-1`: the B068 corpus pack plus three tables and three manifest keys (`work_pack`); a work is not a text pack (specs/23 §4). `WorkHandle` on UniFFI and wasm reads sections, chapters, the structure, a section's citations and the sections citing a passage.
+- The palette opens a work: `Inst. 3.2.7` is a Passage row and work hits are Text rows, both with `tab.open_edition`; a work's tabs and Bible tabs no longer follow each other. `ShellHandle.use_search_packs` attaches editions and works natively.
+- The core's API is 0.1.8 (after B057's 0.1.7): the work handle's additions to the UniFFI and wasm surfaces. The Android and Apple host asserts and the example records follow.
 # B067 — 8 November 2026
 
 - Adds Clear's manual BSB alignments: `just preview-pack-alignment` joins Clear's SBLGNT–BSB and WLCM–BSB records (S55) to the preview pack's BSB, SBLGNT and WLC tokens through the morphology layers and writes one layer per testament outside the repository (docs/alignments.md, docs/evidence/B067.md). New calls `use_alignments`, `token_alignment`, `lemma_renderings` (UniFFI) and `useAlignments`, `tokenAlignment`, `lemmaRenderings` (wasm). The core's API is 0.1.8 (after B057's 0.1.7).
