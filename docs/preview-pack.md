@@ -39,6 +39,9 @@ What each source contributes and every decision about the text: docs/evidence/B0
 A test that needs the corpus never runs in `just ci`: `just preview-pack-verify` and
 `just preview-pack-bench-wasm` need the built pack, and say `SKIPPED` without it.
 
+The MACULA morphology layers over the SBLGNT and WLC tokens are built after the pack, into their
+own directory: docs/morphology.md (B026).
+
 ## Cross references (B057)
 
 The OpenBible cross references (S09) go beside the text packs, built on their own:

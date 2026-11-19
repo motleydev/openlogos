@@ -1000,6 +1000,7 @@ impl Shell {
             session.resource_languages = std::mem::take(&mut old.resource_languages);
             session.resource_schemes = std::mem::take(&mut old.resource_schemes);
             session.data_layers = std::mem::take(&mut old.data_layers);
+            session.morphology_editions = std::mem::take(&mut old.morphology_editions);
             self.session = session;
         }
         self.annotations = annotations;
