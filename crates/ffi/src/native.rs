@@ -11,6 +11,8 @@
 
 uniffi::setup_scaffolding!();
 
+#[cfg(feature = "retrieval")]
+pub mod alignment;
 pub mod anchor;
 pub mod conformance;
 pub mod cross_references;
@@ -27,6 +29,12 @@ pub mod versification;
 #[cfg(feature = "retrieval")]
 pub mod works;
 
+#[cfg(feature = "retrieval")]
+pub use alignment::{
+    AlignmentAnswer, AlignmentGroup, AlignmentLayer, AlignmentMetaEntry, AlignmentRenderingRow,
+    AlignmentRenderingTable, AlignmentRenderings, AlignmentSourceWord, AlignmentTargetWord,
+    AlignmentToken, AlignmentWord,
+};
 pub use anchor::{
     Anchor, AnchorError, OffsetUnit, Paragraph, ReanchorResult, Revision, ScalarRange, Segment,
     TextQuoteSelector, TokenSpan, Utf16Range, anchor_to_utf16, reanchor, selection_to_anchors,

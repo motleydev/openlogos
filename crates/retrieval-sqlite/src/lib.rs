@@ -16,7 +16,10 @@
 //!   search (B026).
 //! - [`work_pack`]: a non-Bible work in one pack, read section by section, with its citations
 //!   (B016).
+//! - [`alignment`]: alignment layers (B067): Clear's BSB alignments keyed to the text packs'
+//!   tokens, read through the morphology layers.
 
+pub mod alignment;
 pub mod catalog;
 pub mod cross_references;
 pub mod edition_search;
@@ -31,6 +34,7 @@ pub mod tokenizer;
 pub mod vectors;
 pub mod work_pack;
 
+pub use alignment::AlignmentLayers;
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
 pub use cross_references::{CrossReferencePack, write_cross_reference_pack};
 pub use edition_search::EditionSearch;

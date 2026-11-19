@@ -13,7 +13,9 @@
 //!
 //! [`institutes`] is the B016 importer beside it: Calvin's *Institutes* (Allen) into a work pack
 //! (`just institutes-pack`, binary `openlogos-institutes-pack`).
+//! - [`alignment`]: B067, Clear's manual BSB alignments joined to the BSB, SBLGNT and WLC tokens.
 
+pub mod alignment;
 pub mod bench;
 pub mod build;
 pub mod institutes;

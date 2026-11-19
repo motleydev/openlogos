@@ -4,6 +4,9 @@
 - Work pack format `openlogos-work-1`: the B068 corpus pack plus three tables and three manifest keys (`work_pack`); a work is not a text pack (specs/23 §4). `WorkHandle` on UniFFI and wasm reads sections, chapters, the structure, a section's citations and the sections citing a passage.
 - The palette opens a work: `Inst. 3.2.7` is a Passage row and work hits are Text rows, both with `tab.open_edition`; a work's tabs and Bible tabs no longer follow each other. `ShellHandle.use_search_packs` attaches editions and works natively.
 - The core's API is 0.1.8 (after B057's 0.1.7): the work handle's additions to the UniFFI and wasm surfaces. The Android and Apple host asserts and the example records follow.
+# B067 — 8 November 2026
+
+- Adds Clear's manual BSB alignments: `just preview-pack-alignment` joins Clear's SBLGNT–BSB and WLCM–BSB records (S55) to the preview pack's BSB, SBLGNT and WLC tokens through the morphology layers and writes one layer per testament outside the repository (docs/alignments.md, docs/evidence/B067.md). New calls `use_alignments`, `token_alignment`, `lemma_renderings` (UniFFI) and `useAlignments`, `tokenAlignment`, `lemmaRenderings` (wasm). The core's API is 0.1.8 (after B057's 0.1.7).
 
 # B057 — 8 November 2026
 

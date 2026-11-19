@@ -15,6 +15,8 @@
 
 use std::sync::OnceLock;
 
+#[cfg(feature = "retrieval")]
+pub mod alignment;
 pub mod cross_references;
 #[cfg(feature = "retrieval")]
 pub mod retrieval;
@@ -673,6 +675,9 @@ pub struct ShellHandle {
     /// B026: the morphology layers `useMorphology` attached.
     #[cfg(feature = "retrieval")]
     morphology: Option<openlogos_retrieval_sqlite::MorphologyLayers>,
+    /// B067: the alignment layers `useAlignments` attached.
+    #[cfg(feature = "retrieval")]
+    alignments: Option<openlogos_retrieval_sqlite::AlignmentLayers>,
 }
 
 fn shell_of(session: Session) -> Result<ShellHandle, JsValue> {
@@ -682,6 +687,8 @@ fn shell_of(session: Session) -> Result<ShellHandle, JsValue> {
         text: None,
         #[cfg(feature = "retrieval")]
         morphology: None,
+        #[cfg(feature = "retrieval")]
+        alignments: None,
     })
 }
 
