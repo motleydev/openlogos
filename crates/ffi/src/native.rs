@@ -26,6 +26,8 @@ pub mod retrieval;
 pub mod shell;
 pub mod store;
 pub mod versification;
+#[cfg(feature = "retrieval")]
+pub mod works;
 
 #[cfg(feature = "retrieval")]
 pub use alignment::{
@@ -74,6 +76,13 @@ pub use store::{
 pub use versification::{
     MappingResult, MappingStatus, VerseMapRow, VerseMapRowKind, VersificationError,
     canon_map_verse, map_verse,
+};
+#[cfg(feature = "retrieval")]
+pub use works::{
+    WorkCallError, WorkCatalogEntry, WorkChapterKind, WorkChapterOutline, WorkChapterRecord,
+    WorkCitationRecord, WorkCitationState, WorkCitingSection, WorkDivisionKind,
+    WorkDivisionOutline, WorkHandle, WorkNoteKind, WorkNoteRecord, WorkParagraphStyle,
+    WorkParagraphText, WorkSectionRecord,
 };
 
 /// The core API version the bindings were generated against: [`openlogos_core::API_VERSION`].

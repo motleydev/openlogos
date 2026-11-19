@@ -6,6 +6,8 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
+# `cargo run -p openlogos-preview-pack` is the B071 importer; B016 adds `openlogos-institutes-pack`.
+default-run = "openlogos-preview-pack"
 
 [[bin]]
 name = "openlogos-preview-pack"

@@ -108,6 +108,13 @@ does not print (`positions[].segment_id` from the canon table): a host scrolls t
 of the chapter numbered at or below it. What each edition's verse text is, and why, is in
 docs/evidence/B071.md.
 
+**Works are not text packs** (B016, docs/works.md). A non-Bible work's places are locators of
+its own scheme (`3.2.7`, `dedication`), not book, chapter and verse; its sections run to several
+paragraphs and carry notes. It ships as the corpus pack specs/19 gives a work (one SQLite file
+with text, FTS5, edges and a `section_map`), plus the few additive tables and manifest keys that
+reading it section by section needs (`work_format = openlogos-work-1`;
+`crates/retrieval-sqlite/src/work_pack.rs`). A browser fetches the one file.
+
 ## 5. Placeholder editions
 
 Until B071's packs are installed, the hosts read **placeholder editions** generated in-process
