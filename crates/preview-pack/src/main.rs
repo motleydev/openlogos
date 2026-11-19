@@ -6,8 +6,8 @@ use std::process::ExitCode;
 use openlogos_preview_pack::bench;
 use openlogos_preview_pack::build::{BuildOptions, build};
 use openlogos_preview_pack::model::ImportError;
-use openlogos_preview_pack::xrefs;
 use openlogos_preview_pack::morphology::{self, MorphologyOptions};
+use openlogos_preview_pack::xrefs;
 
 const DEFAULT_CORPORA: &str = "/Volumes/office-hub/openlogos/corpora";
 
