@@ -1166,9 +1166,13 @@ pub fn palette_query_indexed(
                 let invocation = if work.is_some() {
                     open_work(query.target, &hit.edition_id, hit.reference.clone())
                 } else {
+                    // The verse shown, in the edition it was found in (B071).
                     Invocation::with(
                         "nav.navigate",
-                        target_args(query.target, hit.reference.clone()),
+                        CommandArgs {
+                            resource_id: Some(hit.edition_id.clone()),
+                            ..target_args(query.target, hit.reference.clone())
+                        },
                     )
                 };
                 let disabled = shell.enabled(&invocation, &command_context).err();

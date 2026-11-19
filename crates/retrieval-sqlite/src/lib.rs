@@ -11,15 +11,20 @@
 //! - [`vectors`]: sqlite-vec registration and k-nearest-neighbour queries.
 //! - [`engine`]: the [`engine::Engine`] that implements the five traits over attached packs.
 //! - [`edition_search`]: text search over the installed editions for the palette (B071).
+//! - [`cross_references`]: the cross-reference relation pack, written and read (B057).
+//! - [`morphology`]: morphology layers keyed to the text packs' tokens: analyses and lemma
+//!   search (B026).
 //! - [`work_pack`]: a non-Bible work in one pack, read section by section, with its citations
 //!   (B016).
 
 pub mod catalog;
+pub mod cross_references;
 pub mod edition_search;
 pub mod engine;
 pub mod fts;
 pub mod ingest;
 pub mod links;
+pub mod morphology;
 pub mod pack;
 pub mod token_engine;
 pub mod tokenizer;
@@ -27,9 +32,11 @@ pub mod vectors;
 pub mod work_pack;
 
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
+pub use cross_references::{CrossReferencePack, write_cross_reference_pack};
 pub use edition_search::EditionSearch;
 pub use engine::Engine;
 pub use links::{LinkIndex, UserEdge};
+pub use morphology::MorphologyLayers;
 pub use pack::{PackBuilder, PackManifest};
 pub use work_pack::{WorkPack, WorkPackError};
 

@@ -25,6 +25,7 @@
 //   -OPENLOGOS_SHELL_MEASURE <path>     the specs/22 §7 run over ten workspaces, JSON to <path>, quit
 //   -OPENLOGOS_SNAPSHOT <path>          the window's content drawn by the app itself into a PNG, quit
 //                                       (no screen-recording permission needed)
+// B074's store arguments are in StoreLaunch.swift.
 import SwiftUI
 #if os(macOS)
 import AppKit
@@ -45,6 +46,8 @@ enum ShellLaunch {
         if let size = defaults.string(forKey: "OPENLOGOS_WINDOW")?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
             sizeWindow(width: size[0], height: size[1])
         }
+        // B074: building the acceptance store, or timing a restore, quits here.
+        if await StoreLaunch.early(model) { return }
         #endif
         if let name = defaults.string(forKey: "OPENLOGOS_THEME") {
             model.run("view.theme", args: ShellCommandArgs(text: name))
@@ -114,6 +117,7 @@ enum ShellLaunch {
             }
         }
         #if os(macOS)
+        await StoreLaunch.late(model)
         if let spec = defaults.string(forKey: "OPENLOGOS_MENU") {
             try? await Task.sleep(nanoseconds: 300_000_000)
             openMenu(spec, model: model)
@@ -158,7 +162,7 @@ enum ShellLaunch {
     #if os(macOS)
     /// The shown note being edited: a heading, a bold word, a passage link and a quote, focus
     /// in it.
-    private static func noteDemo(_ model: ShellModel) {
+    static func noteDemo(_ model: ShellModel) {
         guard let column = model.activeWorkspace.columns.first(where: { c in c.tabs.first { $0.id == c.shownTabId }?.kind == "notes" }),
               let editor = model.notes.editor(pane: column.shownTabId), let storage = editor.textStorage else { return }
         editor.window?.makeFirstResponder(editor)

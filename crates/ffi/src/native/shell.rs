@@ -97,7 +97,7 @@ impl From<CommandError> for ShellCommandError {
     }
 }
 
-fn invalid(detail: impl ToString) -> ShellCommandError {
+pub(crate) fn invalid(detail: impl ToString) -> ShellCommandError {
     ShellCommandError::InvalidDocument {
         detail: detail.to_string(),
     }
@@ -1039,6 +1039,9 @@ pub(crate) struct State {
     pub(crate) shell: Shell,
     index: Option<(u64, PaletteIndex)>,
     text: Option<Box<dyn TextProvider + Send>>,
+    /// B026: the morphology layers `use_morphology` attached.
+    #[cfg(feature = "retrieval")]
+    pub(crate) morphology: Option<openlogos_retrieval_sqlite::MorphologyLayers>,
 }
 
 /// A session with its undo history, owned by the core. One per window.
@@ -1055,6 +1058,8 @@ impl ShellHandle {
                 shell,
                 index: None,
                 text: None,
+                #[cfg(feature = "retrieval")]
+                morphology: None,
             }),
         }))
     }

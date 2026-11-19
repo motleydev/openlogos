@@ -139,10 +139,55 @@ preview-pack-verify *args:
 preview-pack-bench *args:
     cargo run --release -p openlogos-preview-pack -- bench {{ args }}
 
+# B057: the OpenBible cross references (S09) into <out>/relations/openbible-xrefs.sqlite beside the preview pack, after the same rights and hash gate; prints the fidelity counts and writes openbible-xrefs.json (docs/preview-pack.md)
+[group('2 · core')]
+preview-pack-xrefs *args:
+    cargo run --release -p openlogos-preview-pack -- xrefs {{ args }}
+
+# B057: check the built cross-reference pack against the NAS source with a second reader (zipfile, sqlite3): every line one edge, votes and ranges as published; needs the corpus and says SKIPPED without it; `--show` prints the source's rows for the spread
+[group('2 · core')]
+preview-pack-xrefs-verify *args:
+    python3 tools/verify_xrefs.py {{ args }}
+
+# B057: the spread of docs/evidence/B057.md through the core API over the built packs; `--limit N` items per passage, `--preview` adds the edition's text
+[group('2 · core')]
+preview-pack-xrefs-show *args:
+    cargo run --release -p openlogos-preview-pack -- xrefs-show {{ args }}
+
+# B057: a verse's cross-reference list latency natively, against the next frame (16 ms p95); `--stride N` samples every Nth verse
+[group('2 · core')]
+preview-pack-xrefs-bench *args:
+    cargo run --release -p openlogos-preview-pack -- xrefs-bench {{ args }}
+
+# B057: the same list latency in a dedicated worker in headless Chrome (web shell); prints one `B057 wasm:` line
+[group('6 · web')]
+preview-pack-xrefs-bench-wasm *args:
+    @scripts/preview-pack-xrefs-bench-wasm.sh {{ args }}
+
 # B071: the same latency in a dedicated worker in headless Chrome (web shell); prints one `B071 wasm:` line
 [group('6 · web')]
 preview-pack-bench-wasm *args:
     @scripts/preview-pack-bench-wasm.sh {{ args }}
+
+# B026: build the MACULA morphology layers over the built preview pack's SBLGNT and WLC tokens, after the rights gate (S47 Greek and Hebrew, S07 for the ketiv/qere markup); output ~/.cache/openlogos/morphology unless OPENLOGOS_MORPHOLOGY or --morphology says otherwise; needs `just preview-pack` first (docs/morphology.md)
+[group('2 · core')]
+preview-pack-morphology *args:
+    cargo run --release -p openlogos-preview-pack -- morphology {{ args }}
+
+# B026: check the built morphology layers against MACULA's TSVs and the text packs with a second reader (Python standard library); needs the corpus and says SKIPPED without it
+[group('2 · core')]
+preview-pack-morphology-verify *args:
+    python3 tools/verify_morphology.py {{ args }}
+
+# B026: token lookup and lemma search latency over the built morphology layers, natively, against the 50 ms of specs/22 §7; e.g. `--rounds 3 --json target/b026.json`
+[group('2 · core')]
+preview-pack-morphology-bench *args:
+    cargo run --release -p openlogos-preview-pack -- morphology-bench {{ args }}
+
+# B026: the same morphology latency in a dedicated worker in headless Chrome (web shell), replaying the native bench's samples; prints one `B026 wasm:` line
+[group('6 · web')]
+preview-pack-morphology-bench-wasm *args:
+    @scripts/preview-pack-morphology-bench-wasm.sh {{ args }}
 
 # Build crates/ffi for macOS, iOS and the simulator, generate the Swift bindings and assemble artifacts/apple/OpenLogosCoreFFI.xcframework (apple shell)
 [group('5 · bindings')]

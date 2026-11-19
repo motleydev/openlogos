@@ -796,7 +796,19 @@ fn word_menu(
         .is_some_and(crate::shell::is_original_language);
     let words = format!("“{}”", quoted(text));
     let mut search = b.searches(text, Some(resource), &words);
-    search.push(b.item("search.lemma", args_text(text), "Search lemma", "lemma"));
+    // B026: the host looks up the word's token in this verse and edition, then searches its
+    // lemma (`lemma_search_token`).
+    search.push(b.item(
+        "search.lemma",
+        CommandArgs {
+            text: Some(text.to_owned()),
+            reference: reference.map(str::to_owned),
+            resource_id: Some(resource.to_owned()),
+            ..CommandArgs::default()
+        },
+        "Search lemma",
+        "lemma",
+    ));
     let mut study = b.item(
         "tab.open_lexicon",
         CommandArgs {
@@ -1253,6 +1265,26 @@ mod tests {
     ];
 
     #[test]
+    fn the_cross_references_row_follows_the_installed_layer() {
+        let mut shell = shell();
+        let row = |shell: &Shell| {
+            let menu = shell
+                .context_menu(&target(TARGETS[0]), &CommandContext::default())
+                .unwrap();
+            find(&menu, "Cross references").clone()
+        };
+        assert_eq!(
+            row(&shell).disabled_text.as_deref(),
+            Some("Needs cross-reference data")
+        );
+        shell.set_data_layers([crate::commands::CROSS_REFERENCES_LAYER.to_owned()].into());
+        let enabled = row(&shell);
+        assert_eq!(enabled.disabled_text, None);
+        assert_eq!(enabled.command_id, "nav.cross_references");
+        assert_eq!(enabled.args.reference.as_deref(), Some("John.3.16"));
+    }
+
+    #[test]
     fn every_row_is_a_registered_command_with_a_known_icon_and_words() {
         let shell = shell();
         let mut kinds = Vec::new();
@@ -1287,6 +1319,42 @@ mod tests {
         let last = ids.iter().position(|id| *id == "note.remove_link").unwrap();
         assert_eq!(&ids[last + 1..], ["tab.move"]);
         assert_eq!(ids[first - 1], "tab.open_lexicon");
+    }
+
+    #[test]
+    fn search_lemma_is_enabled_on_the_words_of_an_edition_with_a_morphology_layer() {
+        let mut shell = shell();
+        let context = CommandContext::default();
+        let lemma = |shell: &Shell, json: &str| {
+            let menu = shell.context_menu(&target(json), &context).unwrap();
+            let row = find(&menu, "Search lemma").clone();
+            (row.disabled_text, row.args.resource_id, row.args.reference)
+        };
+        // Nothing installed: the reason hosts already show.
+        assert_eq!(
+            lemma(&shell, TARGETS[1]).0.as_deref(),
+            Some("Needs the lexicon import")
+        );
+        shell.set_morphology_editions(["sblgnt".to_owned(), "wlc".to_owned()].into());
+        let (disabled, resource, reference) = lemma(&shell, TARGETS[1]);
+        assert_eq!(disabled, None);
+        assert_eq!(resource.as_deref(), Some("sblgnt"));
+        assert_eq!(reference.as_deref(), Some("John.3.16"));
+        // A translation's word says what it would need.
+        assert_eq!(
+            lemma(&shell, TARGETS[0]).0.as_deref(),
+            Some("Needs a morphology layer for BSB")
+        );
+        let invocation = Invocation::with(
+            "search.lemma",
+            CommandArgs {
+                text: Some("ἠγάπησεν".to_owned()),
+                resource_id: Some("sblgnt".to_owned()),
+                ..CommandArgs::default()
+            },
+        );
+        let outcome = shell.apply(&invocation, &context).unwrap();
+        assert!(!outcome.handled, "the host runs the search");
     }
 
     #[test]
