@@ -447,6 +447,11 @@ pub struct Session {
     /// them ([`crate::reading`]). Runtime state, not persisted.
     #[serde(skip)]
     pub resource_schemes: BTreeMap<String, String>,
+    /// Data layers the host has installed beside its editions (B057: `cross_references`,
+    /// [`crate::commands::CROSS_REFERENCES_LAYER`]); a command that needs one is disabled with
+    /// its reason until the host registers it. Runtime state, not persisted.
+    #[serde(skip)]
+    pub data_layers: std::collections::BTreeSet<String>,
     /// Editions with a morphology layer installed (B026: `sblgnt`, `wlc`), registered by the
     /// host or by the binding that attached the layers; `search.lemma` is enabled on their
     /// words only. Runtime state, not persisted.
@@ -1017,6 +1022,7 @@ impl Session {
             resource_languages: BTreeMap::new(),
             morphology_editions: std::collections::BTreeSet::new(),
             resource_schemes: BTreeMap::new(),
+            data_layers: std::collections::BTreeSet::new(),
         }
     }
 
@@ -1139,6 +1145,7 @@ impl Session {
             resource_languages: BTreeMap::new(),
             morphology_editions: std::collections::BTreeSet::new(),
             resource_schemes: BTreeMap::new(),
+            data_layers: std::collections::BTreeSet::new(),
         };
         session.check()?;
         Ok(session)

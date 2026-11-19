@@ -81,6 +81,36 @@ Where the contract above is silent, B068 fixed these points in code (`crates/cor
 - **Display status.** A cited target is `in your library` when it maps (not absent) in an installed edition whose text the user may read; otherwise it is `cited, not in your library` with the reason (`not_installed`, `restricted`, `unresolved`, `unknown_work`), the locator, the citing locator and the citing context the pack carries in `edge.context`. The packager's report (`schemas/resolution-report.schema.json`) counts resolved, unresolved-known-work and unparsed per scheme (unparsed under the extractor's scheme hint, else `unknown`) and applies a minimum resolved rate per scheme.
 - **Crate placement.** The link index and catalog stay in `crates/retrieval-sqlite` rather than `crates/package`: they are SQLite artifacts behind the `RelationStore` trait, and `crates/package` carries no engine dependency. Moving them is a file move once the package crate gains the archive and signature code; the device layout (one mutable database beside the user database) is as this spec says.
 
+### Coded edge storage (B057)
+
+A pack may store its edges in a coded layout instead of the default `edge` table. It does so when
+its edges are many and alike, as the 344,799 OpenBible cross references are (68.8 MB as the
+default table, 17.2 MB coded; docs/evidence/B057.md). The pack's `manifest` table then holds
+`edge_storage = coded-1`. Absent, the key means the default `edge` table with its `edge_src` and
+`edge_dst` indexes. `PACK_SCHEMA_VERSION` stays `b068-1`.
+
+- `edge_term(kind, id, value)`: one dictionary per column kind (`work`, `rel`, `method`,
+  `provenance`, `review`), ids from 0 in first-seen order.
+- `edge_row(id INTEGER PRIMARY KEY, …)`: the `edge` columns with those ids in place of the text.
+  A locator that is a plain decimal number is stored as an integer, anything else as text. `id`
+  is the writer's choice and survives `VACUUM`; the cross-reference pack uses the published line.
+- `edge_posting(side, work, locator, rel, rowids)`: roaring bitmaps of `edge_row` ids per source
+  (`side` 0) and per destination (`side` 1), in place of the two B-tree indexes.
+- `edge`: a view with exactly the default table's columns, value types and text, so a reader
+  that only selects from `edge` (the link index) reads a coded pack unchanged. Tests check this
+  against the default layout, including the link index's rows.
+
+**A reader refuses an `edge_storage` value it does not know; it never reads it as the default
+table.** The link index, the catalog, the engine, edition search and the cross-reference reader
+check the key against `SUPPORTED_EDGE_STORAGE` (`pack::check_edge_storage`) when they open or attach
+a pack, and fail with `pack edge storage <value> is not one this engine reads (coded-1)`. The
+cross-reference reader also refuses a pack in the default layout, because it reads the postings.
+A new layout gets a new value. A pack may use `coded-1` when it holds only edges, or when its
+edges dominate its size; text, token and vector tables are unaffected either way. Tests
+`every_reader_refuses_an_edge_storage_it_does_not_read` and
+`a_pack_with_an_edge_storage_this_engine_does_not_read_is_refused` use `coded-2`. The JSON package manifest (`schemas/package-manifest.schema.json`) describes
+distribution artifacts, not the SQLite manifest table, so it has no field for this key.
+
 ## Graph engines: offline options re-evaluated
 
 Revision 5's first draft said graph databases cannot run offline. That is wrong as a general claim. A 2026-10-27 re-check found several in-process graph engines. None yet covers every client target with one engine, so the default stays the SQLite edge table plus the link index, and a graph engine is an escalation gated on benchmark R9.

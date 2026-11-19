@@ -107,6 +107,12 @@ impl Engine {
                 "pack schema {version} is not the supported {PACK_SCHEMA_VERSION}"
             )));
         }
+        if let Err(detail) = crate::pack::check_edge_storage(&self.conn, &schema) {
+            let _ = self
+                .conn
+                .execute_batch(&format!("DETACH DATABASE \"{schema}\""));
+            return Err(RetrievalError::Storage(detail));
+        }
         let mode = manifest("normalization_mode")?;
         if mode != NORMALIZATION_MODE {
             let _ = self
