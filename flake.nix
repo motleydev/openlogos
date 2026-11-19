@@ -81,6 +81,8 @@
           ./examples
           # Committed pack fixtures that crate tests compare against (B071 search_fixture).
           ./fixtures
+          # Rights records the preview-pack tests compare against (B026 restricted columns).
+          ./rights
         ];
       };
 

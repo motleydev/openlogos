@@ -36,7 +36,9 @@ import { seedSession, benchSession } from "./seed.js";
 import { bindingsFrom, match } from "./keys.js";
 import { humanPassage, shortcutGlyphs, linkWord } from "./format.js";
 import { openContextMenu, closeContextMenu, isOpen as contextMenuOpen, openMenuElement } from "./context-menu.js";
-import { ReadingStream, PLACEHOLDER_REASON, chapterOfSegment } from "./reading.js";
+import { ReadingStream, PLACEHOLDER_NOTICE, PLACEHOLDER_REASON, chapterOfSegment } from "./reading.js";
+import { Chunks, installPacks, packBase } from "./pack.js";
+import { TextSearch, wantsText } from "./search.js";
 import { UserStore, refusedNotice, issuesNotice, WRITE_FAILED_NOTICE } from "./store.js";
 import { renderNote, noteFromEditor } from "./note-form.js";
 
@@ -146,6 +148,9 @@ const host = {
   // and the tabs whose next build flashes the typed verses.
   reading: null, editions: new Set(), known: new Map(), navSerial: new Map(), flash: new Set(),
   frames: null,
+  // B071: the preview pack's chunks, the search worker, how stored highlights on another
+  // revision fared.
+  chunks: null, search: null, reanchors: {},
 };
 
 // MARK: - Commands
@@ -242,6 +247,7 @@ window.addEventListener("pagehide", saveOnHide);
 function perform({ command_id: id, args }) {
   switch (id) {
     case "palette.focus": focusPalette(); break;
+    case "view.about_edition": openAbout(); break;
     case "view.focus_mode": host.focusMode = !host.focusMode; break;
     case "view.tool_palette":
       // Collapse to the grip where it is, so the grip stays under the pointer.
@@ -605,6 +611,14 @@ function buildStream(view) {
     location = tab.reference ? host.reading.locate(tab.content_id, tab.reference) : null;
   } catch (e) {
     error = e;
+    // B071: a follower's verse past the edition's last (SBLGNT Rom 16:25): nobody typed it, so
+    // it opens at the last verse at or below it, as a live follow does. A typed verse is the
+    // tab's mark too, and gets specs/21's state.
+    const chapter = chapterOfSegment(tab.reference);
+    if (e.kind === "verse_out_of_range" && tab.highlight_range !== tab.reference && chapter) {
+      location = { chapter_key: chapter, segment_id: tab.reference.split("-")[0] };
+      error = null;
+    }
   }
   host.known.set(view.key, { reference: tab.reference, highlight: tab.highlight_range || null });
   if (!location) {
@@ -632,10 +646,11 @@ function buildStream(view) {
   view.text = text;
   view.canvas = canvas;
   view.stream = new ReadingStream({
-    core, reading: host.reading, resource, scroller, text, header,
+    core, reading: host.reading, chunks: host.chunks, resource, scroller, text, header,
     onTop: (anchor) => reportTop(view, anchor),
     onBlocks: () => { attributeBlocks(view); paintHighlights(); placeBand(view, true); },
     onFrame: (ms) => { placeBand(view); if (host.frames) host.frames.push(ms); },
+    onSettled: () => { if (host.streamSettled) host.streamSettled(); },
   });
   // A scrolled tab comes back to its anchor; a navigation puts the passage on the reading line
   // and flashes its typed verses.
@@ -1039,9 +1054,11 @@ function blockHighlights(view, b) {
   }
   for (const h of marks) {
     const name = highlightName(h.color);
-    for (const span of h.spans) {
-      const node = b.textNodes.get(span.segment_id);
+    for (const stored of h.spans) {
+      const node = b.textNodes.get(stored.segment_id);
       if (!node) continue;
+      const span = h.content_revision === b.data.content_revision ? stored : reanchored(h, stored, b);
+      if (!span) continue;
       const r = document.createRange();
       r.setStart(node, Math.min(node.length, utf16At(node.data, span.start)));
       r.setEnd(node, Math.min(node.length, utf16At(node.data, span.end)));
@@ -1049,6 +1066,23 @@ function blockHighlights(view, b) {
     }
   }
   return b.hlRanges;
+}
+
+/** B071: a highlight stored on another revision of the text (the fixture overlays' `bsb-2024`
+ *  under the pack's), found again by the core's `reanchor`, which never attaches to a different
+ *  passage. Painted where it lands, and the stored highlight is left as it was. What the core
+ *  cannot place, or a revision whose text this host no longer has, is not painted and is kept. */
+function reanchored(highlight, span, block) {
+  const verse = block.data.verses.find((v) => v.segment_id === span.segment_id);
+  const old = host.text.fixtureRevision(highlight.resource_id, highlight.content_revision, span.segment_id);
+  let result = null;
+  if (verse && old) {
+    const anchor = { edition_id: highlight.resource_id, content_revision: highlight.content_revision, segment_id: span.segment_id, range: { start: span.start, end: span.end }, tokens: [], quote: null };
+    const now = { content_revision: block.data.content_revision, text: verse.text, tokens: verse.tokens.map((t) => ({ id: core.parseTokenId(t.id), range: { start: t.start, end: t.end } })) };
+    try { result = core.reanchor(anchor, old, now); } catch (error) { console.warn("reanchor failed", error); }
+  }
+  host.reanchors[result ? result.status : "unknown_revision"] = (host.reanchors[result ? result.status : "unknown_revision"] || 0) + 1;
+  return result && (result.status === "exact" || result.status === "moved") ? result.value.range : null;
 }
 
 /** The highlights of every rendered block, set again only when the blocks on screen or the
@@ -1894,10 +1928,60 @@ function openSwatchMenu(button) {
   });
 }
 
+/** B071: `view.about_edition`: the edition's name, revision and the attribution its licence
+ *  asks a reader to be shown (`Edition.attribution`), under the active column's … button. */
+function openAbout() {
+  const tab = activeTab();
+  const view = host.views.get(`${activeWorkspace().id}/${activeColumn().id}`);
+  if (!view) return;
+  closeMenu(false);
+  openMenu(view.section.querySelector(".pane-menu"), (panel) => {
+    panel.classList.add("about");
+    panel.setAttribute("aria-label", "About this edition");
+    fillAbout(panel, tab.content_id);
+  }, "dialog");
+}
+
+function fillAbout(panel, contentId) {
+  const resource = host.text.resource(contentId);
+  const edition = host.text.edition(contentId);
+  const title = document.createElement("h2");
+  title.textContent = resource.name;
+  panel.appendChild(title);
+  if (!edition) {
+    const p = document.createElement("p");
+    p.textContent = PLACEHOLDER_NOTICE;
+    panel.appendChild(p);
+    return;
+  }
+  const revision = document.createElement("p");
+  revision.className = "revision";
+  revision.textContent = edition.content_revision;
+  panel.appendChild(revision);
+  const p = document.createElement("p");
+  p.className = "credit";
+  // The attribution as the pack has it; its addresses can be followed.
+  for (const part of (edition.attribution || "").split(/(https?:\/\/[^\s,;)]*[^\s,;.)])/)) {
+    if (/^https?:\/\//.test(part)) {
+      const a = document.createElement("a");
+      a.href = part;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = part;
+      p.appendChild(a);
+    } else {
+      p.appendChild(document.createTextNode(part));
+    }
+  }
+  panel.appendChild(p);
+}
+
 function openPaneMenu(button) {
   openMenu(button, (menu) => {
     const states = commandStates();
     const ws = activeWorkspace();
+    commandItem(menu, "About this edition", { command_id: "view.about_edition" }, states, { noKey: true });
+    menu.appendChild(document.createElement("hr"));
     commandItem(menu, "Link to group 1", { command_id: "tab.link", args: { group: "1" } }, states);
     commandItem(menu, "Pin tab", { command_id: "tab.pin" }, states);
     commandItem(menu, "Follow active passage", { command_id: "tab.follow" }, states);
@@ -2320,6 +2404,12 @@ function closePalette(restore) {
   host.palette.rows = [];
   host.palette.index = -1;
   host.palette.scope = null;
+  // B071: an answer still on its way is for a palette that has closed.
+  host.palette.textGroup = null;
+  host.palette.textWanted = false;
+  host.palette.textPending = false;
+  if (host.palette.enterWaiting) { clearTimeout(host.palette.enterWaiting.timer); host.palette.enterWaiting = null; }
+  if (host.search) host.search.seq += 1;
   renderScopeChip();
   if (restore) {
     const back = host.palette.returnTo;
@@ -2335,27 +2425,93 @@ function closePalette(restore) {
 /** Every keystroke asks the core; nothing is debounced (specs/22 §7: one frame). */
 export function queryPalette() {
   const text = field.value;
+  if (host.palette.enterWaiting) { clearTimeout(host.palette.enterWaiting.timer); host.palette.enterWaiting = null; }
   // A scoped search (B077) asks for every text row and keeps those of the scope's editions.
   const expanded = host.palette.expanded || (host.palette.scope ? "text" : null);
   const result = host.handle.paletteQuery(text, { platform: "web", ...context(), expanded });
-  const keep = scopeResources();
-  if (keep) {
-    const shorts = [...keep].map((id) => `${host.text.resource(id).short} · `);
-    for (const group of result.groups) {
-      if (group.section !== "text") continue;
-      group.items = group.items.filter((item) => shorts.some((p) => item.title.startsWith(p)));
-      group.total = group.items.length;
+  host.palette.textPending = false;
+  if (host.search) {
+    // B071: passages, commands and tabs now, the Text section when the worker answers. The rows
+    // of the last answer stay meanwhile, so the list does not jump on every keystroke.
+    const wanted = wantsText(result.query);
+    host.palette.textWanted = wanted;
+    if (!wanted) host.palette.textGroup = null;
+    if (wanted && host.search.state === "ready") {
+      host.palette.textPending = true;
+      host.palette.textAsked = performance.now();
+      host.search.ask(text, expanded);
     }
+    if (host.palette.textGroup) result.groups.push(host.palette.textGroup);
   }
+  scopeText(result);
   host.palette.result = result;
   renderScopeChip();
   renderPalette(result);
   return result;
 }
 
+/** A scoped search keeps the rows of its editions. */
+function scopeText(result) {
+  const keep = scopeResources();
+  if (!keep) return;
+  const shorts = [...keep].map((id) => `${host.text.resource(id).short} · `);
+  for (const group of result.groups) {
+    if (group.section !== "text") continue;
+    const items = group.items.filter((item) => shorts.some((p) => item.title.startsWith(p)));
+    const scoped = { ...group, items, total: items.length };
+    result.groups[result.groups.indexOf(group)] = scoped;
+  }
+}
+
+/** B071: the worker's Text section for the field's current text goes into the result on screen.
+ *  A row chosen above the section stays chosen. */
+function textAnswered(group) {
+  host.palette.textPending = false;
+  if (results.hidden || !host.palette.result) return;
+  // The worker's session is not the shell's: whether a row can run (`@9`) is decided here.
+  if (group) {
+    const ctx = context();
+    for (const item of group.items) {
+      const why = host.handle.disabledText(item.invocation, ctx);
+      item.disabled = why ? { kind: "unavailable" } : null;
+      item.disabled_text = why;
+    }
+  }
+  host.palette.textGroup = group;
+  const result = host.palette.result;
+  result.groups = result.groups.filter((g) => g.section !== "text");
+  if (group) result.groups.push(group);
+  scopeText(result);
+  const row = host.palette.rows[host.palette.index];
+  const keep = row && row.section !== "text" ? host.palette.index : null;
+  const top = results.scrollTop;
+  renderPalette(result, keep);
+  results.scrollTop = top;
+  if (host.textLatency) host.textLatency(group);
+  runWaitingEnter();
+}
+
+/** B071: Enter pressed while the current answer was on its way, now that it is here. */
+function runWaitingEnter() {
+  const waiting = host.palette.enterWaiting;
+  if (!waiting) return;
+  host.palette.enterWaiting = null;
+  clearTimeout(waiting.timer);
+  activate(host.palette.index, waiting.options);
+}
+
+/** B071: the search's state changed; if the palette is waiting on it, it asks or says so. */
+function textStateChanged() {
+  if (results.hidden || !host.palette.textWanted) return;
+  if (host.search.state === "ready") { queryPalette(); return; }
+  const hint = results.querySelector(".text-status");
+  if (hint) hint.textContent = host.search.statusLine();
+  else renderPalette(host.palette.result, host.palette.index);
+}
+
 const SECTION_TITLES = { passage: "Passage", commands: "Commands", tabs: "Tabs and workspaces", text: "Text" };
 
-function renderPalette(result) {
+function renderPalette(result, keepIndex = null) {
   const rows = [];
   const parts = [];
   for (const group of result.groups) {
@@ -2366,7 +2522,7 @@ function renderPalette(result) {
       rows.push({ kind: "item", item, section: group.section });
       const title = item.title;
       const sub = item.disabled ? item.disabled_text : item.subtitle || "";
-      parts.push(`<div class="row${item.disabled ? " disabled" : ""}" role="option" id="pr-${i}" data-i="${i}" aria-selected="false"${item.disabled ? ' aria-disabled="true"' : ""}><span class="title">${escapeHtml(title)}</span>${item.shortcut ? `<span class="key">${escapeHtml(shortcutGlyphs(item.shortcut))}</span>` : ""}${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ""}</div>`);
+      parts.push(`<div class="row${item.disabled ? " disabled" : ""}" role="option" id="pr-${i}" data-i="${i}" aria-selected="false"${item.disabled ? ' aria-disabled="true"' : ""}><span class="title">${escapeHtml(title)}</span>${item.shortcut ? `<span class="key">${escapeHtml(shortcutGlyphs(item.shortcut))}</span>` : ""}${sub ? `<span class="sub" dir="auto">${escapeHtml(sub)}</span>` : ""}</div>`);
     }
     if (group.total > group.items.length) {
       const i = rows.length;
@@ -2375,7 +2531,10 @@ function renderPalette(result) {
     }
   }
   if (result.notice) parts.push(`<div class="hint">${escapeHtml(result.notice)}</div>`);
-  if (rows.length === 0) {
+  // B071: a search not ready is said to be, and an answer on its way is not "nothing".
+  const status = host.search && host.palette.textWanted ? host.search.statusLine() : null;
+  if (status) parts.push(`<h3 id="ph-text">${SECTION_TITLES.text}</h3><div class="hint text-status">${escapeHtml(status)}</div>`);
+  if (rows.length === 0 && !status && !host.palette.textPending) {
     parts.push(field.value.trim()
       ? `<div class="hint">Nothing matches “${escapeHtml(field.value.trim())}”.</div>`
       : `<div class="hint">Type a passage (<kbd>Jn 3:16</kbd>), a word, a command or a tab. <kbd>&gt;</kbd> commands · <kbd>@</kbd> tabs and workspaces · <kbd>#</kbd> text · <kbd>:</kbd> passage · <kbd>@2</kbd> at the end opens in column 2.</div>`);
@@ -2385,7 +2544,7 @@ function renderPalette(result) {
   results.hidden = false;
   field.setAttribute("aria-expanded", "true");
   const firstEnabled = rows.findIndex((r) => r.kind === "item" && !r.item.disabled);
-  select(firstEnabled >= 0 ? firstEnabled : rows.length ? 0 : -1);
+  select(keepIndex != null && keepIndex < rows.length ? keepIndex : firstEnabled >= 0 ? firstEnabled : rows.length ? 0 : -1);
 }
 
 function select(i) {
@@ -2444,6 +2603,13 @@ field.addEventListener("keydown", (e) => {
     select((host.palette.index + d + rows.length) % rows.length);
   } else if (e.key === "Enter") {
     e.preventDefault();
+    // B071: Enter runs on the current keystroke's answer, as on the Mac. A worker that never
+    // answers does not swallow the key.
+    if (host.palette.textPending) {
+      e.preventDefault();
+      if (!host.palette.enterWaiting) host.palette.enterWaiting = { options: { expandSection: e.altKey }, timer: setTimeout(runWaitingEnter, 1000) };
+      return;
+    }
     activate(host.palette.index, { expandSection: e.altKey });
   } else if (e.key === "Tab" && !e.shiftKey && rows[host.palette.index]) {
     const row = rows[host.palette.index];
@@ -2589,6 +2755,92 @@ async function scrollRun(view, frames, dy) {
   host.frames = null;
   host.followTimes = null;
   return rows;
+}
+
+/** B071: until the shown streams have their text, then painted: the frame after it and the
+ *  task after that frame. */
+async function textPainted() {
+  const busy = () => [...host.views.values()].some((v) => v.section.isConnected && v.stream && v.stream.waiting);
+  while (busy()) await new Promise((ok) => { host.streamSettled = ok; setTimeout(ok, 50); });
+  host.streamSettled = null;
+  await nextFrame();
+  await new Promise((ok) => { const c = new MessageChannel(); c.port1.onmessage = () => ok(); c.port2.postMessage(0); });
+  return performance.now();
+}
+
+/** B071: the end-to-end rows of specs/22 §7 over the real pack, each with a repaint. `queries`
+ *  (bench-queries.json) are replayed keystroke by keystroke, a sample ending when that
+ *  keystroke's text results have been painted. */
+export async function benchPack({ samples = 200, queries = [] } = {}) {
+  const out = [];
+  const row = (name, values, extra = {}) => out.push({ name, ...stats(values), ...extra });
+  while (host.search.state !== "ready") await new Promise((ok) => setTimeout(ok, 20));
+  // Keystroke → painted text results.
+  const strokes = queries.flatMap((q) => [...q].slice(1).map((_, i) => [...q].slice(0, i + 2).join("")));
+  const field = $("palette-field");
+  focusPalette("");
+  const painted = [], handler = [], answered = [], missed = [];
+  let longTasks = 0;
+  const observer = new PerformanceObserver((list) => { longTasks += list.getEntries().length; });
+  observer.observe({ entryTypes: ["longtask"] });
+  for (let i = 0; i < Math.max(samples, strokes.length); i++) {
+    await new Promise((ok) => setTimeout(ok, Math.random() * 16));
+    const t0 = performance.now();
+    const answer = new Promise((ok) => { host.textLatency = () => ok(true); setTimeout(() => ok(false), 3000); });
+    field.value = strokes[i % strokes.length];
+    field.dispatchEvent(new Event("input"));
+    handler.push(performance.now() - t0);
+    host.benchProgress = { row: "keys", i, stroke: i % strokes.length, of: strokes.length };
+    if (!(await answer)) { missed.push(strokes[i % strokes.length]); continue; }
+    answered.push(performance.now() - t0);
+    painted.push((await textPainted()) - t0);
+  }
+  observer.disconnect();
+  host.textLatency = null;
+  row("keystroke → text results painted (script-driven; budget 50)", painted, { long_tasks_over_50ms: longTasks, unanswered: missed.length });
+  row("  of which the page's own handler per keystroke (main thread)", handler);
+  row("  of which keystroke → worker's answer rendered", answered);
+  closePalette(false);
+  field.value = "";
+  // Open a chapter.
+  run({ command_id: "column.focus", args: { column: 1 } });
+  const openOnce = async (reference) => {
+    const t0 = performance.now();
+    run({ command_id: "nav.navigate", args: { reference } });
+    return (await textPainted()) - t0;
+  };
+  const warmRefs = ["John.3", "Gen.1", "John.3.16", "Gen.1.2", "Ps.119.105", "Rev.22.21", "Matt.5.3", "Isa.53.5", "Acts.1.8", "Ps.23", "Rom.8.28", "Jude.1.3"];
+  for (const r of warmRefs) await openOnce(r);
+  await new Promise((ok) => setTimeout(ok, 200)); // what was fetched ahead
+  const warm = [];
+  host.benchProgress = { row: "warm" };
+  for (let i = 0; i < samples; i++) warm.push(await openOnce(warmRefs[i % warmRefs.length]));
+  row("open a chapter, warm: chunks already in the core, across the canon (budget 100)", warm);
+  // A chapter not yet visited: its chunks come from the server (localhost here).
+  const chapters = [];
+  const books = host.reading.editions().length && JSON.parse(await (await fetch(`${packBase(params)}packs/bsb/manifest.json`)).text()).books;
+  for (const b of books) for (const c of b.chapters) if (!host.chunks.supplied.has(`bsb|${b.book}.${c.chapter}`)) chapters.push(`${b.book}.${c.chapter}`);
+  const first = [];
+  host.benchProgress = { row: "first" };
+  for (let i = 0; i < samples && i * 4 < chapters.length; i++) first.push(await openOnce(chapters[i * 4]));
+  row("open a chapter on first visit: chunk fetched from localhost (budget 100 is for warm)", first);
+  // Workspace switch.
+  const switches = [];
+  host.benchProgress = { row: "switch" };
+  for (let i = 0; i < samples; i++) {
+    const t0 = performance.now();
+    run({ command_id: "workspace.next" });
+    switches.push((await textPainted()) - t0);
+  }
+  row(`workspace switch to first painted text, ${host.session.workspaces.length} workspaces (budget 100)`, switches);
+  // Scrolling through chapters that have to be fetched.
+  run({ command_id: "column.focus", args: { column: 1 } });
+  run({ command_id: "nav.navigate", args: { reference: "Isa.1.1" } });
+  await textPainted();
+  const view = activeView();
+  host.benchProgress = { row: "scroll" };
+  const scroll = view && view.stream ? await scrollRun(view, Math.max(samples * 3, 600), 90) : [];
+  return { user_agent: navigator.userAgent, viewport: [innerWidth, innerHeight], rows: out, scroll, chunks: { ...host.chunks.stats }, search: { timing: host.search.timing, bytes: host.search.bytes } };
 }
 
 export async function bench({ samples = 200 } = {}) {
@@ -2840,6 +3092,7 @@ export function snapshot() {
     find: host.find ? { count: host.find.ranges.length, index: host.find.index, where: host.find.where, current: host.find.ranges[host.find.index].toString() } : null,
     scope: host.palette.scope ? { ...host.palette.scope, chip: $("scope-chip").firstChild.textContent } : null,
     paletteValue: field.value,
+    pack: { editions: [...host.editions].filter((id) => host.text.edition(id)), chunks: { ...host.chunks.stats }, search: host.search && { state: host.search.state, status: host.search.statusLine(), timing: host.search.timing, bytes: host.search.bytes }, reanchors: { ...host.reanchors } },
     // B078: each column's reading stream as rendered.
     reading: ws.columns.map((c) => {
       const view = host.views.get(`${ws.id}/${c.id}`);
@@ -2912,9 +3165,34 @@ async function restoreStore() {
   changed();
 }
 
+/** B071: the chunks the active workspace's shown tabs open on, so the first paint has text. */
+async function preloadShown() {
+  const wanted = [];
+  for (const column of activeWorkspace().columns) {
+    const tab = shownTab(column);
+    if (!isStream(tab) || !tab.reference) continue;
+    let key = null, around = null;
+    try {
+      const anchor = tab.scroll_anchor && chapterOfSegment(tab.scroll_anchor.segment_id);
+      key = anchor || host.reading.locate(tab.content_id, tab.reference).chapter_key;
+      around = host.reading.chapterNeighbors(tab.content_id, key);
+    } catch { continue; }
+    for (const k of [key, around.prev, around.next]) if (k) wanted.push(host.chunks.request(tab.content_id, k));
+  }
+  await Promise.allSettled(wanted);
+}
+
 async function main() {
-  await init();
+  host.wasmMemory = (await init()).memory;
   host.text = fixtureTextSource(core);
+  // B071: the preview pack's manifests, over the placeholder editions of the same ids. Where a
+  // pack is not found the placeholder stays, and says so on every block.
+  host.reading = core.ReadingHandle.placeholder();
+  const base = packBase(params);
+  const packs = await installPacks(host.reading, base);
+  for (const r of packs.refused) console.warn(`pack ${r.id} refused: ${r.reason}`);
+  host.text.useEditions(packs.installed);
+  host.chunks = new Chunks(host.reading, base, packs.installed.map((e) => e.resource_id));
   host.registry = core.shellRegistry();
   host.specs = new Map(host.registry.map((s) => [s.id, s]));
   host.bindings = bindingsFrom(host.registry);
@@ -2924,28 +3202,39 @@ async function main() {
   const session = params.get("session") === "bench" ? benchSession() : seedSession();
   if (TOKENS.themes.includes(theme)) session.reading.theme = theme;
   host.handle = new core.ShellHandle(session);
-  host.handle.useFixtureText();
+  // B071: with packs the Text section comes from the search worker; without, from the fixtures.
+  if (!packs.installed.length) host.handle.useFixtureText();
   host.handle.setResourceTitles(host.text.titles());
   host.handle.setResourceLanguages(host.text.languages());
-  // B078: reading tabs take their text from the reading handle (placeholder editions until
-  // B071's packs; then `addPackManifest` and fetched chunks, same resource ids), and linked
+  // B078: reading tabs take their text from the reading handle (installed above), and linked
   // tabs follow through each edition's versification.
-  host.reading = core.ReadingHandle.placeholder();
   host.editions = new Set(host.reading.editions().map((e) => e.resource_id));
   host.handle.setResourceSchemes(host.reading.schemes());
   // B074 (specs/24 §5): the saved store over the seed session, then the active workspace drawn.
   await restoreStore();
   sync();
+  await preloadShown();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (host.session.reading.theme === "system") render(); });
   buildWell();
   render();
+  // B071: from the navigation to the restored workspace's text painted (specs/22 §7).
+  host.launch = { rendered_ms: performance.now() };
+  textPainted().then((t) => { host.launch.painted_ms = t; host.launch.resources = performance.getEntriesByType("resource").map((e) => ({ name: e.name.split("/").slice(-2).join("/"), ms: +e.duration.toFixed(1), bytes: e.decodedBodySize })); });
   if (host.restore && host.restore.t0 != null) {
     const r = host.restore;
     r.rendered_ms = performance.now() - r.t0;
     requestAnimationFrame(() => { r.first_paint_ms = performance.now() - r.t0; });
   }
+  // B071: the search packs arrive after the text is on screen, in their worker.
+  if (packs.installed.length) {
+    host.search = new TextSearch({
+      base, editions: packs.installed.map((e) => e.resource_id), titles: host.text.titles(),
+      onChange: textStateChanged, onResult: (_, group) => textAnswered(group),
+    });
+    if (params.get("search") !== "manual") setTimeout(() => host.search.start(), 0);
+  }
   $("scope-chip").lastChild.addEventListener("click", () => { host.palette.scope = null; field.focus(); queryPalette(); });
-  window.openlogosShell = { core, host, run, saveNow, storeBench, buildAcceptance, render, selectionChanged, snapshot, bench, keyReport, menuReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab, showContextMenu, closeContextMenu };
+  window.openlogosShell = { core, host, benchPack, run, saveNow, storeBench, buildAcceptance, render, selectionChanged, snapshot, bench, keyReport, menuReport, queryPalette, focusPalette, closePalette, tokens: TOKENS, activeWorkspace, activeTab, showContextMenu, closeContextMenu };
   window.openlogosReady = true;
 }
 

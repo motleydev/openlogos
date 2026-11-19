@@ -56,6 +56,19 @@ enum StoreLaunch {
         return false
     }
 
+    /// From the process's start (the kernel's clock) to the first frame with the restored text.
+    private static func processToFrame(_ started: CFTimeInterval?, _ frameMs: Double?) -> Double {
+        guard let started, let frameMs else { return -1 }
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var name: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&name, 4, &info, &size, nil, 0) == 0 else { return -1 }
+        let start = info.kp_proc.p_starttime
+        let began = Double(start.tv_sec) + Double(start.tv_usec) / 1_000_000
+        let frameEpoch = Date().timeIntervalSince1970 - (CACurrentMediaTime() - started - frameMs / 1000)
+        return (frameEpoch - began) * 1000
+    }
+
     /// After the columns have laid out: the demo, the drag and the measurement.
     static func late(_ model: ShellModel) async {
         if defaults.bool(forKey: "OPENLOGOS_STORE_DEMO") {
@@ -73,19 +86,6 @@ enum StoreLaunch {
             ShellMeasure.write(report, to: path)
             NSApp.terminate(nil)
         }
-    }
-
-    /// From the process's start (the kernel's clock) to the first frame with the restored text.
-    private static func processToFrame(_ started: CFTimeInterval?, _ frameMs: Double?) -> Double {
-        guard let started, let frameMs else { return -1 }
-        var info = kinfo_proc()
-        var size = MemoryLayout<kinfo_proc>.stride
-        var name: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
-        guard sysctl(&name, 4, &info, &size, nil, 0) == 0 else { return -1 }
-        let start = info.kp_proc.p_starttime
-        let began = Double(start.tv_sec) + Double(start.tv_usec) / 1_000_000
-        let frameEpoch = Date().timeIntervalSince1970 - (CACurrentMediaTime() - started - frameMs / 1000)
-        return (frameEpoch - began) * 1000
     }
 
     private static func append(_ data: Data, to path: String) {
