@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:open-bible-blueprint:backlog-status",
+  "description": "Where each backlog task stands. A task that is not listed has not been started. specs/backlog.json stays the inert task definition; this record changes as work merges.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "kind": {
+      "const": "backlog_status"
+    },
+    "as_of": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^B[0-9]{3}$"
+          },
+          "status": {
+            "enum": [
+              "merged",
+              "partly_merged",
+              "in_review"
+            ],
+            "description": "merged: the task's work is on main and its evidence says what was and was not met. partly_merged: some parts are on main, the rest is in review or not started (`open` says which). in_review: the work is on branches that are not yet on main."
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^docs/evidence/[A-Za-z0-9._-]+\\.md$"
+            },
+            "description": "Evidence files on main."
+          },
+          "branches": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Branches holding work that is not on main."
+          },
+          "open": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What is known to be left, in a sentence."
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "evidence"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "as_of",
+    "tasks"
+  ]
+}

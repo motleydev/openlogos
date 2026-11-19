@@ -450,9 +450,25 @@ def check_fixture_sources(fixture, label):
         if re.search(r'\b'+re.escape(term)+r'\b', text):
             raise ValueError(f'{label}: fixture names a translation the rights policy excludes: {term}')
 
+def check_backlog_status(status, tasks):
+    known={t['id'] for t in tasks}
+    ids=[t['id'] for t in status['tasks']]
+    assert len(ids)==len(set(ids)), 'Backlog status lists a task twice'
+    for t in status['tasks']:
+        assert t['id'] in known, 'Backlog status names an unknown task: '+t['id']
+        for p in t['evidence']:
+            safe_path(p)
+            assert (R/p).is_file(), 'Backlog status names missing evidence: '+p
+            assert Path(p).name.startswith(t['id']), 'Evidence of another task: '+p
+        if t['status']=='merged':
+            assert t['evidence'], 'Merged task without evidence: '+t['id']
+            assert not t.get('branches'), 'Merged task still names branches: '+t['id']
+        else:
+            assert t.get('branches') and t.get('open'), 'Unmerged task must name its branches and what is open: '+t['id']
+        if t['status']=='partly_merged': assert t['evidence'], 'Partly merged task without evidence: '+t['id']
 def main():
     pairs = [
-        ('agents','specs/agents.json'), ('backlog','specs/backlog.json'),
+        ('agents','specs/agents.json'), ('backlog','specs/backlog.json'), ('backlog-status','specs/backlog-status.json'),
         ('model-policy','specs/model-policy.json'), ('sources','specs/sources.json'),
         ('sources','examples/archive/sources-1.0.json'),
         ('claim','examples/claim.json'), ('package-manifest','examples/package-manifest.json'),
@@ -505,6 +521,13 @@ def main():
             safe_path(p)
             assert (R/p).is_file(), 'Missing referenced spec: ' + p
     check_dag(tasks)
+    status=load('specs/backlog-status.json'); check_backlog_status(status,tasks)
+    bad_status=copy.deepcopy(status); bad_status['tasks'][0]['id']='B999'
+    expect_rejected(lambda:check_backlog_status(bad_status,tasks),'backlog status for an unknown task')
+    bad_status=copy.deepcopy(status); bad_status['tasks'][0]['evidence']=['docs/evidence/B000-missing.md']
+    expect_rejected(lambda:check_backlog_status(bad_status,tasks),'backlog status with missing evidence')
+    bad_status=copy.deepcopy(status); next(t for t in bad_status['tasks'] if t['status']=='merged')['evidence']=[]
+    expect_rejected(lambda:check_backlog_status(bad_status,tasks),'merged task without evidence')
     shared=load('specs/agents.json')['shared_policy_path']
     safe_path(shared)
     assert (R/shared).is_file()

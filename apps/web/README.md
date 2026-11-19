@@ -1,8 +1,10 @@
 # apps/web
 
 Thin TypeScript interface over semantic DOM text; the Rust core runs as WebAssembly in a worker
-with OPFS persistence (docs/adr/0001-rust-core-native-ui.md). The reader itself does not exist
-yet; what is here is the core's WebAssembly binding and the hosts that prove it (B061).
+with OPFS persistence (docs/adr/0001-rust-core-native-ui.md). What is here: the core's
+WebAssembly binding and its Node test host (`core-host/`, B061), the DOM reader and ink spikes
+(`reader/`, `ink/`, B005 and B039) and the workspace shell of specs/22 (`shell/`, B072 to B078),
+which is plain ES modules with no build step and runs the core on the page, not yet in a worker.
 
 `nix develop .#web` provides Node.js 24 (LTS), `wasm-bindgen-cli`, `wasm-pack`, `binaryen`
 (`wasm-opt`) and Rust with the `wasm32-unknown-unknown` target. Google Chrome is expected on the

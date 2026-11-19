@@ -1,3 +1,18 @@
+# Implementation status — 11 November 2026
+
+The entries below this one are revisions of the blueprint. Since revision 5.1 the repository
+also holds the implementation; `specs/backlog-status.json` is the record of what is merged and
+`docs/evidence/` holds each task's evidence. Merged to `main` so far:
+
+- Foundations: Nix shells and the Rust workspace (B002), the first cleared corpus and rights records (B003), v1 identity, anchors and package interfaces (B006), the vault identity and sync protocol crate (B021), workspace and note-authority contracts (B040), platform roles and layout profiles (B062), the Mac mini build host lanes (B063).
+- Core and bindings: the core API with one conformance suite across Swift, Kotlin and WebAssembly (B061), the embedded retrieval engine on SQLite (B064), work locators, section maps and the device link index (B068).
+- Reading and ink spikes: reading interactions (B004), native and DOM text surfaces against core anchors (B005), ink engines (B039).
+- The workspace shell of specs/22 on the web and the Mac in lockstep: core model, command registry and palette (B070), the shell itself (B072), the contextual tool well (B076), the context menu (B077), continuous reading (B078), and the user store with parallel workspaces and session restore in the core, on the web and on the Mac (B074).
+- The rights steward's approvals of 8 November 2026 (S09, S47, S55, S73, S75); the preview pack and the web About view (B071); the MACULA morphology layers and lemma search (B026).
+- Cross references (B057): OpenBible cross references and coded-1 edge storage, merged 19 November 2026.
+- Alignments (B067): Clear's BSB alignments and the alignment layers, merged 19 November 2026.
+- Calvin's *Institutes* (B016): the first work pack, merged 19 November 2026.
+- Repository audit of 11 November 2026: `just audit` (cargo-deny) and `just ci-hosts`, a `web` job in CI, a Content-Security-Policy on the web shell, the backlog status record, and a README that describes the implementation.
 # B016 — 8 November 2026
 
 - Adds the first work: `just institutes-pack` builds Calvin's *Institutes* in John Allen's translation (rights S75) from the NAS into one work pack outside the repository: front matter, arguments, 80 chapters and 1,277 numbered sections with the B068 locators, 3,506 notes anchored where their markers stood, and 3,704 Scripture citations from the notes, 3,688 resolved, the rest kept with their class (docs/works.md, docs/evidence/B016.md).

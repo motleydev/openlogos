@@ -109,8 +109,22 @@ const js = (script, ...a) => wd("POST", `${S}/execute/sync`, { script, args: a }
 const jsAsync = (script, ...a) => wd("POST", `${S}/execute/async`, { script, args: a });
 const snap = () => js("return window.openlogosShell.snapshot()");
 
+// The shell's ⌘ is metaKey on a Mac and ctrlKey elsewhere (keys.js), so the test's "Meta" must press
+// Control on the other platforms; a Linux runner sending Meta would test nothing.
+let commandKey = null;
+async function commandKeyName() {
+  if (commandKey === null) {
+    const mac = await js("return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)");
+    commandKey = mac ? "Meta" : "Control";
+  }
+  return commandKey;
+}
+
 /** Presses a chord: modifiers down, the key, everything up (trusted events through the driver). */
 async function chord(...keys) {
+  const name = (k) => (k === "Meta" ? commandKey ?? "Meta" : k);
+  await commandKeyName();
+  keys = keys.map(name);
   const down = keys.map((k) => ({ type: "keyDown", value: K[k] || k }));
   const up = [...keys].reverse().map((k) => ({ type: "keyUp", value: K[k] || k }));
   await wd("POST", `${S}/actions`, { actions: [{ type: "key", id: "kb", actions: [...down, ...up] }] });
@@ -673,7 +687,7 @@ const CASES = {
     const r = await js(`const h = window.openlogosShell.host; const n = h.registry.reduce((a, s) => a + s.shortcuts.web.length, 0);
       return { bindings: h.bindings.length, shortcuts: n, commands: h.registry.length, wellKeys: [...document.querySelectorAll('.tool')].map((b) => b.getAttribute('aria-keyshortcuts')) };`);
     expect(p, r.bindings === r.shortcuts, `${r.bindings} bindings for ${r.shortcuts} registry shortcuts`);
-    expect(p, r.commands === 86, `${r.commands} commands`); // B071: view.about_edition
+    expect(p, r.commands === 87, `${r.commands} commands`); // B067: nav.original_word (B071: view.about_edition)
     expect(p, eq(r.wellKeys, ["V", "H", "P", "M", "E", "C"]), `tool keys from the registry ${r.wellKeys}`);
   },
 
@@ -2412,6 +2426,12 @@ try {
       await CASES[name](problems);
     } catch (error) {
       problems.push(`threw: ${String(error).slice(0, 300)}`);
+    }
+    // The page's Content-Security-Policy (index.html) must never have to refuse anything.
+    try {
+      for (const v of await js("return window.openlogosCspViolations || []")) problems.push(`content security policy refused: ${v}`);
+    } catch (error) {
+      problems.push(`could not read the policy violations: ${String(error).slice(0, 200)}`);
     }
     const passed = problems.length === 0;
     if (!passed) failures += 1;

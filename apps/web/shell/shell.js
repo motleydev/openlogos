@@ -1011,9 +1011,13 @@ function highlightName(hex) {
   const name = `ol-c${hex.slice(1).toLowerCase()}`;
   if (!host.colourRules.has(name)) {
     host.colourRules.add(name);
-    let sheet = $("swatch-rules");
-    if (!sheet) { sheet = document.createElement("style"); sheet.id = "swatch-rules"; document.head.appendChild(sheet); }
-    sheet.textContent += `::highlight(${name}) { background-color: color-mix(in srgb, ${hex} 30%, transparent); }\n`;
+    // A constructable sheet, not a <style> element: the page's CSP (style-src 'self') refuses
+    // inserted style elements, and CSSOM rules are not refused.
+    if (!host.swatchSheet) {
+      host.swatchSheet = new CSSStyleSheet();
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, host.swatchSheet];
+    }
+    host.swatchSheet.insertRule(`::highlight(${name}) { background-color: color-mix(in srgb, ${hex} 30%, transparent); }`, host.swatchSheet.cssRules.length);
   }
   return name;
 }
@@ -3238,8 +3242,15 @@ async function main() {
   window.openlogosReady = true;
 }
 
+// Anything the page's Content-Security-Policy refused (index.html). The page keeps working
+// without it, so the cases of test/run-chrome.mjs read this list and fail on an entry.
+window.openlogosCspViolations = [];
+document.addEventListener("securitypolicyviolation", (e) => {
+  window.openlogosCspViolations.push(`${e.violatedDirective} ${e.blockedURI || "inline"} ${e.sourceFile || ""}:${e.lineNumber || 0}`);
+});
+
 main().catch((error) => {
   console.error(error);
   window.openlogosError = String(error && error.stack || error);
-  document.body.insertAdjacentHTML("beforeend", `<p style="position:fixed;bottom:0;left:0;right:0;padding:12px;background:#fee;color:#900;font:13px system-ui">failed: ${escapeHtml(error.message || error)}</p>`);
+  document.body.insertAdjacentHTML("beforeend", `<p class="startup-error" role="alert">failed: ${escapeHtml(error.message || error)}</p>`);
 });
