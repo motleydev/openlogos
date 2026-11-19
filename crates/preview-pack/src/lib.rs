@@ -10,7 +10,9 @@
 //! - [`xrefs`]: B057, the OpenBible cross references into a relation pack beside the text packs,
 //!   with the fidelity report, a spread to read by eye and the list latency.
 //! - [`morphology`]: B026, the MACULA morphology layers joined to the SBLGNT and WLC tokens.
+//! - [`alignment`]: B067, Clear's manual BSB alignments joined to the BSB, SBLGNT and WLC tokens.
 
+pub mod alignment;
 pub mod bench;
 pub mod build;
 pub mod model;

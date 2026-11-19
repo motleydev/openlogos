@@ -1,3 +1,7 @@
+# B067 — 8 November 2026
+
+- Adds Clear's manual BSB alignments: `just preview-pack-alignment` joins Clear's SBLGNT–BSB and WLCM–BSB records (S55) to the preview pack's BSB, SBLGNT and WLC tokens through the morphology layers and writes one layer per testament outside the repository (docs/alignments.md, docs/evidence/B067.md). New calls `use_alignments`, `token_alignment`, `lemma_renderings` (UniFFI) and `useAlignments`, `tokenAlignment`, `lemmaRenderings` (wasm). The core's API is 0.1.8 (after B057's 0.1.7).
+
 # B057 — 8 November 2026
 
 - Adds the OpenBible cross references: `just preview-pack-xrefs` builds `relations/openbible-xrefs.sqlite` beside the preview pack from S09, after the rights record and every hash, one typed edge per published line with its votes, ranges and line kept (docs/preview-pack.md, docs/evidence/B057.md).

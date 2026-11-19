@@ -14,7 +14,10 @@
 //! - [`cross_references`]: the cross-reference relation pack, written and read (B057).
 //! - [`morphology`]: morphology layers keyed to the text packs' tokens: analyses and lemma
 //!   search (B026).
+//! - [`alignment`]: alignment layers (B067): Clear's BSB alignments keyed to the text packs'
+//!   tokens, read through the morphology layers.
 
+pub mod alignment;
 pub mod catalog;
 pub mod cross_references;
 pub mod edition_search;
@@ -28,6 +31,7 @@ pub mod token_engine;
 pub mod tokenizer;
 pub mod vectors;
 
+pub use alignment::AlignmentLayers;
 pub use catalog::{Access, Catalog, CitationCandidate, InstalledPack};
 pub use cross_references::{CrossReferencePack, write_cross_reference_pack};
 pub use edition_search::EditionSearch;
