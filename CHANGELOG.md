@@ -10,7 +10,12 @@ also holds the implementation; `specs/backlog-status.json` is the record of what
 - The workspace shell of specs/22 on the web and the Mac in lockstep: core model, command registry and palette (B070), the shell itself (B072), the contextual tool well (B076), the context menu (B077), continuous reading (B078), and the user store with parallel workspaces and session restore in the core, on the web and on the Mac (B074).
 - The rights steward's approvals of 8 November 2026 (S09, S47, S55, S73, S75); the preview pack and the web About view (B071); the MACULA morphology layers and lemma search (B026).
 - Cross references (B057): OpenBible cross references and coded-1 edge storage, merged 19 November 2026.
+- Alignments (B067): Clear's BSB alignments and the alignment layers, merged 19 November 2026.
 - Repository audit of 11 November 2026: `just audit` (cargo-deny) and `just ci-hosts`, a `web` job in CI, a Content-Security-Policy on the web shell, the backlog status record, and a README that describes the implementation.
+# B067 — 8 November 2026
+
+- Adds Clear's manual BSB alignments: `just preview-pack-alignment` joins Clear's SBLGNT–BSB and WLCM–BSB records (S55) to the preview pack's BSB, SBLGNT and WLC tokens through the morphology layers and writes one layer per testament outside the repository (docs/alignments.md, docs/evidence/B067.md). New calls `use_alignments`, `token_alignment`, `lemma_renderings` (UniFFI) and `useAlignments`, `tokenAlignment`, `lemmaRenderings` (wasm). The core's API is 0.1.8 (after B057's 0.1.7).
+
 # B057 — 8 November 2026
 
 - Adds the OpenBible cross references: `just preview-pack-xrefs` builds `relations/openbible-xrefs.sqlite` beside the preview pack from S09, after the rights record and every hash, one typed edge per published line with its votes, ranges and line kept (docs/preview-pack.md, docs/evidence/B057.md).

@@ -9,7 +9,7 @@ import XCTest
 
 final class CoreHostTests: XCTestCase {
     func testApiVersionMatchesTheCore() {
-        XCTAssertEqual(apiVersion(), "0.1.7")
+        XCTAssertEqual(apiVersion(), "0.1.8")
         XCTAssertEqual(runConformance().apiVersion, apiVersion())
     }
 
