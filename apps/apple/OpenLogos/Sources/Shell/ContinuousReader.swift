@@ -5,7 +5,7 @@
 // side, ChapterLayout.swift); nearing an end loads the next block, far blocks are released,
 // and the verse at the top stays where it is on screen while blocks come and go (the clip
 // view's origin moves by what was inserted or removed above). A sticky header names the
-// block in view (`Jn 3 · BSB`). The verse at the top is reported to the core as the reader
+// block in view (`BSB · Jn 3`). The verse at the top is reported to the core as the reader
 // scrolls (`tab.record_scroll`, quiet); linked tabs are scrolled to the verse the core maps
 // for them, without animation and without reporting it back. The reading column is keyed on
 // the tab and its edition: a reference changed by scrolling never rebuilds it.
@@ -105,7 +105,7 @@ final class ReadingContainerView: NSView {
     }
 }
 
-/// `Jn 3 · BSB`: the block in view, over a 1 pt rule. Drawn by the view itself: a label whose
+/// `BSB · Jn 3`: the block in view, over a 1 pt rule. Drawn by the view itself: a label whose
 /// text changes would ask the window for a layout pass (SwiftUI's included) at every chapter.
 final class ReadingHeaderView: NSView {
     static let height: CGFloat = 28
@@ -126,13 +126,14 @@ final class ReadingHeaderView: NSView {
     override var isFlipped: Bool { true }
 
     func set(chapter: String, edition: String, theme: ShellTokens.Theme, padding: CGFloat) {
-        let text = NSMutableAttributedString(string: chapter, attributes: [
-            .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize, weight: .semibold),
-            .foregroundColor: PlatformColor(hex: theme.text),
-        ])
-        text.append(NSAttributedString(string: " · \(edition)", attributes: [
+        // The tab label's order, as on the web.
+        let text = NSMutableAttributedString(string: "\(edition) · ", attributes: [
             .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize),
             .foregroundColor: PlatformColor(hex: theme.chrome),
+        ])
+        text.append(NSAttributedString(string: chapter, attributes: [
+            .font: NSFont.systemFont(ofSize: ShellTokens.chromeSize, weight: .semibold),
+            .foregroundColor: PlatformColor(hex: theme.text),
         ]))
         let page = PlatformColor(hex: theme.page), rules = PlatformColor(hex: theme.rules)
         guard text != title || page != self.page || rules != self.rules || padding != self.padding else { return }
@@ -140,7 +141,7 @@ final class ReadingHeaderView: NSView {
         self.page = page
         self.rules = rules
         self.padding = padding
-        setAccessibilityLabel("\(chapter), \(edition)")
+        setAccessibilityLabel("\(edition), \(chapter)")
         needsDisplay = true
     }
 
@@ -282,6 +283,7 @@ final class ReadingStream: NSObject {
     private var typography: ReaderTypography = .current()
     private var padding: CGFloat = 24
     private var layoutWidth: CGFloat = 0
+    private var layoutHeight: CGFloat = 0
     /// The window waits for the column's first width.
     private var needsReplace = false
     /// A block added below is laid out in a frame of its own before the reader reaches it (else
@@ -389,8 +391,14 @@ final class ReadingStream: NSObject {
         do {
             location = try reading.locate(resourceId: resourceID, input: reference)
             lastError = nil
-        } catch ReadingCallError.Refused(_, let reason) {
+        } catch ReadingCallError.Refused(let kind, let reason) {
             lastError = reason
+            // B071: a follower's mapped verse past the chapter's last (SBLGNT Rom 16:25): its
+            // chapter, at the last verse there is. A passage typed in this tab shows the
+            // not-in-edition state instead and no stream is on screen (ShellModel.readingError).
+            if kind == "verse_out_of_range", let verse = reference.split(separator: "-").first.map(String.init) {
+                follow(segment: segment ?? verse)
+            }
             return
         } catch {
             lastError = "\(error)"
@@ -439,7 +447,8 @@ final class ReadingStream: NSObject {
             return
         }
         pendingJump = nil
-        let target = layout.segment(holding: segment) ?? segment
+        // B071: a mapped verse the edition does not print lands beside it (specs/23 §4).
+        let target = layout.segment(landingOn: segment) ?? segment
         // Enough text on both sides of the target to put it at the top and scroll on.
         let height = scroll.contentView.bounds.height
         while blocks.count < Self.maxBlocks, let next = blocks.last?.next, let top = top(of: target),
@@ -671,6 +680,13 @@ final class ReadingStream: NSObject {
             if !first, !blocks.isEmpty, pendingJump == nil { anchored(stored: true) { ensureLayout() } }
             onScrolled()
         }
+        let height = scroll.contentView.bounds.height
+        if height != layoutHeight {
+            let first = layoutHeight == 0
+            layoutHeight = height
+            // The room below an edition's last chapter is a share of this height.
+            if !first, !blocks.isEmpty, pendingJump == nil { anchored(stored: true) { applyEndRoom() } }
+        }
         if needsReplace, width > 0 { relayout(.replace) }
         if let pending = pendingJump, scroll.contentView.bounds.height > 0 {
             jump(to: pending.segment, flash: pending.flash)
@@ -684,7 +700,8 @@ final class ReadingStream: NSObject {
         defer { if !maintaining { onScrolled() } }
         guard !maintaining, let scroll = container?.scrollView else { return }
         // A resize reflows the text before `containerDidLayout` re-anchors it: not a scroll.
-        guard pendingJump == nil, scroll.contentView.bounds.width == layoutWidth else { return }
+        // B071: nor is a column that grew and pushed the text back at the end of an edition.
+        guard pendingJump == nil, scroll.contentView.bounds.width == layoutWidth, scroll.contentView.bounds.height == layoutHeight else { return }
         let previous = reportedTop
         // A block is loaded now only when the reader is close to an end of the window; other
         // loads and releases go one per frame (ReadingScheduler), so a scroll that crosses a

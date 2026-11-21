@@ -198,6 +198,20 @@ extension ReaderLayout {
         }
     }
 
+    /// B071: where a verse lands when its edition may not print it (specs/23 §4): the segment
+    /// holding it, else the last verse of the chapter numbered at or below it, else the
+    /// chapter's first; nil when the chapter is not in the window.
+    func segment(landingOn segmentID: String) -> String? {
+        if let held = segment(holding: segmentID) { return held }
+        let parts = segmentID.split(separator: ".")
+        guard parts.count == 3, let verse = Int(parts[2]) else { return nil }
+        let chapter = parts.prefix(2).joined(separator: ".") + "."
+        let verses = segmentOrder.filter { $0.hasPrefix(chapter) }
+        return verses.last { id in
+            Int(id.dropFirst(chapter.count).prefix { $0.isNumber }).map { $0 <= verse } ?? false
+        } ?? verses.first
+    }
+
     /// The display range from the first to the last of a run of segments, in document order.
     func displayRange(from first: String, to last: String) -> NSRange? {
         guard let a = verseRanges[first], let b = verseRanges[last] else { return nil }

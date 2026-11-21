@@ -79,6 +79,8 @@
           ./crates
           # Schema examples that crate tests read (B006 at run time, B039 at compile time).
           ./examples
+          # Committed pack fixtures that crate tests compare against (B071 search_fixture).
+          ./fixtures
           # Rights records the preview-pack tests compare against (B026 restricted columns).
           ./rights
         ];

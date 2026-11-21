@@ -482,9 +482,134 @@ final class ShellMeasure {
     }
 }
 
+#if os(macOS)
+extension ShellMeasure {
+    /// Bodies of the palette's result list so far, and the text rows the last one drew
+    /// (`PaletteResults`): a sample stops only once the list it times has really rendered.
+    static var paletteRenders = 0
+    static var paletteTextRows = 0
+    static func notePaletteRender(textRows: Int) {
+        paletteRenders += 1
+        paletteTextRows = textRows
+    }
+
+    /// B071: `-OPENLOGOS_PACK_MEASURE`, the specs/22 §7 budgets over the real editions.
+    func runPack(queries: [String]) async -> Report {
+        var stats: [Stat] = []
+        let model = model
+        var keystrokes: [String] = []
+        for query in queries {
+            let scalars = Array(query)
+            guard scalars.count >= 2 else { continue }
+            for i in 2...scalars.count { keystrokes.append(String(scalars[..<i])) }
+        }
+        model.focusPalette()
+        Self.flush()
+
+        /// One keystroke to its text rows on screen: `main` is what the main thread did in the
+        /// keystroke itself (the other sections, computed and drawn), `total` adds the answer
+        /// from the search handle and the list drawn with it.
+        func keystroke(_ text: String) async -> (main: Double, total: Double, rows: Int, rendered: Bool) {
+            let t0 = CACurrentMediaTime()
+            model.paletteText = text
+            model.paletteTextChanged()
+            Self.flush()
+            let main = (CACurrentMediaTime() - t0) * 1000
+            // Read when the rows go into the state, before SwiftUI can draw them.
+            var renders = Self.paletteRenders
+            if model.textSearch != nil {
+                await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                    var resumed = false
+                    model.onTextDelivered = {
+                        guard !resumed else { return }
+                        resumed = true
+                        renders = Self.paletteRenders
+                        done.resume()
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        guard !resumed else { return }
+                        resumed = true
+                        done.resume()
+                    }
+                }
+                model.onTextDelivered = nil
+            }
+            Self.flush()
+            var turns = 0
+            while Self.paletteRenders == renders, turns < 50 {
+                await Task.yield()
+                Self.flush()
+                turns += 1
+            }
+            return (main, (CACurrentMediaTime() - t0) * 1000, Self.paletteTextRows, Self.paletteRenders != renders)
+        }
+        for text in keystrokes.prefix(30) { _ = await keystroke(text) }
+        var mains: [Double] = [], totals: [Double] = [], withRows = 0, rendered = 0
+        for text in keystrokes {
+            let sample = await keystroke(text)
+            mains.append(sample.main)
+            totals.append(sample.total)
+            if sample.rows > 0 { withRows += 1 }
+            if sample.rendered { rendered += 1 }
+            try? await Task.sleep(nanoseconds: 16_000_000)
+        }
+        stats.append(Self.stat("keystroke to painted text results, three editions (\(withRows) with text rows, \(rendered) of \(totals.count) saw the list render)", budget: 50, totals))
+        stats.append(Self.stat("the keystroke on the main thread: passage, commands, tabs computed and drawn", budget: 16, mains))
+
+        // Typing at a fast pace while the display link counts frames: what a hitch would show.
+        let pace: UInt64 = 90_000_000
+        var frames: [Double] = []
+        var last: CFTimeInterval?
+        var typing = true
+        let ticker = FrameTicker { timestamp in
+            if let last { frames.append((timestamp - last) * 1000) }
+            last = timestamp
+            return !typing
+        } finished: {}
+        ticker.start()
+        for text in keystrokes.prefix(240) {
+            model.paletteText = text
+            model.paletteTextChanged()
+            try? await Task.sleep(nanoseconds: pace)
+        }
+        typing = false
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        stats.append(Self.stat("frame interval while typing 240 keystrokes at 90 ms (\(frames.filter { $0 > 17.5 }.count) over one frame, \(frames.filter { $0 > 34 }.count) over two)", budget: 16.7, frames))
+        model.closePalette()
+        Self.flush()
+
+        // Chapters, column 2 (BSB in group 1 with columns 1 and 3 in the measurement session).
+        model.run("column.focus", args: ShellCommandArgs(column: 2))
+        Self.flush()
+        // Long ones among them, each already laid out once.
+        let warm = ["Ps.119.1", "Num.7.1", "1Chr.6.1", "Luke.1.1", "Matt.26.1", "Isa.66.1", "Ps.117.1", "John.3.16", "Gen.1.1", "Rev.22.1", "Rom.8.1", "Job.38.1"]
+        stats.append(await measure("open a chapter, warm: typed jump, already laid out, long chapters included (followers, drawn)", budget: 100, count: 240) { i in
+            model.run("nav.navigate", args: ShellCommandArgs(reference: warm[i % warm.count]))
+        })
+        // Every sample a chapter this run has not shown: from disk, hash checked, laid out.
+        var fresh: [String] = []
+        var key: String? = "Gen.2"
+        while let current = key, fresh.count < 240 {
+            fresh.append(current)
+            for _ in 0..<4 { key = key.flatMap { try? model.reading.chapterNeighbors(resourceId: "bsb", chapterKey: $0).next } }
+        }
+        stats.append(await measure("open a chapter never shown yet: read, hash checked, laid out (followers, drawn)", budget: 100, count: fresh.count) { i in
+            model.run("nav.navigate", args: ShellCommandArgs(reference: fresh[i % fresh.count]))
+        })
+        // Workspaces: real text in every tab.
+        stats.append(await measure("workspace switch (workspace.next, 10 × 3 × 4, real text)", budget: 100) { _ in
+            model.run("workspace.next")
+        })
+        let size = Self.windowSize
+        let tabs = model.session.workspaces.reduce(0) { $0 + $1.columns.reduce(0) { $0 + $1.tabs.count } }
+        return Report(host: "mac", window: "\(Int(size.width))x\(Int(size.height))", workspaces: model.session.workspaces.count, tabs: tabs, stats: stats)
+    }
+}
+#endif
+
 /// A display link that calls back once per frame until the callback returns true.
 @MainActor
-private final class FrameTicker: NSObject {
+final class FrameTicker: NSObject {
     private var link: CADisplayLink?
     private let tick: (CFTimeInterval) -> Bool
     private let finished: () -> Void

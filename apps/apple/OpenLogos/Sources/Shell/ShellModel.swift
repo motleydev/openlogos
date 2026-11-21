@@ -22,8 +22,14 @@ final class ShellModel: ObservableObject {
     let registry: [ShellCommandInfo]
     let keymap: ShellKeymap
     let textSource: TextSource
-    /// B078: the editions as streams of chapters (placeholder editions until B071's packs).
+    /// B078: the editions as streams of chapters; B071: the preview pack's where it is
+    /// installed, placeholder editions otherwise.
     let reading: ReadingHandle
+    /// B071: the Text section over the search packs, off the main thread; nil on the fixtures
+    /// (the session handle answers those itself) or with no search packs.
+    let textSearch: EditionTextSearch?
+    /// B071: the editions are installed but their search packs did not open.
+    private let textSearchFailed: Bool
 
     @Published private(set) var session: ShellSession
 
@@ -114,10 +120,13 @@ final class ShellModel: ObservableObject {
     private var monitor: Any?
     #endif
 
-    init(handle: ShellHandle, textSource: TextSource = FixtureTextSource(), reading: ReadingHandle = .placeholder(), store: UserStoreFile? = nil) {
+    init(handle: ShellHandle, textSource: TextSource = FixtureTextSource(), reading: ReadingHandle = .placeholder(), store: UserStoreFile? = nil,
+         textSearch: EditionTextSearch? = nil, textSearchFailed: Bool = false) {
         self.handle = handle
         self.textSource = textSource
         self.reading = reading
+        self.textSearch = textSearch
+        self.textSearchFailed = textSearchFailed
         registry = shellRegistry()
         keymap = ShellKeymap(registry: registry, platform: .mac)
         // Tab views and palette rows name resources by these (`BSB · Jn 3:16`).
@@ -152,11 +161,17 @@ final class ShellModel: ObservableObject {
         if let notice = restored?.notice { show(notice: notice) }
     }
 
-    convenience init(sessionJSON: String = ShellSeed.json, store: UserStoreFile? = nil) {
+    /// `pack`: the real editions (B071); without one, the placeholder library and the fixtures'
+    /// text search, each of which says what it is.
+    convenience init(sessionJSON: String = ShellSeed.json, store: UserStoreFile? = nil, pack: PreviewPack? = nil) {
         // The seed is ours; a seed the core rejects is a programming error.
         let handle = try! ShellHandle(sessionJson: sessionJSON)
-        handle.useFixtureText()
-        self.init(handle: handle, store: store)
+        guard let pack else {
+            handle.useFixtureText()
+            self.init(handle: handle, store: store)
+            return
+        }
+        self.init(handle: handle, textSource: InstalledTextSource(editions: pack.installed), reading: pack.reading, store: store, textSearch: pack.search, textSearchFailed: pack.search == nil)
     }
 
     /// Something the store keeps may have changed: the save debounce restarts when it did.
@@ -331,6 +346,8 @@ final class ShellModel: ObservableObject {
     private func performHost(_ id: String, args: ShellCommandArgs) {
         switch id {
         case "palette.focus": focusPalette()
+        // B071: the panel under the active column's menu.
+        case "view.about_edition": aboutColumn = activeColumn.number
         case "view.tool_palette": toolWellCollapsed.toggle()
         case "selection.highlight":
             if let selection { highlight(selection) }
@@ -395,13 +412,88 @@ final class ShellModel: ObservableObject {
     /// Called on every keystroke; no debounce (specs/22 §7: 16 ms).
     func query() {
         queriedText = paletteText
-        palette.result = scoped(handle.paletteQuery(text: paletteText, context: paletteContext))
+        var result = handle.paletteQuery(text: paletteText, context: paletteContext)
+        paletteBase = result
+        if let textSearch {
+            // B071: passages, commands and tabs paint now; the Text section follows from its
+            // own handle. The rows of the last keystroke stay until then, so the list does
+            // not jump at every letter, unless the field no longer asks for text at all.
+            if result.mode == "all" || result.mode == "text" {
+                if let shown = paletteTextGroup { result.groups.append(shown) }
+                pendingText = textSearch.request(text: paletteText, context: paletteContext) { [weak self] generation, group in
+                    self?.textDelivered(generation, group)
+                }
+            } else {
+                textSearch.cancel()
+                paletteTextGroup = nil
+                pendingText = nil
+            }
+        }
+        palette.result = scoped(result)
         paletteSelection = min(paletteSelection, max(0, paletteRows.count - 1))
+    }
+
+    /// The words under the Text heading when the field asks for text and the search packs did not
+    /// open, the web's words. No loading line: the packs open in the launch's 4.6 ms (B071-mac.md).
+    func textSearchNotice(for result: ShellPaletteResult) -> String? {
+        guard textSearchFailed else { return nil }
+        // The core's rule for asking at all (`wants_text`, TEXT_MIN_CHARS is 2 there).
+        let wanted = !result.text.isEmpty && (result.mode == "text" || (result.mode == "all" && result.text.count >= 2))
+        return wanted ? "Text search could not load." : nil
+    }
+
+    /// An answer on its way is not "No results".
+    var textPending: Bool { pendingText != nil }
+
+    /// The session handle's answer to the last keystroke, before the Text section is merged.
+    private var paletteBase: ShellPaletteResult?
+    /// The Text rows on show (they may be the previous keystroke's until `pendingText` lands).
+    private var paletteTextGroup: ShellPaletteGroup?
+    private var pendingText: UInt64?
+    /// The column showing the About this edition panel (`view.about_edition`).
+    @Published var aboutColumn: UInt32?
+    /// Called on the main thread once a keystroke's Text section is in `palette.result`
+    /// (ShellMeasure stops its clock on the paint after this).
+    var onTextDelivered: (() -> Void)?
+
+    private func textDelivered(_ generation: UInt64, _ group: ShellPaletteGroup?) {
+        guard generation == pendingText, var result = paletteBase else { return }
+        pendingText = nil
+        let checked = group.map { checkedAgainstSession($0, target: result) }
+        paletteTextGroup = checked
+        if let checked { result.groups.append(checked) }
+        palette.result = scoped(result)
+        paletteSelection = min(paletteSelection, max(0, paletteRows.count - 1))
+        onTextDelivered?()
+    }
+
+    /// The search handle has a session of one column: whether a row's target column exists is
+    /// the real session's to say. The words are the core's: its own passage row for that column.
+    private func checkedAgainstSession(_ group: ShellPaletteGroup, target result: ShellPaletteResult) -> ShellPaletteGroup {
+        var group = group
+        var reason: (kind: String?, words: String?) = (nil, nil)
+        if let number = result.targetColumn, !activeWorkspace.columns.contains(where: { $0.number == number }),
+           let probe = handle.paletteQuery(text: ": John 3:16 @\(number)", context: paletteContext).groups.first?.items.first {
+            reason = (probe.disabledKind, probe.disabledReason)
+        }
+        for i in group.items.indices {
+            group.items[i].disabledKind = reason.kind
+            group.items[i].disabledReason = reason.words
+        }
+        return group
+    }
+
+    /// Before a row runs: the Text section for what is typed now, not the last keystroke's.
+    private func settlePaletteText() {
+        guard pendingText != nil, let answer = textSearch?.settled() else { return }
+        textDelivered(answer.generation, answer.group)
     }
 
     func paletteTextChanged() {
         // The field's onChange repeats a change made in code; the second call is a no-op.
         guard palette.result == nil || paletteText != queriedText else { return }
+        // Closing empties the field in code: that change must not open the list again.
+        guard palette.open || !paletteText.isEmpty else { return }
         palette.open = true
         palette.expanded = nil
         paletteSelection = 0
@@ -433,6 +525,7 @@ final class ShellModel: ObservableObject {
     }
 
     func runSelectedRow() {
+        settlePaletteText()
         guard let row = paletteRows[safe: paletteSelection] else { return }
         runRow(row)
     }
@@ -454,6 +547,10 @@ final class ShellModel: ObservableObject {
         palette.expanded = nil
         palette.selection = 0
         palette.result = nil
+        textSearch?.cancel()
+        paletteBase = nil
+        paletteTextGroup = nil
+        pendingText = nil
         focusActiveTab()
     }
 
@@ -581,6 +678,7 @@ final class ShellModel: ObservableObject {
         #if os(macOS)
         // Streams are the active workspace's shown tabs (tab ids repeat across workspaces).
         for position in outcome.positions where position.workspaceId == session.activeWorkspaceId {
+            if position.driver, !position.scrolled { typedPassage[position.tabId] = position.reference }
             streams[position.tabId]?.stream?.apply(position, revision: outcome.revision)
         }
         #endif
@@ -606,10 +704,16 @@ final class ShellModel: ObservableObject {
     func readingError(for tab: ShellTab) -> String? {
         guard tab.kind == "reading", let reference = tab.reference else { return nil }
         let key = "\(tab.contentId)|\(reference)"
-        if let known = readingErrors[key] { return known }
+        // B071: only a passage typed in this tab can be refused for a verse past the chapter's
+        // end; a linked tab that followed there stays on its chapter (specs/23 §4), the stream
+        // at the last verse there is.
+        let followed = tab.linkGroup != nil && typedPassage[tab.id] != reference
+        if !followed, let known = readingErrors[key] { return known }
         var reason: String?
         do {
             _ = try reading.locate(resourceId: tab.contentId, input: reference)
+        } catch ReadingCallError.Refused(let kind, _) where followed && kind == "verse_out_of_range" {
+            return nil
         } catch ReadingCallError.Refused(let kind, let words) {
             reason = kind == "unknown_resource" ? nil : words
         } catch {
@@ -621,10 +725,14 @@ final class ShellModel: ObservableObject {
     }
 
     private var readingErrors: [String: String?] = [:]
+    /// The passage last typed in each tab as the driver of a navigation (`readingError`).
+    private var typedPassage: [String: String] = [:]
 
-    /// The fixtures' licence line under a block whose verses include real fixture text.
+    /// The fixtures' licence line under a placeholder block whose verses include real fixture
+    /// text. An installed edition's attribution is in About this edition (`view.about_edition`),
+    /// not repeated under every chapter.
     func attribution(for chapter: ReadingChapter) -> String? {
-        guard chapter.verses.contains(where: { !$0.placeholder }),
+        guard chapter.placeholder, chapter.verses.contains(where: { !$0.placeholder }),
               let text = textSource.text(resourceID: chapter.resourceId, reference: "\(chapter.chapterKey).1") else { return nil }
         return text.content.attribution
     }

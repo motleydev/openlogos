@@ -361,6 +361,46 @@ private struct IdentityRowContent: View {
     }
 }
 
+/// B071: `view.about_edition`, from the column's menu or the palette: the edition's name, its
+/// revision and what its licence asks a reader to be shown, word for word from its manifest
+/// (`Edition.attribution`). An edition with no pack says what it is instead.
+struct AboutEditionPanel: View {
+    let resource: ResourceInfo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ShellTokens.Spacing.s) {
+            Text(resource.name).font(ShellTokens.chromeFont.weight(.semibold))
+            if let attribution = resource.attribution {
+                if let revision = resource.revision {
+                    Text(revision).font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                Text(Self.linked(attribution))
+                    .font(ShellTokens.chromeFont)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text(ReadingNotice.placeholder).font(ShellTokens.chromeFont)
+            }
+        }
+        .padding(ShellTokens.Spacing.m)
+        .frame(width: 340, alignment: .leading)
+        .accessibilityIdentifier("shell-about-edition")
+    }
+
+    /// The words as they are; their addresses can be followed.
+    static func linked(_ words: String) -> AttributedString {
+        var text = AttributedString(words)
+        guard let pattern = try? NSRegularExpression(pattern: #"https?://[^\s,;)]*[^\s,;.)]"#) else { return text }
+        for match in pattern.matches(in: words, range: NSRange(words.startIndex..., in: words)) {
+            guard let range = Range(match.range, in: words), let url = URL(string: String(words[range])),
+                  let lower = AttributedString.Index(range.lowerBound, within: text),
+                  let upper = AttributedString.Index(range.upperBound, within: text) else { continue }
+            text[lower..<upper].link = url
+        }
+        return text
+    }
+}
+
 struct ColumnBadge: View {
     let number: UInt32
     let active: Bool
@@ -390,6 +430,8 @@ struct PaneMenu: View {
 
     var body: some View {
         Menu {
+            CommandButton(model: model, id: "view.about_edition")
+            Divider()
             ForEach(["nav.back", "nav.forward"], id: \.self) { CommandButton(model: model, id: $0) }
             Divider()
             CommandButton(model: model, id: "tab.link", title: "Link to group 1", args: ShellCommandArgs(group: "1"))
@@ -424,6 +466,11 @@ struct PaneMenu: View {
         .fixedSize()
         .simultaneousGesture(TapGesture().onEnded { model.focusColumn(column.number) })
         .accessibilityLabel("Column \(column.number) menu")
+        .popover(isPresented: Binding(get: { model.aboutColumn == column.number }, set: { if !$0 { model.aboutColumn = nil } }), arrowEdge: .bottom) {
+            if let tab = column.tabs.first(where: { $0.id == column.shownTabId }) {
+                AboutEditionPanel(resource: model.textSource.resource(tab.contentId))
+            }
+        }
     }
 }
 
